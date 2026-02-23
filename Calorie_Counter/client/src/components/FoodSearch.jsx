@@ -1,6 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api/client';
 
+const OFF_BASE = 'https://world.openfoodfacts.org/cgi/search.pl';
+
+function titleCase(str) {
+  if (!str) return '';
+  return str.toLowerCase().replace(/(?:^|\s|[-/])\w/g, (c) => c.toUpperCase());
+}
+
+async function searchOFF(query) {
+  try {
+    const params = new URLSearchParams({
+      search_terms: query,
+      json: '1',
+      page_size: '15',
+      search_simple: '1',
+      action: 'process',
+      fields: 'product_name,brands,nutriments,serving_size,code',
+    });
+    const resp = await fetch(`${OFF_BASE}?${params}`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    if (!data.products) return [];
+    return data.products
+      .map((p) => {
+        if (!p.product_name) return null;
+        const calServing = p.nutriments?.['energy-kcal_serving'];
+        const cal100g = p.nutriments?.['energy-kcal_100g'];
+        const calories = calServing ? Math.round(calServing) : cal100g ? Math.round(cal100g) : null;
+        if (!calories || calories <= 0 || calories > 3000) return null;
+        const servingLabel = calServing && p.serving_size
+          ? p.serving_size
+          : cal100g ? 'per 100g' : '1 serving';
+        return {
+          id: `off-${p.code}`,
+          name: titleCase(p.product_name),
+          brand: p.brands || null,
+          calories_per_serving: calories,
+          serving_size: servingLabel,
+          source: 'off',
+        };
+      })
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export default function FoodSearch({ onSelect }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -18,8 +66,30 @@ export default function FoodSearch({ onSelect }) {
     setSearching(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await api.get('/foods', { params: { q: query } });
-        setResults(res.data);
+        // Search local DB (server) and Open Food Facts (browser) in parallel
+        const [localRes, offResults] = await Promise.all([
+          api.get('/foods', { params: { q: query } }).then((r) => r.data),
+          searchOFF(query),
+        ]);
+
+        // Merge: local first, then branded OFF results
+        const localNames = new Set(localRes.map((r) => r.name.toLowerCase()));
+        const seen = new Set();
+        const merged = [...localRes];
+
+        for (const item of offResults) {
+          if (item.brand) {
+            const key = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(item);
+            }
+          } else if (!localNames.has(item.name.toLowerCase())) {
+            merged.push(item);
+          }
+        }
+
+        setResults(merged.slice(0, 25));
         setOpen(true);
       } catch {
         setResults([]);
@@ -52,7 +122,6 @@ export default function FoodSearch({ onSelect }) {
     e.stopPropagation();
     try {
       if (food.isFavorite) {
-        // Unfavorite — need to find the preference ID first
         const prefs = await api.get('/preferences');
         const match = prefs.data.find(
           (p) => p.preference_type === 'favorite' && p.value.toLowerCase() === food.name.toLowerCase()
@@ -66,7 +135,6 @@ export default function FoodSearch({ onSelect }) {
           value: food.name,
         });
       }
-      // Update the result in place
       setResults((prev) =>
         prev.map((r) =>
           r.id === food.id ? { ...r, isFavorite: !r.isFavorite } : r

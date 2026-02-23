@@ -20,7 +20,7 @@ async function searchOpenFoodFacts(query) {
       fields: 'product_name,brands,nutriments,serving_size,code',
     });
     const resp = await fetch(`${OFF_BASE}?${params}`, {
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(8000),
       headers: { 'User-Agent': 'CalorieCounter/1.0' },
     });
     if (!resp.ok) return [];
@@ -78,29 +78,9 @@ async function searchLocalDB(query) {
 }
 
 async function searchFoods(query) {
-  const [localRows, offResults] = await Promise.all([
-    searchLocalDB(query),
-    searchOpenFoodFacts(query),
-  ]);
-
-  const local = localRows.map((r) => ({ ...r, source: 'local' }));
-  const localNames = new Set(local.map((r) => r.name.toLowerCase()));
-  const seen = new Set();
-  const merged = [...local];
-
-  for (const item of offResults) {
-    if (item.brand) {
-      const key = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(item);
-      }
-    } else if (!localNames.has(item.name.toLowerCase())) {
-      merged.push(item);
-    }
-  }
-
-  return merged.slice(0, 25);
+  // Only search local DB from server — OFF is called from client
+  const localRows = await searchLocalDB(query);
+  return localRows.map((r) => ({ ...r, source: 'local' }));
 }
 
 module.exports = { searchFoods, searchLocalDB, searchOpenFoodFacts, titleCase };
