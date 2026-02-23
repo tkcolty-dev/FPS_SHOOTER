@@ -1,14 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
 import CalorieBudgetBar from '../components/CalorieBudgetBar';
 import MealTable from '../components/MealTable';
+import WeekStrip from '../components/WeekStrip';
+import PlannedMealsList from '../components/PlannedMealsList';
+import PlanMealForm from '../components/PlanMealForm';
+
+function formatDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const today = formatDate(now);
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [showPlanForm, setShowPlanForm] = useState(false);
 
   const { data: meals = [], isLoading: mealsLoading } = useQuery({
     queryKey: ['meals', today],
@@ -28,6 +37,53 @@ export default function Dashboard() {
   const { data: topFoods = [] } = useQuery({
     queryKey: ['top-foods', today],
     queryFn: () => api.get('/meals/top-foods', { params: { days: 30, today } }).then(r => r.data),
+  });
+
+  // Compute the visible week range for planned meals query
+  const weekRange = useMemo(() => {
+    const sel = new Date(selectedDate + 'T12:00:00');
+    const dow = sel.getDay();
+    const start = new Date(sel);
+    start.setDate(start.getDate() - dow);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return { from: formatDate(start), to: formatDate(end) };
+  }, [selectedDate]);
+
+  const { data: plannedMeals = [] } = useQuery({
+    queryKey: ['planned-meals', weekRange.from, weekRange.to],
+    queryFn: () => api.get('/planned-meals', { params: weekRange }).then(r => r.data),
+  });
+
+  const datesWithPlans = useMemo(() => {
+    const s = new Set();
+    plannedMeals.forEach((m) => {
+      const d = typeof m.planned_date === 'string' ? m.planned_date.split('T')[0] : m.planned_date;
+      s.add(d);
+    });
+    return s;
+  }, [plannedMeals]);
+
+  const selectedDayPlans = plannedMeals.filter((m) => {
+    const d = typeof m.planned_date === 'string' ? m.planned_date.split('T')[0] : m.planned_date;
+    return d === selectedDate;
+  });
+
+  const logPlannedMeal = useMutation({
+    mutationFn: (meal) => {
+      const n = new Date();
+      const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+      return api.post(`/planned-meals/${meal.id}/log`, { logged_at: localISO });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['planned-meals'] });
+      queryClient.invalidateQueries({ queryKey: ['meals'] });
+    },
+  });
+
+  const deletePlannedMeal = useMutation({
+    mutationFn: (id) => api.delete(`/planned-meals/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['planned-meals'] }),
   });
 
   const deleteMeal = useMutation({
@@ -64,6 +120,22 @@ export default function Dashboard() {
         <CalorieBudgetBar consumed={totalCalories} goal={dailyGoal} />
       </div>
 
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '0.75rem' }}>
+        <WeekStrip
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          datesWithPlans={datesWithPlans}
+        />
+      </div>
+
+      {selectedDayPlans.length > 0 && (
+        <PlannedMealsList
+          plannedMeals={selectedDayPlans}
+          onLog={(meal) => logPlannedMeal.mutate(meal)}
+          onDelete={(id) => deletePlannedMeal.mutate(id)}
+        />
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Meals</h2>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -79,11 +151,26 @@ export default function Dashboard() {
               Clear All
             </button>
           )}
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: '0.85rem' }}
+            onClick={() => setShowPlanForm(true)}
+          >
+            + Plan Meal
+          </button>
           <Link to="/log" className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
             + Log Meal
           </Link>
         </div>
       </div>
+
+      {showPlanForm && (
+        <PlanMealForm
+          date={selectedDate}
+          onClose={() => setShowPlanForm(false)}
+          onSuccess={() => setShowPlanForm(false)}
+        />
+      )}
 
       {mealsLoading ? (
         <div className="loading">Loading meals...</div>
