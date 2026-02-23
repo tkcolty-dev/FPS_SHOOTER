@@ -2,6 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { chatWithAI } = require('../services/claude');
+const { searchLocalDB } = require('../services/foodSearch');
 
 const router = express.Router();
 router.use(auth);
@@ -42,6 +43,35 @@ router.post('/', async (req, res) => {
     const preferences = prefsResult.rows;
     const plannedMeals = plannedResult.rows;
 
+    // Look up calorie data for foods mentioned in the message
+    const foodWords = message.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2);
+    // Extract 2-3 word food phrases from the message
+    const searchTerms = new Set();
+    const fullMsg = message.toLowerCase();
+    // Try the full message as a search (for short messages like "pizza")
+    if (fullMsg.length < 40) searchTerms.add(fullMsg.trim());
+    // Also try individual meaningful words
+    const skipWords = new Set(['the','and','for','can','you','what','how','plan','meal','meals','tomorrow','today','should','about','some','with','that','this','have','want','like','need','make','good','help','give','tell']);
+    for (const w of foodWords) {
+      if (!skipWords.has(w)) searchTerms.add(w);
+    }
+
+    let foodReference = [];
+    try {
+      const searches = [...searchTerms].slice(0, 3);
+      const results = await Promise.all(searches.map(t => searchLocalDB(t).catch(() => [])));
+      const seen = new Set();
+      for (const rows of results) {
+        for (const r of rows) {
+          const key = r.name.toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            foodReference.push(r);
+          }
+        }
+      }
+    } catch {}
+
     let reply = await chatWithAI({
       message,
       history: history || [],
@@ -51,6 +81,7 @@ router.post('/', async (req, res) => {
       preferences,
       plannedMeals,
       clientDate,
+      foodReference,
     });
 
     if (!reply) {

@@ -100,7 +100,7 @@ Return ONLY a JSON array with exactly 3 objects, each having: name (string), des
   return JSON.parse(jsonMatch[0]);
 }
 
-async function chatWithAI({ message, history, goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate }) {
+async function chatWithAI({ message, history, goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate, foodReference }) {
   const cuisinePrefs = preferences.filter(p => p.preference_type === 'cuisine').map(p => p.value);
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
   const favorites = preferences.filter(p => p.preference_type === 'favorite').map(p => p.value);
@@ -156,7 +156,12 @@ Use type "favorite" for likes and "dislike" for dislikes. Acknowledge that you'v
 
 Keep responses concise and conversational. You can suggest multiple meals in one response. Always respect the user's calorie budget and preferences.
 
-IMPORTANT: When suggesting serving sizes, always use full servings or half servings (e.g. "1 cup", "2 eggs", "1/2 cup", "1.5 servings"). Never suggest odd fractions like 0.7 cups or 1.3 servings. Keep portions practical and realistic.`;
+IMPORTANT: When suggesting serving sizes, always use full servings or half servings (e.g. "1 cup", "2 eggs", "1/2 cup", "1.5 servings"). Never suggest odd fractions like 0.7 cups or 1.3 servings. Keep portions practical and realistic.
+${foodReference && foodReference.length > 0 ? `
+CALORIE REFERENCE (use these exact values when suggesting these foods):
+${foodReference.map(f => `- ${f.name}: ${f.calories_per_serving} cal per ${f.serving_size}`).join('\n')}
+
+IMPORTANT: Always use the calorie values from this reference when available. These are from our verified food database. If a food is not listed above, use your best estimate but be accurate.` : ''}`;
 
   const messages = [
     ...history.map(h => ({ role: h.role, content: h.content })),
