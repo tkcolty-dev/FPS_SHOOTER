@@ -61,7 +61,7 @@ async function searchLocalDB(query) {
      ORDER BY LOWER(name),
        CASE WHEN name ILIKE $2 THEN 0 ELSE 1 END,
        length(name)
-     LIMIT 10`,
+     LIMIT 20`,
     [`%${query}%`, `${query}%`]
   );
   if (result.rows.length > 0) return result.rows;
@@ -71,7 +71,7 @@ async function searchLocalDB(query) {
      FROM food_database
      WHERE search_vector @@ plainto_tsquery('english', $1)
      ORDER BY LOWER(name), ts_rank(search_vector, plainto_tsquery('english', $1)) DESC
-     LIMIT 10`,
+     LIMIT 20`,
     [query]
   );
   return fallback.rows;

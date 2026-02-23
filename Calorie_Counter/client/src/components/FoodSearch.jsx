@@ -62,7 +62,7 @@ function mergeResults(localRes, offResults) {
       merged.push(item);
     }
   }
-  return merged.slice(0, 25);
+  return merged.slice(0, 30);
 }
 
 export default function FoodSearch({ onSelect }) {
