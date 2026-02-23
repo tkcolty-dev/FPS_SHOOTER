@@ -20,7 +20,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
   const [baseFat, setBaseFat] = useState(null);
   const [recurrence, setRecurrence] = useState('');
   const [recurrenceEnd, setRecurrenceEnd] = useState('');
-  const [forUserId, setForUserId] = useState('');
+  const [forUserIds, setForUserIds] = useState([]);
   const queryClient = useQueryClient();
 
   // Fetch shared users (people who shared with me — I can plan for them)
@@ -63,7 +63,14 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
   }, [name]);
 
   const createPlanned = useMutation({
-    mutationFn: (data) => api.post('/planned-meals', data),
+    mutationFn: async (data) => {
+      const { for_user_ids, ...rest } = data;
+      // Always plan for yourself, plus any selected users
+      const targets = [undefined, ...(for_user_ids || [])];
+      await Promise.all(targets.map(uid =>
+        api.post('/planned-meals', { ...rest, for_user_id: uid })
+      ));
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planned-meals'] });
       onSuccess();
@@ -91,7 +98,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
       fat_g: fat ? parseFloat(fat) : undefined,
       recurrence: recurrence || undefined,
       recurrence_end: recurrenceEnd || undefined,
-      for_user_id: forUserId ? parseInt(forUserId) : undefined,
+      for_user_ids: forUserIds.map(id => parseInt(id)),
     });
   };
 
@@ -122,13 +129,23 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
 
           {sharedUsers.length > 0 && (
             <div className="form-group">
-              <label htmlFor="planForUser">Plan for</label>
-              <select id="planForUser" value={forUserId} onChange={(e) => setForUserId(e.target.value)}>
-                <option value="">Myself</option>
+              <label>Also plan for</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
                 {sharedUsers.map(s => (
-                  <option key={s.userId} value={s.userId}>{s.username}</option>
+                  <label key={s.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={forUserIds.includes(String(s.userId))}
+                      onChange={(e) => {
+                        const id = String(s.userId);
+                        setForUserIds(prev => e.target.checked ? [...prev, id] : prev.filter(x => x !== id));
+                      }}
+                      style={{ width: 16, height: 16 }}
+                    />
+                    {s.username}
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
           )}
 
@@ -268,7 +285,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
               disabled={createPlanned.isPending}
               style={{ flex: 1, padding: '0.625rem' }}
             >
-              {createPlanned.isPending ? 'Saving...' : forUserId ? `Plan for ${sharedUsers.find(s => String(s.userId) === forUserId)?.username || 'user'}` : 'Plan Meal'}
+              {createPlanned.isPending ? 'Saving...' : forUserIds.length > 0 ? `Plan for me + ${forUserIds.length}` : 'Plan Meal'}
             </button>
             <button
               type="button"

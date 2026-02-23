@@ -27,7 +27,7 @@ export default function MealLog() {
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
-  const [forUserId, setForUserId] = useState('');
+  const [forUserIds, setForUserIds] = useState([]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -78,7 +78,12 @@ export default function MealLog() {
 
   const createMeal = useMutation({
     mutationFn: async (data) => {
-      const res = await api.post('/meals', data);
+      const { for_user_ids, ...rest } = data;
+      // Always log for yourself, plus any selected users
+      const targets = [undefined, ...(for_user_ids || [])];
+      const res = await Promise.all(targets.map(uid =>
+        api.post('/meals', { ...rest, for_user_id: uid })
+      ));
       if (saveAsFavorite) {
         await api.post('/custom-meals', {
           name: data.name,
@@ -91,7 +96,7 @@ export default function MealLog() {
         });
         queryClient.invalidateQueries({ queryKey: ['custom-meals'] });
       }
-      return res;
+      return res[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
@@ -167,7 +172,7 @@ export default function MealLog() {
       protein_g: protein ? parseFloat(protein) : undefined,
       carbs_g: carbs ? parseFloat(carbs) : undefined,
       fat_g: fat ? parseFloat(fat) : undefined,
-      for_user_id: forUserId ? parseInt(forUserId) : undefined,
+      for_user_ids: forUserIds.map(id => parseInt(id)),
     });
   };
 
@@ -272,13 +277,23 @@ export default function MealLog() {
 
         {sharedUsers.length > 0 && (
           <div className="form-group">
-            <label htmlFor="logForUser">Log for</label>
-            <select id="logForUser" value={forUserId} onChange={(e) => setForUserId(e.target.value)}>
-              <option value="">Myself</option>
+            <label>Also log for</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
               {sharedUsers.map(s => (
-                <option key={s.userId} value={s.userId}>{s.username}</option>
+                <label key={s.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={forUserIds.includes(String(s.userId))}
+                    onChange={(e) => {
+                      const id = String(s.userId);
+                      setForUserIds(prev => e.target.checked ? [...prev, id] : prev.filter(x => x !== id));
+                    }}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  {s.username}
+                </label>
               ))}
-            </select>
+            </div>
           </div>
         )}
 
@@ -407,7 +422,7 @@ export default function MealLog() {
             disabled={createMeal.isPending}
             style={{ flex: 1, padding: '0.625rem' }}
           >
-            {createMeal.isPending ? 'Logging...' : forUserId ? `Log for ${sharedUsers.find(s => String(s.userId) === forUserId)?.username || 'user'}` : 'Log Meal'}
+            {createMeal.isPending ? 'Logging...' : forUserIds.length > 0 ? `Log for me + ${forUserIds.length}` : 'Log Meal'}
           </button>
           <button
             type="button"
