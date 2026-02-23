@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 
 export default function PlanMealForm({ date, onClose, onSuccess }) {
@@ -20,7 +20,17 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
   const [baseFat, setBaseFat] = useState(null);
   const [recurrence, setRecurrence] = useState('');
   const [recurrenceEnd, setRecurrenceEnd] = useState('');
+  const [forUserId, setForUserId] = useState('');
   const queryClient = useQueryClient();
+
+  // Fetch shared users (people who shared with me — I can plan for them)
+  const { data: sharingData } = useQuery({
+    queryKey: ['sharing'],
+    queryFn: () => api.get('/sharing').then(r => r.data),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const sharedUsers = (sharingData?.sharedWithMe || []).filter(s => s.status === 'accepted');
 
   useEffect(() => {
     if (name.length < 2) {
@@ -67,6 +77,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
       fat_g: fat ? parseFloat(fat) : undefined,
       recurrence: recurrence || undefined,
       recurrence_end: recurrenceEnd || undefined,
+      for_user_id: forUserId ? parseInt(forUserId) : undefined,
     });
   };
 
@@ -94,6 +105,18 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
               <option value="snack">Snack</option>
             </select>
           </div>
+
+          {sharedUsers.length > 0 && (
+            <div className="form-group">
+              <label htmlFor="planForUser">Plan for</label>
+              <select id="planForUser" value={forUserId} onChange={(e) => setForUserId(e.target.value)}>
+                <option value="">Myself</option>
+                {sharedUsers.map(s => (
+                  <option key={s.owner_id} value={s.owner_id}>{s.owner_username}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="planName">Food name</label>
@@ -231,7 +254,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
               disabled={createPlanned.isPending}
               style={{ flex: 1, padding: '0.625rem' }}
             >
-              {createPlanned.isPending ? 'Saving...' : 'Plan Meal'}
+              {createPlanned.isPending ? 'Saving...' : forUserId ? `Plan for ${sharedUsers.find(s => String(s.owner_id) === forUserId)?.owner_username || 'user'}` : 'Plan Meal'}
             </button>
             <button
               type="button"
