@@ -5,67 +5,48 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 router.use(auth);
 
-const USDA_API_KEY = process.env.USDA_API_KEY || 'DEMO_KEY';
-const USDA_BASE = 'https://api.nal.usda.gov/fdc/v1/foods/search';
+const OFF_BASE = 'https://world.openfoodfacts.org/cgi/search.pl';
 
-async function searchUSDA(query) {
+async function searchOpenFoodFacts(query) {
   try {
     const params = new URLSearchParams({
-      api_key: USDA_API_KEY,
-      query,
-      pageSize: '20',
-      dataType: 'Branded,Survey (FNDDS)',
+      search_terms: query,
+      json: '1',
+      page_size: '15',
+      search_simple: '1',
+      action: 'process',
+      fields: 'product_name,brands,nutriments,serving_size,code',
     });
-    const resp = await fetch(`${USDA_BASE}?${params}`, { signal: AbortSignal.timeout(4000) });
+    const resp = await fetch(`${OFF_BASE}?${params}`, {
+      signal: AbortSignal.timeout(4000),
+      headers: { 'User-Agent': 'CalorieCounter/1.0' },
+    });
     if (!resp.ok) return [];
     const data = await resp.json();
-    if (!data.foods) return [];
+    if (!data.products) return [];
 
-    const results = [];
-    for (const f of data.foods) {
-      const energyNutrient = f.foodNutrients?.find(
-        (n) => n.nutrientId === 1008 || n.nutrientName === 'Energy'
-      );
-      if (!energyNutrient) continue;
-      const calPer100g = energyNutrient.value;
-
-      if (f.dataType === 'Branded') {
-        // Branded: scale per 100g to actual serving
-        const servingGrams = f.servingSize || 100;
-        const calories = Math.round((calPer100g * servingGrams) / 100);
-        const servingLabel = f.householdServingFullText
-          || `${Math.round(servingGrams)}${(f.servingSizeUnit || 'g').toLowerCase() === 'ml' ? ' ml' : 'g'}`;
-        if (calories <= 0 || calories > 3000) continue;
-        results.push({
-          id: `usda-${f.fdcId}`,
-          name: titleCase(f.description),
-          brand: f.brandName || f.brandOwner || null,
-          category: f.foodCategory || 'food',
+    return data.products
+      .map((p) => {
+        if (!p.product_name) return null;
+        // Prefer per-serving calories, fall back to per-100g
+        const calServing = p.nutriments?.['energy-kcal_serving'];
+        const cal100g = p.nutriments?.['energy-kcal_100g'];
+        const calories = calServing ? Math.round(calServing) : cal100g ? Math.round(cal100g) : null;
+        if (!calories || calories <= 0 || calories > 3000) return null;
+        const servingLabel = calServing && p.serving_size
+          ? p.serving_size
+          : cal100g ? 'per 100g' : '1 serving';
+        return {
+          id: `off-${p.code}`,
+          name: titleCase(p.product_name),
+          brand: p.brands || null,
+          category: 'food',
           calories_per_serving: calories,
           serving_size: servingLabel,
-          source: 'usda',
-        });
-      } else if (f.dataType === 'Survey (FNDDS)' && f.foodMeasures?.length > 0) {
-        // FNDDS: use foodMeasures to get per-item calories
-        // Pick the most useful measure (skip "Quantity not specified")
-        const measure = f.foodMeasures.find(
-          (m) => m.disseminationText && !m.disseminationText.includes('not specified')
-        ) || f.foodMeasures[0];
-        const grams = measure.gramWeight || 100;
-        const calories = Math.round((calPer100g * grams) / 100);
-        if (calories <= 0 || calories > 3000) continue;
-        results.push({
-          id: `usda-${f.fdcId}`,
-          name: titleCase(f.description),
-          brand: null,
-          category: f.foodCategory || 'food',
-          calories_per_serving: calories,
-          serving_size: measure.disseminationText || '1 serving',
-          source: 'usda',
-        });
-      }
-    }
-    return results;
+          source: 'off',
+        };
+      })
+      .filter(Boolean);
   } catch {
     return [];
   }
@@ -85,7 +66,7 @@ router.get('/', async (req, res) => {
       return res.json([]);
     }
 
-    // Search local DB and USDA API in parallel
+    // Search local DB and Open Food Facts in parallel
     const [localResult, usdaResults] = await Promise.all([
       pool.query(
         `SELECT id, name, category, calories_per_serving, serving_size
@@ -98,7 +79,7 @@ router.get('/', async (req, res) => {
          LIMIT 10`,
         [`%${q}%`, `${q}%`]
       ),
-      searchUSDA(q),
+      searchOpenFoodFacts(q),
     ]);
 
     let localRows = localResult.rows.map((r) => ({ ...r, source: 'local' }));

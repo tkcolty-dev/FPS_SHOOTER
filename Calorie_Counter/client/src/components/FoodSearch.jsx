@@ -92,8 +92,8 @@ export default function FoodSearch({ onSelect }) {
                     <span className="food-brand-badge">{food.brand}</span>
                   )}
                   <span>{food.serving_size}</span>
-                  {food.source === 'usda' && !food.brand && (
-                    <span style={{ color: '#8b5cf6' }}>USDA</span>
+                  {food.source && food.source !== 'local' && !food.brand && (
+                    <span style={{ color: '#8b5cf6' }}>Database</span>
                   )}
                 </div>
               </div>
