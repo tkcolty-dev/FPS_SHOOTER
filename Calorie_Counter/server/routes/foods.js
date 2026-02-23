@@ -116,16 +116,25 @@ router.get('/', async (req, res) => {
       localRows = fallback.rows.map((r) => ({ ...r, source: 'local' }));
     }
 
-    // Merge: local results first, then USDA (deduped by name+brand)
-    const seen = new Set(localRows.map((r) => r.name.toLowerCase()));
+    // Merge: local results first, then USDA
+    // Branded items always show (different brands = different products)
+    // Non-branded USDA items are deduped against local by name
+    const localNames = new Set(localRows.map((r) => r.name.toLowerCase()));
+    const seen = new Set();
     const merged = [...localRows];
     for (const item of usdaResults) {
-      const key = item.brand
-        ? `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`
-        : item.name.toLowerCase();
-      if (!seen.has(key) && !seen.has(item.name.toLowerCase())) {
-        seen.add(key);
-        merged.push(item);
+      if (item.brand) {
+        // Branded: dedup by name+brand combo only
+        const key = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(item);
+        }
+      } else {
+        // Non-branded USDA: skip if local already has this name
+        if (!localNames.has(item.name.toLowerCase())) {
+          merged.push(item);
+        }
       }
     }
 
