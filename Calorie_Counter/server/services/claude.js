@@ -84,6 +84,8 @@ ${favorites.length > 0 ? `Favorite foods: ${favorites.join(', ')}` : ''}
 ${dislikes.length > 0 ? `Dislikes (avoid these): ${dislikes.join(', ')}` : ''}
 Already ate today: ${mealsDescription}.
 
+Use full or half servings only (e.g. "1 cup rice", "2 eggs", "1/2 avocado"). Never suggest odd fractions like 0.7 cups.
+
 Return ONLY a JSON array with exactly 3 objects, each having: name (string), description (string, 1 sentence), calories (number), ingredients (array of strings). No other text.`;
 
   const text = await callLLM({
@@ -133,7 +135,9 @@ When the user tells you they like or dislike a food (e.g. "I like Cheerios", "I 
 
 Use type "favorite" for likes and "dislike" for dislikes. Acknowledge that you've remembered it. Use the simple food name as the value (e.g. "Cheerios" not "Cheerios cereal for breakfast").
 
-Keep responses concise and conversational. You can suggest multiple meals in one response. Always respect the user's calorie budget and preferences.`;
+Keep responses concise and conversational. You can suggest multiple meals in one response. Always respect the user's calorie budget and preferences.
+
+IMPORTANT: When suggesting serving sizes, always use full servings or half servings (e.g. "1 cup", "2 eggs", "1/2 cup", "1.5 servings"). Never suggest odd fractions like 0.7 cups or 1.3 servings. Keep portions practical and realistic.`;
 
   const messages = [
     ...history.map(h => ({ role: h.role, content: h.content })),
