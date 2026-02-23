@@ -51,10 +51,10 @@ router.get('/', async (req, res) => {
     let query, params;
 
     if (date) {
-      query = `SELECT m.*, lb.username as logged_by_username FROM meals m LEFT JOIN users lb ON m.logged_by = lb.id WHERE m.user_id = $1 AND m.logged_at::date = $2 ORDER BY m.logged_at`;
+      query = `SELECT * FROM meals WHERE user_id = $1 AND logged_at::date = $2 ORDER BY logged_at`;
       params = [req.userId, date];
     } else {
-      query = `SELECT m.*, lb.username as logged_by_username FROM meals m LEFT JOIN users lb ON m.logged_by = lb.id WHERE m.user_id = $1 AND m.logged_at::date = CURRENT_DATE ORDER BY m.logged_at`;
+      query = `SELECT * FROM meals WHERE user_id = $1 AND logged_at::date = CURRENT_DATE ORDER BY logged_at`;
       params = [req.userId];
     }
 
@@ -94,12 +94,11 @@ router.post('/', async (req, res) => {
       targetUserId = for_user_id;
     }
 
-    const loggedBy = targetUserId !== req.userId ? req.userId : null;
     const result = await pool.query(
-      `INSERT INTO meals (user_id, meal_type, name, calories, notes, logged_at, protein_g, carbs_g, fat_g, logged_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO meals (user_id, meal_type, name, calories, notes, logged_at, protein_g, carbs_g, fat_g)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [targetUserId, meal_type, name, parseInt(calories), notes || null, logged_at || new Date(), protein_g || null, carbs_g || null, fat_g || null, loggedBy]
+      [targetUserId, meal_type, name, parseInt(calories), notes || null, logged_at || new Date(), protein_g || null, carbs_g || null, fat_g || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
