@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
-import { useNewMessages } from '../hooks/useNewMessages';
 
 const ICON_COLOR = '#2563eb';
 
@@ -32,7 +31,6 @@ const links = [
 export default function Profile() {
   const { user, logout } = useAuth();
   const { newCount } = useNewShares();
-  const { newMessageCount } = useNewMessages();
 
   return (
     <div>
@@ -67,18 +65,6 @@ export default function Profile() {
                       borderRadius: 10,
                     }}>
                       {newCount} new
-                    </span>
-                  )}
-                  {l.to === '/messages' && newMessageCount > 0 && (
-                    <span style={{
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      background: 'var(--color-danger)',
-                      color: '#fff',
-                      padding: '1px 6px',
-                      borderRadius: 10,
-                    }}>
-                      {newMessageCount}
                     </span>
                   )}
                 </div>

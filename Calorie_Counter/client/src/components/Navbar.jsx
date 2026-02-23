@@ -1,6 +1,8 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
+import { useNewMessages } from '../hooks/useNewMessages';
+import MessageToast from './MessageToast';
 
 const tabs = [
   { to: '/', label: 'Dashboard', icon: '□' },
@@ -21,7 +23,10 @@ const badgeDot = {
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { newCount } = useNewShares();
+  const { latestMessage } = useNewMessages();
+  const hasProfileBadge = newCount > 0;
 
   return (
     <>
@@ -40,7 +45,7 @@ export default function Navbar() {
                   style={{ position: 'relative' }}
                 >
                   {t.label}
-                  {t.to === '/profile' && newCount > 0 && <span style={badgeDot} />}
+                  {t.to === '/profile' && hasProfileBadge && <span style={badgeDot} />}
                 </NavLink>
               ))}
             </div>
@@ -73,10 +78,12 @@ export default function Navbar() {
           >
             <span className="mobile-tab-icon">{t.icon}</span>
             <span className="mobile-tab-label">{t.label}</span>
-            {t.to === '/profile' && newCount > 0 && <span style={badgeDot} />}
+            {t.to === '/profile' && hasProfileBadge && <span style={badgeDot} />}
           </NavLink>
         ))}
       </nav>
+
+      <MessageToast message={latestMessage} onTap={() => navigate('/messages')} />
     </>
   );
 }
