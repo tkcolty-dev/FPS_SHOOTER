@@ -41,8 +41,8 @@ export function useNewMessages() {
     queryKey: ['new-messages', getLastCheck()],
     queryFn: () => api.get('/sharing/new-messages', { params: { since: getLastCheck() } }).then(r => r.data),
     enabled: !!user,
-    refetchInterval: 15000,
-    staleTime: 5000,
+    refetchInterval: 5000,
+    staleTime: 2000,
   });
 
   const count = data?.count || 0;
