@@ -5,14 +5,17 @@ export default function FoodSearch({ onSelect }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
   const wrapperRef = useRef(null);
 
   useEffect(() => {
     if (query.length < 2) {
       setResults([]);
+      setSearching(false);
       return;
     }
 
+    setSearching(true);
     const timer = setTimeout(async () => {
       try {
         const res = await api.get('/foods', { params: { q: query } });
@@ -20,6 +23,8 @@ export default function FoodSearch({ onSelect }) {
         setOpen(true);
       } catch {
         setResults([]);
+      } finally {
+        setSearching(false);
       }
     }, 300);
 
@@ -50,7 +55,7 @@ export default function FoodSearch({ onSelect }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder="Search foods (e.g. chicken, rice, salad)..."
+        placeholder="Search foods (e.g. chicken, pizza, Big Mac)..."
         style={{
           width: '100%',
           padding: '0.5rem 0.75rem',
@@ -60,48 +65,39 @@ export default function FoodSearch({ onSelect }) {
           outline: 'none',
         }}
       />
+      {searching && query.length >= 2 && (
+        <div style={{
+          position: 'absolute',
+          right: 10,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          fontSize: '0.75rem',
+          color: 'var(--color-text-secondary)',
+        }}>
+          Searching...
+        </div>
+      )}
       {open && results.length > 0 && (
-        <div
-          style={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            background: 'white',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius)',
-            boxShadow: 'var(--shadow-md)',
-            maxHeight: 240,
-            overflowY: 'auto',
-            zIndex: 50,
-          }}
-        >
+        <div className="food-search-dropdown">
           {results.map((food) => (
             <button
               key={food.id}
               onClick={() => handleSelect(food)}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontSize: '0.85rem',
-                borderBottom: '1px solid var(--color-border)',
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.background = '#f8fafc')}
-              onMouseOut={(e) => (e.currentTarget.style.background = 'none')}
+              className="food-search-item"
             >
-              <div>
-                <div style={{ fontWeight: 500 }}>{food.name}</div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-                  {food.serving_size} · {food.category}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{food.name}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {food.brand && (
+                    <span className="food-brand-badge">{food.brand}</span>
+                  )}
+                  <span>{food.serving_size}</span>
+                  {food.source === 'usda' && !food.brand && (
+                    <span style={{ color: '#8b5cf6' }}>USDA</span>
+                  )}
                 </div>
               </div>
-              <span style={{ fontWeight: 600, whiteSpace: 'nowrap', alignSelf: 'center' }}>
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap', alignSelf: 'center', fontSize: '0.85rem' }}>
                 {food.calories_per_serving} cal
               </span>
             </button>

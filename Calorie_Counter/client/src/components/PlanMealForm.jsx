@@ -103,7 +103,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
                       setCalorieHints([]);
                     }}
                   >
-                    {food.name}: ~{food.calories_per_serving} cal ({food.serving_size})
+                    {food.name}{food.brand ? ` (${food.brand})` : ''}: ~{food.calories_per_serving} cal ({food.serving_size})
                   </button>
                 ))}
               </div>
