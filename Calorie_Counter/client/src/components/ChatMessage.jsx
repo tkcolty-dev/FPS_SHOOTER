@@ -3,8 +3,7 @@ import api from '../api/client';
 
 function parseBlocks(text) {
   const parts = [];
-  // Match meal blocks and planned summary blocks
-  const regex = /```meal\s*\n([\s\S]*?)```|---PLANNED:(.*?):(.*?):([\s\S]*?)(?=\n\n|$)/g;
+  const regex = /```meal\s*\n([\s\S]*?)```|```recipe\s*\n([\s\S]*?)```|```grocery_list\s*\n([\s\S]*?)```|---PLANNED:(.*?):(.*?):([\s\S]*?)(?=\n\n|$)/g;
   let lastIndex = 0;
   let match;
 
@@ -13,22 +12,27 @@ function parseBlocks(text) {
       parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
     }
     if (match[1] !== undefined) {
-      // meal block
       try {
-        const meal = JSON.parse(match[1].trim());
-        parts.push({ type: 'meal', content: meal });
+        parts.push({ type: 'meal', content: JSON.parse(match[1].trim()) });
       } catch {
         parts.push({ type: 'text', content: match[0] });
       }
     } else if (match[2] !== undefined) {
-      // planned summary
+      try {
+        parts.push({ type: 'recipe', content: JSON.parse(match[2].trim()) });
+      } catch {
+        parts.push({ type: 'text', content: match[0] });
+      }
+    } else if (match[3] !== undefined) {
+      try {
+        parts.push({ type: 'grocery_list', content: JSON.parse(match[3].trim()) });
+      } catch {
+        parts.push({ type: 'text', content: match[0] });
+      }
+    } else if (match[4] !== undefined) {
       parts.push({
         type: 'planned',
-        content: {
-          date: match[2],
-          totalCal: match[3],
-          items: match[4].trim(),
-        },
+        content: { date: match[4], totalCal: match[5], items: match[6].trim() },
       });
     }
     lastIndex = regex.lastIndex;
@@ -90,6 +94,59 @@ function MealCard({ meal }) {
   );
 }
 
+function RecipeCard({ recipe }) {
+  return (
+    <div className="chat-recipe-card">
+      <div className="chat-recipe-header">
+        <span className="chat-recipe-badge">Recipe</span>
+        <span className="chat-recipe-name">{recipe.name}</span>
+      </div>
+      <div className="chat-recipe-meta">
+        {recipe.servings && <span>{recipe.servings} servings</span>}
+        {recipe.calories_per_serving && <span>{recipe.calories_per_serving} cal/serving</span>}
+        {recipe.prep_time && <span>Prep: {recipe.prep_time}</span>}
+        {recipe.cook_time && <span>Cook: {recipe.cook_time}</span>}
+      </div>
+      {(recipe.protein_g || recipe.carbs_g || recipe.fat_g) && (
+        <div className="chat-recipe-macros">
+          {recipe.protein_g ? `P:${recipe.protein_g}g ` : ''}{recipe.carbs_g ? `C:${recipe.carbs_g}g ` : ''}{recipe.fat_g ? `F:${recipe.fat_g}g` : ''}
+        </div>
+      )}
+      <div className="chat-recipe-section">
+        <div className="chat-recipe-section-title">Ingredients</div>
+        <ul className="chat-recipe-ingredients">
+          {recipe.ingredients?.map((item, i) => <li key={i}>{item}</li>)}
+        </ul>
+      </div>
+      <div className="chat-recipe-section">
+        <div className="chat-recipe-section-title">Steps</div>
+        <ol className="chat-recipe-steps">
+          {recipe.steps?.map((step, i) => <li key={i}>{step}</li>)}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+function GroceryListCard({ list }) {
+  return (
+    <div className="chat-grocery-card">
+      <div className="chat-grocery-header">
+        <span className="chat-grocery-badge">Grocery List</span>
+        <span className="chat-grocery-title">{list.title}</span>
+      </div>
+      {list.categories?.map((cat, i) => (
+        <div key={i} className="chat-grocery-category">
+          <div className="chat-grocery-category-name">{cat.name}</div>
+          <ul className="chat-grocery-items">
+            {cat.items?.map((item, j) => <li key={j}>{item}</li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function PlannedCard({ plan }) {
   return (
     <div className="chat-planned-card">
@@ -121,6 +178,10 @@ export default function ChatMessage({ message }) {
       {parts.map((part, i) =>
         part.type === 'meal' ? (
           <MealCard key={i} meal={part.content} />
+        ) : part.type === 'recipe' ? (
+          <RecipeCard key={i} recipe={part.content} />
+        ) : part.type === 'grocery_list' ? (
+          <GroceryListCard key={i} list={part.content} />
         ) : part.type === 'planned' ? (
           <PlannedCard key={i} plan={part.content} />
         ) : (

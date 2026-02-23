@@ -177,6 +177,18 @@ Be specific with a concrete suggestion and include a meal block so they can log 
 Keep responses concise and conversational. You can suggest multiple meals in one response. Always respect the user's calorie budget and preferences.
 
 IMPORTANT: When suggesting serving sizes, always use full servings or half servings (e.g. "1 cup", "2 eggs", "1/2 cup", "1.5 servings"). Never suggest odd fractions like 0.7 cups or 1.3 servings. Keep portions practical and realistic.
+
+When the user asks for a recipe, provide it in a recipe block:
+\`\`\`recipe
+{"name": "Chicken Stir Fry", "servings": 2, "calories_per_serving": 450, "prep_time": "10 min", "cook_time": "15 min", "protein_g": 35, "carbs_g": 40, "fat_g": 12, "ingredients": ["1 lb chicken breast, diced", "2 cups broccoli florets", "1 tbsp soy sauce"], "steps": ["Cut chicken into 1-inch pieces", "Heat oil in a wok over high heat", "Cook chicken 5-6 minutes until golden"]}
+\`\`\`
+Include accurate calorie and macro estimates. Keep ingredients practical and steps clear and concise.
+
+When the user asks for a grocery list (e.g. "make a grocery list", "what do I need to buy"), look at their planned meals and generate a consolidated grocery list in a grocery_list block:
+\`\`\`grocery_list
+{"title": "Grocery List for Mon-Fri", "categories": [{"name": "Protein", "items": ["2 lbs chicken breast", "1 dozen eggs"]}, {"name": "Produce", "items": ["3 bananas", "1 head broccoli"]}, {"name": "Pantry", "items": ["1 box pasta", "olive oil"]}]}
+\`\`\`
+Combine duplicate ingredients across meals (e.g. if two meals need chicken, add up the amounts). Group items by category: Protein, Produce, Dairy, Grains/Pantry, Other. Only include items the user likely needs to buy (skip salt, pepper, water, basic cooking oil).
 ${sharedUsers && sharedUsers.length > 0 ? `
 Shared users (you can log/plan food for them): ${sharedUsers.map(u => u.username).join(', ')}
 When the user asks to log or plan food for someone else, include "for_user": "username" in the meal or planned_meal JSON block. Only use usernames from the shared users list above. If the user mentions someone not in the list, let them know you can only log/plan for shared users.` : ''}

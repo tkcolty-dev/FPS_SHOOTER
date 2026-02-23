@@ -9,7 +9,7 @@ const quickActions = [
   'What should I eat right now?',
   'Plan my meals for tomorrow',
   'Log my usual breakfast',
-  'Suggest a healthy snack',
+  'Make a grocery list for my planned meals',
 ];
 
 function loadHistory() {
