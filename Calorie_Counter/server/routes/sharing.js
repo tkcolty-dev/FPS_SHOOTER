@@ -302,12 +302,12 @@ router.get('/:userId/planned-meals', async (req, res) => {
   }
 });
 
-// List comments on a share
+// List comments on a share (merges both directions between two users)
 router.get('/:shareId/comments', async (req, res) => {
   try {
-    // Verify caller is part of this accepted share
+    // Verify caller is part of this accepted share and get both user IDs
     const share = await pool.query(
-      `SELECT s.id FROM shares s
+      `SELECT s.id, s.owner_id, s.viewer_id FROM shares s
        JOIN share_status ss ON ss.share_id = s.id
        WHERE s.id = $1 AND (s.owner_id = $2 OR s.viewer_id = $2) AND ss.status = 'accepted'`,
       [req.params.shareId, req.userId]
@@ -316,12 +316,24 @@ router.get('/:shareId/comments', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // Find ALL accepted shares between these two users (both directions)
+    const otherUserId = share.rows[0].owner_id === req.userId
+      ? share.rows[0].viewer_id : share.rows[0].owner_id;
+    const allShares = await pool.query(
+      `SELECT s.id FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE ((s.owner_id = $1 AND s.viewer_id = $2) OR (s.owner_id = $2 AND s.viewer_id = $1))
+         AND ss.status = 'accepted'`,
+      [req.userId, otherUserId]
+    );
+    const shareIds = allShares.rows.map(s => s.id);
+
     const result = await pool.query(
       `SELECT sc.*, u.username as sender_username
        FROM share_comments sc JOIN users u ON sc.sender_id = u.id
-       WHERE sc.share_id = $1
+       WHERE sc.share_id = ANY($1)
        ORDER BY sc.created_at ASC`,
-      [req.params.shareId]
+      [shareIds]
     );
     res.json({ comments: result.rows });
   } catch (err) {
