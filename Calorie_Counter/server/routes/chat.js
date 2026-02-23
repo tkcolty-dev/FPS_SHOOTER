@@ -53,6 +53,10 @@ router.post('/', async (req, res) => {
       clientDate,
     });
 
+    if (!reply) {
+      return res.status(500).json({ error: 'AI returned an empty response' });
+    }
+
     // Parse and save any preference blocks from the AI response
     const prefRegex = /```preference\s*\n([\s\S]*?)```/g;
     let prefMatch;

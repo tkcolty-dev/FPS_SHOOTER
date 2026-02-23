@@ -163,7 +163,7 @@ IMPORTANT: When suggesting serving sizes, always use full servings or half servi
     { role: 'user', content: message },
   ];
 
-  return await callLLM({ messages, systemPrompt });
+  return await callLLM({ messages, systemPrompt, maxTokens: 2048 });
 }
 
 module.exports = { getSuggestions, chatWithAI };
