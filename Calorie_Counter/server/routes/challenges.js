@@ -16,8 +16,8 @@ router.get('/', async (req, res) => {
        JOIN users u ON u.id = c.creator_id
        WHERE c.creator_id = $1
           OR c.id IN (SELECT challenge_id FROM challenge_participants WHERE user_id = $1)
-          OR c.creator_id IN (SELECT owner_id FROM sharing WHERE viewer_id = $1)
-          OR c.creator_id IN (SELECT viewer_id FROM sharing WHERE owner_id = $1)
+          OR c.creator_id IN (SELECT owner_id FROM shares WHERE viewer_id = $1)
+          OR c.creator_id IN (SELECT viewer_id FROM shares WHERE owner_id = $1)
        ORDER BY c.end_date DESC`,
       [req.userId]
     );

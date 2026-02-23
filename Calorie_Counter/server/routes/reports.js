@@ -220,8 +220,8 @@ router.get('/leaderboard', async (req, res) => {
     const connectedUsers = await pool.query(
       `SELECT DISTINCT u.id, u.username FROM users u
        WHERE u.id IN (
-         SELECT viewer_id FROM sharing WHERE owner_id = $1
-         UNION SELECT owner_id FROM sharing WHERE viewer_id = $1
+         SELECT viewer_id FROM shares WHERE owner_id = $1
+         UNION SELECT owner_id FROM shares WHERE viewer_id = $1
        ) OR u.id = $1`,
       [req.userId]
     );
