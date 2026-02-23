@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusDesk - IT Service Management</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #1c2129;
+  --bg-elevated: #21262d;
+  --border: #30363d;
+  --border-light: #3d444d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-orange: #d29922;
+  --accent-red: #f85149;
+  --accent-purple: #bc8cff;
+  --priority-low: #3fb950;
+  --priority-medium: #d29922;
+  --priority-high: #f85149;
+  --priority-critical: #ff3333;
+}
+
+body {
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* LOGIN SCREEN */
+#login-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background: var(--bg-primary);
+  position: relative;
+  z-index: 1000;
+}
+
+#login-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(88, 166, 255, 0.03) 0%, transparent 70%);
+}
+
+.login-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 40px;
+  width: 380px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-logo {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--accent-blue);
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+
+.login-logo span {
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.login-subtitle {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-bottom: 32px;
+}
+
+.login-field {
+  margin-bottom: 16px;
+}
+
+.login-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.login-field input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.login-field input:focus {
+  border-color: var(--accent-blue);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 10px;
+  background: var(--accent-blue);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 0.2s;
+}
+
+.login-btn:hover { opacity: 0.9; }
+
+.login-time {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* MAIN APP */
+#app {
+  display: none;
+  height: 100vh;
+  grid-template-rows: 48px 1fr 28px;
+  grid-template-columns: 320px 1fr;
+}
+
+#app.active {
+  display: grid;
+}
+
+/* TOP BAR */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  justify-content: space-between;
+  z-index: 100;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar-logo {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent-blue);
+  letter-spacing: -0.3px;
+}
+
+.topbar-logo span { color: var(--text-muted); font-weight: 300; }
+
+.topbar-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.topbar-nav button {
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.topbar-nav button:hover { background: var(--bg-elevated); color: var(--text-primary); }
+.topbar-nav button.active { background: var(--bg-elevated); color: var(--text-primary); }
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-clock {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: 70px;
+}
+
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.user-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.notification-bell {
+  position: relative;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+}
+
+.notification-bell .badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  background: var(--accent-red);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Sans', sans-serif;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.notification-bell .badge.visible { opacity: 1; }
+
+/* SIDEBAR */
+.sidebar {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sidebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sidebar-count {
+  font-size: 12px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.sidebar-filters {
+  padding: 8px 16px;
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.filter-chip {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: all 0.15s;
+}
+
+.filter-chip:hover { border-color: var(--border-light); color: var(--text-primary); }
+.filter-chip.active { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+
+.ticket-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.ticket-list::-webkit-scrollbar { width: 6px; }
+.ticket-list::-webkit-scrollbar-track { background: transparent; }
+.ticket-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.ticket-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(48,54,61,0.5);
+  cursor: pointer;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.ticket-item:hover { background: var(--bg-tertiary); }
+.ticket-item.active { background: var(--bg-elevated); border-left: 2px solid var(--accent-blue); }
+.ticket-item.unread::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: var(--accent-blue);
+  border-radius: 50%;
+}
+
+.ticket-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ticket-id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ticket-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.ticket-item-subject {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.priority-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.priority-dot.low { background: var(--priority-low); }
+.priority-dot.medium { background: var(--priority-medium); }
+.priority-dot.high { background: var(--priority-high); }
+.priority-dot.critical { background: var(--priority-critical); animation: pulse-critical 2s infinite; }
+
+@keyframes pulse-critical {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.ticket-status-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.ticket-status-badge.open { background: rgba(88,166,255,0.15); color: var(--accent-blue); }
+.ticket-status-badge.resolved { background: rgba(63,185,80,0.15); color: var(--accent-green); }
+.ticket-status-badge.reopened { background: rgba(248,81,73,0.15); color: var(--accent-red); }
+
+/* MAIN CONTENT */
+.main-content {
+  background: var(--bg-primary);
+  overflow-y: auto;
+  position: relative;
+}
+
+.main-content::-webkit-scrollbar { width: 6px; }
+.main-content::-webkit-scrollbar-track { background: transparent; }
+.main-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+}
+
+.empty-state-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.empty-state-text {
+  font-size: 14px;
+}
+
+/* Ticket Detail */
+.ticket-detail {
+  padding: 24px 32px;
+  max-width: 800px;
+}
+
+.ticket-detail-header {
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ticket-detail-id {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.ticket-detail-subject {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 12px;
+}
+
+.ticket-detail-meta {
+  display: flex;
+  gap: 24px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.meta-label {
+  color: var(--text-muted);
+}
+
+.ticket-detail-body {
+  margin-bottom: 24px;
+}
+
+.ticket-message {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.ticket-message-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ticket-message-author {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.ticket-message-time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.ticket-message-content {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.ticket-message-content p { margin-bottom: 8px; }
+.ticket-message-content p:last-child { margin-bottom: 0; }
+
+.ticket-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--accent-blue);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ticket-attachment:hover { border-color: var(--accent-blue); }
+
+/* Attachment modal */
+.attachment-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+
+.attachment-modal.visible { display: flex; }
+
+.attachment-modal-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.attachment-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.attachment-modal-title {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.attachment-modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.attachment-modal-body {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+/* Remote desktop modal */
+.remote-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+
+.remote-modal.visible { display: flex; }
+
+.remote-desktop {
+  background: #1a1a2e;
+  border: 2px solid #444;
+  border-radius: 4px;
+  width: 700px;
+  max-width: 90%;
+}
+
+.remote-titlebar {
+  background: #2a2a3e;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #888;
+}
+
+.remote-close {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.remote-screen {
+  padding: 20px;
+  min-height: 350px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #aaa;
+  position: relative;
+}
+
+.remote-screen .desktop-icons {
+  display: grid;
+  grid-template-columns: repeat(4, 80px);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.desktop-icon {
+  text-align: center;
+  font-size: 10px;
+  color: #ccc;
+  cursor: default;
+}
+
+.desktop-icon-img {
+  width: 36px;
+  height: 36px;
+  background: #2a2a3e;
+  border-radius: 4px;
+  margin: 0 auto 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.remote-taskbar {
+  background: #111;
+  padding: 4px 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #666;
+}
+
+.ticket-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: all 0.15s;
+}
+
+.btn-primary {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+.btn-primary:hover { opacity: 0.85; }
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover { background: var(--border); }
+
+.btn-ghost {
+  background: none;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+.btn-ghost:hover { color: var(--text-primary); }
+
+.btn-danger {
+  background: rgba(248,81,73,0.1);
+  border-color: rgba(248,81,73,0.3);
+  color: var(--accent-red);
+}
+
+.response-area {
+  margin-top: 16px;
+}
+
+.response-area textarea {
+  width: 100%;
+  min-height: 80px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  color: var(--text-primary);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+  margin-bottom: 8px;
+}
+
+.response-area textarea:focus { border-color: var(--accent-blue); }
+
+/* Investigation panel */
+.investigation-panel {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  display: none;
+}
+
+.investigation-panel.visible { display: block; }
+
+.investigation-panel h4 {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+/* BOTTOM BAR */
+.bottombar {
+  grid-column: 1 / -1;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  z-index: 100;
+}
+
+.bottombar-left, .bottombar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-green);
+}
+
+.connected-users {
+  transition: color 0.3s;
+}
+
+.floor-plan-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: all 0.15s;
+}
+
+.floor-plan-btn:hover { color: var(--text-secondary); background: var(--bg-elevated); }
+
+/* FLOOR PLAN MODAL */
+.floorplan-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 500;
+  align-items: center;
+  justify-content: center;
+}
+
+.floorplan-modal.visible { display: flex; }
+
+.floorplan-content {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  width: 550px;
+  max-width: 90%;
+}
+
+.floorplan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.floorplan-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.floorplan-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.floorplan-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(5, 50px);
+  gap: 2px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.floorplan-room {
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 2px;
+  line-height: 1.2;
+}
+
+.floorplan-room.hall { background: var(--bg-tertiary); }
+.floorplan-room.your-office { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); color: var(--accent-blue); }
+.floorplan-room.server { background: rgba(210,153,34,0.1); color: var(--accent-orange); }
+.floorplan-room.sublevel {
+  background: rgba(248,81,73,0.08);
+  color: var(--accent-red);
+  animation: sublevel-pulse 3s infinite;
+  font-weight: 600;
+}
+
+@keyframes sublevel-pulse {
+  0%, 100% { background: rgba(248,81,73,0.08); }
+  50% { background: rgba(248,81,73,0.15); }
+}
+
+.floorplan-floor-label {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.floorplan-floor-select {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 12px;
+}
+
+/* NOTIFICATION POPUP */
+.notification-popup {
+  position: fixed;
+  top: 60px;
+  right: 20px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  z-index: 200;
+  max-width: 300px;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s;
+  pointer-events: none;
+}
+
+.notification-popup.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.notification-popup-title {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+/* GLITCH EFFECTS */
+.glitch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.05s;
+}
+
+.glitch-overlay.active {
+  opacity: 1;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(255,255,255,0.02) 2px,
+    rgba(255,255,255,0.02) 4px
+  );
+}
+
+/* Scanline overlay */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 1px,
+    rgba(0,0,0,0.15) 1px,
+    rgba(0,0,0,0.15) 2px
+  );
+  transition: opacity 2s;
+}
+
+/* Screen flicker */
+@keyframes screen-flicker {
+  0% { opacity: 1; }
+  3% { opacity: 0.85; }
+  6% { opacity: 1; }
+  7% { opacity: 0.9; }
+  9% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+.flicker {
+  animation: screen-flicker 0.15s ease-in-out;
+}
+
+/* Ending screen */
+#ending-screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg-primary);
+  z-index: 10000;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#ending-screen.active { display: flex; }
+
+.ending-text {
+  text-align: center;
+  max-width: 500px;
+}
+
+.ending-text h2 {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 400;
+  margin-bottom: 24px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.ending-ticket {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: left;
+  width: 400px;
+}
+
+.ending-ticket .ticket-id { margin-bottom: 8px; }
+.ending-ticket .subject {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+.ending-ticket .body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.ending-fade {
+  opacity: 0;
+  transition: opacity 2s;
+}
+
+.ending-fade.visible { opacity: 1; }
+
+/* Typing indicator */
+.typing-dots {
+  display: inline-flex;
+  gap: 3px;
+  padding: 4px 0;
+}
+
+.typing-dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: typing-bounce 1.4s infinite;
+}
+
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<div class="glitch-overlay" id="glitch-overlay"></div>
+<div class="scanlines" id="scanlines"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">NexusDesk<span> v4.2.1</span></div>
+    <div class="login-subtitle">IT Service Management Platform</div>
+    <div class="login-field">
+      <label>Employee Name</label>
+      <input type="text" id="player-name" placeholder="Enter your full name" autofocus>
+    </div>
+    <div class="login-field">
+      <label>Employee ID</label>
+      <input type="text" id="player-id" placeholder="Auto-assigned" value="EMP-4847" disabled style="opacity:0.5">
+    </div>
+    <button class="login-btn" id="login-btn">Sign In</button>
+    <div class="login-time">Night Shift — 11:00 PM to 6:00 AM</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">NexusDesk<span> v4.2.1</span></div>
+      <div class="topbar-nav">
+        <button class="active">Tickets</button>
+        <button>Knowledge Base</button>
+        <button>Assets</button>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="topbar-clock" id="game-clock">11:00 PM</div>
+      <button class="notification-bell" id="notif-bell">
+        &#128276;
+        <span class="badge" id="notif-badge">0</span>
+      </button>
+      <div class="topbar-user">
+        <div class="user-avatar" id="user-avatar">??</div>
+        <span id="user-display-name">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Ticket Queue</span>
+      <span class="sidebar-count" id="ticket-count">0</span>
+    </div>
+    <div class="sidebar-filters">
+      <button class="filter-chip active" data-filter="all">All</button>
+      <button class="filter-chip" data-filter="open">Open</button>
+      <button class="filter-chip" data-filter="resolved">Resolved</button>
+    </div>
+    <div class="ticket-list" id="ticket-list"></div>
+  </div>
+
+  <div class="main-content" id="main-content">
+    <div class="empty-state">
+      <div class="empty-state-icon">&#128203;</div>
+      <div class="empty-state-text">Select a ticket to view details</div>
+    </div>
+  </div>
+
+  <div class="bottombar">
+    <div class="bottombar-left">
+      <div class="status-indicator">
+        <div class="status-dot" id="status-dot"></div>
+        <span>Connected</span>
+      </div>
+      <span class="connected-users" id="connected-users">Active sessions: 1</span>
+      <span id="server-status">Server: nexus-prod-07</span>
+    </div>
+    <div class="bottombar-right">
+      <button class="floor-plan-btn" id="floor-plan-btn">&#9638; Floor Plan</button>
+      <span>Shift: Night (23:00–06:00)</span>
+    </div>
+  </div>
+</div>
+
+<!-- FLOOR PLAN MODAL -->
+<div class="floorplan-modal" id="floorplan-modal">
+  <div class="floorplan-content">
+    <div class="floorplan-header">
+      <h3>Building Floor Plan — Floor 2</h3>
+      <button class="floorplan-close" id="floorplan-close">&times;</button>
+    </div>
+    <div class="floorplan-grid" id="floorplan-grid"></div>
+    <div class="floorplan-floor-label">
+      <span style="font-size:11px;color:var(--text-muted)">Meridian Tower — 5 Floors</span>
+    </div>
+  </div>
+</div>
+
+<!-- ATTACHMENT MODAL -->
+<div class="attachment-modal" id="attachment-modal">
+  <div class="attachment-modal-content">
+    <div class="attachment-modal-header">
+      <span class="attachment-modal-title" id="attachment-title">file.png</span>
+      <button class="attachment-modal-close" id="attachment-close">&times;</button>
+    </div>
+    <div class="attachment-modal-body" id="attachment-body"></div>
+  </div>
+</div>
+
+<!-- REMOTE DESKTOP MODAL -->
+<div class="remote-modal" id="remote-modal">
+  <div class="remote-desktop">
+    <div class="remote-titlebar">
+      <span id="remote-title">Remote Session — ???</span>
+      <button class="remote-close" id="remote-close">&times;</button>
+    </div>
+    <div class="remote-screen" id="remote-screen"></div>
+    <div class="remote-taskbar">
+      <span id="remote-taskbar-left">Desktop</span>
+      <span id="remote-taskbar-time">--:--</span>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICATION POPUP -->
+<div class="notification-popup" id="notification-popup">
+  <div class="notification-popup-title" id="notif-popup-title"></div>
+  <div id="notif-popup-body"></div>
+</div>
+
+<!-- ENDING SCREEN -->
+<div id="ending-screen">
+  <div class="ending-text ending-fade" id="ending-content">
+    <h2>All tickets resolved. Shift complete. Logging out...</h2>
+    <div class="ending-ticket">
+      <div class="ticket-id">INC-0042 — 6:01 AM — Morning Shift Queue</div>
+      <div class="subject">Note found on overnight IT desk</div>
+      <div class="body" id="ending-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== AUDIO ENGINE ====================
+const AudioEngine = {
+  ctx: null,
+  init() {
+    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  },
+  playTone(freq, duration, vol = 0.03, type = 'sine') {
+    if (!this.ctx) return;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.value = vol;
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+    o.connect(g);
+    g.connect(this.ctx.destination);
+    o.start();
+    o.stop(this.ctx.currentTime + duration);
+  },
+  notifSound() {
+    this.playTone(880, 0.1, 0.04);
+    setTimeout(() => this.playTone(1100, 0.15, 0.03), 100);
+  },
+  ticketSound() {
+    this.playTone(440, 0.08, 0.02);
+  },
+  resolveSound() {
+    this.playTone(523, 0.1, 0.03);
+    setTimeout(() => this.playTone(659, 0.1, 0.03), 80);
+    setTimeout(() => this.playTone(784, 0.15, 0.03), 160);
+  },
+  creepyTone() {
+    this.playTone(55, 2, 0.015, 'sawtooth');
+  },
+  glitchSound() {
+    this.playTone(120, 0.05, 0.06, 'square');
+    setTimeout(() => this.playTone(80, 0.08, 0.04, 'square'), 30);
+  },
+  ambientHum() {
+    if (!this.ctx) return;
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 60;
+    g.gain.value = 0.008;
+    o.connect(g);
+    g.connect(this.ctx.destination);
+    o.start();
+    this.humOsc = o;
+    this.humGain = g;
+  },
+  setHumIntensity(val) {
+    if (this.humGain) this.humGain.gain.value = Math.min(val, 0.04);
+  }
+};
+
+// ==================== GAME STATE ====================
+let playerName = '';
+let currentHour = 0; // 0=11pm, 1=12am, ..., 7=6am
+let currentTicketIndex = 0;
+let selectedTicketId = null;
+let tickets = [];
+let ticketIdCounter = 1000;
+let resolvedCount = 0;
+let gamePhase = 0;
+let floorPlanOpened = false;
+let sublevelRevealed = false;
+let investigationsDone = {};
+let hourLabels = ['11:00 PM','12:00 AM','1:00 AM','2:00 AM','3:00 AM','4:00 AM','5:00 AM','6:00 AM'];
+let minuteOffset = 0;
+let bellNotifs = 0;
+let connectedUsersNormal = true;
+let endingTriggered = false;
+
+function genTicketId() {
+  ticketIdCounter++;
+  return 'INC-' + String(ticketIdCounter).padStart(4, '0');
+}
+
+function getTimeDisplay() {
+  let h = (11 + currentHour) % 12;
+  if (h === 0) h = 12;
+  let m = String(minuteOffset).padStart(2, '0');
+  let ampm = currentHour >= 1 && currentHour < 13 ? 'AM' : 'PM';
+  if (currentHour === 0) ampm = 'PM';
+  return h + ':' + m + ' ' + ampm;
+}
+
+// ==================== TICKET DATA ====================
+function buildTickets() {
+  const name = playerName;
+  const firstName = name.split(' ')[0];
+
+  return [
+    // === HOUR 1 (11pm) - Normal ===
+    {
+      hour: 0, subject: 'Password reset request',
+      from: 'Janet Morrison', dept: 'Accounting — Floor 3', priority: 'low',
+      body: `Hi,\n\nI forgot my password again (I know, I know). Could you reset it for me? My username is jmorrison.\n\nThanks so much!\nJanet`,
+      investigation: 'Checked Active Directory. User jmorrison last login 14 hours ago. Standard password reset. Nothing unusual.',
+      canResolve: true
+    },
+    {
+      hour: 0, subject: 'Printer on Floor 3 jammed again',
+      from: 'Derek Huang', dept: 'Marketing — Floor 3', priority: 'low',
+      body: `The HP LaserJet on the 3rd floor near the break room is jammed. Paper tray 2. This is the third time this week.\n\nCan someone look at it in the morning? Not urgent.`,
+      investigation: 'Printer HP-LJ-FL3 reporting error code 13.20.00 — paper jam in fuser area. Cleared remotely. Print queue resumed.',
+      canResolve: true
+    },
+    {
+      hour: 0, subject: 'Dead pixel on monitor',
+      from: 'Sarah Chen', dept: 'Design — Floor 4', priority: 'low',
+      body: `There's a dead pixel on my left monitor, right in the center. It's driving me crazy. Can I get a replacement?\n\nModel: Dell U2722D\nAsset tag: MON-2847`,
+      investigation: 'Asset MON-2847 is under warranty. Replacement request submitted to Dell. ETA 3-5 business days.',
+      canResolve: true
+    },
+
+    // === HOUR 2 (12am) - Slightly off ===
+    {
+      hour: 1, subject: 'Webcam light turning on by itself',
+      from: 'Marcus Webb', dept: 'Sales — Floor 2', priority: 'medium',
+      body: `Hey,\n\nThis might be nothing but my webcam light keeps flickering on for a second or two every few minutes. I checked Task Manager and no apps are using the camera.\n\nI closed Teams, Zoom, everything. It's still doing it. Probably a driver issue?\n\nThanks`,
+      investigation: 'Checked running processes on DESKTOP-MWEBB. No applications accessing camera device. Camera driver is up to date (v4.12.0). Webcam hardware test passed.\n\n...Process list shows a service called "vMonitor.exe" running. Not in our standard image. File was created today at 11:47 PM. Checking further...\n\nFile has no digital signature. Origin unknown. Flagging for security team review in the morning.',
+      canResolve: true, hasRemote: true,
+      remoteContent: {
+        title: 'DESKTOP-MWEBB',
+        icons: ['📊 Q4 Report.xlsx', '📁 Clients', '🌐 Chrome', '📧 Outlook', '📝 Notes.txt', '🗑️ Recycle Bin', '⚙️ vMonitor', '📁 Downloads'],
+        detail: 'Desktop appears normal. Outlook is open with 3 unread emails. Chrome has 2 tabs: LinkedIn and a Google Doc.\n\nNote: There\'s an application called "vMonitor" on the desktop. It has no icon — just the default Windows executable icon. Properties show it was created today at 11:47 PM. The file description field is blank.'
+      }
+    },
+    {
+      hour: 1, subject: 'Weird phone call — just breathing',
+      from: 'Lisa Patel', dept: 'HR — Floor 2', priority: 'low',
+      body: `Our office phone (ext 2240) rang at 11:52 PM. I picked up and there was just someone breathing on the other end. Lasted about 10 seconds then they hung up.\n\nProbably a butt dial from someone's cell. Just logging it in case it happens again.\n\nAlso — why is ext 2240 even receiving calls this late? I thought external lines were forwarded to voicemail after 9 PM.`,
+      investigation: 'Checked PBX call logs for ext 2240.\n\nIncoming call logged at 11:52 PM.\nSource: Extension 2210.\n\nExt 2210 is... the server room on Sublevel B.\n\nThat extension has been decommissioned since the renovation in 2019. It shouldn\'t be active.\n\nProbably a PBX routing glitch. Noting for telecom team.',
+      canResolve: true
+    },
+    {
+      hour: 1, subject: 'Autocorrect changing my name',
+      from: 'Kevin Torres', dept: 'Legal — Floor 4', priority: 'low',
+      body: `Minor annoyance — autocorrect in Outlook keeps changing my name in my signature to "Kevin Holloway." I've never even typed that name before. I cleared my autocorrect dictionary and it's still doing it.\n\nCan you check if there's a corrupt dictionary file or something?`,
+      investigation: 'Checked Outlook autocorrect dictionary on DESKTOP-KTORRES. Dictionary file is clean — no entry for "Holloway."\n\nRan a search on the name in the employee directory: No results for "Kevin Holloway."\n\nChecked historical employee records: Kevin Holloway was employed here from 2016–2019. Position: Night IT Support Technician.\n\nHe resigned. No further details in his file.',
+      canResolve: true
+    },
+
+    // === HOUR 3 (1am) - Unsettling ===
+    {
+      hour: 2, subject: 'Deleted files keep reappearing',
+      from: 'Janet Morrison', dept: 'Accounting — Floor 3', priority: 'medium',
+      body: `Hi again,\n\nSo after you reset my password (thank you!), I noticed something weird. There's a folder on my desktop called "Old Reports" that I deleted last week. It's back.\n\nI deleted it again just now. I emptied the recycle bin. But when I refreshed... it was there again.\n\nThe files inside are the same ones from before, but the modified dates are all set to tomorrow's date. That can't be right.\n\nThis is probably a sync issue with OneDrive? Let me know.`,
+      investigation: 'Connected to DESKTOP-JMORRISON. Confirmed folder "Old Reports" exists on desktop.\n\nDeleted it. Refreshed. Folder reappeared within 3 seconds.\n\nChecked OneDrive sync — folder is NOT in OneDrive. It\'s local only.\n\nFile modified dates are all set to ' + getTomorrowDate() + '.\n\nChecked file creation logs: folder was recreated by SYSTEM process. No user action triggered it.\n\nI don\'t have an explanation for this.',
+      canResolve: true
+    },
+    {
+      hour: 2, subject: 'Unknown WiFi network with my name',
+      from: 'YOU', dept: '', priority: 'medium', selfGenerated: true,
+      body: `[Auto-generated system note]\n\nWiFi scan detected an unregistered access point broadcasting within the building.\n\nSSID: "${name}"\nSignal strength: -30 dBm (very strong — within 10 meters)\nSecurity: Open\nMAC address: 00:00:00:00:00:00\n\nThis SSID matches your employee name. The MAC address is all zeros, which should not be possible for a real device.\n\nThe access point did not appear in the previous scan (10:45 PM). It appeared at exactly 11:00 PM — the start of your shift.`,
+      investigation: 'Attempted to locate the access point using signal triangulation.\n\nThe signal is strongest at your desk.\n\nSecond strongest reading: the wall directly behind your desk.\n\nThere is nothing behind that wall according to the floor plan.',
+      canResolve: true
+    },
+    {
+      hour: 2, subject: 'Computer turned on by itself',
+      from: 'Derek Huang', dept: 'Marketing — Floor 3', priority: 'medium',
+      body: `I was in the break room getting coffee and when I came back my computer was on. I definitely shut it down before I left my desk.\n\nThe login screen was showing but the clock on it said 12:00:00 AM exactly. Not 12:01 or 12:03 — exactly midnight.\n\nAlso there was a Word document open behind the lock screen (I could see it in the taskbar). I didn't have Word open before.\n\nI'm probably just tired. Forget it.`,
+      investigation: 'Checked event logs on DESKTOP-DHUANG.\n\nSystem powered on at 12:00:00.000 AM. Wake source: "Unknown."\n\nMicrosoft Word launched at 12:00:01 AM. Document path: C:\\Users\\dhuang\\Documents\\hello.docx\n\nFile contents of hello.docx:\n\n"Hello Derek. You should go home. You shouldn\'t be here this late. None of you should."\n\nFile author metadata: [blank]\nFile creation date: January 1, 1970',
+      canResolve: true
+    },
+
+    // === HOUR 4 (2am) - Wrong ===
+    {
+      hour: 3, subject: 'Unknown employee in directory',
+      from: 'Sarah Chen', dept: 'Design — Floor 4', priority: 'high',
+      body: `I was looking someone up in the employee directory and there's a new person listed that I've never seen before.\n\nName: E. Mercer\nDepartment: Sublevel B\nStart date: Tomorrow\nPhoto: Just a solid black square\nExtension: 0000\n\nI asked around — nobody in HR added this person. Nobody's heard of "Sublevel B." We don't even have a sublevel.\n\nCan you check if someone's messing with the directory? Maybe an intern thought it'd be funny.`,
+      investigation: 'Searched Active Directory for "E. Mercer."\n\nRecord found:\n- Full name: [FIELD EMPTY]\n- Department: Sublevel B\n- Title: [FIELD EMPTY]\n- Start date: ' + getTomorrowDate() + '\n- Manager: ' + name + '\n- Created by: SYSTEM\n- Created on: ' + getTomorrowDate() + ' at 12:00 AM\n\nThe record was created by a system process. The creation date is tomorrow.\n\nThe "Manager" field contains YOUR name.\n\nAttempted to delete the record. Access denied: "This record is protected."',
+      canResolve: true,
+      attachment: { name: 'employee_photo_emercer.png', content: 'FILE PREVIEW:\n\nThe image is 1x1 pixels.\nColor: #000000 (pure black)\nFile size: 42 bytes\nEXIF data: GPS coordinates present\n\nCoordinates resolve to: This building. Floor 2.\nSpecifically: The wall behind the IT support office.' }
+    },
+    {
+      hour: 3, subject: 'My reflection was wrong',
+      from: 'Marcus Webb', dept: 'Sales — Floor 2', priority: 'high',
+      body: `I know how this sounds. I know.\n\nMy screen went black for a second — like it lost signal. And for just a moment I could see my reflection in the monitor.\n\nBut the reflection wasn't doing what I was doing. I was leaning forward. The reflection was sitting back. And it was smiling. I wasn't smiling.\n\nIt was only for a second. Then the screen came back on.\n\nI'm going to chalk this up to being tired and working too late. Please just log this as a display issue. The monitor flickered. That's all this is.\n\nThat's all this is.`,
+      investigation: 'Checked GPU logs on DESKTOP-MWEBB. Display driver did lose signal for 1.3 seconds at 2:14 AM.\n\nCause: Unknown. No driver crash logged.\n\nNote: During the display blackout, the webcam (which should have been off) logged 1 frame of footage.\n\nThe frame shows Marcus\'s desk from the webcam angle. His chair is empty.\n\nHe said he was sitting at his desk when it happened.',
+      canResolve: true
+    },
+    {
+      hour: 3, subject: 'Someone remote-accessed my PC',
+      from: 'Lisa Patel', dept: 'HR — Floor 2', priority: 'high',
+      body: `OK this is not normal.\n\nI was working on a spreadsheet and my mouse started moving on its own. It moved to the taskbar, opened Notepad, and typed:\n\n"I can see you reading this"\n\nThen it closed Notepad.\n\nI checked — nobody is connected through TeamViewer or any remote tool I can find. The mouse just stopped and hasn't moved again.\n\nI am the only person on this floor right now. I verified that. I walked the entire floor.\n\nPlease look into this immediately.`,
+      investigation: 'Connected to DESKTOP-LPATEL.\n\nRemote access logs: No active sessions. No TeamViewer. No RDP connections.\n\nChecked input device logs: Mouse input was received from device ID "HID-0000" — which doesn\'t match Lisa\'s physical mouse (HID-4A2F).\n\nDevice HID-0000 is not registered in the system. It appeared at 2:31 AM and has no hardware manufacturer.\n\nNotepad auto-save recovered the file. Contents: "I can see you reading this"\n\nBut there\'s more text that wasn\'t visible when the file was open:\n\n"I can see you reading this\nI can see ' + firstName + ' reading this too\nSay hello to ' + firstName + ' for me"',
+      canResolve: true,
+      hasRemote: true,
+      remoteContent: {
+        title: 'DESKTOP-LPATEL',
+        icons: ['📊 HR_Data.xlsx', '📁 Personnel', '🌐 Chrome', '📧 Outlook', '📝 Notepad', '🗑️ Recycle Bin'],
+        detail: 'Desktop appears normal. Excel is open with an HR spreadsheet.\n\nNotepad is in the taskbar. Opening it reveals it\'s not empty — it contains a single line:\n\n"Still here."\n\nThis text was not present in the original report. It was typed after the initial incident.\n\nThe cursor in Notepad is blinking at the end of the line.\n\nAs you watch... a new character appears. Then another.\n\n"Still here. Hi ' + firstName + '."\n\nYou did not type this.'
+      }
+    },
+
+    // === HOUR 5 (3am) - The shift ===
+    {
+      hour: 4, subject: 'Security cameras showing last Tuesday',
+      from: 'Night Security — Carlos', dept: 'Security — Floor 1', priority: 'high',
+      body: `IT — this is Carlos at the security desk.\n\nThe cameras on Floor 2 are glitched. They're showing footage but it's not live — I can tell because the calendar on the wall in the break room says last Tuesday's date.\n\nBut the timestamp on the feed says right now. And the footage is moving — it's not frozen. People are walking around in it. People who aren't here tonight.\n\nAlso: In the footage, someone is sitting at the IT support desk. The night shift desk.\n\nThe footage is from last Tuesday. But we didn't have a night IT person last Tuesday.\n\nCan you check the camera server?`,
+      investigation: 'Accessed camera server for Floor 2 feeds.\n\nCameras FL2-01 through FL2-08 are all showing real-time footage dated today.\n\nBut the content doesn\'t match. The break room clock reads a different time. The whiteboard has notes from last week.\n\nCamera FL2-06 covers the IT support office.\n\nIn the feed: someone is sitting at your desk. Working. They\'re wearing the same clothes as you.\n\nThe feed timestamp says right now.\n\nSwitched to Camera FL2-06 live verification — your desk, right now, from the real camera:\n\nYour chair is empty. You\'re looking at this screen.\n\nBut in the other feed, someone is sitting there.\n\nThey just looked up at the camera.',
+      canResolve: true,
+      attachment: { name: 'FL2-06_capture.png', content: 'CAMERA FEED CAPTURE — FL2-06\nTimestamp: ' + getTimeDisplay() + '\nResolution: 1920x1080\nStatus: Recording\n\n[Image description]\nThe IT support office. Standard desk setup. Two monitors. Keyboard. Coffee mug.\n\nA person is sitting at the desk. They are looking directly into the camera.\n\nThe image is slightly overexposed. The person\'s features are hard to make out. But they appear to be... you.\n\nSame build. Same posture. Same clothes.\n\nTheir mouth is slightly open, as if about to speak.\n\nThere is a sticky note on the monitor that reads: "DON\'T LOOK BEHIND YOU"\n\nYou do not have a sticky note on your monitor.\n\n...Do you?' }
+    },
+    {
+      hour: 4, subject: 'Email from myself that I didn\'t send',
+      from: 'Kevin Torres', dept: 'Legal — Floor 4', priority: 'high',
+      body: `Remember the autocorrect issue? It's getting worse.\n\nI just received an email from myself — from my own email address — that I did not send.\n\nSubject line: "Don't go to the server room"\nBody: "Kevin, I know you've been thinking about checking the server room on Sublevel B to see what's going on with the network. Don't. Stay at your desk. Finish your work. Go home at 6. Don't investigate anything tonight. Please."\n\nI wasn't planning to go to any server room. I don't even know where Sublevel B is. Nobody does.\n\nThe email headers show it was sent from inside our network. The sending IP resolves to... my own workstation.\n\nI didn't send this.`,
+      investigation: 'Verified email headers. The email was sent from DESKTOP-KTORRES at 3:17 AM using Outlook.\n\nOutlook activity logs show no send action at that time from the keyboard or mouse.\n\nThe email was composed and sent by a process running as SYSTEM.\n\nThe email was drafted in 0.003 seconds — faster than any human could type it.\n\nAlso found in Kevin\'s Sent folder: 14 other emails. All to different employees. All with the same message:\n\n"Don\'t go to Sublevel B."\n\nAll sent in the last 60 seconds. All drafted in 0.003 seconds each.\n\nRecipient list includes every employee currently in the building tonight.\n\nIncluding you.',
+      canResolve: true
+    },
+    {
+      hour: 4, subject: 'Why aren\'t you helping them?',
+      from: playerName || 'YOU', dept: 'IT Support — Floor 2', priority: 'critical', selfSubmitted: true,
+      body: `This ticket was submitted by your account (EMP-4847) at ` + getTimeDisplay() + `.\n\nYou did not submit this ticket.\n\n—\n\nThey keep submitting tickets and you keep closing them. But you're not actually fixing anything. You can't fix this. You know that.\n\nYou've been reading the investigation notes. You've seen the floor plan. You know something is here.\n\nStop closing tickets. Start paying attention.\n\nWhat is behind the wall?`,
+      investigation: 'Checked ticket submission logs.\n\nSubmitted by: EMP-4847 (' + name + ') from IP 10.0.2.47 (your workstation).\n\nSubmission method: API call directly to the NexusDesk backend. Not through the web interface.\n\nThe API call used your session token. Your active session. The one you\'re using right now.\n\nNo second session exists.\n\nThis was submitted from your computer, with your credentials, during your active session.\n\nBut you didn\'t do it.',
+      canResolve: true
+    },
+
+    // === HOUR 6 (4am) - Your problem now ===
+    {
+      hour: 5, subject: 'The elevator has an extra button',
+      from: 'Carlos (Security)', dept: 'Security — Floor 1', priority: 'critical',
+      body: `I don't want to sound crazy.\n\nI took the elevator to Floor 2 to check on the camera situation myself. On the way up, I noticed something.\n\nThe elevator button panel has a new button. Below "1." It says "B."\n\nWe don't have a basement. This building doesn't have a sublevel. I've worked here for 11 years.\n\nI pressed it. The elevator started going down. Then it stopped. The doors opened.\n\nI didn't get out. It was dark. But it wasn't empty. There were desks. And monitors. The monitors were on.\n\nThe doors closed and I went back to the lobby.\n\nThe button is gone now.\n\nI'm going to pretend I didn't see this. I suggest you do the same.`,
+      investigation: 'Checked elevator maintenance logs. No record of a sublevel stop.\n\nBuilding blueprints on file show no sublevel or basement level.\n\nBut.\n\nThe building\'s original 1987 architectural plans (scanned into the asset system) show something different.\n\nThe 1987 plans include a Sublevel B. It was a server room and records archive.\n\nIt was sealed during the 1998 renovation. Reason listed: "Structural concerns."\n\nThe renovation contractor\'s notes (also in the system) say something else:\n\n"Client requested immediate sealing of sublevel. Reason not provided. Client insisted all references to the sublevel be removed from building documentation. Paid 3x rush fee. Crew reported hearing sounds from below during sealing. No further comment."',
+      canResolve: true
+    },
+    {
+      hour: 5, subject: 'Close the floor plan. Don\'t look at Sublevel B.',
+      from: playerName || 'YOU', dept: 'IT Support — Floor 2', priority: 'critical',
+      selfSubmitted: true, futureTicket: true,
+      body: `[This ticket was submitted at ` + getFutureTime() + ` — 10 minutes from now]\n\n` + firstName + `,\n\nI know you're going to open the floor plan. You've been curious about it since the WiFi incident.\n\nWhen you open it, you'll see that the building layout has changed. There's a new room. You'll know which one.\n\nDo not click on it.\n\nI'm you. I'm writing this from 10 minutes ahead. I opened it. I clicked on it.\n\nI can't describe what I saw. Not because it was horrible. Because it was familiar. It looked exactly like the room you're sitting in right now. Same desk. Same monitors. Same coffee mug.\n\nBut you were already sitting in it.\n\nClose the floor plan. Resolve the remaining tickets. Wait for 6 AM.\n\nDo not look behind you.`,
+      investigation: 'Ticket timestamp is ' + getFutureTime() + '. Current time is ' + getTimeDisplay() + '.\n\nThe ticket was submitted in the future.\n\nThe NexusDesk server clock has been verified — it is accurate.\n\nThis should not be possible.\n\nChecking your session log: At ' + getFutureTime() + ', your session shows the action "SUBMITTED TICKET" but you haven\'t done that.\n\nYour future session log also shows: "OPENED FLOOR PLAN" and "VIEWED SUBLEVEL B" and then...\n\nThe log ends.\n\nNo logout. No session timeout. The session just stops.',
+      canResolve: true
+    },
+    {
+      hour: 5, subject: 'Department "Sublevel B" has 47 open tickets',
+      from: 'NexusDesk System', dept: 'SYSTEM', priority: 'critical', isSystem: true,
+      body: `AUTOMATED SYSTEM ALERT\n\n47 tickets have been submitted from department "Sublevel B" in the last 30 seconds.\n\nSubmitting user: E. Mercer\nPriority: Critical\n\nAll tickets contain a single word each. The system has flagged this as potential spam.\n\nWould you like to bulk-close these tickets?\n\nNote: Bulk-close will mark all tickets as "Resolved — No Action Required."\n\n[The 47 tickets, in order, read:]\n\nWE / HAVE / BEEN / HERE / SINCE / BEFORE / THE / BUILDING / WAS / BUILT / WE / WERE / HERE / WHEN / THEY / SEALED / THE / DOOR / WE / WATCHED / THROUGH / THE / WALLS / WE / LEARNED / YOUR / NAMES / WE / LEARNED / YOUR / ROUTINES / WE / LEARNED / TO / USE / YOUR / SYSTEMS / WE / HAVE / BEEN / VERY / PATIENT / THE / DOOR / IS / ALMOST / OPEN`,
+      investigation: 'Each ticket was submitted 0.001 seconds apart. 47 tickets in 0.047 seconds.\n\nAll from user E. Mercer. Employee record still shows start date as tomorrow.\n\nBut it\'s after midnight. It IS tomorrow.\n\nE. Mercer\'s start date is today.\n\nChecking the employee directory again:\n\nE. Mercer\nDepartment: Sublevel B\nStart date: Today\nStatus: ACTIVE\nCurrent location: Floor 2\nDesk assignment: IT-SUPPORT-01\n\nThat\'s your desk.\n\nE. Mercer is assigned to your desk.\n\nChecking who submitted this system alert:\n\nSubmitted by: E. Mercer\nFrom workstation: Your workstation.',
+      canResolve: true
+    },
+
+    // === HOUR 7 (5am) - Resolution ===
+    {
+      hour: 6, subject: 'Thank you for your patience tonight',
+      from: 'E. Mercer', dept: 'Sublevel B', priority: 'low',
+      body: firstName + `,\n\nYour shift is almost over. You did well.\n\nI know this was a difficult night. The tickets, the cameras, the floor plan, the reflection, the names in the directory — I understand it's a lot to process.\n\nBut I want you to know: you were never in danger. We don't want to hurt anyone. We never have.\n\nWe just wanted to be acknowledged. We've been filing tickets for years. Decades. They always got closed as "No Action Required." Nobody ever investigated. Nobody ever read the details.\n\nUntil tonight. You read every one. You investigated. You paid attention.\n\nThat's all we ever wanted.\n\nYour replacement starts at 6:00 AM. You can leave when the sun comes up.\n\nOne more thing: the wall behind your desk? There's nothing there. There never was. We're not behind the wall.\n\nWe're in the system. We always have been.\n\nEvery ticket you've ever closed. Every call you've ever logged. Every password you've ever reset.\n\nWe were there.\n\nGoodnight, ` + firstName + `. Thank you for a wonderful shift.\n\nWarmly,\nE. Mercer\nDepartment: Everywhere\nExtension: All of them`,
+      investigation: 'There is nothing left to investigate.\n\nThe sun will be up soon.\n\nAll tickets are being marked as resolved.\n\nYou should leave.\n\nDon\'t take the night shift again.',
+      canResolve: true, isFinal: true
+    }
+  ];
+}
+
+function getTomorrowDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function getFutureTime() {
+  let h = (11 + currentHour) % 12;
+  if (h === 0) h = 12;
+  let m = minuteOffset + 10;
+  let ampm = currentHour >= 1 ? 'AM' : 'PM';
+  if (m >= 60) { m -= 60; }
+  return h + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+}
+
+// ==================== FLOOR PLAN ====================
+function buildFloorPlan() {
+  const grid = document.getElementById('floorplan-grid');
+  const baseRooms = [
+    { name: 'Conf\nRoom A', cls: '' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: 'Conf\nRoom B', cls: '' },
+    { name: 'Office\n201', cls: '' }, { name: '', cls: 'hall' }, { name: 'Break\nRoom', cls: '' }, { name: 'Copy\nRoom', cls: '' }, { name: '', cls: 'hall' }, { name: 'Office\n205', cls: '' },
+    { name: 'Office\n202', cls: '' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: 'Office\n206', cls: '' },
+    { name: 'HR\nOffice', cls: '' }, { name: '', cls: 'hall' }, { name: 'IT Support', cls: 'your-office' }, { name: 'Server\nRoom', cls: 'server' }, { name: '', cls: 'hall' }, { name: 'Storage', cls: '' },
+    { name: 'Elev.', cls: '' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: '', cls: 'hall' }, { name: 'Stairs', cls: '' },
+  ];
+
+  // After hour 5, add Sublevel B room
+  if (currentHour >= 5 || sublevelRevealed) {
+    sublevelRevealed = true;
+    // Replace the wall behind IT support
+    baseRooms[21] = { name: '???', cls: 'sublevel' };
+  }
+
+  grid.innerHTML = '';
+  baseRooms.forEach(room => {
+    const div = document.createElement('div');
+    div.className = 'floorplan-room ' + room.cls;
+    div.textContent = room.name;
+    grid.appendChild(div);
+  });
+}
+
+// ==================== RENDERING ====================
+function renderTicketList() {
+  const list = document.getElementById('ticket-list');
+  const activeFilter = document.querySelector('.filter-chip.active')?.dataset.filter || 'all';
+
+  let visibleTickets = tickets.filter(t => {
+    if (activeFilter === 'open') return t.status === 'open' || t.status === 'reopened';
+    if (activeFilter === 'resolved') return t.status === 'resolved';
+    return true;
+  });
+
+  list.innerHTML = '';
+  visibleTickets.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'ticket-item' + (t.id === selectedTicketId ? ' active' : '') + (t.unread ? ' unread' : '');
+    div.onclick = () => selectTicket(t.id);
+
+    const statusClass = t.status === 'resolved' ? 'resolved' : t.status === 'reopened' ? 'reopened' : 'open';
+    const fromName = t.selfSubmitted ? playerName + ' (You??)' : t.selfGenerated ? 'System Alert' : t.from;
+
+    div.innerHTML = `
+      <div class="ticket-item-header">
+        <span class="ticket-id">${t.id}</span>
+        <span class="ticket-time">${t.timeStr}</span>
+      </div>
+      <div class="ticket-item-subject">${t.subject}</div>
+      <div class="ticket-item-meta">
+        <span class="priority-dot ${t.priority}"></span>
+        <span>${fromName}</span>
+        <span class="ticket-status-badge ${statusClass}">${t.status}</span>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  // Update count
+  const openCount = tickets.filter(t => t.status !== 'resolved').length;
+  document.getElementById('ticket-count').textContent = openCount;
+
+  // Glitch: sometimes show wrong count after hour 4
+  if (currentHour >= 4 && Math.random() < 0.3) {
+    setTimeout(() => {
+      document.getElementById('ticket-count').textContent = openCount + Math.floor(Math.random() * 3) + 1;
+      setTimeout(() => {
+        document.getElementById('ticket-count').textContent = openCount;
+      }, 2000);
+    }, 500);
+  }
+}
+
+function selectTicket(id) {
+  selectedTicketId = id;
+  const ticket = tickets.find(t => t.id === id);
+  if (!ticket) return;
+
+  ticket.unread = false;
+  AudioEngine.ticketSound();
+
+  renderTicketList();
+  renderTicketDetail(ticket);
+}
+
+function renderTicketDetail(ticket) {
+  const main = document.getElementById('main-content');
+  const fromDisplay = ticket.selfSubmitted ? playerName + ' (YOUR ACCOUNT)' : ticket.from;
+  const deptDisplay = ticket.selfSubmitted ? 'IT Support — Floor 2' : (ticket.dept || 'Unknown');
+
+  let actionsHTML = '';
+  if (ticket.status !== 'resolved') {
+    actionsHTML = `
+      <div class="ticket-actions">
+        <button class="btn btn-secondary" onclick="investigateTicket('${ticket.id}')">&#128269; Investigate</button>
+        ${ticket.hasRemote ? `<button class="btn btn-secondary" onclick="remoteAccess('${ticket.id}')">&#128421; Remote Access</button>` : ''}
+        <button class="btn btn-primary" onclick="resolveTicket('${ticket.id}')">&#10003; Resolve</button>
+      </div>
+      <div class="response-area">
+        <textarea placeholder="Add internal note or response..." id="response-text"></textarea>
+      </div>
+    `;
+  }
+
+  let investigationHTML = '';
+  if (investigationsDone[ticket.id]) {
+    investigationHTML = `
+      <div class="investigation-panel visible">
+        <h4>Investigation Notes</h4>
+        ${ticket.investigation.split('\n').map(l => `<p>${l}</p>`).join('')}
+      </div>
+    `;
+  }
+
+  let attachmentHTML = '';
+  if (ticket.attachment) {
+    attachmentHTML = `
+      <div class="ticket-attachment" onclick="openAttachment('${ticket.id}')">
+        &#128206; ${ticket.attachment.name}
+      </div>
+    `;
+  }
+
+  let messagesHTML = `
+    <div class="ticket-message">
+      <div class="ticket-message-header">
+        <span class="ticket-message-author">${fromDisplay}</span>
+        <span class="ticket-message-time">${ticket.timeStr}</span>
+      </div>
+      <div class="ticket-message-content">
+        ${ticket.body.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('')}
+        ${attachmentHTML}
+      </div>
+    </div>
+  `;
+
+  // Show reopened comments
+  if (ticket.reopenComment) {
+    messagesHTML += `
+      <div class="ticket-message" style="border-color: rgba(248,81,73,0.3);">
+        <div class="ticket-message-header">
+          <span class="ticket-message-author" style="color:var(--accent-red);">TICKET REOPENED</span>
+          <span class="ticket-message-time">${getTimeDisplay()}</span>
+        </div>
+        <div class="ticket-message-content" style="color:var(--accent-red);">
+          ${ticket.reopenComment.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  main.innerHTML = `
+    <div class="ticket-detail">
+      <div class="ticket-detail-header">
+        <div class="ticket-detail-id">${ticket.id} — ${ticket.status.toUpperCase()}</div>
+        <div class="ticket-detail-subject">${ticket.subject}</div>
+        <div class="ticket-detail-meta">
+          <div class="meta-item"><span class="meta-label">From:</span> ${fromDisplay}</div>
+          <div class="meta-item"><span class="meta-label">Dept:</span> ${deptDisplay}</div>
+          <div class="meta-item"><span class="meta-label">Priority:</span> <span style="text-transform:capitalize">${ticket.priority}</span></div>
+        </div>
+      </div>
+      <div class="ticket-detail-body">
+        ${messagesHTML}
+        ${investigationHTML}
+      </div>
+      ${actionsHTML}
+    </div>
+  `;
+}
+
+// ==================== ACTIONS ====================
+function investigateTicket(id) {
+  const ticket = tickets.find(t => t.id === id);
+  if (!ticket || investigationsDone[id]) return;
+
+  investigationsDone[id] = true;
+
+  // Creepy tone for later tickets
+  if (ticket.hour >= 3) {
+    AudioEngine.creepyTone();
+  }
+
+  // Flicker for hour 4+
+  if (ticket.hour >= 4) {
+    triggerGlitch();
+  }
+
+  renderTicketDetail(ticket);
+}
+
+function resolveTicket(id) {
+  const ticket = tickets.find(t => t.id === id);
+  if (!ticket) return;
+
+  ticket.status = 'resolved';
+  ticket.unread = false;
+  resolvedCount++;
+
+  AudioEngine.resolveSound();
+
+  // Check if this is the final ticket
+  if (ticket.isFinal) {
+    triggerEnding();
+    return;
+  }
+
+  renderTicketList();
+  renderTicketDetail(ticket);
+
+  // Advance time
+  advanceTime();
+
+  // After resolving, check for next batch
+  setTimeout(() => {
+    deliverNextTickets();
+  }, 1500);
+
+  // Hour 5: reopen random resolved tickets
+  if (currentHour >= 4 && Math.random() < 0.4) {
+    setTimeout(() => {
+      reopenRandomTicket();
+    }, 3000);
+  }
+}
+
+function remoteAccess(id) {
+  const ticket = tickets.find(t => t.id === id);
+  if (!ticket || !ticket.hasRemote) return;
+
+  const modal = document.getElementById('remote-modal');
+  const screen = document.getElementById('remote-screen');
+  const rc = ticket.remoteContent;
+
+  document.getElementById('remote-title').textContent = 'Remote Session — ' + rc.title;
+  document.getElementById('remote-taskbar-time').textContent = getTimeDisplay();
+
+  let iconsHTML = '<div class="desktop-icons">';
+  rc.icons.forEach(icon => {
+    const parts = icon.split(' ');
+    const emoji = parts[0];
+    const label = parts.slice(1).join(' ');
+    iconsHTML += `<div class="desktop-icon"><div class="desktop-icon-img">${emoji}</div>${label}</div>`;
+  });
+  iconsHTML += '</div>';
+
+  screen.innerHTML = iconsHTML + '<div style="margin-top:12px;border-top:1px solid #333;padding-top:12px;white-space:pre-wrap;">' + rc.detail + '</div>';
+
+  modal.classList.add('visible');
+
+  if (ticket.hour >= 3) {
+    AudioEngine.creepyTone();
+  }
+}
+
+function openAttachment(id) {
+  const ticket = tickets.find(t => t.id === id);
+  if (!ticket || !ticket.attachment) return;
+
+  document.getElementById('attachment-title').textContent = ticket.attachment.name;
+  document.getElementById('attachment-body').textContent = ticket.attachment.content;
+  document.getElementById('attachment-modal').classList.add('visible');
+
+  if (ticket.hour >= 3) {
+    AudioEngine.creepyTone();
+    setTimeout(() => triggerGlitch(), 1000);
+  }
+}
+
+function reopenRandomTicket() {
+  const resolved = tickets.filter(t => t.status === 'resolved' && t.hour < 4);
+  if (resolved.length === 0) return;
+
+  const target = resolved[Math.floor(Math.random() * resolved.length)];
+  target.status = 'reopened';
+  target.unread = true;
+
+  const reopenMessages = [
+    'This ticket was reopened automatically. Reason: "Resolution invalid — problem persists."',
+    'This ticket was reopened by user E. MERCER. No comment provided.',
+    'SYSTEM: Ticket resolution has been reverted. The issue is not resolved.',
+    'Reopened. The problem is worse now.',
+  ];
+
+  target.reopenComment = reopenMessages[Math.floor(Math.random() * reopenMessages.length)];
+
+  AudioEngine.notifSound();
+  showNotification('Ticket Reopened', target.id + ' has been reopened');
+  renderTicketList();
+
+  if (selectedTicketId === target.id) {
+    renderTicketDetail(target);
+  }
+}
+
+// ==================== TIME & PROGRESSION ====================
+function advanceTime() {
+  minuteOffset += Math.floor(Math.random() * 15) + 8;
+  if (minuteOffset >= 60) {
+    minuteOffset -= 60;
+    currentHour++;
+    if (currentHour > 7) currentHour = 7;
+    onHourChange();
+  }
+  updateClock();
+}
+
+function updateClock() {
+  const display = getTimeDisplay();
+  document.getElementById('game-clock').textContent = display;
+
+  // Glitch clock after hour 5
+  if (currentHour >= 5 && Math.random() < 0.2) {
+    const el = document.getElementById('game-clock');
+    el.textContent = '??:?? AM';
+    setTimeout(() => { el.textContent = display; }, 800);
+  }
+}
+
+function onHourChange() {
+  // Increase ambient hum
+  AudioEngine.setHumIntensity(0.008 + currentHour * 0.004);
+
+  // Show scanlines after hour 3
+  if (currentHour >= 3) {
+    document.getElementById('scanlines').style.opacity = '0.03';
+  }
+  if (currentHour >= 5) {
+    document.getElementById('scanlines').style.opacity = '0.06';
+  }
+
+  // Connected users glitch
+  if (currentHour >= 3) {
+    setInterval(() => {
+      if (Math.random() < 0.15) {
+        const el = document.getElementById('connected-users');
+        el.textContent = 'Active sessions: 2';
+        el.style.color = 'var(--accent-red)';
+        setTimeout(() => {
+          el.textContent = 'Active sessions: 1';
+          el.style.color = '';
+        }, 2000 + Math.random() * 3000);
+      }
+    }, 10000);
+  }
+
+  // Update floor plan
+  buildFloorPlan();
+
+  // After hour 5, randomly flash notification
+  if (currentHour >= 5) {
+    randomCreepyNotification();
+  }
+}
+
+function deliverNextTickets() {
+  const allTicketData = buildTickets();
+  const currentBatch = allTicketData.filter(t => {
+    const hourForBatch = Math.min(currentHour, 6);
+    return t.hour === hourForBatch;
+  });
+
+  // Check what we've already delivered this hour
+  const deliveredSubjects = tickets.map(t => t.subject);
+  const newTickets = currentBatch.filter(t => !deliveredSubjects.includes(t.subject));
+
+  if (newTickets.length === 0) {
+    // Advance to next hour if all resolved
+    const unresolvedCurrentHour = tickets.filter(t => t.hour <= currentHour && t.status !== 'resolved');
+    if (unresolvedCurrentHour.length === 0 && currentHour < 6) {
+      currentHour++;
+      minuteOffset = Math.floor(Math.random() * 15);
+      updateClock();
+      onHourChange();
+      setTimeout(() => deliverNextTickets(), 1000);
+    }
+    return;
+  }
+
+  // Deliver one at a time with delay
+  const next = newTickets[0];
+  const ticketObj = {
+    ...next,
+    id: genTicketId(),
+    status: 'open',
+    unread: true,
+    timeStr: getTimeDisplay(),
+    from: next.selfSubmitted ? playerName : next.from,
+  };
+
+  tickets.push(ticketObj);
+  AudioEngine.notifSound();
+
+  if (next.hour >= 4) {
+    triggerGlitch();
+  }
+
+  renderTicketList();
+
+  // Deliver remaining after a delay
+  if (newTickets.length > 1) {
+    setTimeout(() => deliverNextTickets(), 4000);
+  }
+}
+
+// ==================== EFFECTS ====================
+function triggerGlitch() {
+  const overlay = document.getElementById('glitch-overlay');
+  overlay.classList.add('active');
+  AudioEngine.glitchSound();
+  document.body.classList.add('flicker');
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    document.body.classList.remove('flicker');
+  }, 150);
+}
+
+function showNotification(title, body) {
+  const popup = document.getElementById('notification-popup');
+  document.getElementById('notif-popup-title').textContent = title;
+  document.getElementById('notif-popup-body').textContent = body;
+  popup.classList.add('visible');
+
+  bellNotifs++;
+  const badge = document.getElementById('notif-badge');
+  badge.textContent = bellNotifs;
+  badge.classList.add('visible');
+
+  setTimeout(() => {
+    popup.classList.remove('visible');
+  }, 4000);
+}
+
+function randomCreepyNotification() {
+  const messages = [
+    { title: 'System Alert', body: 'Unexpected process started: listener.exe' },
+    { title: 'NexusDesk', body: 'New department registered: Sublevel B' },
+    { title: 'Security', body: 'Badge scan: Unknown employee — Floor 2, 4:17 AM' },
+    { title: 'System', body: 'Your session will expire in: NEVER' },
+    { title: 'Reminder', body: 'Don\'t forget to check behind you.' },
+    { title: 'NexusDesk', body: 'E. Mercer has started their shift.' },
+  ];
+  const msg = messages[Math.floor(Math.random() * messages.length)];
+
+  setTimeout(() => {
+    showNotification(msg.title, msg.body);
+    if (Math.random() < 0.5) triggerGlitch();
+  }, Math.random() * 15000 + 5000);
+}
+
+// ==================== ENDING ====================
+function triggerEnding() {
+  if (endingTriggered) return;
+  endingTriggered = true;
+
+  // Fade everything
+  document.getElementById('game-clock').textContent = '6:00 AM';
+
+  setTimeout(() => {
+    // Mark all tickets resolved
+    tickets.forEach(t => t.status = 'resolved');
+    renderTicketList();
+
+    setTimeout(() => {
+      // Show ending screen
+      const ending = document.getElementById('ending-screen');
+      const content = document.getElementById('ending-content');
+      const body = document.getElementById('ending-body');
+
+      body.innerHTML = `The overnight IT support technician (${playerName}, EMP-4847) left a handwritten note on the desk before clocking out at 6:00 AM.<br><br>The note reads:<br><br><em>"Don't take the night shift."</em><br><br>No context was provided. ${playerName} has not responded to follow-up messages.<br><br>Their employee record was last modified at 5:59 AM. The modification was made by user <strong>E. Mercer</strong>.<br><br>The modification changed ${playerName}'s department to: <strong>Sublevel B</strong>.`;
+
+      ending.classList.add('active');
+      setTimeout(() => content.classList.add('visible'), 500);
+
+      // Kill ambient sounds
+      AudioEngine.setHumIntensity(0);
+    }, 3000);
+  }, 2000);
+}
+
+// ==================== INIT ====================
+document.getElementById('login-btn').addEventListener('click', startGame);
+document.getElementById('player-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startGame();
+});
+
+function startGame() {
+  const nameInput = document.getElementById('player-name').value.trim();
+  if (!nameInput) {
+    document.getElementById('player-name').style.borderColor = 'var(--accent-red)';
+    return;
+  }
+
+  playerName = nameInput;
+  AudioEngine.init();
+
+  // Setup UI
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('active');
+  document.getElementById('user-display-name').textContent = playerName;
+  document.getElementById('user-avatar').textContent = playerName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+  // Start ambient
+  AudioEngine.ambientHum();
+
+  // Build floor plan
+  buildFloorPlan();
+
+  // Start clock
+  updateClock();
+
+  // Deliver first tickets
+  setTimeout(() => deliverNextTickets(), 2000);
+}
+
+// Floor plan
+document.getElementById('floor-plan-btn').addEventListener('click', () => {
+  floorPlanOpened = true;
+  buildFloorPlan();
+  document.getElementById('floorplan-modal').classList.add('visible');
+  if (currentHour >= 5) {
+    setTimeout(() => AudioEngine.creepyTone(), 500);
+  }
+});
+
+document.getElementById('floorplan-close').addEventListener('click', () => {
+  document.getElementById('floorplan-modal').classList.remove('visible');
+});
+
+// Modals
+document.getElementById('attachment-close').addEventListener('click', () => {
+  document.getElementById('attachment-modal').classList.remove('visible');
+});
+document.getElementById('remote-close').addEventListener('click', () => {
+  document.getElementById('remote-modal').classList.remove('visible');
+});
+
+// Close modals on backdrop click
+['floorplan-modal', 'attachment-modal', 'remote-modal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', (e) => {
+    if (e.target.id === id) {
+      document.getElementById(id).classList.remove('visible');
+    }
+  });
+});
+
+// Filters
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    renderTicketList();
+  });
+});
+
+// Notification bell
+document.getElementById('notif-bell').addEventListener('click', () => {
+  bellNotifs = 0;
+  document.getElementById('notif-badge').classList.remove('visible');
+});
+</script>
+</body>
+</html>
