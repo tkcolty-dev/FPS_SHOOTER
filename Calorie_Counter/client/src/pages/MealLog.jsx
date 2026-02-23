@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
@@ -24,6 +24,8 @@ export default function MealLog() {
   const [baseProtein, setBaseProtein] = useState(null);
   const [baseCarbs, setBaseCarbs] = useState(null);
   const [baseFat, setBaseFat] = useState(null);
+  const [showMacros, setShowMacros] = useState(false);
+  const macrosRef = useRef(null);
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
@@ -151,6 +153,7 @@ export default function MealLog() {
     setProtein(food.protein_g != null ? String(food.protein_g) : '');
     setCarbs(food.carbs_g != null ? String(food.carbs_g) : '');
     setFat(food.fat_g != null ? String(food.fat_g) : '');
+    if (food.protein_g != null || food.carbs_g != null || food.fat_g != null) setShowMacros(true);
   };
 
   const handleSubmit = (e) => {
@@ -377,18 +380,48 @@ export default function MealLog() {
           />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-          <div className="form-group">
-            <label htmlFor="protein">Protein (g)</label>
-            <input id="protein" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="--" min="0" step="0.1" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="carbs">Carbs (g)</label>
-            <input id="carbs" type="number" value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="--" min="0" step="0.1" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="fat">Fat (g)</label>
-            <input id="fat" type="number" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="--" min="0" step="0.1" />
+        <button
+          type="button"
+          onClick={() => setShowMacros(!showMacros)}
+          style={{
+            background: 'none',
+            border: 'none',
+            padding: '0.25rem 0',
+            fontSize: '0.85rem',
+            color: 'var(--color-primary)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.375rem',
+            marginBottom: showMacros ? '0.25rem' : 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showMacros ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+            <polyline points="6 4 14 10 6 16" />
+          </svg>
+          {showMacros ? 'Hide macros' : 'Add macros (protein, carbs, fat)'}
+        </button>
+        <div
+          ref={macrosRef}
+          style={{
+            maxHeight: showMacros ? (macrosRef.current?.scrollHeight || 200) + 'px' : '0px',
+            overflow: 'hidden',
+            transition: 'max-height 0.25s ease',
+          }}
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+            <div className="form-group">
+              <label htmlFor="protein">Protein (g)</label>
+              <input id="protein" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="--" min="0" step="0.1" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="carbs">Carbs (g)</label>
+              <input id="carbs" type="number" value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="--" min="0" step="0.1" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="fat">Fat (g)</label>
+              <input id="fat" type="number" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="--" min="0" step="0.1" />
+            </div>
           </div>
         </div>
 
