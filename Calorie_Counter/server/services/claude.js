@@ -1,6 +1,70 @@
-const Anthropic = require('@anthropic-ai/sdk');
+// GenAI service via VCAP_SERVICES (OpenAI-compatible proxy)
+// Falls back to ANTHROPIC_API_KEY + Anthropic SDK for local dev
 
-const client = new Anthropic();
+function getGenAIConfig() {
+  if (process.env.VCAP_SERVICES) {
+    const vcap = JSON.parse(process.env.VCAP_SERVICES);
+    const genai = vcap.genai && vcap.genai[0];
+    if (genai) {
+      return {
+        apiBase: genai.credentials.endpoint.api_base,
+        apiKey: genai.credentials.endpoint.api_key,
+        model: 'openai/gpt-oss-120b',
+        provider: 'genai',
+      };
+    }
+  }
+  // Local dev fallback
+  return {
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    provider: 'anthropic',
+  };
+}
+
+async function callLLM({ messages, systemPrompt, maxTokens = 1024 }) {
+  const config = getGenAIConfig();
+
+  if (config.provider === 'genai') {
+    // OpenAI-compatible API
+    const allMessages = [];
+    if (systemPrompt) {
+      allMessages.push({ role: 'system', content: systemPrompt });
+    }
+    allMessages.push(...messages);
+
+    const res = await fetch(`${config.apiBase}/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: allMessages,
+        max_tokens: maxTokens,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`GenAI API error ${res.status}: ${err}`);
+    }
+
+    const data = await res.json();
+    return data.choices[0].message.content;
+  }
+
+  // Anthropic SDK fallback for local dev
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: maxTokens,
+    system: systemPrompt || undefined,
+    messages,
+  });
+  return response.content[0].text;
+}
 
 async function getSuggestions({ meal_type, remainingCalories, mealBudget, preferences, todaysMeals }) {
   const cuisinePrefs = preferences.filter(p => p.preference_type === 'cuisine').map(p => p.value);
@@ -22,15 +86,10 @@ Already ate today: ${mealsDescription}.
 
 Return ONLY a JSON array with exactly 3 objects, each having: name (string), description (string, 1 sentence), calories (number), ingredients (array of strings). No other text.`;
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
+  const text = await callLLM({
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const text = response.content[0].text;
-
-  // Extract JSON from response
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (!jsonMatch) {
     throw new Error('Failed to parse suggestions from AI response');
@@ -73,14 +132,7 @@ Keep responses concise and conversational. You can suggest multiple meals in one
     { role: 'user', content: message },
   ];
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages,
-  });
-
-  return response.content[0].text;
+  return await callLLM({ messages, systemPrompt });
 }
 
 module.exports = { getSuggestions, chatWithAI };
