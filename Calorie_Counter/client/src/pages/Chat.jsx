@@ -21,13 +21,46 @@ function loadHistory() {
   }
 }
 
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
 export default function Chat() {
   const [messages, setMessages] = useState(loadHistory);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [learnedNote, setLearnedNote] = useState('');
+  const [listening, setListening] = useState(false);
   const messagesEndRef = useRef(null);
+  const recognitionRef = useRef(null);
   const queryClient = useQueryClient();
+
+  const toggleListening = () => {
+    if (!SpeechRecognition) return;
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognitionRef.current = recognition;
+
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((r) => r[0].transcript)
+        .join('');
+      setInput(transcript);
+    };
+
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+
+    recognition.start();
+    setListening(true);
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -141,10 +174,21 @@ export default function Chat() {
       )}
 
       <form onSubmit={handleSubmit} className="chat-input-bar">
+        {SpeechRecognition && (
+          <button
+            type="button"
+            className={`chat-mic-btn${listening ? ' active' : ''}`}
+            onClick={toggleListening}
+            disabled={loading}
+            title={listening ? 'Stop listening' : 'Voice input'}
+          >
+            {listening ? '\u23F9' : '\uD83C\uDF99'}
+          </button>
+        )}
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about meals, nutrition..."
+          placeholder={listening ? 'Listening...' : 'Ask about meals, nutrition...'}
           disabled={loading}
         />
         <button type="submit" className="btn btn-primary" disabled={!input.trim() || loading}>
