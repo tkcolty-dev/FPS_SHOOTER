@@ -86,8 +86,14 @@ export default function FoodSearch({ onSelect }) {
               className="food-search-item"
             >
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>{food.name}</div>
+                <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                  {food.isFavorite && <span style={{ color: '#f59e0b', marginRight: 4 }}>*</span>}
+                  {food.name}
+                </div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  {food.isFavorite && (
+                    <span style={{ color: '#f59e0b', fontWeight: 600 }}>Favorite</span>
+                  )}
                   {food.brand && (
                     <span className="food-brand-badge">{food.brand}</span>
                   )}

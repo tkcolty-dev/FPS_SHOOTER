@@ -9,6 +9,9 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [calorieHints, setCalorieHints] = useState([]);
+  const [quantity, setQuantity] = useState(1);
+  const [baseCal, setBaseCal] = useState(null);
+  const [servingSize, setServingSize] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -99,6 +102,9 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
                     className="calorie-hint-item"
                     onClick={() => {
                       setName(food.name);
+                      setBaseCal(food.calories_per_serving);
+                      setServingSize(food.serving_size || '1 serving');
+                      setQuantity(1);
                       setCalories(String(food.calories_per_serving));
                       setCalorieHints([]);
                     }}
@@ -110,13 +116,43 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
             )}
           </div>
 
+          {baseCal !== null && (
+            <div className="form-group">
+              <label htmlFor="planQuantity">Quantity</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  id="planQuantity"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => {
+                    const q = parseFloat(e.target.value) || 0;
+                    setQuantity(q);
+                    setCalories(String(Math.round(baseCal * q)));
+                  }}
+                  min="0.5"
+                  step="0.5"
+                  style={{ width: '5rem' }}
+                  required
+                />
+                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  x {servingSize} ({baseCal} cal each)
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="form-group">
-            <label htmlFor="planCalories">Calories</label>
+            <label htmlFor="planCalories">Calories{baseCal !== null ? ' (auto-calculated)' : ''}</label>
             <input
               id="planCalories"
               type="number"
               value={calories}
-              onChange={(e) => setCalories(e.target.value)}
+              onChange={(e) => {
+                setCalories(e.target.value);
+                if (baseCal !== null && parseFloat(e.target.value) > 0) {
+                  setQuantity(parseFloat((parseFloat(e.target.value) / baseCal).toFixed(1)));
+                }
+              }}
               placeholder="e.g. 450"
               min="0"
               required
