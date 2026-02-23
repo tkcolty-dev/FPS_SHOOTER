@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
+const { containsProfanity } = require('../utils/profanityFilter');
 
 const router = express.Router();
 router.use(auth);
@@ -108,6 +109,31 @@ router.post('/', async (req, res) => {
     res.status(201).json({ ...result.rows[0], status: 'pending' });
   } catch (err) {
     console.error('Create share error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Check for new messages across all shares (for notification badge)
+router.get('/new-messages', async (req, res) => {
+  try {
+    const since = req.query.since || new Date(0).toISOString();
+    const result = await pool.query(
+      `SELECT sc.id, sc.share_id, sc.text, sc.created_at, u.username as sender_username
+       FROM share_comments sc
+       JOIN users u ON sc.sender_id = u.id
+       JOIN shares s ON sc.share_id = s.id
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE (s.owner_id = $1 OR s.viewer_id = $1)
+         AND ss.status = 'accepted'
+         AND sc.sender_id != $1
+         AND sc.created_at > $2
+       ORDER BY sc.created_at DESC
+       LIMIT 20`,
+      [req.userId, since]
+    );
+    res.json({ messages: result.rows, count: result.rows.length });
+  } catch (err) {
+    console.error('New messages check error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -310,6 +336,9 @@ router.post('/:shareId/comments', async (req, res) => {
     const { text } = req.body;
     if (!text || !text.trim()) {
       return res.status(400).json({ error: 'Comment text is required' });
+    }
+    if (containsProfanity(text)) {
+      return res.status(400).json({ error: 'Message contains inappropriate language' });
     }
 
     // Verify caller is part of this accepted share

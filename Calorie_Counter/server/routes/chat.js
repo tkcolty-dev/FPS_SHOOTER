@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { chatWithAI } = require('../services/claude');
 const { searchLocalDB, searchOpenFoodFacts } = require('../services/foodSearch');
+const { containsProfanity } = require('../utils/profanityFilter');
 
 const router = express.Router();
 router.use(auth);
@@ -12,6 +13,9 @@ router.post('/', async (req, res) => {
     const { message, history, today } = req.body;
     if (!message) {
       return res.status(400).json({ error: 'message is required' });
+    }
+    if (containsProfanity(message)) {
+      return res.status(400).json({ error: 'Message contains inappropriate language' });
     }
 
     const clientDate = today || new Date().toISOString().split('T')[0];

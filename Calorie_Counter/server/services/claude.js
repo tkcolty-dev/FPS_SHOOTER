@@ -242,4 +242,4 @@ Be practical with portions — estimate realistic serving sizes from what's visi
   return JSON.parse(match[0]);
 }
 
-module.exports = { getSuggestions, chatWithAI, analyzePhoto };
+module.exports = { getSuggestions, chatWithAI, analyzePhoto, getGenAIConfig };

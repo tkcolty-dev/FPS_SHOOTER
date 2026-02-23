@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
+const { usernameContainsProfanity } = require('../utils/profanityFilter');
 
 const router = express.Router();
 
@@ -49,6 +50,9 @@ router.post('/register', async (req, res) => {
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+    if (usernameContainsProfanity(username)) {
+      return res.status(400).json({ error: 'Username contains inappropriate language' });
     }
 
     const existing = await pool.query(
@@ -115,13 +119,17 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, onboarding_complete, created_at FROM users WHERE id = $1',
+      'SELECT u.id, u.username, u.onboarding_complete, u.created_at, a.filename as avatar_filename FROM users u LEFT JOIN avatars a ON a.user_id = u.id WHERE u.id = $1',
       [req.userId]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ user: result.rows[0] });
+    const user = result.rows[0];
+    if (user.avatar_filename) {
+      user.avatar_url = `/api/avatars/${user.avatar_filename}`;
+    }
+    res.json({ user });
   } catch (err) {
     console.error('Me error:', err);
     res.status(500).json({ error: 'Server error' });

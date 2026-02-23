@@ -19,6 +19,7 @@ const photoRoutes = require('./routes/photo');
 const challengesRoutes = require('./routes/challenges');
 const suggestionsRoutes = require('./routes/suggestions');
 const notificationsRoutes = require('./routes/notifications');
+const avatarsRoutes = require('./routes/avatars');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -43,6 +44,7 @@ app.use('/api/photo', photoRoutes);
 app.use('/api/challenges', challengesRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/avatars', avatarsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

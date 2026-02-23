@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
+import api from '../api/client';
 
 const ICON_COLOR = '#2563eb';
 
@@ -29,10 +31,86 @@ const links = [
   )},
 ];
 
+function resizeImage(file, maxSize) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = Math.min(img.width, img.height);
+        const sx = (img.width - size) / 2;
+        const sy = (img.height - size) / 2;
+        canvas.width = maxSize;
+        canvas.height = maxSize;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, maxSize, maxSize);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function Profile() {
   const { user, logout } = useAuth();
   const { newCount } = useNewShares();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [uploadError, setUploadError] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  const { data: avatarData } = useQuery({
+    queryKey: ['avatar', user?.id],
+    queryFn: () => api.get(`/avatars/check/${user.id}`).then(r => r.data),
+    enabled: !!user,
+  });
+
+  const uploadAvatar = useMutation({
+    mutationFn: (image) => api.post('/avatars/upload', { image }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['avatar'] });
+      setUploadError('');
+      setUploading(false);
+    },
+    onError: (err) => {
+      setUploadError(err.response?.data?.error || 'Upload failed');
+      setUploading(false);
+    },
+  });
+
+  const removeAvatar = useMutation({
+    mutationFn: () => api.delete('/avatars/mine'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['avatar'] }),
+  });
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Image too large (max 5MB)');
+      return;
+    }
+    setUploadError('');
+    setUploading(true);
+    try {
+      const dataUrl = await resizeImage(file, 256);
+      uploadAvatar.mutate(dataUrl);
+    } catch {
+      setUploadError('Failed to process image');
+      setUploading(false);
+    }
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
 
   const changeTheme = (t) => {
     setTheme(t);
@@ -40,11 +118,51 @@ export default function Profile() {
     document.documentElement.setAttribute('data-theme', t);
   };
 
+  const avatarUrl = avatarData?.hasAvatar ? avatarData.avatarUrl : null;
+  const initial = user?.username?.[0]?.toUpperCase() || '?';
+
   return (
     <div>
-      <div className="page-header">
-        <h1>Profile</h1>
-        <p>{user?.username}</p>
+      {/* Profile header with avatar */}
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <div
+          className="profile-avatar-wrapper"
+          onClick={() => fileInputRef.current?.click()}
+          style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }}
+        >
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Profile"
+              className="profile-avatar"
+            />
+          ) : (
+            <div className="profile-avatar profile-avatar-default">
+              {initial}
+            </div>
+          )}
+          <div className="profile-avatar-edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </div>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleFileSelect}
+          style={{ display: 'none' }}
+        />
+        <h1 style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: '0.5rem' }}>{user?.username}</h1>
+        {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--color-primary)', marginTop: '0.25rem' }}>Uploading...</p>}
+        {uploadError && <p style={{ fontSize: '0.8rem', color: 'var(--color-danger)', marginTop: '0.25rem' }}>{uploadError}</p>}
+        {avatarUrl && !uploading && (
+          <button
+            onClick={() => removeAvatar.mutate()}
+            style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', marginTop: '0.25rem', textDecoration: 'underline' }}
+          >
+            Remove photo
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
