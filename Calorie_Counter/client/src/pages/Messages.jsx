@@ -75,29 +75,16 @@ export default function Messages() {
   if (activeUser) {
     const comments = commentsData?.comments || [];
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 140px)' }}>
+      <div className="messages-thread">
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 0', marginBottom: '0.5rem' }}>
-          <button
-            onClick={() => setActiveUser(null)}
-            style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', padding: '0.25rem', color: 'var(--color-text)' }}
-          >
-            &larr;
-          </button>
-          <div style={{
-            width: 36, height: 36, borderRadius: '50%',
-            background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
-            color: 'var(--color-primary)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 700, fontSize: '0.9rem',
-          }}>
-            {activeUser.username[0].toUpperCase()}
-          </div>
+        <div className="messages-header">
+          <button onClick={() => setActiveUser(null)} className="messages-header-back">&larr;</button>
+          <div className="messages-avatar">{activeUser.username[0].toUpperCase()}</div>
           <span style={{ fontWeight: 600, fontSize: '1.05rem' }}>{activeUser.username}</span>
         </div>
 
         {/* Messages */}
-        <div className="share-chat-messages" style={{ flex: 1, maxHeight: 'none' }}>
+        <div className="share-chat-messages" style={{ flex: 1 }}>
           {comments.length === 0 ? (
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', margin: 'auto', textAlign: 'center' }}>
               No messages yet. Say hi!
@@ -126,14 +113,13 @@ export default function Messages() {
         </div>
 
         {/* Input */}
-        <form onSubmit={handleSend} className="share-chat-input" style={{ padding: '0.5rem 0' }}>
+        <form onSubmit={handleSend} className="share-chat-input" style={{ flexShrink: 0, padding: '0.5rem 0' }}>
           <input
             type="text"
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Message..."
-            autoFocus
           />
           <button type="submit" className="btn btn-primary" disabled={sendMessage.isPending || !text.trim()}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
@@ -166,15 +152,7 @@ export default function Messages() {
               style={{ cursor: 'pointer', border: 'none', textAlign: 'left', fontFamily: 'inherit', fontSize: 'inherit' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  background: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
-                  color: 'var(--color-primary)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontWeight: 700, fontSize: '1rem', flexShrink: 0,
-                }}>
-                  {u.username[0].toUpperCase()}
-                </div>
+                <div className="messages-avatar large">{u.username[0].toUpperCase()}</div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{u.username}</div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Tap to chat</div>
