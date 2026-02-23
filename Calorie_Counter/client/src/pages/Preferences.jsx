@@ -3,9 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 
 const typeLabels = {
+  favorite: 'Favorite Foods',
   cuisine: 'Cuisine',
   dietary: 'Dietary',
-  favorite: 'Favorite Foods',
   dislike: 'Dislikes',
 };
 
@@ -15,6 +15,12 @@ const typeColors = {
   favorite: '#f59e0b',
   dislike: '#dc2626',
 };
+
+const QUICK_FAVORITES = [
+  'Chicken', 'Rice', 'Pizza', 'Tacos', 'Pasta', 'Eggs', 'Sandwich', 'Burgers',
+  'Goldfish Crackers', 'Chips', 'Popcorn', 'Apple', 'Banana', 'Yogurt',
+  'Mac & Cheese', 'Grilled Cheese', 'Hot Dog', 'Salad', 'Soup', 'Cereal',
+];
 
 export default function Preferences() {
   const [type, setType] = useState('cuisine');
@@ -61,6 +67,28 @@ export default function Preferences() {
       <div className="page-header">
         <h1>Food Preferences</h1>
         <p>Help the AI give you better meal suggestions</p>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, marginBottom: 8 }}>
+          Quick add favorites
+        </label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
+          {QUICK_FAVORITES.filter(f => {
+            const favs = grouped.favorite || [];
+            return !favs.some(p => p.value.toLowerCase() === f.toLowerCase());
+          }).map(food => (
+            <button
+              key={food}
+              className="btn btn-secondary"
+              style={{ fontSize: '0.8rem', padding: '0.3rem 0.7rem', borderRadius: 20 }}
+              onClick={() => addPref.mutate({ preference_type: 'favorite', value: food })}
+              disabled={addPref.isPending}
+            >
+              + {food}
+            </button>
+          ))}
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '1.5rem' }}>

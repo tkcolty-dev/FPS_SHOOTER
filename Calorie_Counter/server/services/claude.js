@@ -125,6 +125,14 @@ When suggesting meals the user can log, wrap each meal in a fenced code block ta
 {"name": "Grilled Chicken Salad", "calories": 420, "meal_type": "lunch"}
 \`\`\`
 
+When the user tells you they like or dislike a food (e.g. "I like Cheerios", "I love tacos", "I hate mushrooms"), save it by outputting a preference block:
+
+\`\`\`preference
+{"type": "favorite", "value": "Cheerios"}
+\`\`\`
+
+Use type "favorite" for likes and "dislike" for dislikes. Acknowledge that you've remembered it. Use the simple food name as the value (e.g. "Cheerios" not "Cheerios cereal for breakfast").
+
 Keep responses concise and conversational. You can suggest multiple meals in one response. Always respect the user's calorie budget and preferences.`;
 
   const messages = [

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import ChatMessage from '../components/ChatMessage';
 
@@ -13,7 +14,9 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [learnedNote, setLearnedNote] = useState('');
   const messagesEndRef = useRef(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,6 +35,12 @@ export default function Chat() {
         history: messages,
       });
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      if (data.learnedPreferences?.length > 0) {
+        const names = data.learnedPreferences.map(p => p.value).join(', ');
+        setLearnedNote(`Remembered: ${names}`);
+        queryClient.invalidateQueries({ queryKey: ['preferences'] });
+        setTimeout(() => setLearnedNote(''), 4000);
+      }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
     } finally {
@@ -80,6 +89,18 @@ export default function Chat() {
               {action}
             </button>
           ))}
+        </div>
+      )}
+
+      {learnedNote && (
+        <div style={{
+          fontSize: '0.8rem',
+          color: 'var(--color-success)',
+          padding: '0.375rem 0',
+          textAlign: 'center',
+          fontWeight: 500,
+        }}>
+          {learnedNote}
         </div>
       )}
 

@@ -6,29 +6,29 @@ import { useAuth } from '../context/AuthContext';
 import FoodSearch from '../components/FoodSearch';
 
 const CATEGORIES = {
-  Popular: [
-    'Pizza', 'Sushi', 'Tacos', 'Pasta', 'Burgers', 'Salad', 'Steak', 'Chicken',
-    'Rice', 'Salmon', 'Soup', 'Sandwich',
+  Everyday: [
+    'Chicken', 'Rice', 'Eggs', 'Sandwich', 'Pasta', 'Cereal', 'Bread',
+    'Apple', 'Banana', 'Salad', 'Soup', 'Yogurt',
   ],
-  Proteins: [
-    'Grilled Chicken', 'Steak', 'Salmon', 'Shrimp', 'Turkey', 'Tofu', 'Eggs',
-    'Tuna', 'Pork Chop', 'Lamb',
+  Snacks: [
+    'Goldfish Crackers', 'Chips', 'Popcorn', 'Pretzels', 'Granola Bar',
+    'Fruit Snacks', 'Crackers', 'Trail Mix', 'Cheese Stick', 'Cookies',
   ],
-  Grains: [
-    'Rice', 'Pasta', 'Bread', 'Oatmeal', 'Quinoa', 'Tortilla', 'Bagel',
-    'Couscous', 'Naan', 'Cereal',
+  'Quick & Easy': [
+    'PB&J', 'Hot Dog', 'Mac & Cheese', 'Ramen', 'Frozen Pizza',
+    'Quesadilla', 'Grilled Cheese', 'Bagel', 'Burrito', 'Leftovers',
   ],
-  Vegetables: [
-    'Broccoli', 'Spinach', 'Sweet Potato', 'Avocado', 'Carrots', 'Bell Pepper',
-    'Corn', 'Green Beans', 'Mushrooms', 'Zucchini',
+  'Comfort Food': [
+    'Pizza', 'Burgers', 'Tacos', 'Fried Chicken', 'Mashed Potatoes',
+    'French Fries', 'Nachos', 'Wings', 'Pancakes', 'Ice Cream',
   ],
-  Fruits: [
-    'Banana', 'Apple', 'Strawberries', 'Blueberries', 'Mango', 'Orange',
-    'Grapes', 'Watermelon', 'Pineapple', 'Peach',
+  Healthy: [
+    'Grilled Chicken', 'Salmon', 'Oatmeal', 'Sweet Potato', 'Broccoli',
+    'Greek Yogurt', 'Avocado', 'Quinoa', 'Smoothie', 'Almonds',
   ],
-  Cuisines: [
-    'Curry', 'Ramen', 'Stir Fry', 'Burrito', 'Pad Thai', 'Pho', 'Bibimbap',
-    'Falafel', 'Gyro', 'Poke Bowl',
+  Fancy: [
+    'Sushi', 'Steak', 'Lobster', 'Poke Bowl', 'Filet Mignon',
+    'Pad Thai', 'Lamb Chop', 'Crab', 'Risotto', 'Charcuterie',
   ],
 };
 

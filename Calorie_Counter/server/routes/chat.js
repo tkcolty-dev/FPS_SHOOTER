@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
     const remainingCalories = goals.daily_total - caloriesConsumed;
     const preferences = prefsResult.rows;
 
-    const reply = await chatWithAI({
+    let reply = await chatWithAI({
       message,
       history: history || [],
       goals,
@@ -42,7 +42,34 @@ router.post('/', async (req, res) => {
       preferences,
     });
 
-    res.json({ reply });
+    // Parse and save any preference blocks from the AI response
+    const prefRegex = /```preference\s*\n([\s\S]*?)```/g;
+    let prefMatch;
+    const learnedPrefs = [];
+    while ((prefMatch = prefRegex.exec(reply)) !== null) {
+      try {
+        const pref = JSON.parse(prefMatch[1].trim());
+        if (pref.type && pref.value && ['favorite', 'dislike'].includes(pref.type)) {
+          // Check if already exists
+          const existing = await pool.query(
+            'SELECT id FROM food_preferences WHERE user_id = $1 AND preference_type = $2 AND LOWER(value) = LOWER($3)',
+            [req.userId, pref.type, pref.value]
+          );
+          if (existing.rows.length === 0) {
+            await pool.query(
+              'INSERT INTO food_preferences (user_id, preference_type, value) VALUES ($1, $2, $3)',
+              [req.userId, pref.type, pref.value]
+            );
+            learnedPrefs.push(pref);
+          }
+        }
+      } catch {}
+    }
+
+    // Strip preference blocks from the visible reply
+    reply = reply.replace(/```preference\s*\n[\s\S]*?```\s*/g, '').trim();
+
+    res.json({ reply, learnedPreferences: learnedPrefs });
   } catch (err) {
     console.error('Chat error:', err);
     res.status(500).json({ error: 'Failed to get AI response' });
