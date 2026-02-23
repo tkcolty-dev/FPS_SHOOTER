@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { markMessagesRead } from '../hooks/useNewMessages';
 
 export default function Messages() {
   const { user } = useAuth();
@@ -43,6 +44,11 @@ export default function Messages() {
     refetchInterval: 5000,
     staleTime: 1000 * 3,
   });
+
+  // Mark messages as read when opening this page
+  useEffect(() => {
+    markMessagesRead();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
