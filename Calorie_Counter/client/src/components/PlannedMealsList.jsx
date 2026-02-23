@@ -1,11 +1,25 @@
 export default function PlannedMealsList({ plannedMeals, onLog, onDelete }) {
   if (plannedMeals.length === 0) return null;
 
+  const totalPlanned = plannedMeals.reduce((sum, m) => sum + m.calories, 0);
+
   return (
     <div style={{ marginBottom: '1rem' }}>
-      <h3 style={{ fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.5rem' }}>Planned Meals</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>Planned Meals</h3>
+        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+          {totalPlanned} cal planned
+        </span>
+      </div>
       {plannedMeals.map((meal) => (
         <div key={meal.id} className="planned-meal-item">
+          <button
+            className="planned-meal-check"
+            onClick={() => onLog(meal)}
+            title="Mark as consumed"
+          >
+            &#x2713;
+          </button>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {meal.name}
@@ -14,22 +28,13 @@ export default function PlannedMealsList({ plannedMeals, onLog, onDelete }) {
               {meal.meal_type} &middot; {meal.calories} cal
             </div>
           </div>
-          <div className="planned-meal-actions">
-            <button
-              className="btn btn-primary"
-              style={{ fontSize: '0.75rem', padding: '0.25rem 0.625rem' }}
-              onClick={() => onLog(meal)}
-            >
-              Log
-            </button>
-            <button
-              className="btn btn-secondary"
-              style={{ fontSize: '0.75rem', padding: '0.25rem 0.625rem' }}
-              onClick={() => onDelete(meal.id)}
-            >
-              Delete
-            </button>
-          </div>
+          <button
+            className="planned-meal-delete"
+            onClick={() => onDelete(meal.id)}
+            title="Remove"
+          >
+            &times;
+          </button>
         </div>
       ))}
     </div>

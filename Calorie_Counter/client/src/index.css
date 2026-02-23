@@ -743,10 +743,41 @@ input, select, textarea {
   background: var(--color-surface);
 }
 
-.planned-meal-actions {
+.planned-meal-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--color-success);
+  background: none;
+  color: var(--color-success);
+  font-size: 0.9rem;
   display: flex;
-  gap: 0.375rem;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.planned-meal-check:hover {
+  background: var(--color-success);
+  color: white;
+}
+
+.planned-meal-delete {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 1.1rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.planned-meal-delete:hover {
+  color: var(--color-danger);
 }
 
 /* ==================== Modal ==================== */
