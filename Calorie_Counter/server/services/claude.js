@@ -32,7 +32,7 @@ async function callLLM({ messages, systemPrompt, maxTokens = 1024 }) {
     }
     allMessages.push(...messages);
 
-    const res = await fetch(`${config.apiBase}/v1/chat/completions`, {
+    const res = await fetch(`${config.apiBase}/openai/v1/chat/completions`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${config.apiKey}`,
