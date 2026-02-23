@@ -6,6 +6,7 @@ import CalorieBudgetBar from '../components/CalorieBudgetBar';
 import FoodSearch from '../components/FoodSearch';
 import { markSharesSeen } from '../hooks/useNewShares';
 import Leaderboard from '../components/Leaderboard';
+import { useAuth } from '../context/AuthContext';
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
@@ -23,6 +24,7 @@ function isToday(dateStr) {
 }
 
 export default function Sharing() {
+  const { user } = useAuth();
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [viewingUser, setViewingUser] = useState(null);
@@ -35,6 +37,7 @@ export default function Sharing() {
   const { data: sharingData, isLoading } = useQuery({
     queryKey: ['sharing'],
     queryFn: () => api.get('/sharing').then(r => r.data),
+    staleTime: 1000 * 60 * 2,
   });
 
   // Mark all shares as seen when page loads
@@ -48,12 +51,14 @@ export default function Sharing() {
     queryKey: ['shared-meals', viewingUser?.owner_id, viewDate],
     queryFn: () => api.get(`/sharing/${viewingUser.owner_id}/meals`, { params: { date: viewDate } }).then(r => r.data),
     enabled: !!viewingUser && viewingUser.status === 'accepted',
+    staleTime: 1000 * 30,
   });
 
   const { data: sharedPlanned } = useQuery({
     queryKey: ['shared-planned', viewingUser?.owner_id, viewDate],
     queryFn: () => api.get(`/sharing/${viewingUser.owner_id}/planned-meals`, { params: { from: viewDate } }).then(r => r.data),
     enabled: !!viewingUser && viewingUser.status === 'accepted' && !!viewingUser.share_planned,
+    staleTime: 1000 * 30,
   });
 
   const activeShareId = viewingUser
@@ -64,7 +69,8 @@ export default function Sharing() {
     queryKey: ['share-comments', activeShareId],
     queryFn: () => api.get(`/sharing/${activeShareId}/comments`).then(r => r.data),
     enabled: !!activeShareId && viewingUser?.status === 'accepted',
-    refetchInterval: 15000,
+    refetchInterval: 10000,
+    staleTime: 1000 * 5,
   });
 
   useEffect(() => {
@@ -121,9 +127,16 @@ export default function Sharing() {
   };
 
   const handleCommentSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!commentText.trim()) return;
     postComment.mutate(commentText.trim());
+  };
+
+  const handleChatKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleCommentSubmit();
+    }
   };
 
   const handleFoodSelect = (food) => {
@@ -459,55 +472,43 @@ export default function Sharing() {
               </div>
             )}
 
-            {/* Comments */}
+            {/* Chat */}
             {activeShareId && (
               <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Comments</h3>
-                <div style={{
-                  maxHeight: '200px',
-                  overflowY: 'auto',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.4rem',
-                  marginBottom: '0.75rem',
-                  padding: '0.5rem',
-                  background: 'var(--color-bg)',
-                  borderRadius: 'var(--radius)',
-                  minHeight: '60px',
-                }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Chat</h3>
+                <div className="share-chat-messages">
                   {(!commentsData?.comments || commentsData.comments.length === 0) ? (
                     <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', margin: 'auto', textAlign: 'center' }}>
-                      No comments yet. Send some encouragement!
+                      No messages yet. Say hi!
                     </p>
                   ) : (
-                    commentsData.comments.map(c => (
-                      <div key={c.id} style={{ fontSize: '0.85rem' }}>
-                        <span style={{ fontWeight: 600 }}>{c.sender_username}</span>
-                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginLeft: '0.4rem' }}>
-                          {new Date(c.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        <div style={{ marginTop: '0.1rem' }}>{c.text}</div>
-                      </div>
-                    ))
+                    commentsData.comments.map((c, i) => {
+                      const isMine = c.sender_username === user?.username;
+                      const prev = commentsData.comments[i - 1];
+                      const sameSender = prev && prev.sender_username === c.sender_username;
+                      return (
+                        <div key={c.id} className={`share-chat-msg ${isMine ? 'mine' : 'theirs'}`} style={sameSender ? { marginTop: '-0.1rem' } : { marginTop: '0.35rem' }}>
+                          {!sameSender && !isMine && <div className="chat-sender">{c.sender_username}</div>}
+                          <div>{c.text}</div>
+                          <div className="chat-time">
+                            {new Date(c.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                   <div ref={commentsEndRef} />
                 </div>
-                <form onSubmit={handleCommentSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+                <form onSubmit={handleCommentSubmit} className="share-chat-input">
                   <input
                     type="text"
                     value={commentText}
                     onChange={e => setCommentText(e.target.value)}
-                    placeholder="Write a comment..."
-                    style={{
-                      flex: 1,
-                      padding: '0.4rem 0.6rem',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: 'var(--radius)',
-                      fontSize: '0.85rem',
-                    }}
+                    onKeyDown={handleChatKeyDown}
+                    placeholder="Message..."
                   />
-                  <button type="submit" className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }} disabled={postComment.isPending}>
-                    Send
+                  <button type="submit" className="btn btn-primary" disabled={postComment.isPending || !commentText.trim()}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/></svg>
                   </button>
                 </form>
               </div>

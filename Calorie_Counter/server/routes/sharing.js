@@ -8,23 +8,24 @@ router.use(auth);
 // List who you share with + who shares with you
 router.get('/', async (req, res) => {
   try {
-    const sharing = await pool.query(
-      `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, ss.status, s.created_at
-       FROM shares s
-       JOIN users u ON s.viewer_id = u.id
-       LEFT JOIN share_status ss ON ss.share_id = s.id
-       WHERE s.owner_id = $1`,
-      [req.userId]
-    );
-
-    const sharedWithMe = await pool.query(
-      `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, ss.status, s.created_at
-       FROM shares s
-       JOIN users u ON s.owner_id = u.id
-       LEFT JOIN share_status ss ON ss.share_id = s.id
-       WHERE s.viewer_id = $1`,
-      [req.userId]
-    );
+    const [sharing, sharedWithMe] = await Promise.all([
+      pool.query(
+        `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, ss.status, s.created_at
+         FROM shares s
+         JOIN users u ON s.viewer_id = u.id
+         LEFT JOIN share_status ss ON ss.share_id = s.id
+         WHERE s.owner_id = $1`,
+        [req.userId]
+      ),
+      pool.query(
+        `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, ss.status, s.created_at
+         FROM shares s
+         JOIN users u ON s.owner_id = u.id
+         LEFT JOIN share_status ss ON ss.share_id = s.id
+         WHERE s.viewer_id = $1`,
+        [req.userId]
+      ),
+    ]);
 
     res.json({
       sharing: sharing.rows,
