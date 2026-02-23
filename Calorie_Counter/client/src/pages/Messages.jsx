@@ -41,8 +41,8 @@ export default function Messages() {
     queryKey: ['share-comments', activeShareId],
     queryFn: () => api.get(`/sharing/${activeShareId}/comments`).then(r => r.data),
     enabled: !!activeShareId,
-    refetchInterval: 5000,
-    staleTime: 1000 * 3,
+    refetchInterval: 2000,
+    staleTime: 1000,
   });
 
   // Mark messages as read when opening this page

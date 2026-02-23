@@ -69,8 +69,8 @@ export default function Sharing() {
     queryKey: ['share-comments', activeShareId],
     queryFn: () => api.get(`/sharing/${activeShareId}/comments`).then(r => r.data),
     enabled: !!activeShareId && viewingUser?.status === 'accepted',
-    refetchInterval: 10000,
-    staleTime: 1000 * 5,
+    refetchInterval: 2000,
+    staleTime: 1000,
   });
 
   useEffect(() => {
