@@ -79,13 +79,14 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'meal_type must be breakfast, lunch, dinner, or snack' });
     }
 
-    // If logging for another user, verify an accepted share exists
+    // If logging for another user, verify an accepted share exists (either direction)
     let targetUserId = req.userId;
     if (for_user_id && for_user_id !== req.userId) {
       const shareCheck = await pool.query(
         `SELECT s.id FROM shares s
          JOIN share_status ss ON ss.share_id = s.id
-         WHERE s.owner_id = $1 AND s.viewer_id = $2 AND ss.status = 'accepted'`,
+         WHERE ((s.owner_id = $1 AND s.viewer_id = $2) OR (s.owner_id = $2 AND s.viewer_id = $1))
+           AND ss.status = 'accepted'`,
         [for_user_id, req.userId]
       );
       if (shareCheck.rows.length === 0) {

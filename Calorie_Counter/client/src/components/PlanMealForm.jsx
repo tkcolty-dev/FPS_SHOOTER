@@ -30,7 +30,21 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
     staleTime: 1000 * 60 * 2,
   });
 
-  const sharedUsers = (sharingData?.sharedWithMe || []).filter(s => s.status === 'accepted');
+  // Deduplicate shared users from both directions
+  const sharedUsers = [];
+  const seenIds = new Set();
+  for (const s of (sharingData?.sharedWithMe || [])) {
+    if (s.status === 'accepted' && !seenIds.has(s.owner_id)) {
+      seenIds.add(s.owner_id);
+      sharedUsers.push({ userId: s.owner_id, username: s.owner_username });
+    }
+  }
+  for (const s of (sharingData?.sharing || [])) {
+    if (s.status === 'accepted' && !seenIds.has(s.viewer_id)) {
+      seenIds.add(s.viewer_id);
+      sharedUsers.push({ userId: s.viewer_id, username: s.viewer_username });
+    }
+  }
 
   useEffect(() => {
     if (name.length < 2) {
@@ -112,7 +126,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
               <select id="planForUser" value={forUserId} onChange={(e) => setForUserId(e.target.value)}>
                 <option value="">Myself</option>
                 {sharedUsers.map(s => (
-                  <option key={s.owner_id} value={s.owner_id}>{s.owner_username}</option>
+                  <option key={s.userId} value={s.userId}>{s.username}</option>
                 ))}
               </select>
             </div>
@@ -254,7 +268,7 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
               disabled={createPlanned.isPending}
               style={{ flex: 1, padding: '0.625rem' }}
             >
-              {createPlanned.isPending ? 'Saving...' : forUserId ? `Plan for ${sharedUsers.find(s => String(s.owner_id) === forUserId)?.owner_username || 'user'}` : 'Plan Meal'}
+              {createPlanned.isPending ? 'Saving...' : forUserId ? `Plan for ${sharedUsers.find(s => String(s.userId) === forUserId)?.username || 'user'}` : 'Plan Meal'}
             </button>
             <button
               type="button"

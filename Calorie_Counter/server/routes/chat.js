@@ -34,13 +34,13 @@ router.post('/', async (req, res) => {
          ORDER BY planned_date, created_at`,
         [req.userId, clientDate]
       ),
-      // Accepted shares: users who shared with me (I can log/plan for them)
+      // Accepted shares: all shared users in both directions
       pool.query(
         `SELECT u.id as user_id, u.username
          FROM shares s
          JOIN share_status ss ON ss.share_id = s.id
-         JOIN users u ON u.id = s.owner_id
-         WHERE s.viewer_id = $1 AND ss.status = 'accepted'`,
+         JOIN users u ON u.id = CASE WHEN s.owner_id = $1 THEN s.viewer_id ELSE s.owner_id END
+         WHERE (s.owner_id = $1 OR s.viewer_id = $1) AND ss.status = 'accepted'`,
         [req.userId]
       ),
     ]);
