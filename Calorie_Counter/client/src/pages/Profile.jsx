@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
@@ -31,6 +32,13 @@ const links = [
 export default function Profile() {
   const { user, logout } = useAuth();
   const { newCount } = useNewShares();
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'auto');
+
+  const changeTheme = (t) => {
+    setTheme(t);
+    localStorage.setItem('theme', t);
+    document.documentElement.setAttribute('data-theme', t);
+  };
 
   return (
     <div>
@@ -74,6 +82,20 @@ export default function Profile() {
             <span style={{ color: 'var(--color-text-secondary)', fontSize: '1.2rem' }}>&rsaquo;</span>
           </Link>
         ))}
+      </div>
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>Appearance</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>Choose your theme</div>
+          </div>
+          <div className="theme-toggle">
+            <button className={theme === 'light' ? 'active' : ''} onClick={() => changeTheme('light')}>Light</button>
+            <button className={theme === 'auto' ? 'active' : ''} onClick={() => changeTheme('auto')}>Auto</button>
+            <button className={theme === 'dark' ? 'active' : ''} onClick={() => changeTheme('dark')}>Dark</button>
+          </div>
+        </div>
       </div>
 
       <button onClick={logout} className="btn btn-danger" style={{ width: '100%', padding: '0.75rem' }}>

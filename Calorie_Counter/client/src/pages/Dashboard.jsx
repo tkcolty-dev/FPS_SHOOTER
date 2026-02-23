@@ -7,6 +7,7 @@ import MealTable from '../components/MealTable';
 import WeekStrip from '../components/WeekStrip';
 import PlannedMealsList from '../components/PlannedMealsList';
 import PlanMealForm from '../components/PlanMealForm';
+import WelcomeTutorial from '../components/WelcomeTutorial';
 
 function formatDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -148,6 +149,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      <WelcomeTutorial />
       <div className="page-header">
         <h1>Today's Summary</h1>
         <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>

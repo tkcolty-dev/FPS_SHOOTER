@@ -167,6 +167,36 @@ router.get('/weekly-summary', async (req, res) => {
       foodReference: [],
     });
 
+    // Auto-share summary with partners
+    const shareKey = `weekly-summary-shared:${req.userId}:${today}`;
+    const alreadyShared = await pool.query(
+      `SELECT 1 FROM share_comments
+       WHERE sender_id = $1 AND text LIKE '[Weekly Summary]%'
+         AND created_at > ($2::date - 1)`,
+      [req.userId, today]
+    );
+
+    if (alreadyShared.rows.length === 0) {
+      // Get all accepted shares (both directions)
+      const shares = await pool.query(
+        `SELECT s.id FROM shares s
+         JOIN share_status ss ON ss.share_id = s.id
+         WHERE (s.owner_id = $1 OR s.viewer_id = $1) AND ss.status = 'accepted'`,
+        [req.userId]
+      );
+
+      if (shares.rows.length > 0) {
+        const username = (await pool.query('SELECT username FROM users WHERE id = $1', [req.userId])).rows[0]?.username;
+        const shareMsg = `[Weekly Summary] ${daysLogged}/7 days logged, ${avgCal} cal/day avg. ${summaryText}`;
+        await Promise.all(shares.rows.map(s =>
+          pool.query(
+            'INSERT INTO share_comments (share_id, sender_id, text) VALUES ($1, $2, $3)',
+            [s.id, req.userId, shareMsg]
+          ).catch(() => {})
+        ));
+      }
+    }
+
     res.json({
       summary: {
         text: summaryText,

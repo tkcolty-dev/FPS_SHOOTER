@@ -4,6 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
 
+// Apply saved theme before render to prevent flash
+const savedTheme = localStorage.getItem('theme') || 'auto';
+document.documentElement.setAttribute('data-theme', savedTheme);
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
