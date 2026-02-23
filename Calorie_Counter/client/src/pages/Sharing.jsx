@@ -103,12 +103,7 @@ export default function Sharing() {
                   borderRadius: 'var(--radius)',
                 }}
               >
-                <div>
-                  <span style={{ fontWeight: 500 }}>{share.viewer_username}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginLeft: 8 }}>
-                    {share.viewer_email}
-                  </span>
-                </div>
+                <span style={{ fontWeight: 500 }}>{share.viewer_username}</span>
                 <button
                   className="btn btn-danger"
                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}

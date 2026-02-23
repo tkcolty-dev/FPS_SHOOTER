@@ -9,14 +9,14 @@ router.use(auth);
 router.get('/', async (req, res) => {
   try {
     const sharing = await pool.query(
-      `SELECT s.id, s.viewer_id, u.username as viewer_username, u.email as viewer_email, s.created_at
+      `SELECT s.id, s.viewer_id, u.username as viewer_username, s.created_at
        FROM shares s JOIN users u ON s.viewer_id = u.id
        WHERE s.owner_id = $1`,
       [req.userId]
     );
 
     const sharedWithMe = await pool.query(
-      `SELECT s.id, s.owner_id, u.username as owner_username, u.email as owner_email, s.created_at
+      `SELECT s.id, s.owner_id, u.username as owner_username, s.created_at
        FROM shares s JOIN users u ON s.owner_id = u.id
        WHERE s.viewer_id = $1`,
       [req.userId]

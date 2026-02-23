@@ -1,7 +1,6 @@
 exports.up = (pgm) => {
   pgm.createTable('users', {
     id: 'id',
-    email: { type: 'varchar(255)', notNull: true, unique: true },
     username: { type: 'varchar(100)', notNull: true, unique: true },
     password_hash: { type: 'varchar(255)', notNull: true },
     created_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
