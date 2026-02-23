@@ -1,9 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 
-function parseMealBlocks(text) {
+function parseBlocks(text) {
   const parts = [];
-  const regex = /```meal\s*\n([\s\S]*?)```/g;
+  // Match meal blocks and planned summary blocks
+  const regex = /```meal\s*\n([\s\S]*?)```|---PLANNED:(.*?):(.*?):([\s\S]*?)(?=\n\n|$)/g;
   let lastIndex = 0;
   let match;
 
@@ -11,11 +12,24 @@ function parseMealBlocks(text) {
     if (match.index > lastIndex) {
       parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
     }
-    try {
-      const meal = JSON.parse(match[1].trim());
-      parts.push({ type: 'meal', content: meal });
-    } catch {
-      parts.push({ type: 'text', content: match[0] });
+    if (match[1] !== undefined) {
+      // meal block
+      try {
+        const meal = JSON.parse(match[1].trim());
+        parts.push({ type: 'meal', content: meal });
+      } catch {
+        parts.push({ type: 'text', content: match[0] });
+      }
+    } else if (match[2] !== undefined) {
+      // planned summary
+      parts.push({
+        type: 'planned',
+        content: {
+          date: match[2],
+          totalCal: match[3],
+          items: match[4].trim(),
+        },
+      });
     }
     lastIndex = regex.lastIndex;
   }
@@ -62,6 +76,23 @@ function MealCard({ meal }) {
   );
 }
 
+function PlannedCard({ plan }) {
+  return (
+    <div className="chat-planned-card">
+      <div className="chat-planned-card-header">
+        <span className="chat-planned-badge">Planned</span>
+        <span className="chat-planned-date">{plan.date}</span>
+        <span className="chat-planned-total">{plan.totalCal} cal</span>
+      </div>
+      <div className="chat-planned-card-items">
+        {plan.items.split('\n').map((item, i) => (
+          <div key={i} className="chat-planned-card-item">{item}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function ChatMessage({ message }) {
   const isUser = message.role === 'user';
 
@@ -69,13 +100,15 @@ export default function ChatMessage({ message }) {
     return <div className="chat-bubble user">{message.content}</div>;
   }
 
-  const parts = parseMealBlocks(message.content);
+  const parts = parseBlocks(message.content);
 
   return (
     <div className="chat-bubble assistant">
       {parts.map((part, i) =>
         part.type === 'meal' ? (
           <MealCard key={i} meal={part.content} />
+        ) : part.type === 'planned' ? (
+          <PlannedCard key={i} plan={part.content} />
         ) : (
           <span key={i} style={{ whiteSpace: 'pre-wrap' }}>{part.content.trim()}</span>
         )
