@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
@@ -11,8 +11,26 @@ export default function MealLog() {
   const [notes, setNotes] = useState('');
   const [saveAsFavorite, setSaveAsFavorite] = useState(false);
   const [error, setError] = useState('');
+  const [calorieHints, setCalorieHints] = useState([]);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Debounced calorie lookup on name input
+  useEffect(() => {
+    if (name.length < 2) {
+      setCalorieHints([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get('/foods', { params: { q: name } });
+        setCalorieHints(res.data.slice(0, 3));
+      } catch {
+        setCalorieHints([]);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [name]);
 
   const { data: customMeals = [] } = useQuery({
     queryKey: ['custom-meals'],
@@ -134,8 +152,27 @@ export default function MealLog() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Grilled chicken salad"
+            autoComplete="off"
             required
           />
+          {calorieHints.length > 0 && (
+            <div className="calorie-hint">
+              {calorieHints.map((food) => (
+                <button
+                  key={food.id}
+                  type="button"
+                  className="calorie-hint-item"
+                  onClick={() => {
+                    setName(food.name);
+                    setCalories(String(food.calories_per_serving));
+                    setCalorieHints([]);
+                  }}
+                >
+                  {food.name}: ~{food.calories_per_serving} cal ({food.serving_size})
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="form-group">

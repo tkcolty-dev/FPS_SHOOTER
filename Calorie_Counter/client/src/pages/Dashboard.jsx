@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
@@ -18,6 +19,16 @@ export default function Dashboard() {
     queryFn: () => api.get('/goals').then(r => r.data),
   });
 
+  const { data: historyMeals = [] } = useQuery({
+    queryKey: ['meals-history'],
+    queryFn: () => api.get('/meals/history', { params: { days: 7 } }).then(r => r.data),
+  });
+
+  const { data: topFoods = [] } = useQuery({
+    queryKey: ['top-foods'],
+    queryFn: () => api.get('/meals/top-foods', { params: { days: 30 } }).then(r => r.data),
+  });
+
   const deleteMeal = useMutation({
     mutationFn: (id) => api.delete(`/meals/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
@@ -25,6 +36,16 @@ export default function Dashboard() {
 
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const dailyGoal = goals?.daily_total || 2000;
+
+  // Group history meals by date
+  const historyByDate = historyMeals.reduce((acc, meal) => {
+    const date = new Date(meal.logged_at).toISOString().split('T')[0];
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(meal);
+    return acc;
+  }, {});
+
+  const maxFoodCount = topFoods.length > 0 ? topFoods[0].count : 1;
 
   return (
     <div>
@@ -53,6 +74,77 @@ export default function Dashboard() {
         </div>
       ) : (
         <MealTable meals={meals} onDelete={(id) => deleteMeal.mutate(id)} />
+      )}
+
+      {topFoods.length > 0 && (
+        <div className="history-section">
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Your Top Foods</h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Last 30 days</p>
+          <div className="top-foods-list">
+            {topFoods.map((food, i) => (
+              <div key={food.name} className="top-food-item">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                    {i + 1}. {food.name}
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                    {food.count}x · ~{food.avg_calories} cal
+                  </span>
+                </div>
+                <div className="top-food-bar-track">
+                  <div
+                    className="top-food-bar"
+                    style={{ width: `${(food.count / maxFoodCount) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {Object.keys(historyByDate).length > 0 && (
+        <div className="history-section">
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Recent History</h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Last 7 days</p>
+          {Object.entries(historyByDate)
+            .sort(([a], [b]) => b.localeCompare(a))
+            .map(([date, dateMeals]) => (
+              <HistoryDateSection key={date} date={date} meals={dateMeals} />
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HistoryDateSection({ date, meals }) {
+  const [open, setOpen] = useState(false);
+  const total = meals.reduce((sum, m) => sum + m.calories, 0);
+  const label = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  });
+
+  return (
+    <div className="history-date-group">
+      <button className="history-date-header" onClick={() => setOpen(!open)}>
+        <span style={{ fontWeight: 500 }}>{label}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontWeight: 600 }}>{total} cal</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+            {meals.length} meal{meals.length !== 1 ? 's' : ''} {open ? '▲' : '▼'}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <div className="history-rows">
+          {meals.map((m) => (
+            <div key={m.id} className="history-row">
+              <span className="history-row-name">{m.name}</span>
+              <span className="history-row-cal">{m.calories} cal</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

@@ -5,6 +5,43 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 router.use(auth);
 
+// Get meal history grouped by date (excludes today)
+router.get('/history', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    const result = await pool.query(
+      `SELECT * FROM meals WHERE user_id = $1
+        AND logged_at::date >= CURRENT_DATE - $2::int
+        AND logged_at::date < CURRENT_DATE
+       ORDER BY logged_at DESC`,
+      [req.userId, days]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Get meal history error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get top foods by frequency
+router.get('/top-foods', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 30;
+    const result = await pool.query(
+      `SELECT name, COUNT(*)::int as count, ROUND(AVG(calories))::int as avg_calories,
+              SUM(calories)::int as total_calories
+       FROM meals WHERE user_id = $1
+        AND logged_at::date >= CURRENT_DATE - $2::int
+       GROUP BY name ORDER BY count DESC LIMIT 10`,
+      [req.userId, days]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Get top foods error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get meals for a date
 router.get('/', async (req, res) => {
   try {
