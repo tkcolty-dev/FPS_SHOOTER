@@ -32,7 +32,7 @@ const links = [
 export default function Profile() {
   const { user, logout } = useAuth();
   const { newCount } = useNewShares();
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'auto');
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
   const changeTheme = (t) => {
     setTheme(t);
