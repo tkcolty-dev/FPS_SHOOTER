@@ -6,9 +6,10 @@ function getGenAIConfig() {
     const vcap = JSON.parse(process.env.VCAP_SERVICES);
     const genai = vcap.genai && vcap.genai[0];
     if (genai) {
+      const ep = genai.credentials.endpoint || genai.credentials;
       return {
-        apiBase: genai.credentials.endpoint.api_base,
-        apiKey: genai.credentials.endpoint.api_key,
+        apiBase: ep.api_base,
+        apiKey: ep.api_key,
         model: 'openai/gpt-oss-120b',
         provider: 'genai',
       };

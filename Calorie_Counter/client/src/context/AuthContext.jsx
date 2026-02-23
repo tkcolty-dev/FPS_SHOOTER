@@ -40,6 +40,8 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('chat-history');
+    localStorage.removeItem('chat-prefill');
     setUser(null);
   };
 

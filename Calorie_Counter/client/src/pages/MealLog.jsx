@@ -225,9 +225,10 @@ export default function MealLog() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5V3h4"/><path d="M17 3h4v2"/><path d="M21 19v2h-4"/><path d="M7 21H3v-2"/><path d="M7 8v8"/><path d="M11 8v8"/><path d="M15 8v8"/><path d="M19 8v8"/></svg>
             <span>Scan Barcode</span>
           </button>
-          <button className="log-action-btn" onClick={() => setShowPhotoCapture(true)}>
+          <button className="log-action-btn" disabled style={{ opacity: 0.5, cursor: 'not-allowed' }} title="Vision model not available">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Photo Log</span>
+            <span style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)' }}>Coming soon</span>
           </button>
         </div>
       </div>
