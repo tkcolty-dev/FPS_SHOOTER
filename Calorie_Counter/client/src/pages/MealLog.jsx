@@ -423,17 +423,16 @@ export default function MealLog() {
               <input id="fat" type="number" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="--" min="0" step="0.1" />
             </div>
           </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="notes">Notes (optional)</label>
-          <textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            placeholder="e.g. With extra avocado"
-          />
+          <div className="form-group">
+            <label htmlFor="notes">Notes (optional)</label>
+            <textarea
+              id="notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              placeholder="e.g. With extra avocado"
+            />
+          </div>
         </div>
 
         <div style={{ marginBottom: '0.75rem' }}>
