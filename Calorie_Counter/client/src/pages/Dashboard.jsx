@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
@@ -8,6 +8,37 @@ import WeekStrip from '../components/WeekStrip';
 import PlannedMealsList from '../components/PlannedMealsList';
 import PlanMealForm from '../components/PlanMealForm';
 import WelcomeTutorial from '../components/WelcomeTutorial';
+
+function CollapsibleSection({ title, subtitle, defaultOpen = true, children, actions }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const contentRef = useRef(null);
+
+  return (
+    <div className="collapsible-section">
+      <button className="collapsible-header" onClick={() => setOpen(!open)}>
+        <div className="collapsible-title-row">
+          <div>
+            <span className="collapsible-title">{title}</span>
+            {subtitle && <span className="collapsible-subtitle">{subtitle}</span>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {actions && open && <div onClick={e => e.stopPropagation()}>{actions}</div>}
+            <span className={`collapsible-chevron ${open ? 'open' : ''}`}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+        </div>
+      </button>
+      <div
+        className={`collapsible-content ${open ? 'open' : ''}`}
+        ref={contentRef}
+        style={{ maxHeight: open ? (contentRef.current?.scrollHeight || 9999) + 'px' : '0px' }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function formatDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -231,130 +262,130 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '0.75rem' }}>
-        <WeekStrip
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          datesWithPlans={datesWithPlans}
-        />
-      </div>
-
-      {selectedDayPlans.length > 0 && (
-        <PlannedMealsList
-          plannedMeals={selectedDayPlans}
-          onLog={(meal) => logPlannedMeal.mutate(meal)}
-          onDelete={(id) => deletePlannedMeal.mutate(id)}
-          canLog={selectedDate <= today}
-        />
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Meals</h2>
-        <div className="dashboard-meal-actions" style={{ display: 'flex', gap: '0.5rem' }}>
-          <button
-            className="btn btn-secondary"
-            style={{ fontSize: '0.85rem' }}
-            onClick={() => setShowPlanForm(true)}
-          >
-            + Plan Meal
-          </button>
-          <Link to="/log" className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
-            + Log Meal
-          </Link>
+      <CollapsibleSection title="Planner" subtitle={selectedDayPlans.length > 0 ? `${selectedDayPlans.length} planned` : ''}>
+        <div style={{ padding: '0.75rem' }}>
+          <WeekStrip
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            datesWithPlans={datesWithPlans}
+          />
         </div>
-      </div>
+        {selectedDayPlans.length > 0 && (
+          <div style={{ padding: '0 0.75rem 0.75rem' }}>
+            <PlannedMealsList
+              plannedMeals={selectedDayPlans}
+              onLog={(meal) => logPlannedMeal.mutate(meal)}
+              onDelete={(id) => deletePlannedMeal.mutate(id)}
+              canLog={selectedDate <= today}
+            />
+          </div>
+        )}
+      </CollapsibleSection>
 
-      {meals.length > 0 && !confirmClear && (
-        <div style={{ textAlign: 'right', marginBottom: '0.5rem', marginTop: '-0.5rem' }}>
-          <button
-            className="btn"
-            style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', color: 'var(--color-text-secondary)', border: 'none', background: 'none', textDecoration: 'underline' }}
-            onClick={() => {
-              setConfirmClear(true);
-              setTimeout(() => setConfirmClear(false), 4000);
-            }}
-          >
-            Clear all meals
-          </button>
-        </div>
-      )}
-      {confirmClear && (
-        <div style={{ textAlign: 'right', marginBottom: '0.5rem', marginTop: '-0.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Delete all today's meals?</span>
-          <button
-            className="btn btn-danger"
-            style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
-            onClick={() => { clearToday.mutate(); setConfirmClear(false); }}
-            disabled={clearToday.isPending}
-          >
-            Yes, clear
-          </button>
-          <button
-            className="btn btn-secondary"
-            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-            onClick={() => setConfirmClear(false)}
-          >
-            Cancel
-          </button>
-        </div>
-      )}
+      <CollapsibleSection
+        title="Meals"
+        subtitle={meals.length > 0 ? `${totalCalories} cal` : ''}
+        actions={
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }} onClick={() => setShowPlanForm(true)}>+ Plan</button>
+            <Link to="/log" className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }}>+ Log</Link>
+          </div>
+        }
+      >
+        {meals.length > 0 && !confirmClear && (
+          <div style={{ textAlign: 'right', padding: '0 0.75rem', marginBottom: '-0.25rem' }}>
+            <button
+              className="btn"
+              style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', color: 'var(--color-text-secondary)', border: 'none', background: 'none', textDecoration: 'underline' }}
+              onClick={() => {
+                setConfirmClear(true);
+                setTimeout(() => setConfirmClear(false), 4000);
+              }}
+            >
+              Clear all meals
+            </button>
+          </div>
+        )}
+        {confirmClear && (
+          <div style={{ padding: '0.5rem 0.75rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Delete all today's meals?</span>
+            <button
+              className="btn btn-danger"
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+              onClick={() => { clearToday.mutate(); setConfirmClear(false); }}
+              disabled={clearToday.isPending}
+            >
+              Yes, clear
+            </button>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+              onClick={() => setConfirmClear(false)}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
 
-      {showPlanForm && (
-        <PlanMealForm
-          date={selectedDate}
-          onClose={() => setShowPlanForm(false)}
-          onSuccess={() => setShowPlanForm(false)}
-        />
-      )}
+        {showPlanForm && (
+          <PlanMealForm
+            date={selectedDate}
+            onClose={() => setShowPlanForm(false)}
+            onSuccess={() => setShowPlanForm(false)}
+          />
+        )}
 
-      {mealsLoading ? (
-        <div className="loading">Loading meals...</div>
-      ) : meals.length === 0 ? (
-        <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-          <p>No meals logged today.</p>
-          <Link to="/log" style={{ fontSize: '0.9rem' }}>Log your first meal</Link>
+        <div style={{ padding: '0.5rem 0.75rem 0.75rem' }}>
+          {mealsLoading ? (
+            <div className="loading">Loading meals...</div>
+          ) : meals.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '0.75rem 0' }}>
+              <p>No meals logged today.</p>
+              <Link to="/log" style={{ fontSize: '0.9rem' }}>Log your first meal</Link>
+            </div>
+          ) : (
+            <MealTable meals={meals} onDelete={(id) => deleteMeal.mutate(id)} />
+          )}
         </div>
-      ) : (
-        <MealTable meals={meals} onDelete={(id) => deleteMeal.mutate(id)} />
-      )}
+      </CollapsibleSection>
 
       {topFoods.length > 0 && (
-        <div className="history-section">
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Your Favorites</h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Most eaten - last 30 days</p>
-          <div className="top-foods-list">
-            {topFoods.map((food, i) => (
-              <div key={food.name} className="top-food-item">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                    {i + 1}. {food.name}
-                  </span>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', marginLeft: 8 }}>
-                    {food.count}x · ~{food.avg_calories} cal
-                  </span>
+        <CollapsibleSection title="Your Favorites" subtitle="Last 30 days">
+          <div style={{ padding: '0.5rem 0.75rem 0.75rem' }}>
+            <div className="top-foods-list">
+              {topFoods.map((food, i) => (
+                <div key={food.name} className="top-food-item">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+                      {i + 1}. {food.name}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', marginLeft: 8 }}>
+                      {food.count}x · ~{food.avg_calories} cal
+                    </span>
+                  </div>
+                  <div className="top-food-bar-track">
+                    <div
+                      className="top-food-bar"
+                      style={{ width: `${(food.count / maxFoodCount) * 100}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="top-food-bar-track">
-                  <div
-                    className="top-food-bar"
-                    style={{ width: `${(food.count / maxFoodCount) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {Object.keys(historyByDate).length > 0 && (
-        <div className="history-section">
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Recent History</h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Last 7 days</p>
-          {Object.entries(historyByDate)
-            .sort(([a], [b]) => b.localeCompare(a))
-            .map(([date, dateMeals]) => (
-              <HistoryDateSection key={date} date={date} meals={dateMeals} onCopyToToday={(d) => copyDay.mutate(d)} />
-            ))}
-        </div>
+        <CollapsibleSection title="Recent History" subtitle="Last 7 days">
+          <div style={{ padding: '0.5rem 0.75rem 0.75rem' }}>
+            {Object.entries(historyByDate)
+              .sort(([a], [b]) => b.localeCompare(a))
+              .map(([date, dateMeals]) => (
+                <HistoryDateSection key={date} date={date} meals={dateMeals} onCopyToToday={(d) => copyDay.mutate(d)} />
+              ))}
+          </div>
+        </CollapsibleSection>
       )}
     </div>
   );

@@ -647,6 +647,72 @@ input, select, textarea {
 }
 
 /* ==================== History Section ==================== */
+/* ==================== Collapsible Sections ==================== */
+.collapsible-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--color-text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.collapsible-header:active {
+  background: var(--color-bg);
+}
+
+.collapsible-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.collapsible-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.collapsible-subtitle {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+  margin-left: 0.5rem;
+}
+
+.collapsible-chevron {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+  transition: transform 0.25s ease;
+}
+
+.collapsible-chevron.open {
+  transform: rotate(180deg);
+}
+
+.collapsible-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.collapsible-content:not(.open) {
+  max-height: 0 !important;
+}
+
 .history-section {
   margin-top: 1.5rem;
 }
