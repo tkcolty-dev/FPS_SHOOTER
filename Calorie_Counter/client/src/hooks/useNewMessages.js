@@ -10,12 +10,38 @@ function getLastCheck() {
   return localStorage.getItem(LAST_CHECK_KEY) || new Date(0).toISOString();
 }
 
-// Play Apple iMessage-style tri-tone notification using Web Audio API
+// Shared AudioContext — unlocked on first user interaction
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+// Unlock audio on first user tap/click/keydown
+function unlockAudio() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+  } catch {}
+}
+
+if (typeof window !== 'undefined') {
+  ['click', 'touchstart', 'keydown'].forEach(evt =>
+    document.addEventListener(evt, unlockAudio, { once: true, capture: true })
+  );
+}
+
+// Play Apple iMessage-style tri-tone notification
 function playDing() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = getAudioCtx();
     const t = ctx.currentTime;
-    // Three notes: B5 → E6 → G#6 (iMessage tri-tone intervals)
     const notes = [
       { freq: 988, start: 0, dur: 0.12 },
       { freq: 1319, start: 0.14, dur: 0.12 },
