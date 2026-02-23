@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import FoodSearch from '../components/FoodSearch';
 
@@ -9,18 +9,48 @@ export default function MealLog() {
   const [name, setName] = useState('');
   const [calories, setCalories] = useState('');
   const [notes, setNotes] = useState('');
+  const [saveAsFavorite, setSaveAsFavorite] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  const { data: customMeals = [] } = useQuery({
+    queryKey: ['custom-meals'],
+    queryFn: () => api.get('/custom-meals').then(r => r.data),
+  });
+
   const createMeal = useMutation({
-    mutationFn: (data) => api.post('/meals', data),
+    mutationFn: async (data) => {
+      const res = await api.post('/meals', data);
+      if (saveAsFavorite) {
+        await api.post('/custom-meals', {
+          name: data.name,
+          meal_type: data.meal_type,
+          calories: data.calories,
+          notes: data.notes,
+        });
+        queryClient.invalidateQueries({ queryKey: ['custom-meals'] });
+      }
+      return res;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
       navigate('/');
     },
     onError: (err) => {
       setError(err.response?.data?.error || 'Failed to log meal');
+    },
+  });
+
+  const quickLog = useMutation({
+    mutationFn: (meal) => api.post('/meals', {
+      meal_type: meal.meal_type,
+      name: meal.name,
+      calories: meal.calories,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meals'] });
+      navigate('/');
     },
   });
 
@@ -50,6 +80,27 @@ export default function MealLog() {
         <h1>Log a Meal</h1>
         <p>Search for a food or enter details manually</p>
       </div>
+
+      {customMeals.length > 0 && (
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 6 }}>
+            My Saved Meals
+          </label>
+          <div className="saved-meals-bar">
+            {customMeals.map(m => (
+              <button
+                key={m.id}
+                className="saved-meal-chip"
+                onClick={() => quickLog.mutate(m)}
+                disabled={quickLog.isPending}
+              >
+                {m.name}
+                <span className="saved-meal-chip-cal">{m.calories} cal</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 6 }}>
@@ -109,6 +160,18 @@ export default function MealLog() {
             rows={2}
             placeholder="e.g. With extra avocado"
           />
+        </div>
+
+        <div style={{ marginBottom: '0.75rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={saveAsFavorite}
+              onChange={(e) => setSaveAsFavorite(e.target.checked)}
+              style={{ width: 16, height: 16 }}
+            />
+            Save as favorite meal
+          </label>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>

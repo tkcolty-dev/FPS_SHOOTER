@@ -5,22 +5,44 @@ import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import FoodSearch from '../components/FoodSearch';
 
-const SUGGESTIONS = [
-  'Pizza', 'Sushi', 'Tacos', 'Pasta', 'Burgers', 'Salad',
-  'Steak', 'Chicken', 'Rice', 'Salmon', 'Soup', 'Sandwich',
-  'Curry', 'Ramen', 'Stir Fry', 'Oatmeal', 'Eggs', 'Smoothie',
-  'Avocado Toast', 'Grilled Cheese', 'Wings', 'Shrimp', 'Tofu', 'Yogurt',
-];
+const CATEGORIES = {
+  Popular: [
+    'Pizza', 'Sushi', 'Tacos', 'Pasta', 'Burgers', 'Salad', 'Steak', 'Chicken',
+    'Rice', 'Salmon', 'Soup', 'Sandwich',
+  ],
+  Proteins: [
+    'Grilled Chicken', 'Steak', 'Salmon', 'Shrimp', 'Turkey', 'Tofu', 'Eggs',
+    'Tuna', 'Pork Chop', 'Lamb',
+  ],
+  Grains: [
+    'Rice', 'Pasta', 'Bread', 'Oatmeal', 'Quinoa', 'Tortilla', 'Bagel',
+    'Couscous', 'Naan', 'Cereal',
+  ],
+  Vegetables: [
+    'Broccoli', 'Spinach', 'Sweet Potato', 'Avocado', 'Carrots', 'Bell Pepper',
+    'Corn', 'Green Beans', 'Mushrooms', 'Zucchini',
+  ],
+  Fruits: [
+    'Banana', 'Apple', 'Strawberries', 'Blueberries', 'Mango', 'Orange',
+    'Grapes', 'Watermelon', 'Pineapple', 'Peach',
+  ],
+  Cuisines: [
+    'Curry', 'Ramen', 'Stir Fry', 'Burrito', 'Pad Thai', 'Pho', 'Bibimbap',
+    'Falafel', 'Gyro', 'Poke Bowl',
+  ],
+};
+
+const CATEGORY_NAMES = Object.keys(CATEGORIES);
 
 export default function Onboarding() {
   const [favorites, setFavorites] = useState([]);
+  const [activeTab, setActiveTab] = useState('Popular');
   const [customFood, setCustomFood] = useState('');
   const { completeOnboarding, user } = useAuth();
   const navigate = useNavigate();
 
   const saveFavorites = useMutation({
     mutationFn: async () => {
-      // Save all favorites as preferences
       await Promise.all(
         favorites.map(food =>
           api.post('/preferences', { preference_type: 'favorite', value: food })
@@ -56,6 +78,8 @@ export default function Onboarding() {
     navigate('/');
   };
 
+  const currentFoods = CATEGORIES[activeTab] || [];
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem' }}>
       <div style={{ width: '100%', maxWidth: 560 }}>
@@ -72,8 +96,21 @@ export default function Onboarding() {
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 8 }}>
             Tap to select your favorites
           </label>
+
+          <div className="onboarding-tabs">
+            {CATEGORY_NAMES.map(cat => (
+              <button
+                key={cat}
+                className={`onboarding-tab${activeTab === cat ? ' active' : ''}`}
+                onClick={() => setActiveTab(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-            {SUGGESTIONS.map(food => {
+            {currentFoods.map(food => {
               const selected = favorites.includes(food);
               return (
                 <button

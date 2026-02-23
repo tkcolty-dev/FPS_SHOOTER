@@ -10,6 +10,8 @@ import MealLog from './pages/MealLog';
 import Goals from './pages/Goals';
 import Preferences from './pages/Preferences';
 import Sharing from './pages/Sharing';
+import Chat from './pages/Chat';
+import Profile from './pages/Profile';
 
 export default function App() {
   return (
@@ -23,6 +25,8 @@ export default function App() {
             <Route element={<Navbar />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/log" element={<MealLog />} />
+              <Route path="/chat" element={<Chat />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/goals" element={<Goals />} />
               <Route path="/preferences" element={<Preferences />} />
               <Route path="/sharing" element={<Sharing />} />
