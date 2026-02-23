@@ -53,6 +53,7 @@ export default function MealTable({ meals, onDelete }) {
                       <span className="meal-table-row-cal">{meal.calories} cal</span>
                       <span className="meal-table-row-time">
                         {new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {meal.logged_by_username && <span style={{ marginLeft: '0.25rem', color: 'var(--color-primary)', fontSize: '0.7rem' }}>by {meal.logged_by_username}</span>}
                       </span>
                       {onDelete && (
                         <button className="meal-table-row-delete" onClick={() => onDelete(meal.id)}>

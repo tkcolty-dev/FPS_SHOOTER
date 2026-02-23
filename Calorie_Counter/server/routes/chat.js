@@ -199,10 +199,11 @@ router.post('/', async (req, res) => {
               [planTargetUserId, plan.name, plan.planned_date]
             );
             if (existing.rows.length === 0) {
+              const plannedBy = planTargetUserId !== req.userId ? req.userId : null;
               const inserted = await pool.query(
-                `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date, protein_g, carbs_g, fat_g)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-                [planTargetUserId, plan.meal_type, plan.name, parseInt(plan.calories), plan.notes || null, plan.planned_date, plan.protein_g || null, plan.carbs_g || null, plan.fat_g || null]
+                `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date, protein_g, carbs_g, fat_g, planned_by)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+                [planTargetUserId, plan.meal_type, plan.name, parseInt(plan.calories), plan.notes || null, plan.planned_date, plan.protein_g || null, plan.carbs_g || null, plan.fat_g || null, plannedBy]
               );
               savedPlans.push(inserted.rows[0]);
             }

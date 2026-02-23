@@ -13,9 +13,10 @@ router.get('/', async (req, res) => {
       return res.status(400).json({ error: 'from and to query params are required' });
     }
     const result = await pool.query(
-      `SELECT * FROM planned_meals
-       WHERE user_id = $1 AND planned_date >= $2 AND planned_date <= $3
-       ORDER BY planned_date, created_at`,
+      `SELECT pm.*, pb.username as planned_by_username FROM planned_meals pm
+       LEFT JOIN users pb ON pm.planned_by = pb.id
+       WHERE pm.user_id = $1 AND pm.planned_date >= $2 AND pm.planned_date <= $3
+       ORDER BY pm.planned_date, pm.created_at`,
       [req.userId, from, to]
     );
     res.json(result.rows);
