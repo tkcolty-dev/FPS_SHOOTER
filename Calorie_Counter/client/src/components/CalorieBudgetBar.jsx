@@ -1,7 +1,7 @@
 const barContainerStyle = {
   background: 'var(--color-border)',
-  borderRadius: 10,
-  height: 18,
+  borderRadius: 8,
+  height: 14,
   overflow: 'hidden',
   position: 'relative',
 };
@@ -51,9 +51,9 @@ export default function CalorieBudgetBar({ consumed, goal, macros, macroGoals })
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.8rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.75rem' }}>
         <span style={{ fontWeight: 600 }}>{consumed.toLocaleString()} cal</span>
-        <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontSize: '0.75rem' }}>
+        <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontSize: '0.7rem' }}>
           {isOver ? `${(consumed - goal).toLocaleString()} over` : `${remaining.toLocaleString()} left`} / {goal.toLocaleString()}
         </span>
       </div>
@@ -63,7 +63,7 @@ export default function CalorieBudgetBar({ consumed, goal, macros, macroGoals })
             height: '100%',
             width: `${pct}%`,
             background: barColor,
-            borderRadius: 10,
+            borderRadius: 8,
             transition: 'width 0.4s ease, background 0.3s',
           }}
         />
