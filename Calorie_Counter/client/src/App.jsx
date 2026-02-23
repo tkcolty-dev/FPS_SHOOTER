@@ -15,6 +15,7 @@ import Profile from './pages/Profile';
 import WeightLog from './pages/WeightLog';
 import Reports from './pages/Reports';
 import Challenges from './pages/Challenges';
+import Messages from './pages/Messages';
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/weight" element={<WeightLog />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/challenges" element={<Challenges />} />
+              <Route path="/messages" element={<Messages />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
