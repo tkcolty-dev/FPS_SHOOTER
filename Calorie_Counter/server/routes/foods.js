@@ -13,7 +13,7 @@ async function searchUSDA(query) {
     const params = new URLSearchParams({
       api_key: USDA_API_KEY,
       query,
-      pageSize: '15',
+      pageSize: '20',
       dataType: 'Branded,Survey (FNDDS)',
     });
     const resp = await fetch(`${USDA_BASE}?${params}`, { signal: AbortSignal.timeout(4000) });
@@ -21,37 +21,51 @@ async function searchUSDA(query) {
     const data = await resp.json();
     if (!data.foods) return [];
 
-    return data.foods
-      .map((f) => {
-        const energyNutrient = f.foodNutrients?.find(
-          (n) => n.nutrientId === 1008 || n.nutrientName === 'Energy'
-        );
-        if (!energyNutrient) return null;
-        const cal = Math.round(energyNutrient.value);
-        // USDA branded serving sizes are per 100g by default; use householdServingFullText if available
-        const serving = f.householdServingFullText || f.servingSize
-          ? `${f.servingSize || ''}${f.servingSizeUnit ? ' ' + f.servingSizeUnit.toLowerCase() : ''}`
-          : '1 serving';
-        const servingLabel = f.householdServingFullText || serving || '1 serving';
-        // Scale calories to household serving if possible
-        let calories = cal;
-        if (f.servingSize && f.householdServingFullText) {
-          // cal is per 100g; scale to actual serving size
-          calories = Math.round((cal * f.servingSize) / 100);
-        }
-        // Filter out unreasonable entries
-        if (calories <= 0 || calories > 5000) return null;
-        return {
+    const results = [];
+    for (const f of data.foods) {
+      const energyNutrient = f.foodNutrients?.find(
+        (n) => n.nutrientId === 1008 || n.nutrientName === 'Energy'
+      );
+      if (!energyNutrient) continue;
+      const calPer100g = energyNutrient.value;
+
+      if (f.dataType === 'Branded') {
+        // Branded: scale per 100g to actual serving
+        const servingGrams = f.servingSize || 100;
+        const calories = Math.round((calPer100g * servingGrams) / 100);
+        const servingLabel = f.householdServingFullText
+          || `${Math.round(servingGrams)}${(f.servingSizeUnit || 'g').toLowerCase() === 'ml' ? ' ml' : 'g'}`;
+        if (calories <= 0 || calories > 3000) continue;
+        results.push({
           id: `usda-${f.fdcId}`,
           name: titleCase(f.description),
-          brand: f.brandName || null,
+          brand: f.brandName || f.brandOwner || null,
           category: f.foodCategory || 'food',
           calories_per_serving: calories,
           serving_size: servingLabel,
           source: 'usda',
-        };
-      })
-      .filter(Boolean);
+        });
+      } else if (f.dataType === 'Survey (FNDDS)' && f.foodMeasures?.length > 0) {
+        // FNDDS: use foodMeasures to get per-item calories
+        // Pick the most useful measure (skip "Quantity not specified")
+        const measure = f.foodMeasures.find(
+          (m) => m.disseminationText && !m.disseminationText.includes('not specified')
+        ) || f.foodMeasures[0];
+        const grams = measure.gramWeight || 100;
+        const calories = Math.round((calPer100g * grams) / 100);
+        if (calories <= 0 || calories > 3000) continue;
+        results.push({
+          id: `usda-${f.fdcId}`,
+          name: titleCase(f.description),
+          brand: null,
+          category: f.foodCategory || 'food',
+          calories_per_serving: calories,
+          serving_size: measure.disseminationText || '1 serving',
+          source: 'usda',
+        });
+      }
+    }
+    return results;
   } catch {
     return [];
   }
@@ -102,12 +116,15 @@ router.get('/', async (req, res) => {
       localRows = fallback.rows.map((r) => ({ ...r, source: 'local' }));
     }
 
-    // Merge: local results first, then USDA (deduped by name)
+    // Merge: local results first, then USDA (deduped by name+brand)
     const seen = new Set(localRows.map((r) => r.name.toLowerCase()));
     const merged = [...localRows];
     for (const item of usdaResults) {
-      if (!seen.has(item.name.toLowerCase())) {
-        seen.add(item.name.toLowerCase());
+      const key = item.brand
+        ? `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`
+        : item.name.toLowerCase();
+      if (!seen.has(key) && !seen.has(item.name.toLowerCase())) {
+        seen.add(key);
         merged.push(item);
       }
     }
