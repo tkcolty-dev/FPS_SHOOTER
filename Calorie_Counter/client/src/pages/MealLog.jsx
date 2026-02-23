@@ -27,6 +27,7 @@ export default function MealLog() {
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [forUserId, setForUserId] = useState('');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -51,6 +52,29 @@ export default function MealLog() {
     queryKey: ['custom-meals'],
     queryFn: () => api.get('/custom-meals').then(r => r.data),
   });
+
+  const { data: sharingData } = useQuery({
+    queryKey: ['sharing'],
+    queryFn: () => api.get('/sharing').then(r => r.data),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const sharedUsers = [];
+  const seenIds = new Set();
+  if (sharingData) {
+    for (const s of (sharingData.sharedWithMe || [])) {
+      if (s.status === 'accepted' && !seenIds.has(s.owner_id)) {
+        seenIds.add(s.owner_id);
+        sharedUsers.push({ userId: s.owner_id, username: s.owner_username });
+      }
+    }
+    for (const s of (sharingData.sharing || [])) {
+      if (s.status === 'accepted' && !seenIds.has(s.viewer_id)) {
+        seenIds.add(s.viewer_id);
+        sharedUsers.push({ userId: s.viewer_id, username: s.viewer_username });
+      }
+    }
+  }
 
   const createMeal = useMutation({
     mutationFn: async (data) => {
@@ -143,6 +167,7 @@ export default function MealLog() {
       protein_g: protein ? parseFloat(protein) : undefined,
       carbs_g: carbs ? parseFloat(carbs) : undefined,
       fat_g: fat ? parseFloat(fat) : undefined,
+      for_user_id: forUserId ? parseInt(forUserId) : undefined,
     });
   };
 
@@ -244,6 +269,18 @@ export default function MealLog() {
             <option value="snack">Snack</option>
           </select>
         </div>
+
+        {sharedUsers.length > 0 && (
+          <div className="form-group">
+            <label htmlFor="logForUser">Log for</label>
+            <select id="logForUser" value={forUserId} onChange={(e) => setForUserId(e.target.value)}>
+              <option value="">Myself</option>
+              {sharedUsers.map(s => (
+                <option key={s.userId} value={s.userId}>{s.username}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="form-group">
           <label htmlFor="name">Food name</label>
@@ -370,7 +407,7 @@ export default function MealLog() {
             disabled={createMeal.isPending}
             style={{ flex: 1, padding: '0.625rem' }}
           >
-            {createMeal.isPending ? 'Logging...' : 'Log Meal'}
+            {createMeal.isPending ? 'Logging...' : forUserId ? `Log for ${sharedUsers.find(s => String(s.userId) === forUserId)?.username || 'user'}` : 'Log Meal'}
           </button>
           <button
             type="button"
