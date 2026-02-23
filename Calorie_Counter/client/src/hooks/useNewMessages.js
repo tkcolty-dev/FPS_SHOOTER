@@ -10,24 +10,26 @@ function getLastCheck() {
   return localStorage.getItem(LAST_CHECK_KEY) || new Date(0).toISOString();
 }
 
-// Shared AudioContext — unlocked on first user interaction
-let audioCtx = null;
+// Preload notification sound (real audio file)
+let notificationAudio = null;
 
-function getAudioCtx() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function getNotificationAudio() {
+  if (!notificationAudio) {
+    notificationAudio = new Audio('/notification.m4a');
+    notificationAudio.volume = 0.7;
+    // Preload so it's ready when needed
+    notificationAudio.load();
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  return audioCtx;
+  return notificationAudio;
 }
 
-// Unlock audio on first user tap/click/keydown
+// Unlock audio on first user tap/click/keydown (needed for mobile browsers)
 function unlockAudio() {
   try {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
+    const audio = getNotificationAudio();
+    // Play and immediately pause to unlock on iOS/Android
+    const p = audio.play();
+    if (p) p.then(() => { audio.pause(); audio.currentTime = 0; }).catch(() => {});
   } catch {}
 }
 
@@ -37,29 +39,11 @@ if (typeof window !== 'undefined') {
   );
 }
 
-// Play Apple iMessage-style tri-tone notification
 function playDing() {
   try {
-    const ctx = getAudioCtx();
-    const t = ctx.currentTime;
-    const notes = [
-      { freq: 988, start: 0, dur: 0.12 },
-      { freq: 1319, start: 0.14, dur: 0.12 },
-      { freq: 1661, start: 0.28, dur: 0.18 },
-    ];
-    for (const n of notes) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(n.freq, t + n.start);
-      gain.gain.setValueAtTime(0, t + n.start);
-      gain.gain.linearRampToValueAtTime(0.25, t + n.start + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.01, t + n.start + n.dur);
-      osc.start(t + n.start);
-      osc.stop(t + n.start + n.dur + 0.05);
-    }
+    const audio = getNotificationAudio();
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
   } catch {}
 }
 
