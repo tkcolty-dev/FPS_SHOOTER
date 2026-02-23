@@ -61,11 +61,16 @@ export default function MealLog() {
   });
 
   const quickLog = useMutation({
-    mutationFn: (meal) => api.post('/meals', {
-      meal_type: meal.meal_type,
-      name: meal.name,
-      calories: meal.calories,
-    }),
+    mutationFn: (meal) => {
+      const n = new Date();
+      const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+      return api.post('/meals', {
+        meal_type: meal.meal_type,
+        name: meal.name,
+        calories: meal.calories,
+        logged_at: localISO,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meals'] });
       navigate('/');
@@ -84,11 +89,15 @@ export default function MealLog() {
       setError('Name and calories are required');
       return;
     }
+    // Send local datetime so logged_at::date matches user's local date
+    const now = new Date();
+    const localISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`;
     createMeal.mutate({
       meal_type: mealType,
       name: name.trim(),
       calories: parseInt(calories),
       notes: notes.trim() || undefined,
+      logged_at: localISO,
     });
   };
 

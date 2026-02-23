@@ -7,13 +7,6 @@ const typeColors = {
   snack: '#10b981',
 };
 
-const typeEmoji = {
-  breakfast: '\u2600\ufe0f',
-  lunch: '\ud83c\udf5e',
-  dinner: '\ud83c\udf19',
-  snack: '\ud83c\udf7f',
-};
-
 const typeOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 export default function MealTable({ meals, onDelete }) {
@@ -45,7 +38,7 @@ export default function MealTable({ meals, onDelete }) {
           <div key={type} className="meal-table-section">
             <div className="meal-table-header" onClick={() => toggle(type)}>
               <div className="meal-table-header-left">
-                <span style={{ fontSize: '1.1rem' }}>{typeEmoji[type]}</span>
+                <span className="meal-type-dot" style={{ background: typeColors[type] }} />
                 <span className="meal-table-header-label">{type}</span>
                 <span className="meal-table-header-count">({items.length})</span>
               </div>

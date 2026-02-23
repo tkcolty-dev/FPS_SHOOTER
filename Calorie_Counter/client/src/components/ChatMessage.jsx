@@ -31,11 +31,16 @@ function MealCard({ meal }) {
   const queryClient = useQueryClient();
 
   const logMeal = useMutation({
-    mutationFn: () => api.post('/meals', {
-      meal_type: meal.meal_type || 'lunch',
-      name: meal.name,
-      calories: meal.calories,
-    }),
+    mutationFn: () => {
+      const n = new Date();
+      const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+      return api.post('/meals', {
+        meal_type: meal.meal_type || 'lunch',
+        name: meal.name,
+        calories: meal.calories,
+        logged_at: localISO,
+      });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
   });
 
