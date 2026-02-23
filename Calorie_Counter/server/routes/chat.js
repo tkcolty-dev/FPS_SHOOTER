@@ -2,7 +2,7 @@ const express = require('express');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
 const { chatWithAI } = require('../services/claude');
-const { searchLocalDB } = require('../services/foodSearch');
+const { searchLocalDB, searchOpenFoodFacts } = require('../services/foodSearch');
 
 const router = express.Router();
 router.use(auth);
@@ -59,17 +59,43 @@ router.post('/', async (req, res) => {
     let foodReference = [];
     try {
       const searches = [...searchTerms].slice(0, 3);
-      const results = await Promise.all(searches.map(t => searchLocalDB(t).catch(() => [])));
+      // Search both local DB and Open Food Facts for branded products
+      const [localResults, offResults] = await Promise.all([
+        Promise.all(searches.map(t => searchLocalDB(t).catch(() => []))),
+        Promise.all(searches.map(t => searchOpenFoodFacts(t).catch(() => []))),
+      ]);
       const seen = new Set();
-      for (const rows of results) {
+      // Add local DB results first
+      for (const rows of localResults) {
         for (const r of rows) {
           const key = r.name.toLowerCase();
           if (!seen.has(key)) {
             seen.add(key);
-            foodReference.push(r);
+            foodReference.push({
+              name: r.name,
+              calories_per_serving: r.calories_per_serving,
+              serving_size: r.serving_size || '1 serving',
+            });
           }
         }
       }
+      // Add branded Open Food Facts results
+      for (const rows of offResults) {
+        for (const r of rows) {
+          const label = r.brand ? `${r.name} (${r.brand})` : r.name;
+          const key = label.toLowerCase();
+          if (!seen.has(key)) {
+            seen.add(key);
+            foodReference.push({
+              name: label,
+              calories_per_serving: r.calories_per_serving,
+              serving_size: r.serving_size || '1 serving',
+            });
+          }
+        }
+      }
+      // Limit to avoid making the prompt too long
+      foodReference = foodReference.slice(0, 20);
     } catch {}
 
     let reply = await chatWithAI({

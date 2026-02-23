@@ -48,6 +48,33 @@ export default function FoodSearch({ onSelect }) {
     setResults([]);
   };
 
+  const handleFavorite = async (e, food) => {
+    e.stopPropagation();
+    try {
+      if (food.isFavorite) {
+        // Unfavorite — need to find the preference ID first
+        const prefs = await api.get('/preferences');
+        const match = prefs.data.find(
+          (p) => p.preference_type === 'favorite' && p.value.toLowerCase() === food.name.toLowerCase()
+        );
+        if (match) {
+          await api.delete(`/preferences/${match.id}`);
+        }
+      } else {
+        await api.post('/preferences', {
+          preference_type: 'favorite',
+          value: food.name,
+        });
+      }
+      // Update the result in place
+      setResults((prev) =>
+        prev.map((r) =>
+          r.id === food.id ? { ...r, isFavorite: !r.isFavorite } : r
+        )
+      );
+    } catch {}
+  };
+
   return (
     <div ref={wrapperRef} style={{ position: 'relative' }}>
       <input
@@ -55,7 +82,7 @@ export default function FoodSearch({ onSelect }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder="Search foods (e.g. chicken, pizza, Big Mac)..."
+        placeholder="Search foods (e.g. DiGiorno pizza, thin crust, Big Mac)..."
         style={{
           width: '100%',
           padding: '0.5rem 0.75rem',
@@ -80,33 +107,42 @@ export default function FoodSearch({ onSelect }) {
       {open && results.length > 0 && (
         <div className="food-search-dropdown">
           {results.map((food) => (
-            <button
+            <div
               key={food.id}
-              onClick={() => handleSelect(food)}
               className="food-search-item"
+              style={{ display: 'flex', alignItems: 'center' }}
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>
-                  {food.isFavorite && <span style={{ color: '#f59e0b', marginRight: 4 }}>*</span>}
-                  {food.name}
+              <button
+                onClick={() => handleSelect(food)}
+                style={{
+                  flex: 1, minWidth: 0, display: 'flex', alignItems: 'center',
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  textAlign: 'left', font: 'inherit', color: 'inherit',
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 500, fontSize: '0.85rem' }}>
+                    {food.name}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {food.brand && (
+                      <span className="food-brand-badge">{food.brand}</span>
+                    )}
+                    <span>{food.serving_size}</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  {food.isFavorite && (
-                    <span style={{ color: '#f59e0b', fontWeight: 600 }}>Favorite</span>
-                  )}
-                  {food.brand && (
-                    <span className="food-brand-badge">{food.brand}</span>
-                  )}
-                  <span>{food.serving_size}</span>
-                  {food.source && food.source !== 'local' && !food.brand && (
-                    <span style={{ color: '#8b5cf6' }}>Database</span>
-                  )}
-                </div>
-              </div>
-              <span style={{ fontWeight: 600, whiteSpace: 'nowrap', alignSelf: 'center', fontSize: '0.85rem' }}>
-                {food.calories_per_serving} cal
-              </span>
-            </button>
+                <span style={{ fontWeight: 600, whiteSpace: 'nowrap', alignSelf: 'center', fontSize: '0.85rem', marginRight: '0.5rem' }}>
+                  {food.calories_per_serving} cal
+                </span>
+              </button>
+              <button
+                onClick={(e) => handleFavorite(e, food)}
+                title={food.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                className={`food-fav-btn${food.isFavorite ? ' active' : ''}`}
+              >
+                {food.isFavorite ? '\u2605' : '\u2606'}
+              </button>
+            </div>
           ))}
         </div>
       )}
