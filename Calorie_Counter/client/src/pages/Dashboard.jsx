@@ -186,12 +186,12 @@ export default function Dashboard() {
 
       {topFoods.length > 0 && (
         <div className="history-section">
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Your Top Foods</h2>
-          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Last 30 days</p>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Your Favorites</h2>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginBottom: '0.75rem' }}>Most eaten - last 30 days</p>
           <div className="top-foods-list">
             {topFoods.map((food, i) => (
               <div key={food.name} className="top-food-item">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
                     {i + 1}. {food.name}
                   </span>
