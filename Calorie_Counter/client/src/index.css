@@ -1060,6 +1060,32 @@ input, select, textarea {
   box-shadow: var(--shadow-md);
 }
 
+/* ==================== Quick Actions Toggle ==================== */
+.quick-actions-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0.1rem;
+  margin-bottom: 0.4rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.quick-actions-toggle svg {
+  transition: transform 0.25s ease;
+}
+
+.quick-actions-toggle svg.rotated {
+  transform: rotate(180deg);
+}
+
 /* ==================== Quick Action Tiles (Dashboard) ==================== */
 .quick-action-tile {
   display: flex;
