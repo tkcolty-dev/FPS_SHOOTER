@@ -28,9 +28,11 @@ export function useNewShares() {
   });
 
   const sharedWithMe = data?.sharedWithMe || [];
+  const pendingCount = sharedWithMe.filter(s => s.status === 'pending').length;
   const currentIds = sharedWithMe.map(s => s.id);
   const seenIds = getSeenIds();
-  const newCount = currentIds.filter(id => !seenIds.includes(id)).length;
+  const unseenCount = currentIds.filter(id => !seenIds.includes(id)).length;
+  const newCount = Math.max(pendingCount, unseenCount);
 
   return { newCount, sharedWithMe };
 }

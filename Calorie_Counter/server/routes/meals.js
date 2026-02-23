@@ -69,7 +69,7 @@ router.get('/', async (req, res) => {
 // Create a meal
 router.post('/', async (req, res) => {
   try {
-    const { meal_type, name, calories, notes, logged_at, protein_g, carbs_g, fat_g } = req.body;
+    const { meal_type, name, calories, notes, logged_at, protein_g, carbs_g, fat_g, for_user_id } = req.body;
     if (!meal_type || !name || calories == null) {
       return res.status(400).json({ error: 'meal_type, name, and calories are required' });
     }
@@ -79,11 +79,26 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'meal_type must be breakfast, lunch, dinner, or snack' });
     }
 
+    // If logging for another user, verify an accepted share exists
+    let targetUserId = req.userId;
+    if (for_user_id && for_user_id !== req.userId) {
+      const shareCheck = await pool.query(
+        `SELECT s.id FROM shares s
+         JOIN share_status ss ON ss.share_id = s.id
+         WHERE s.owner_id = $1 AND s.viewer_id = $2 AND ss.status = 'accepted'`,
+        [for_user_id, req.userId]
+      );
+      if (shareCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'No accepted share with this user' });
+      }
+      targetUserId = for_user_id;
+    }
+
     const result = await pool.query(
       `INSERT INTO meals (user_id, meal_type, name, calories, notes, logged_at, protein_g, carbs_g, fat_g)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [req.userId, meal_type, name, parseInt(calories), notes || null, logged_at || new Date(), protein_g || null, carbs_g || null, fat_g || null]
+      [targetUserId, meal_type, name, parseInt(calories), notes || null, logged_at || new Date(), protein_g || null, carbs_g || null, fat_g || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {

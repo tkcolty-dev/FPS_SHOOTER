@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import MealCard from '../components/MealCard';
 import CalorieBudgetBar from '../components/CalorieBudgetBar';
+import FoodSearch from '../components/FoodSearch';
 import { markSharesSeen } from '../hooks/useNewShares';
 import Leaderboard from '../components/Leaderboard';
 
@@ -27,6 +28,7 @@ export default function Sharing() {
   const [viewingUser, setViewingUser] = useState(null);
   const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
   const [commentText, setCommentText] = useState('');
+  const [addFoodMealType, setAddFoodMealType] = useState('snack');
   const commentsEndRef = useRef(null);
   const queryClient = useQueryClient();
 
@@ -45,13 +47,13 @@ export default function Sharing() {
   const { data: sharedMeals } = useQuery({
     queryKey: ['shared-meals', viewingUser?.owner_id, viewDate],
     queryFn: () => api.get(`/sharing/${viewingUser.owner_id}/meals`, { params: { date: viewDate } }).then(r => r.data),
-    enabled: !!viewingUser,
+    enabled: !!viewingUser && viewingUser.status === 'accepted',
   });
 
   const { data: sharedPlanned } = useQuery({
     queryKey: ['shared-planned', viewingUser?.owner_id, viewDate],
     queryFn: () => api.get(`/sharing/${viewingUser.owner_id}/planned-meals`, { params: { from: viewDate } }).then(r => r.data),
-    enabled: !!viewingUser && !!viewingUser.share_planned,
+    enabled: !!viewingUser && viewingUser.status === 'accepted' && !!viewingUser.share_planned,
   });
 
   const activeShareId = viewingUser
@@ -61,7 +63,7 @@ export default function Sharing() {
   const { data: commentsData } = useQuery({
     queryKey: ['share-comments', activeShareId],
     queryFn: () => api.get(`/sharing/${activeShareId}/comments`).then(r => r.data),
-    enabled: !!activeShareId,
+    enabled: !!activeShareId && viewingUser?.status === 'accepted',
     refetchInterval: 15000,
   });
 
@@ -81,12 +83,27 @@ export default function Sharing() {
 
   const removeShare = useMutation({
     mutationFn: (id) => api.delete(`/sharing/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sharing'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sharing'] });
+      setViewingUser(null);
+    },
   });
 
   const togglePlanned = useMutation({
     mutationFn: ({ id, share_planned }) => api.patch(`/sharing/${id}`, { share_planned }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sharing'] }),
+  });
+
+  const respondShare = useMutation({
+    mutationFn: ({ id, action }) => api.patch(`/sharing/${id}/respond`, { action }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sharing'] }),
+  });
+
+  const addFoodForUser = useMutation({
+    mutationFn: (meal) => api.post('/meals', meal),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shared-meals', viewingUser?.owner_id, viewDate] });
+    },
   });
 
   const postComment = useMutation({
@@ -109,10 +126,27 @@ export default function Sharing() {
     postComment.mutate(commentText.trim());
   };
 
+  const handleFoodSelect = (food) => {
+    addFoodForUser.mutate({
+      for_user_id: viewingUser.owner_id,
+      meal_type: addFoodMealType,
+      name: food.name,
+      calories: food.calories_per_serving,
+      protein_g: food.protein_g || null,
+      carbs_g: food.carbs_g || null,
+      fat_g: food.fat_g || null,
+    });
+  };
+
   if (isLoading) return <div className="loading">Loading sharing settings...</div>;
 
   const { sharing = [], sharedWithMe = [] } = sharingData || {};
   const plannedMeals = sharedPlanned?.plannedMeals || [];
+  const activeShareCount = sharing.filter(s => s.status !== 'rejected').length;
+  const atLimit = activeShareCount >= 6;
+
+  const pendingInvites = sharedWithMe.filter(s => s.status === 'pending');
+  const acceptedShares = sharedWithMe.filter(s => s.status === 'accepted');
 
   return (
     <div>
@@ -123,28 +157,39 @@ export default function Sharing() {
 
       {/* Grant access */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Share Your Data</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.75rem' }}>
-          <div style={{ flex: 1 }}>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username to share with"
-              style={{
-                width: '100%',
-                padding: '0.5rem 0.75rem',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius)',
-                fontSize: '0.875rem',
-              }}
-              required
-            />
-          </div>
-          <button type="submit" className="btn btn-primary" disabled={addShare.isPending}>
-            Share
-          </button>
-        </form>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>Share Your Data</h2>
+          <span style={{ fontSize: '0.8rem', color: atLimit ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
+            {activeShareCount}/6
+          </span>
+        </div>
+        {atLimit ? (
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', margin: 0 }}>
+            You've reached the maximum of 6 shares.
+          </p>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '0.75rem' }}>
+            <div style={{ flex: 1 }}>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter username to share with"
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius)',
+                  fontSize: '0.875rem',
+                }}
+                required
+              />
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={addShare.isPending}>
+              Share
+            </button>
+          </form>
+        )}
         {error && <div className="error-message" style={{ marginTop: '0.75rem', marginBottom: 0 }}>{error}</div>}
       </div>
 
@@ -157,7 +202,7 @@ export default function Sharing() {
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {sharing.map(share => (
+            {sharing.filter(s => s.status !== 'rejected').map(share => (
               <div
                 key={share.id}
                 style={{
@@ -167,7 +212,19 @@ export default function Sharing() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 500 }}>{share.viewer_username}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontWeight: 500 }}>{share.viewer_username}</span>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '9999px',
+                      fontWeight: 600,
+                      background: share.status === 'accepted' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
+                      color: share.status === 'accepted' ? '#16a34a' : '#ca8a04',
+                    }}>
+                      {share.status === 'accepted' ? 'Active' : 'Pending'}
+                    </span>
+                  </div>
                   <button
                     className="btn btn-danger"
                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
@@ -176,15 +233,17 @@ export default function Sharing() {
                     Revoke
                   </button>
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!share.share_planned}
-                    onChange={() => togglePlanned.mutate({ id: share.id, share_planned: !share.share_planned })}
-                    style={{ accentColor: 'var(--color-primary)' }}
-                  />
-                  Share planned meals
-                </label>
+                {share.status === 'accepted' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!share.share_planned}
+                      onChange={() => togglePlanned.mutate({ id: share.id, share_planned: !share.share_planned })}
+                      style={{ accentColor: 'var(--color-primary)' }}
+                    />
+                    Share planned meals
+                  </label>
+                )}
               </div>
             ))}
           </div>
@@ -194,51 +253,107 @@ export default function Sharing() {
       {/* Shared with me */}
       <div className="card">
         <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Shared With Me</h2>
-        {sharedWithMe.length === 0 ? (
+
+        {/* Pending invitations */}
+        {pendingInvites.length > 0 && (
+          <div style={{ marginBottom: '1rem' }}>
+            <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: '0.5rem' }}>
+              Pending Invitations
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {pendingInvites.map(share => (
+                <div
+                  key={share.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.5rem 0.75rem',
+                    background: 'rgba(234, 179, 8, 0.05)',
+                    border: '1px solid rgba(234, 179, 8, 0.2)',
+                    borderRadius: 'var(--radius)',
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{share.owner_username}</span>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button
+                      className="btn btn-primary"
+                      style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                      onClick={() => respondShare.mutate({ id: share.id, action: 'accepted' })}
+                      disabled={respondShare.isPending}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}
+                      onClick={() => respondShare.mutate({ id: share.id, action: 'rejected' })}
+                      disabled={respondShare.isPending}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Accepted shares */}
+        {acceptedShares.length === 0 && pendingInvites.length === 0 ? (
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
             Nobody has shared their data with you yet.
           </p>
-        ) : (
+        ) : acceptedShares.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {sharedWithMe.map(share => (
-              <button
-                key={share.id}
-                onClick={() => {
-                  if (viewingUser?.owner_id === share.owner_id) {
-                    setViewingUser(null);
-                  } else {
-                    setViewingUser(share);
-                    setViewDate(new Date().toISOString().split('T')[0]);
-                  }
-                }}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.5rem 0.75rem',
-                  background: viewingUser?.owner_id === share.owner_id ? 'rgba(37, 99, 235, 0.05)' : 'var(--color-bg)',
-                  border: viewingUser?.owner_id === share.owner_id ? '1px solid var(--color-primary)' : '1px solid transparent',
-                  borderRadius: 'var(--radius)',
-                  cursor: 'pointer',
-                  width: '100%',
-                  textAlign: 'left',
-                  fontFamily: 'inherit',
-                  fontSize: 'inherit',
-                }}
-              >
-                <span style={{ fontWeight: 500 }}>{share.owner_username}</span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)' }}>
-                  {viewingUser?.owner_id === share.owner_id ? 'Hide' : 'View meals'}
-                </span>
-              </button>
+            {acceptedShares.map(share => (
+              <div key={share.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => {
+                    if (viewingUser?.owner_id === share.owner_id) {
+                      setViewingUser(null);
+                    } else {
+                      setViewingUser(share);
+                      setViewDate(new Date().toISOString().split('T')[0]);
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.5rem 0.75rem',
+                    background: viewingUser?.owner_id === share.owner_id ? 'rgba(37, 99, 235, 0.05)' : 'var(--color-bg)',
+                    border: viewingUser?.owner_id === share.owner_id ? '1px solid var(--color-primary)' : '1px solid transparent',
+                    borderRadius: 'var(--radius)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontFamily: 'inherit',
+                    fontSize: 'inherit',
+                  }}
+                >
+                  <span style={{ fontWeight: 500 }}>{share.owner_username}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)' }}>
+                    {viewingUser?.owner_id === share.owner_id ? 'Hide' : 'View meals'}
+                  </span>
+                </button>
+                <button
+                  className="btn btn-danger"
+                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', flexShrink: 0 }}
+                  onClick={() => removeShare.mutate(share.id)}
+                  title="Remove share"
+                >
+                  Remove
+                </button>
+              </div>
             ))}
           </div>
         )}
 
         {/* Viewing shared user's data */}
-        {sharedWithMe.length > 0 && <Leaderboard />}
+        {acceptedShares.length > 0 && <Leaderboard />}
 
-        {viewingUser && (
+        {viewingUser && viewingUser.status === 'accepted' && (
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
             {/* Date navigation */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
@@ -280,6 +395,38 @@ export default function Sharing() {
                 </div>
               </>
             )}
+
+            {/* Add food for this user */}
+            <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius)' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                Log food for {viewingUser.owner_username}
+              </h4>
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                <select
+                  value={addFoodMealType}
+                  onChange={e => setAddFoodMealType(e.target.value)}
+                  style={{
+                    padding: '0.4rem 0.5rem',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '0.8rem',
+                    background: 'var(--color-surface)',
+                  }}
+                >
+                  <option value="breakfast">Breakfast</option>
+                  <option value="lunch">Lunch</option>
+                  <option value="dinner">Dinner</option>
+                  <option value="snack">Snack</option>
+                </select>
+                {addFoodForUser.isPending && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Adding...</span>
+                )}
+                {addFoodForUser.isSuccess && (
+                  <span style={{ fontSize: '0.75rem', color: '#16a34a' }}>Added!</span>
+                )}
+              </div>
+              <FoodSearch onSelect={handleFoodSelect} />
+            </div>
 
             {/* Planned meals */}
             {viewingUser.share_planned && (

@@ -9,15 +9,19 @@ router.use(auth);
 router.get('/', async (req, res) => {
   try {
     const sharing = await pool.query(
-      `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, s.created_at
-       FROM shares s JOIN users u ON s.viewer_id = u.id
+      `SELECT s.id, s.viewer_id, u.username as viewer_username, s.share_planned, ss.status, s.created_at
+       FROM shares s
+       JOIN users u ON s.viewer_id = u.id
+       LEFT JOIN share_status ss ON ss.share_id = s.id
        WHERE s.owner_id = $1`,
       [req.userId]
     );
 
     const sharedWithMe = await pool.query(
-      `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, s.created_at
-       FROM shares s JOIN users u ON s.owner_id = u.id
+      `SELECT s.id, s.owner_id, u.username as owner_username, s.share_planned, ss.status, s.created_at
+       FROM shares s
+       JOIN users u ON s.owner_id = u.id
+       LEFT JOIN share_status ss ON ss.share_id = s.id
        WHERE s.viewer_id = $1`,
       [req.userId]
     );
@@ -53,6 +57,17 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Cannot share with yourself' });
     }
 
+    // Max 6 check: count non-rejected shares for this owner
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int as cnt FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.owner_id = $1 AND ss.status != 'rejected'`,
+      [req.userId]
+    );
+    if (countResult.rows[0].cnt >= 6) {
+      return res.status(400).json({ error: 'Maximum of 6 shares reached' });
+    }
+
     const result = await pool.query(
       `INSERT INTO shares (owner_id, viewer_id)
        VALUES ($1, $2)
@@ -62,12 +77,74 @@ router.post('/', async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      // Row already exists — update status to pending (re-share after rejection)
+      const existing = await pool.query(
+        'SELECT id FROM shares WHERE owner_id = $1 AND viewer_id = $2',
+        [req.userId, viewerId]
+      );
+      if (existing.rows.length > 0) {
+        await pool.query(
+          "UPDATE share_status SET status = 'pending' WHERE share_id = $1",
+          [existing.rows[0].id]
+        );
+        const updated = await pool.query(
+          `SELECT s.*, ss.status FROM shares s
+           LEFT JOIN share_status ss ON ss.share_id = s.id
+           WHERE s.id = $1`,
+          [existing.rows[0].id]
+        );
+        return res.status(201).json(updated.rows[0]);
+      }
       return res.status(409).json({ error: 'Already sharing with this user' });
     }
 
-    res.status(201).json(result.rows[0]);
+    // Insert status row for new share
+    await pool.query(
+      "INSERT INTO share_status (share_id, status) VALUES ($1, 'pending')",
+      [result.rows[0].id]
+    );
+
+    res.status(201).json({ ...result.rows[0], status: 'pending' });
   } catch (err) {
     console.error('Create share error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Accept or reject a pending share (viewer only)
+// MUST be defined BEFORE the generic PATCH /:id
+router.patch('/:id/respond', async (req, res) => {
+  try {
+    const { action } = req.body;
+    if (!['accepted', 'rejected'].includes(action)) {
+      return res.status(400).json({ error: 'action must be "accepted" or "rejected"' });
+    }
+
+    // Verify this share exists and viewer is the current user, and it's pending
+    const share = await pool.query(
+      `SELECT s.id FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.id = $1 AND s.viewer_id = $2 AND ss.status = 'pending'`,
+      [req.params.id, req.userId]
+    );
+    if (share.rows.length === 0) {
+      return res.status(404).json({ error: 'Pending share not found' });
+    }
+
+    await pool.query(
+      'UPDATE share_status SET status = $1 WHERE share_id = $2',
+      [action, req.params.id]
+    );
+
+    const result = await pool.query(
+      `SELECT s.*, ss.status FROM shares s
+       LEFT JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.id = $1`,
+      [req.params.id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Respond to share error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -90,11 +167,14 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Revoke access
+// Revoke access (either party can remove)
 router.delete('/:id', async (req, res) => {
   try {
+    // Delete status first (we own this table)
+    await pool.query('DELETE FROM share_status WHERE share_id = $1', [req.params.id]);
+
     const result = await pool.query(
-      'DELETE FROM shares WHERE id = $1 AND owner_id = $2 RETURNING id',
+      'DELETE FROM shares WHERE id = $1 AND (owner_id = $2 OR viewer_id = $2) RETURNING id',
       [req.params.id, req.userId]
     );
     if (result.rows.length === 0) {
@@ -110,9 +190,11 @@ router.delete('/:id', async (req, res) => {
 // View shared user's meals
 router.get('/:userId/meals', async (req, res) => {
   try {
-    // Verify the current user has access
+    // Verify the current user has accepted access
     const access = await pool.query(
-      'SELECT id FROM shares WHERE owner_id = $1 AND viewer_id = $2',
+      `SELECT s.id FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.owner_id = $1 AND s.viewer_id = $2 AND ss.status = 'accepted'`,
       [req.params.userId, req.userId]
     );
     if (access.rows.length === 0) {
@@ -154,7 +236,9 @@ router.get('/:userId/planned-meals', async (req, res) => {
   try {
     // Verify access AND share_planned is enabled
     const access = await pool.query(
-      'SELECT id, share_planned FROM shares WHERE owner_id = $1 AND viewer_id = $2',
+      `SELECT s.id, s.share_planned FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.owner_id = $1 AND s.viewer_id = $2 AND ss.status = 'accepted'`,
       [req.params.userId, req.userId]
     );
     if (access.rows.length === 0) {
@@ -194,9 +278,11 @@ router.get('/:userId/planned-meals', async (req, res) => {
 // List comments on a share
 router.get('/:shareId/comments', async (req, res) => {
   try {
-    // Verify caller is part of this share
+    // Verify caller is part of this accepted share
     const share = await pool.query(
-      'SELECT id FROM shares WHERE id = $1 AND (owner_id = $2 OR viewer_id = $2)',
+      `SELECT s.id FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.id = $1 AND (s.owner_id = $2 OR s.viewer_id = $2) AND ss.status = 'accepted'`,
       [req.params.shareId, req.userId]
     );
     if (share.rows.length === 0) {
@@ -225,9 +311,11 @@ router.post('/:shareId/comments', async (req, res) => {
       return res.status(400).json({ error: 'Comment text is required' });
     }
 
-    // Verify caller is part of this share
+    // Verify caller is part of this accepted share
     const share = await pool.query(
-      'SELECT id FROM shares WHERE id = $1 AND (owner_id = $2 OR viewer_id = $2)',
+      `SELECT s.id FROM shares s
+       JOIN share_status ss ON ss.share_id = s.id
+       WHERE s.id = $1 AND (s.owner_id = $2 OR s.viewer_id = $2) AND ss.status = 'accepted'`,
       [req.params.shareId, req.userId]
     );
     if (share.rows.length === 0) {
