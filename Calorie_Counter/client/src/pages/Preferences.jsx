@@ -8,6 +8,7 @@ const typeLabels = {
   cuisine: 'Cuisine',
   dietary: 'Dietary',
   dislike: 'Dislikes',
+  usual_meal: 'Usual Meals',
 };
 
 const typeColors = {
@@ -15,6 +16,7 @@ const typeColors = {
   dietary: '#16a34a',
   favorite: '#f59e0b',
   dislike: '#dc2626',
+  usual_meal: '#8b5cf6',
 };
 
 const QUICK_FAVORITES = [

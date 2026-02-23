@@ -1060,6 +1060,31 @@ input, select, textarea {
   box-shadow: var(--shadow-md);
 }
 
+/* ==================== What Should I Eat Button ==================== */
+.what-to-eat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.55rem;
+  margin-bottom: 0.75rem;
+  border: 1px dashed var(--color-primary);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.what-to-eat-btn:active {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+}
+
 /* ==================== Quick Actions Toggle ==================== */
 .quick-actions-toggle {
   display: flex;

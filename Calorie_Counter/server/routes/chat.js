@@ -162,13 +162,23 @@ router.post('/', async (req, res) => {
     while ((prefMatch = prefRegex.exec(reply)) !== null) {
       try {
         const pref = JSON.parse(prefMatch[1].trim());
-        if (pref.type && pref.value && ['favorite', 'dislike'].includes(pref.type)) {
-          // Check if already exists
-          const existing = await pool.query(
-            'SELECT id FROM food_preferences WHERE user_id = $1 AND preference_type = $2 AND LOWER(value) = LOWER($3)',
-            [req.userId, pref.type, pref.value]
-          );
-          if (existing.rows.length === 0) {
+        if (pref.type && pref.value && ['favorite', 'dislike', 'usual_meal'].includes(pref.type)) {
+          // For usual_meal, match on meal type prefix (e.g. "breakfast:")
+          const matchQuery = pref.type === 'usual_meal'
+            ? 'SELECT id FROM food_preferences WHERE user_id = $1 AND preference_type = $2 AND LOWER(value) LIKE LOWER($3)'
+            : 'SELECT id FROM food_preferences WHERE user_id = $1 AND preference_type = $2 AND LOWER(value) = LOWER($3)';
+          const matchVal = pref.type === 'usual_meal'
+            ? pref.value.split(':')[0].trim() + ':%'
+            : pref.value;
+          const existing = await pool.query(matchQuery, [req.userId, pref.type, matchVal]);
+          if (existing.rows.length > 0 && pref.type === 'usual_meal') {
+            // Update existing usual meal
+            await pool.query(
+              'UPDATE food_preferences SET value = $1 WHERE id = $2',
+              [pref.value, existing.rows[0].id]
+            );
+            learnedPrefs.push(pref);
+          } else if (existing.rows.length === 0) {
             await pool.query(
               'INSERT INTO food_preferences (user_id, preference_type, value) VALUES ($1, $2, $3)',
               [req.userId, pref.type, pref.value]

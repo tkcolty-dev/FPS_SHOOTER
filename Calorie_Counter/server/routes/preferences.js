@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { preference_type, value } = req.body;
-    const validTypes = ['cuisine', 'dietary', 'favorite', 'dislike'];
+    const validTypes = ['cuisine', 'dietary', 'favorite', 'dislike', 'usual_meal'];
     if (!preference_type || !value) {
       return res.status(400).json({ error: 'preference_type and value are required' });
     }

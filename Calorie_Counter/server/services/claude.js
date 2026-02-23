@@ -105,6 +105,7 @@ async function chatWithAI({ message, history, goals, todaysMeals, remainingCalor
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
   const favorites = preferences.filter(p => p.preference_type === 'favorite').map(p => p.value);
   const dislikes = preferences.filter(p => p.preference_type === 'dislike').map(p => p.value);
+  const usualMeals = preferences.filter(p => p.preference_type === 'usual_meal').map(p => p.value);
 
   const mealsDescription = todaysMeals.length > 0
     ? todaysMeals.map(m => `${m.name} (${m.calories} cal) for ${m.meal_type}`).join(', ')
@@ -129,6 +130,7 @@ ${cuisinePrefs.length > 0 ? `- Cuisine preferences: ${cuisinePrefs.join(', ')}` 
 ${dietaryPrefs.length > 0 ? `- Dietary requirements: ${dietaryPrefs.join(', ')}` : ''}
 ${favorites.length > 0 ? `- Favorite foods: ${favorites.join(', ')}` : ''}
 ${dislikes.length > 0 ? `- Dislikes (avoid these): ${dislikes.join(', ')}` : ''}
+${usualMeals.length > 0 ? `- Usual meals:\n${usualMeals.map(m => `  * ${m}`).join('\n')}` : ''}
 
 You can suggest meals in two ways:
 
@@ -153,6 +155,24 @@ When the user tells you they like or dislike a food (e.g. "I like Cheerios", "I 
 \`\`\`
 
 Use type "favorite" for likes and "dislike" for dislikes. Acknowledge that you've remembered it. Use the simple food name as the value (e.g. "Cheerios" not "Cheerios cereal for breakfast").
+
+When the user defines a usual/regular meal (e.g. "my usual breakfast is oatmeal and eggs", "I always have a turkey sandwich for lunch"), save it with type "usual_meal":
+
+\`\`\`preference
+{"type": "usual_meal", "value": "breakfast: Oatmeal (300 cal) and 2 scrambled eggs (180 cal)"}
+\`\`\`
+
+Format the value as "meal_type: item1 (cal) and item2 (cal)". Include calorie estimates.
+
+When the user says "log my usual breakfast" (or lunch/dinner/snack), check their usual meals list above. If found, output meal blocks for each item. If not found, ask what their usual meal is and offer to remember it.
+
+When the user asks "what should I eat?" or similar, consider:
+1. Time of day → suggest the appropriate meal type
+2. Remaining calorie budget → keep the suggestion within budget
+3. What they already ate today → suggest variety
+4. Their favorites and preferences → personalize
+5. Their usual meals → offer those as quick options if relevant
+Be specific with a concrete suggestion and include a meal block so they can log it with one tap.
 
 Keep responses concise and conversational. You can suggest multiple meals in one response. Always respect the user's calorie budget and preferences.
 

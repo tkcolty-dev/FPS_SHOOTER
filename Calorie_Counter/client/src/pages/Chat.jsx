@@ -6,10 +6,10 @@ import ChatMessage from '../components/ChatMessage';
 const STORAGE_KEY = 'chat-history';
 
 const quickActions = [
+  'What should I eat right now?',
   'Plan my meals for tomorrow',
+  'Log my usual breakfast',
   'Suggest a healthy snack',
-  'What should I eat for dinner?',
-  'Low calorie lunch ideas',
 ];
 
 function loadHistory() {
@@ -61,6 +61,19 @@ export default function Chat() {
     recognition.start();
     setListening(true);
   };
+
+  // Auto-send prefilled message from dashboard "What should I eat?"
+  const prefillHandled = useRef(false);
+  useEffect(() => {
+    if (prefillHandled.current) return;
+    const prefill = localStorage.getItem('chat-prefill');
+    if (prefill) {
+      prefillHandled.current = true;
+      localStorage.removeItem('chat-prefill');
+      sendMessage(prefill);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
