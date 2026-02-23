@@ -7,7 +7,8 @@ import MealTable from '../components/MealTable';
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   const { data: meals = [], isLoading: mealsLoading } = useQuery({
     queryKey: ['meals', today],
@@ -20,13 +21,13 @@ export default function Dashboard() {
   });
 
   const { data: historyMeals = [] } = useQuery({
-    queryKey: ['meals-history'],
-    queryFn: () => api.get('/meals/history', { params: { days: 7 } }).then(r => r.data),
+    queryKey: ['meals-history', today],
+    queryFn: () => api.get('/meals/history', { params: { days: 7, today } }).then(r => r.data),
   });
 
   const { data: topFoods = [] } = useQuery({
-    queryKey: ['top-foods'],
-    queryFn: () => api.get('/meals/top-foods', { params: { days: 30 } }).then(r => r.data),
+    queryKey: ['top-foods', today],
+    queryFn: () => api.get('/meals/top-foods', { params: { days: 30, today } }).then(r => r.data),
   });
 
   const deleteMeal = useMutation({
@@ -35,7 +36,7 @@ export default function Dashboard() {
   });
 
   const clearToday = useMutation({
-    mutationFn: () => api.delete('/meals/today'),
+    mutationFn: () => api.delete('/meals/today', { params: { today } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
   });
 

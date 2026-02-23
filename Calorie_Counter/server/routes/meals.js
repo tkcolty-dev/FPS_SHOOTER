@@ -9,12 +9,13 @@ router.use(auth);
 router.get('/history', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 7;
+    const today = req.query.today || new Date().toISOString().split('T')[0];
     const result = await pool.query(
       `SELECT * FROM meals WHERE user_id = $1
-        AND logged_at::date >= CURRENT_DATE - $2::int
-        AND logged_at::date < CURRENT_DATE
+        AND logged_at::date >= $3::date - $2::int
+        AND logged_at::date < $3::date
        ORDER BY logged_at DESC`,
-      [req.userId, days]
+      [req.userId, days, today]
     );
     res.json(result.rows);
   } catch (err) {
@@ -27,13 +28,14 @@ router.get('/history', async (req, res) => {
 router.get('/top-foods', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 30;
+    const today = req.query.today || new Date().toISOString().split('T')[0];
     const result = await pool.query(
       `SELECT name, COUNT(*)::int as count, ROUND(AVG(calories))::int as avg_calories,
               SUM(calories)::int as total_calories
        FROM meals WHERE user_id = $1
-        AND logged_at::date >= CURRENT_DATE - $2::int
+        AND logged_at::date >= $3::date - $2::int
        GROUP BY name ORDER BY count DESC LIMIT 10`,
-      [req.userId, days]
+      [req.userId, days, today]
     );
     res.json(result.rows);
   } catch (err) {
@@ -110,12 +112,13 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// Delete all meals for today
+// Delete all meals for a given date (defaults to today)
 router.delete('/today', async (req, res) => {
   try {
+    const today = req.query.today || new Date().toISOString().split('T')[0];
     const result = await pool.query(
-      'DELETE FROM meals WHERE user_id = $1 AND logged_at::date = CURRENT_DATE RETURNING id',
-      [req.userId]
+      'DELETE FROM meals WHERE user_id = $1 AND logged_at::date = $2::date RETURNING id',
+      [req.userId, today]
     );
     res.json({ message: `Deleted ${result.rowCount} meals`, count: result.rowCount });
   } catch (err) {

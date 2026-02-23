@@ -8,18 +8,20 @@ router.use(auth);
 
 router.post('/', async (req, res) => {
   try {
-    const { message, history } = req.body;
+    const { message, history, today } = req.body;
     if (!message) {
       return res.status(400).json({ error: 'message is required' });
     }
+
+    const clientDate = today || new Date().toISOString().split('T')[0];
 
     // Gather user context
     const [goalsResult, mealsResult, prefsResult] = await Promise.all([
       pool.query('SELECT * FROM calorie_goals WHERE user_id = $1', [req.userId]),
       pool.query(
         `SELECT meal_type, name, calories FROM meals
-         WHERE user_id = $1 AND logged_at::date = CURRENT_DATE`,
-        [req.userId]
+         WHERE user_id = $1 AND logged_at::date = $2::date`,
+        [req.userId, clientDate]
       ),
       pool.query(
         'SELECT preference_type, value FROM food_preferences WHERE user_id = $1',

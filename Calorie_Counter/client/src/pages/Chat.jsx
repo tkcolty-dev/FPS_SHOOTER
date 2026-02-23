@@ -30,9 +30,12 @@ export default function Chat() {
     setLoading(true);
 
     try {
+      const n = new Date();
+      const localToday = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
       const { data } = await api.post('/chat', {
         message: text,
         history: messages,
+        today: localToday,
       });
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
       if (data.learnedPreferences?.length > 0) {
