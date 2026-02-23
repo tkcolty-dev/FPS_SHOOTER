@@ -9,17 +9,13 @@ function FlameIcon() {
   );
 }
 
-function SnowflakeIcon() {
+function PauseIcon() {
   return (
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="2" x2="12" y2="22" />
-      <line x1="2" y1="12" x2="22" y2="12" />
-      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-      <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" />
-      <line x1="12" y1="2" x2="9" y2="5" />
-      <line x1="12" y1="2" x2="15" y2="5" />
-      <line x1="12" y1="22" x2="9" y2="19" />
-      <line x1="12" y1="22" x2="15" y2="19" />
+      <circle cx="12" cy="12" r="10" fill={iconColor} opacity="0.15" stroke="none" />
+      <circle cx="12" cy="12" r="10" />
+      <line x1="10" y1="9" x2="10" y2="15" />
+      <line x1="14" y1="9" x2="14" y2="15" />
     </svg>
   );
 }
@@ -54,7 +50,7 @@ export default function StreakBadge({ currentStreak, longestStreak, totalDaysLog
     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
       <div style={{ textAlign: 'center', flex: 1, minWidth: 80 }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
-          {currentStreak > 0 ? <FlameIcon /> : <SnowflakeIcon />}
+          {currentStreak > 0 ? <FlameIcon /> : <PauseIcon />}
         </div>
         <div style={{ fontSize: '1.4rem', fontWeight: 700 }}>{currentStreak}</div>
         <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>Current streak</div>
