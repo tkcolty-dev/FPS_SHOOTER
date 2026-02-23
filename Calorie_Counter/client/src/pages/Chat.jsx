@@ -183,9 +183,9 @@ export default function Chat() {
             title={listening ? 'Stop listening' : 'Voice input'}
           >
             {listening ? (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="3" width="14" height="14" rx="2" /></svg>
+              <svg width="36" height="36" viewBox="0 0 20 20" fill="currentColor"><rect x="3" y="3" width="14" height="14" rx="2" /></svg>
             ) : (
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="1" width="6" height="11" rx="3" /><path d="M3.5 8.5a6.5 6.5 0 0 0 13 0" /><line x1="10" y1="15" x2="10" y2="19" /><line x1="7" y1="19" x2="13" y2="19" /></svg>
+              <svg width="36" height="36" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="7" y="1" width="6" height="11" rx="3" /><path d="M3.5 8.5a6.5 6.5 0 0 0 13 0" /><line x1="10" y1="15" x2="10" y2="19" /><line x1="7" y1="19" x2="13" y2="19" /></svg>
             )}
           </button>
         )}
