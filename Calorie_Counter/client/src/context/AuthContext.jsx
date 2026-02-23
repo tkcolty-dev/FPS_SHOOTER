@@ -33,13 +33,18 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
+  const completeOnboarding = async () => {
+    await api.post('/auth/complete-onboarding');
+    setUser(prev => ({ ...prev, onboarding_complete: true }));
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, completeOnboarding }}>
       {children}
     </AuthContext.Provider>
   );

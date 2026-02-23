@@ -61,7 +61,7 @@ router.post('/register', async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, created_at',
+      'INSERT INTO users (username, password_hash, onboarding_complete) VALUES ($1, $2, false) RETURNING id, username, onboarding_complete, created_at',
       [username, password_hash]
     );
 
@@ -89,7 +89,7 @@ router.post('/login', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, username, password_hash, created_at FROM users WHERE username = $1',
+      'SELECT id, username, password_hash, onboarding_complete, created_at FROM users WHERE username = $1',
       [username]
     );
     if (result.rows.length === 0) {
@@ -115,7 +115,7 @@ router.post('/login', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, username, created_at FROM users WHERE id = $1',
+      'SELECT id, username, onboarding_complete, created_at FROM users WHERE id = $1',
       [req.userId]
     );
     if (result.rows.length === 0) {
@@ -124,6 +124,19 @@ router.get('/me', auth, async (req, res) => {
     res.json({ user: result.rows[0] });
   } catch (err) {
     console.error('Me error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/complete-onboarding', auth, async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE users SET onboarding_complete = true WHERE id = $1',
+      [req.userId]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Complete onboarding error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
