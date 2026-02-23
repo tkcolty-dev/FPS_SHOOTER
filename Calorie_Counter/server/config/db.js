@@ -4,16 +4,11 @@ function getConnectionConfig() {
   // Cloud Foundry: parse VCAP_SERVICES
   if (process.env.VCAP_SERVICES) {
     const vcap = JSON.parse(process.env.VCAP_SERVICES);
-    const pgService = vcap['postgresql-db']?.[0] || vcap['postgresql']?.[0];
+    const pgService = vcap['postgres']?.[0];
     if (pgService) {
-      const creds = pgService.credentials;
       return {
-        host: creds.hostname || creds.host,
-        port: creds.port,
-        database: creds.dbname || creds.name,
-        user: creds.username || creds.user,
-        password: creds.password,
-        ssl: { rejectUnauthorized: false },
+        connectionString: pgService.credentials.uri,
+        ssl: false,
       };
     }
   }

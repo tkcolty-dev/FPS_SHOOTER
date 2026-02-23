@@ -1,6 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const auth = require('../middleware/auth');
@@ -83,15 +83,9 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { username, password, captchaAnswer, captchaToken } = req.body;
+    const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
-    }
-    if (!captchaAnswer || !captchaToken) {
-      return res.status(400).json({ error: 'CAPTCHA is required' });
-    }
-    if (!verifyCaptcha(captchaAnswer, captchaToken)) {
-      return res.status(400).json({ error: 'Incorrect CAPTCHA answer' });
     }
 
     const result = await pool.query(
