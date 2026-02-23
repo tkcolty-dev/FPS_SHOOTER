@@ -8,6 +8,10 @@ export default function Goals() {
   const [lunch, setLunch] = useState('');
   const [dinner, setDinner] = useState('');
   const [snacks, setSnacks] = useState('');
+  const [proteinGoal, setProteinGoal] = useState('');
+  const [carbsGoal, setCarbsGoal] = useState('');
+  const [fatGoal, setFatGoal] = useState('');
+  const [targetWeight, setTargetWeight] = useState('');
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const queryClient = useQueryClient();
@@ -24,6 +28,10 @@ export default function Goals() {
       setLunch(goals.lunch || '');
       setDinner(goals.dinner || '');
       setSnacks(goals.snacks || '');
+      setProteinGoal(goals.protein_goal_g || '');
+      setCarbsGoal(goals.carbs_goal_g || '');
+      setFatGoal(goals.fat_goal_g || '');
+      setTargetWeight(goals.target_weight_lbs || '');
     }
   }, [goals]);
 
@@ -49,6 +57,10 @@ export default function Goals() {
       lunch: lunch ? parseInt(lunch) : null,
       dinner: dinner ? parseInt(dinner) : null,
       snacks: snacks ? parseInt(snacks) : null,
+      protein_goal_g: proteinGoal ? parseFloat(proteinGoal) : null,
+      carbs_goal_g: carbsGoal ? parseFloat(carbsGoal) : null,
+      fat_goal_g: fatGoal ? parseFloat(fatGoal) : null,
+      target_weight_lbs: targetWeight ? parseFloat(targetWeight) : null,
     });
   };
 
@@ -67,9 +79,9 @@ export default function Goals() {
         {error && <div className="error-message">{error}</div>}
         {success && (
           <div style={{
-            background: '#f0fdf4', color: 'var(--color-success)', padding: '0.75rem 1rem',
+            background: 'color-mix(in srgb, var(--color-success) 10%, var(--color-surface))', color: 'var(--color-success)', padding: '0.75rem 1rem',
             borderRadius: 'var(--radius)', fontSize: '0.875rem', marginBottom: '1rem',
-            border: '1px solid #bbf7d0',
+            border: '1px solid color-mix(in srgb, var(--color-success) 30%, transparent)',
           }}>
             {success}
           </div>
@@ -120,6 +132,30 @@ export default function Goals() {
             Meal budgets total: {mealTotal} / {dailyTotal} cal
           </p>
         )}
+
+        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginBottom: '1rem', marginTop: '1.5rem' }}>
+          Optionally set daily macro targets:
+        </p>
+
+        <div className="goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+          <div className="form-group">
+            <label htmlFor="proteinGoal">Protein (g)</label>
+            <input id="proteinGoal" type="number" value={proteinGoal} onChange={(e) => setProteinGoal(e.target.value)} placeholder="e.g. 150" min="0" step="1" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="carbsGoal">Carbs (g)</label>
+            <input id="carbsGoal" type="number" value={carbsGoal} onChange={(e) => setCarbsGoal(e.target.value)} placeholder="e.g. 250" min="0" step="1" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="fatGoal">Fat (g)</label>
+            <input id="fatGoal" type="number" value={fatGoal} onChange={(e) => setFatGoal(e.target.value)} placeholder="e.g. 65" min="0" step="1" />
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <label htmlFor="targetWeight">Target weight (lbs)</label>
+          <input id="targetWeight" type="number" value={targetWeight} onChange={(e) => setTargetWeight(e.target.value)} placeholder="e.g. 170" min="50" step="0.1" />
+        </div>
 
         <button
           type="submit"

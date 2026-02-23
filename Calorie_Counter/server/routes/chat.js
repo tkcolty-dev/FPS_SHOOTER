@@ -75,6 +75,9 @@ router.post('/', async (req, res) => {
               name: r.name,
               calories_per_serving: r.calories_per_serving,
               serving_size: r.serving_size || '1 serving',
+              protein_g: r.protein_g || null,
+              carbs_g: r.carbs_g || null,
+              fat_g: r.fat_g || null,
             });
           }
         }
@@ -90,6 +93,9 @@ router.post('/', async (req, res) => {
               name: label,
               calories_per_serving: r.calories_per_serving,
               serving_size: r.serving_size || '1 serving',
+              protein_g: r.protein_g || null,
+              carbs_g: r.carbs_g || null,
+              fat_g: r.fat_g || null,
             });
           }
         }
@@ -155,9 +161,9 @@ router.post('/', async (req, res) => {
             );
             if (existing.rows.length === 0) {
               const inserted = await pool.query(
-                `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date)
-                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-                [req.userId, plan.meal_type, plan.name, parseInt(plan.calories), plan.notes || null, plan.planned_date]
+                `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date, protein_g, carbs_g, fat_g)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+                [req.userId, plan.meal_type, plan.name, parseInt(plan.calories), plan.notes || null, plan.planned_date, plan.protein_g || null, plan.carbs_g || null, plan.fat_g || null]
               );
               savedPlans.push(inserted.rows[0]);
             }

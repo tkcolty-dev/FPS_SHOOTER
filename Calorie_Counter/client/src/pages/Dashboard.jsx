@@ -18,6 +18,16 @@ export default function Dashboard() {
   const today = formatDate(now);
   const [selectedDate, setSelectedDate] = useState(today);
   const [showPlanForm, setShowPlanForm] = useState(false);
+  const [dismissedSuggestion, setDismissedSuggestion] = useState(false);
+  const [dismissedWeekly, setDismissedWeekly] = useState(() => {
+    const saved = localStorage.getItem('weekly-summary-dismissed');
+    if (!saved) return null;
+    const { weekOf } = JSON.parse(saved);
+    // Allow showing again after a week
+    const d = new Date(weekOf + 'T12:00:00');
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().split('T')[0] > today ? weekOf : null;
+  });
 
   const { data: meals = [], isLoading: mealsLoading } = useQuery({
     queryKey: ['meals', today],
@@ -37,6 +47,17 @@ export default function Dashboard() {
   const { data: topFoods = [] } = useQuery({
     queryKey: ['top-foods', today],
     queryFn: () => api.get('/meals/top-foods', { params: { days: 30, today } }).then(r => r.data),
+  });
+
+  const { data: suggestionData } = useQuery({
+    queryKey: ['suggestion', today],
+    queryFn: () => api.get('/suggestions', { params: { today, hour: new Date().getHours() } }).then(r => r.data),
+  });
+
+  const { data: weeklySummary } = useQuery({
+    queryKey: ['weekly-summary'],
+    queryFn: () => api.get('/reports/weekly-summary', { params: { today } }).then(r => r.data),
+    staleTime: 1000 * 60 * 60, // 1 hour
   });
 
   // Compute the visible week range for planned meals query
@@ -96,7 +117,22 @@ export default function Dashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
   });
 
+  const copyDay = useMutation({
+    mutationFn: (from_date) => api.post('/meals/copy-day', { from_date, to_date: today }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
+  });
+
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
+  const macroTotals = {
+    protein: meals.reduce((sum, m) => sum + (parseFloat(m.protein_g) || 0), 0),
+    carbs: meals.reduce((sum, m) => sum + (parseFloat(m.carbs_g) || 0), 0),
+    fat: meals.reduce((sum, m) => sum + (parseFloat(m.fat_g) || 0), 0),
+  };
+  const macroGoals = goals ? {
+    protein: parseFloat(goals.protein_goal_g) || 0,
+    carbs: parseFloat(goals.carbs_goal_g) || 0,
+    fat: parseFloat(goals.fat_goal_g) || 0,
+  } : null;
   const dailyGoal = goals?.daily_total || 2000;
 
   // Group history meals by date
@@ -117,8 +153,60 @@ export default function Dashboard() {
       </div>
 
       <div className="card" style={{ marginBottom: '1.5rem' }}>
-        <CalorieBudgetBar consumed={totalCalories} goal={dailyGoal} />
+        <CalorieBudgetBar consumed={totalCalories} goal={dailyGoal} macros={macroTotals} macroGoals={macroGoals} />
       </div>
+
+      {/* Smart suggestion banner */}
+      {suggestionData?.suggestion && !dismissedSuggestion && (
+        <div className="card" style={{ marginBottom: '1rem', background: 'color-mix(in srgb, var(--color-primary) 5%, var(--color-surface))', border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: '0.85rem' }}>{suggestionData.suggestion.message}</div>
+            <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+                onClick={() => {
+                  const s = suggestionData.suggestion;
+                  const n = new Date();
+                  const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+                  api.post('/meals', { meal_type: s.meal_type, name: s.name, calories: s.calories, logged_at: localISO })
+                    .then(() => { queryClient.invalidateQueries({ queryKey: ['meals'] }); setDismissedSuggestion(true); });
+                }}
+              >
+                Log it
+              </button>
+              <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }} onClick={() => setDismissedSuggestion(true)}>
+                &times;
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Weekly AI summary */}
+      {weeklySummary?.summary && dismissedWeekly !== weeklySummary.summary.weekOf && (
+        <div className="card" style={{ marginBottom: '1rem', background: 'color-mix(in srgb, var(--color-success) 5%, var(--color-surface))', border: '1px solid color-mix(in srgb, var(--color-success) 20%, transparent)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.3rem' }}>Weekly Summary</div>
+              <div style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>{weeklySummary.summary.text}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginTop: '0.3rem' }}>
+                {weeklySummary.summary.daysLogged}/7 days logged &middot; {weeklySummary.summary.avgCal} cal/day avg
+              </div>
+            </div>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', flexShrink: 0 }}
+              onClick={() => {
+                setDismissedWeekly(weeklySummary.summary.weekOf);
+                localStorage.setItem('weekly-summary-dismissed', JSON.stringify({ weekOf: weeklySummary.summary.weekOf }));
+              }}
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ marginBottom: '1.5rem', padding: '0.75rem' }}>
         <WeekStrip
@@ -218,7 +306,7 @@ export default function Dashboard() {
           {Object.entries(historyByDate)
             .sort(([a], [b]) => b.localeCompare(a))
             .map(([date, dateMeals]) => (
-              <HistoryDateSection key={date} date={date} meals={dateMeals} />
+              <HistoryDateSection key={date} date={date} meals={dateMeals} onCopyToToday={(d) => copyDay.mutate(d)} />
             ))}
         </div>
       )}
@@ -226,7 +314,7 @@ export default function Dashboard() {
   );
 }
 
-function HistoryDateSection({ date, meals }) {
+function HistoryDateSection({ date, meals, onCopyToToday }) {
   const [open, setOpen] = useState(false);
   const total = meals.reduce((sum, m) => sum + m.calories, 0);
   const label = new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
@@ -252,6 +340,13 @@ function HistoryDateSection({ date, meals }) {
               <span className="history-row-cal">{m.calories} cal</span>
             </div>
           ))}
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', margin: '0.4rem 0.5rem' }}
+            onClick={(e) => { e.stopPropagation(); onCopyToToday(date); }}
+          >
+            Copy to today
+          </button>
         </div>
       )}
     </div>

@@ -37,6 +37,15 @@ async function searchOpenFoodFacts(query) {
         const servingLabel = calServing && p.serving_size
           ? p.serving_size
           : cal100g ? 'per 100g' : '1 serving';
+        const protein = p.nutriments?.proteins_serving != null
+          ? Math.round(p.nutriments.proteins_serving * 10) / 10
+          : p.nutriments?.proteins_100g != null ? Math.round(p.nutriments.proteins_100g * 10) / 10 : null;
+        const carbs = p.nutriments?.carbohydrates_serving != null
+          ? Math.round(p.nutriments.carbohydrates_serving * 10) / 10
+          : p.nutriments?.carbohydrates_100g != null ? Math.round(p.nutriments.carbohydrates_100g * 10) / 10 : null;
+        const fat = p.nutriments?.fat_serving != null
+          ? Math.round(p.nutriments.fat_serving * 10) / 10
+          : p.nutriments?.fat_100g != null ? Math.round(p.nutriments.fat_100g * 10) / 10 : null;
         return {
           id: `off-${p.code}`,
           name: titleCase(p.product_name),
@@ -45,6 +54,9 @@ async function searchOpenFoodFacts(query) {
           calories_per_serving: calories,
           serving_size: servingLabel,
           source: 'off',
+          protein_g: protein,
+          carbs_g: carbs,
+          fat_g: fat,
         };
       })
       .filter(Boolean);
@@ -55,7 +67,7 @@ async function searchOpenFoodFacts(query) {
 
 async function searchLocalDB(query) {
   const result = await pool.query(
-    `SELECT DISTINCT ON (LOWER(name)) id, name, category, calories_per_serving, serving_size
+    `SELECT DISTINCT ON (LOWER(name)) id, name, category, calories_per_serving, serving_size, protein_g, carbs_g, fat_g
      FROM food_database
      WHERE name ILIKE $1
      ORDER BY LOWER(name),
@@ -67,7 +79,7 @@ async function searchLocalDB(query) {
   if (result.rows.length > 0) return result.rows;
 
   const fallback = await pool.query(
-    `SELECT DISTINCT ON (LOWER(name)) id, name, category, calories_per_serving, serving_size
+    `SELECT DISTINCT ON (LOWER(name)) id, name, category, calories_per_serving, serving_size, protein_g, carbs_g, fat_g
      FROM food_database
      WHERE search_vector @@ plainto_tsquery('english', $1)
      ORDER BY LOWER(name), ts_rank(search_vector, plainto_tsquery('english', $1)) DESC

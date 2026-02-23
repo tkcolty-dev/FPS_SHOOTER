@@ -212,9 +212,16 @@ export default function FoodSearch({ onSelect }) {
                     <span>{food.serving_size}</span>
                   </div>
                 </div>
-                <span style={{ fontWeight: 600, whiteSpace: 'nowrap', alignSelf: 'center', fontSize: '0.85rem', marginRight: '0.5rem' }}>
-                  {food.calories_per_serving} cal
-                </span>
+                <div style={{ textAlign: 'right', flexShrink: 0, marginRight: '0.5rem' }}>
+                  <div style={{ fontWeight: 600, whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+                    {food.calories_per_serving} cal
+                  </div>
+                  {(food.protein_g != null || food.carbs_g != null || food.fat_g != null) && (
+                    <div style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
+                      {food.protein_g != null ? `P:${food.protein_g}g` : ''}{food.carbs_g != null ? ` C:${food.carbs_g}g` : ''}{food.fat_g != null ? ` F:${food.fat_g}g` : ''}
+                    </div>
+                  )}
+                </div>
               </button>
               <button
                 onClick={(e) => handleFavorite(e, food)}

@@ -24,6 +24,21 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+[data-theme="dark"] {
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-primary: #3b82f6;
+  --color-primary-hover: #60a5fa;
+  --color-success: #22c55e;
+  --color-warning: #f97316;
+  --color-danger: #ef4444;
+  --color-text: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-border: #334155;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+}
+
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   background: var(--color-bg);
@@ -87,7 +102,8 @@ input, select, textarea {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #b91c1c;
+  background: var(--color-danger);
+  filter: brightness(0.85);
 }
 
 .btn-secondary {
@@ -96,7 +112,8 @@ input, select, textarea {
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #cbd5e1;
+  background: var(--color-border);
+  filter: brightness(0.9);
 }
 
 /* ==================== Card ==================== */
@@ -141,13 +158,13 @@ input, select, textarea {
 }
 
 .error-message {
-  background: #fef2f2;
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
   color: var(--color-danger);
   padding: 0.75rem 1rem;
   border-radius: var(--radius);
   font-size: 0.875rem;
   margin-bottom: 1rem;
-  border: 1px solid #fecaca;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, transparent);
 }
 
 .page-header {
@@ -175,7 +192,7 @@ input, select, textarea {
 
 /* ==================== Desktop Top Nav ==================== */
 .desktop-nav {
-  background: #ffffff;
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   padding: 0 1rem;
   position: sticky;
@@ -349,7 +366,7 @@ input, select, textarea {
 }
 
 .meal-table-row-delete:hover {
-  background: #fef2f2;
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
 }
 
 /* ==================== Chat UI ==================== */
@@ -460,7 +477,7 @@ input, select, textarea {
 }
 .chat-mic-btn:hover {
   border-color: var(--color-primary);
-  background: #eff6ff;
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
 }
 .chat-mic-btn.active {
   background: #dc2626;
@@ -501,8 +518,8 @@ input, select, textarea {
 
 /* ==================== Chat Planned Card ==================== */
 .chat-planned-card {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: color-mix(in srgb, var(--color-success) 10%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
   border-radius: var(--radius);
   padding: 0.625rem 0.75rem;
   margin: 0.5rem 0;
@@ -710,7 +727,7 @@ input, select, textarea {
   top: 100%;
   left: 0;
   right: 0;
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
@@ -733,7 +750,7 @@ input, select, textarea {
 }
 
 .food-search-item:hover {
-  background: #f8fafc;
+  background: var(--color-bg);
 }
 
 .food-search-item:last-child {
@@ -742,8 +759,8 @@ input, select, textarea {
 
 .food-brand-badge {
   display: inline-block;
-  background: #eff6ff;
-  color: #2563eb;
+  background: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
+  color: var(--color-primary);
   padding: 0.05rem 0.35rem;
   border-radius: 4px;
   font-size: 0.65rem;
@@ -783,7 +800,7 @@ input, select, textarea {
   text-align: left;
   padding: 0.375rem 0.625rem;
   border: none;
-  background: #f0f7ff;
+  background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface));
   border-radius: 6px;
   font-size: 0.8rem;
   color: var(--color-primary);
@@ -792,7 +809,7 @@ input, select, textarea {
 }
 
 .calorie-hint-item:hover {
-  background: #dbeafe;
+  background: color-mix(in srgb, var(--color-primary) 20%, var(--color-surface));
 }
 
 /* ==================== Week Strip ==================== */

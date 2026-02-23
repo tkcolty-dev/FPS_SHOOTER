@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
 // Create a planned meal
 router.post('/', async (req, res) => {
   try {
-    const { meal_type, name, calories, notes, planned_date } = req.body;
+    const { meal_type, name, calories, notes, planned_date, protein_g, carbs_g, fat_g, recurrence, recurrence_end } = req.body;
     if (!meal_type || !name || calories == null || !planned_date) {
       return res.status(400).json({ error: 'meal_type, name, calories, and planned_date are required' });
     }
@@ -38,11 +38,16 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'meal_type must be breakfast, lunch, dinner, or snack' });
     }
 
+    const validRecurrence = [null, 'daily', 'weekly'];
+    if (recurrence && !validRecurrence.includes(recurrence)) {
+      return res.status(400).json({ error: 'recurrence must be daily or weekly' });
+    }
+
     const result = await pool.query(
-      `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date, protein_g, carbs_g, fat_g, recurrence, recurrence_end)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
-      [req.userId, meal_type, name, parseInt(calories), notes || null, planned_date]
+      [req.userId, meal_type, name, parseInt(calories), notes || null, planned_date, protein_g || null, carbs_g || null, fat_g || null, recurrence || null, recurrence_end || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -70,16 +75,32 @@ router.post('/:id/log', async (req, res) => {
     const logged_at = req.body.logged_at || new Date();
 
     const inserted = await client.query(
-      `INSERT INTO meals (user_id, meal_type, name, calories, notes, logged_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO meals (user_id, meal_type, name, calories, notes, logged_at, protein_g, carbs_g, fat_g)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [req.userId, meal.meal_type, meal.name, meal.calories, meal.notes, logged_at]
+      [req.userId, meal.meal_type, meal.name, meal.calories, meal.notes, logged_at, meal.protein_g || null, meal.carbs_g || null, meal.fat_g || null]
     );
 
     await client.query(
       'DELETE FROM planned_meals WHERE id = $1 AND user_id = $2',
       [req.params.id, req.userId]
     );
+
+    // If recurring, create next occurrence
+    if (meal.recurrence) {
+      const currentDate = new Date(meal.planned_date + 'T12:00:00');
+      const days = meal.recurrence === 'daily' ? 1 : 7;
+      currentDate.setDate(currentDate.getDate() + days);
+      const nextDate = currentDate.toISOString().split('T')[0];
+      const endDate = meal.recurrence_end;
+      if (!endDate || nextDate <= endDate) {
+        await client.query(
+          `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date, protein_g, carbs_g, fat_g, recurrence, recurrence_end, parent_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+          [req.userId, meal.meal_type, meal.name, meal.calories, meal.notes, nextDate, meal.protein_g, meal.carbs_g, meal.fat_g, meal.recurrence, meal.recurrence_end, meal.parent_id || meal.id]
+        );
+      }
+    }
 
     await client.query('COMMIT');
     res.status(201).json(inserted.rows[0]);

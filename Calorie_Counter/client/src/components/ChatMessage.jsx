@@ -53,6 +53,9 @@ function MealCard({ meal }) {
         name: meal.name,
         calories: meal.calories,
         logged_at: localISO,
+        protein_g: meal.protein_g || undefined,
+        carbs_g: meal.carbs_g || undefined,
+        fat_g: meal.fat_g || undefined,
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
@@ -62,7 +65,14 @@ function MealCard({ meal }) {
     <div className="chat-meal-card">
       <div className="chat-meal-card-info">
         <div className="chat-meal-card-name">{meal.name}</div>
-        <div className="chat-meal-card-cal">{meal.calories} cal &middot; {meal.meal_type || 'lunch'}</div>
+        <div className="chat-meal-card-cal">
+          {meal.calories} cal &middot; {meal.meal_type || 'lunch'}
+          {(meal.protein_g || meal.carbs_g || meal.fat_g) && (
+            <span style={{ marginLeft: '0.5rem' }}>
+              {meal.protein_g ? `P:${meal.protein_g}g ` : ''}{meal.carbs_g ? `C:${meal.carbs_g}g ` : ''}{meal.fat_g ? `F:${meal.fat_g}g` : ''}
+            </span>
+          )}
+        </div>
       </div>
       <button
         className="btn btn-primary"

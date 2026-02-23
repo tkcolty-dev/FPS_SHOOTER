@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import FoodSearch from '../components/FoodSearch';
+import TemplateBuilder from '../components/TemplateBuilder';
+import BarcodeScanner from '../components/BarcodeScanner';
+import PhotoCapture from '../components/PhotoCapture';
 
 export default function MealLog() {
   const [mealType, setMealType] = useState('lunch');
@@ -15,6 +18,15 @@ export default function MealLog() {
   const [quantity, setQuantity] = useState(1);
   const [baseCal, setBaseCal] = useState(null);
   const [servingSize, setServingSize] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
+  const [baseProtein, setBaseProtein] = useState(null);
+  const [baseCarbs, setBaseCarbs] = useState(null);
+  const [baseFat, setBaseFat] = useState(null);
+  const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -49,6 +61,9 @@ export default function MealLog() {
           meal_type: data.meal_type,
           calories: data.calories,
           notes: data.notes,
+          protein_g: data.protein_g,
+          carbs_g: data.carbs_g,
+          fat_g: data.fat_g,
         });
         queryClient.invalidateQueries({ queryKey: ['custom-meals'] });
       }
@@ -64,14 +79,29 @@ export default function MealLog() {
   });
 
   const quickLog = useMutation({
-    mutationFn: (meal) => {
+    mutationFn: async (meal) => {
       const n = new Date();
       const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+      if (meal.is_template && meal.template_items) {
+        // Log each template item separately
+        for (const item of meal.template_items) {
+          await api.post('/meals', {
+            meal_type: meal.meal_type,
+            name: item.name,
+            calories: item.calories,
+            logged_at: localISO,
+          });
+        }
+        return;
+      }
       return api.post('/meals', {
         meal_type: meal.meal_type,
         name: meal.name,
         calories: meal.calories,
         logged_at: localISO,
+        protein_g: meal.protein_g,
+        carbs_g: meal.carbs_g,
+        fat_g: meal.fat_g,
       });
     },
     onSuccess: () => {
@@ -86,6 +116,12 @@ export default function MealLog() {
     setServingSize(food.serving_size || '1 serving');
     setQuantity(1);
     setCalories(String(food.calories_per_serving));
+    setBaseProtein(food.protein_g ?? null);
+    setBaseCarbs(food.carbs_g ?? null);
+    setBaseFat(food.fat_g ?? null);
+    setProtein(food.protein_g != null ? String(food.protein_g) : '');
+    setCarbs(food.carbs_g != null ? String(food.carbs_g) : '');
+    setFat(food.fat_g != null ? String(food.fat_g) : '');
   };
 
   const handleSubmit = (e) => {
@@ -104,6 +140,9 @@ export default function MealLog() {
       calories: parseInt(calories),
       notes: notes.trim() || undefined,
       logged_at: localISO,
+      protein_g: protein ? parseFloat(protein) : undefined,
+      carbs_g: carbs ? parseFloat(carbs) : undefined,
+      fat_g: fat ? parseFloat(fat) : undefined,
     });
   };
 
@@ -116,9 +155,14 @@ export default function MealLog() {
 
       {customMeals.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 6 }}>
-            My Saved Meals
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <label style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+              My Saved Meals
+            </label>
+            <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem' }} onClick={() => setShowTemplateBuilder(true)}>
+              + Template
+            </button>
+          </div>
           <div className="saved-meals-bar">
             {customMeals.map(m => (
               <button
@@ -127,6 +171,7 @@ export default function MealLog() {
                 onClick={() => quickLog.mutate(m)}
                 disabled={quickLog.isPending}
               >
+                {m.is_template && <span style={{ marginRight: 4 }}>&#x1F4CB;</span>}
                 {m.name}
                 <span className="saved-meal-chip-cal">{m.calories} cal</span>
               </button>
@@ -135,12 +180,51 @@ export default function MealLog() {
         </div>
       )}
 
+      {showTemplateBuilder && <TemplateBuilder onClose={() => setShowTemplateBuilder(false)} />}
+
       <div className="card" style={{ marginBottom: '1.5rem' }}>
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 6 }}>
           Quick search from food database
         </label>
         <FoodSearch onSelect={handleFoodSelect} />
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setShowBarcodeScanner(true)}>
+            Scan Barcode
+          </button>
+          <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setShowPhotoCapture(true)}>
+            Photo Log
+          </button>
+        </div>
       </div>
+
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onResult={(food) => { handleFoodSelect(food); setShowBarcodeScanner(false); }}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
+
+      {showPhotoCapture && (
+        <PhotoCapture
+          onResults={(items) => {
+            // Log each detected item
+            const n = new Date();
+            const localISO = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}T${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}:00`;
+            items.forEach(item => {
+              createMeal.mutate({
+                meal_type: mealType,
+                name: item.name,
+                calories: item.calories,
+                logged_at: localISO,
+                protein_g: item.protein_g || undefined,
+                carbs_g: item.carbs_g || undefined,
+                fat_g: item.fat_g || undefined,
+              });
+            });
+          }}
+          onClose={() => setShowPhotoCapture(false)}
+        />
+      )}
 
       <form onSubmit={handleSubmit} className="card">
         {error && <div className="error-message">{error}</div>}
@@ -205,6 +289,9 @@ export default function MealLog() {
                   const q = parseFloat(e.target.value) || 0;
                   setQuantity(q);
                   setCalories(String(Math.round(baseCal * q)));
+                  if (baseProtein != null) setProtein(String(Math.round(baseProtein * q * 10) / 10));
+                  if (baseCarbs != null) setCarbs(String(Math.round(baseCarbs * q * 10) / 10));
+                  if (baseFat != null) setFat(String(Math.round(baseFat * q * 10) / 10));
                 }}
                 min="0.5"
                 step="0.5"
@@ -234,6 +321,21 @@ export default function MealLog() {
             min="0"
             required
           />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+          <div className="form-group">
+            <label htmlFor="protein">Protein (g)</label>
+            <input id="protein" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="--" min="0" step="0.1" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="carbs">Carbs (g)</label>
+            <input id="carbs" type="number" value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="--" min="0" step="0.1" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="fat">Fat (g)</label>
+            <input id="fat" type="number" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="--" min="0" step="0.1" />
+          </div>
         </div>
 
         <div className="form-group">

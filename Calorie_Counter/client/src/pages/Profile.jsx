@@ -6,6 +6,9 @@ const links = [
   { to: '/goals', label: 'Calorie Goals', desc: 'Set daily calorie targets' },
   { to: '/preferences', label: 'Food Preferences', desc: 'Cuisines, dietary needs, favorites' },
   { to: '/sharing', label: 'Sharing', desc: 'Share your log with others' },
+  { to: '/weight', label: 'Weight Log', desc: 'Track your weight over time' },
+  { to: '/reports', label: 'Reports', desc: 'Charts, streaks, and insights' },
+  { to: '/challenges', label: 'Challenges', desc: 'Compete with friends' },
 ];
 
 export default function Profile() {

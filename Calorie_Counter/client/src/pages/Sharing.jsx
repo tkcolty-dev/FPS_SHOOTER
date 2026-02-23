@@ -4,6 +4,7 @@ import api from '../api/client';
 import MealCard from '../components/MealCard';
 import CalorieBudgetBar from '../components/CalorieBudgetBar';
 import { markSharesSeen } from '../hooks/useNewShares';
+import Leaderboard from '../components/Leaderboard';
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
@@ -161,7 +162,7 @@ export default function Sharing() {
                 key={share.id}
                 style={{
                   padding: '0.5rem 0.75rem',
-                  background: '#f8fafc',
+                  background: 'var(--color-bg)',
                   borderRadius: 'var(--radius)',
                 }}
               >
@@ -215,7 +216,7 @@ export default function Sharing() {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '0.5rem 0.75rem',
-                  background: viewingUser?.owner_id === share.owner_id ? 'rgba(37, 99, 235, 0.05)' : '#f8fafc',
+                  background: viewingUser?.owner_id === share.owner_id ? 'rgba(37, 99, 235, 0.05)' : 'var(--color-bg)',
                   border: viewingUser?.owner_id === share.owner_id ? '1px solid var(--color-primary)' : '1px solid transparent',
                   borderRadius: 'var(--radius)',
                   cursor: 'pointer',
@@ -235,6 +236,8 @@ export default function Sharing() {
         )}
 
         {/* Viewing shared user's data */}
+        {sharedWithMe.length > 0 && <Leaderboard />}
+
         {viewingUser && (
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
             {/* Date navigation */}
@@ -321,7 +324,7 @@ export default function Sharing() {
                   gap: '0.4rem',
                   marginBottom: '0.75rem',
                   padding: '0.5rem',
-                  background: '#f8fafc',
+                  background: 'var(--color-bg)',
                   borderRadius: 'var(--radius)',
                   minHeight: '60px',
                 }}>

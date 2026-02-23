@@ -30,6 +30,11 @@ export default function PlannedMealsList({ plannedMeals, onLog, onDelete, canLog
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
               {meal.meal_type} &middot; {meal.calories} cal
+              {meal.recurrence && (
+                <span title={`Repeats ${meal.recurrence}`} style={{ marginLeft: '0.35rem' }}>
+                  &#x1F501;
+                </span>
+              )}
             </div>
           </div>
           <button

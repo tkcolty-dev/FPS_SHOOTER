@@ -47,16 +47,25 @@ export default function MealTable({ meals, onDelete }) {
             {!isCollapsed && (
               <div className="meal-table-rows">
                 {items.map(meal => (
-                  <div key={meal.id} className="meal-table-row">
-                    <span className="meal-table-row-name">{meal.name}</span>
-                    <span className="meal-table-row-cal">{meal.calories} cal</span>
-                    <span className="meal-table-row-time">
-                      {new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {onDelete && (
-                      <button className="meal-table-row-delete" onClick={() => onDelete(meal.id)}>
-                        Delete
-                      </button>
+                  <div key={meal.id}>
+                    <div className="meal-table-row">
+                      <span className="meal-table-row-name">{meal.name}</span>
+                      <span className="meal-table-row-cal">{meal.calories} cal</span>
+                      <span className="meal-table-row-time">
+                        {new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      {onDelete && (
+                        <button className="meal-table-row-delete" onClick={() => onDelete(meal.id)}>
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                    {(meal.protein_g != null || meal.carbs_g != null || meal.fat_g != null) && (
+                      <div style={{ padding: '0 1rem 0.375rem', fontSize: '0.75rem', color: 'var(--color-text-secondary)', display: 'flex', gap: '0.75rem' }}>
+                        {meal.protein_g != null && <span>P: {meal.protein_g}g</span>}
+                        {meal.carbs_g != null && <span>C: {meal.carbs_g}g</span>}
+                        {meal.fat_g != null && <span>F: {meal.fat_g}g</span>}
+                      </div>
                     )}
                   </div>
                 ))}

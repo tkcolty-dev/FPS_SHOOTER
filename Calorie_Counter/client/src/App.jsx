@@ -12,6 +12,9 @@ import Preferences from './pages/Preferences';
 import Sharing from './pages/Sharing';
 import Chat from './pages/Chat';
 import Profile from './pages/Profile';
+import WeightLog from './pages/WeightLog';
+import Reports from './pages/Reports';
+import Challenges from './pages/Challenges';
 
 export default function App() {
   return (
@@ -30,6 +33,9 @@ export default function App() {
               <Route path="/goals" element={<Goals />} />
               <Route path="/preferences" element={<Preferences />} />
               <Route path="/sharing" element={<Sharing />} />
+              <Route path="/weight" element={<WeightLog />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/challenges" element={<Challenges />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

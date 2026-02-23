@@ -12,6 +12,14 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
   const [quantity, setQuantity] = useState(1);
   const [baseCal, setBaseCal] = useState(null);
   const [servingSize, setServingSize] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fat, setFat] = useState('');
+  const [baseProtein, setBaseProtein] = useState(null);
+  const [baseCarbs, setBaseCarbs] = useState(null);
+  const [baseFat, setBaseFat] = useState(null);
+  const [recurrence, setRecurrence] = useState('');
+  const [recurrenceEnd, setRecurrenceEnd] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -54,6 +62,11 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
       calories: parseInt(calories),
       notes: notes.trim() || undefined,
       planned_date: date,
+      protein_g: protein ? parseFloat(protein) : undefined,
+      carbs_g: carbs ? parseFloat(carbs) : undefined,
+      fat_g: fat ? parseFloat(fat) : undefined,
+      recurrence: recurrence || undefined,
+      recurrence_end: recurrenceEnd || undefined,
     });
   };
 
@@ -107,6 +120,12 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
                       setQuantity(1);
                       setCalories(String(food.calories_per_serving));
                       setCalorieHints([]);
+                      setBaseProtein(food.protein_g ?? null);
+                      setBaseCarbs(food.carbs_g ?? null);
+                      setBaseFat(food.fat_g ?? null);
+                      setProtein(food.protein_g != null ? String(food.protein_g) : '');
+                      setCarbs(food.carbs_g != null ? String(food.carbs_g) : '');
+                      setFat(food.fat_g != null ? String(food.fat_g) : '');
                     }}
                   >
                     {food.name}{food.brand ? ` (${food.brand})` : ''}: ~{food.calories_per_serving} cal ({food.serving_size})
@@ -128,6 +147,9 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
                     const q = parseFloat(e.target.value) || 0;
                     setQuantity(q);
                     setCalories(String(Math.round(baseCal * q)));
+                    if (baseProtein != null) setProtein(String(Math.round(baseProtein * q * 10) / 10));
+                    if (baseCarbs != null) setCarbs(String(Math.round(baseCarbs * q * 10) / 10));
+                    if (baseFat != null) setFat(String(Math.round(baseFat * q * 10) / 10));
                   }}
                   min="0.5"
                   step="0.5"
@@ -157,6 +179,38 @@ export default function PlanMealForm({ date, onClose, onSuccess }) {
               min="0"
               required
             />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+            <div className="form-group">
+              <label htmlFor="planProtein">Protein (g)</label>
+              <input id="planProtein" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} placeholder="--" min="0" step="0.1" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="planCarbs">Carbs (g)</label>
+              <input id="planCarbs" type="number" value={carbs} onChange={(e) => setCarbs(e.target.value)} placeholder="--" min="0" step="0.1" />
+            </div>
+            <div className="form-group">
+              <label htmlFor="planFat">Fat (g)</label>
+              <input id="planFat" type="number" value={fat} onChange={(e) => setFat(e.target.value)} placeholder="--" min="0" step="0.1" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+            <div className="form-group">
+              <label htmlFor="planRecurrence">Repeat</label>
+              <select id="planRecurrence" value={recurrence} onChange={(e) => setRecurrence(e.target.value)}>
+                <option value="">None</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            {recurrence && (
+              <div className="form-group">
+                <label htmlFor="planRecurrenceEnd">Until (optional)</label>
+                <input id="planRecurrenceEnd" type="date" value={recurrenceEnd} onChange={(e) => setRecurrenceEnd(e.target.value)} min={date} />
+              </div>
+            )}
           </div>
 
           <div className="form-group">
