@@ -133,6 +133,7 @@ export default function Dashboard() {
           plannedMeals={selectedDayPlans}
           onLog={(meal) => logPlannedMeal.mutate(meal)}
           onDelete={(id) => deletePlannedMeal.mutate(id)}
+          canLog={selectedDate <= today}
         />
       )}
 

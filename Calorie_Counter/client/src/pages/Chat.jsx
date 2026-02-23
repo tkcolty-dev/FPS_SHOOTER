@@ -4,7 +4,7 @@ import api from '../api/client';
 import ChatMessage from '../components/ChatMessage';
 
 const quickActions = [
-  'Plan my meals for today',
+  'Plan my meals for tomorrow',
   'Suggest a healthy snack',
   'What should I eat for dinner?',
   'Low calorie lunch ideas',
@@ -38,6 +38,9 @@ export default function Chat() {
         today: localToday,
       });
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
+      if (data.savedPlans?.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['planned-meals'] });
+      }
       if (data.learnedPreferences?.length > 0) {
         const names = data.learnedPreferences.map(p => p.value).join(', ');
         setLearnedNote(`Remembered: ${names}`);

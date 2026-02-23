@@ -1,4 +1,4 @@
-export default function PlannedMealsList({ plannedMeals, onLog, onDelete }) {
+export default function PlannedMealsList({ plannedMeals, onLog, onDelete, canLog }) {
   if (plannedMeals.length === 0) return null;
 
   const totalPlanned = plannedMeals.reduce((sum, m) => sum + m.calories, 0);
@@ -13,13 +13,17 @@ export default function PlannedMealsList({ plannedMeals, onLog, onDelete }) {
       </div>
       {plannedMeals.map((meal) => (
         <div key={meal.id} className="planned-meal-item">
-          <button
-            className="planned-meal-check"
-            onClick={() => onLog(meal)}
-            title="Mark as consumed"
-          >
-            &#x2713;
-          </button>
+          {canLog ? (
+            <button
+              className="planned-meal-check"
+              onClick={() => onLog(meal)}
+              title="Mark as consumed"
+            >
+              &#x2713;
+            </button>
+          ) : (
+            <span className="planned-meal-pending" title="Available on the planned day">&#x25CB;</span>
+          )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {meal.name}

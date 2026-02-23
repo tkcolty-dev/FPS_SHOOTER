@@ -100,7 +100,7 @@ Return ONLY a JSON array with exactly 3 objects, each having: name (string), des
   return JSON.parse(jsonMatch[0]);
 }
 
-async function chatWithAI({ message, history, goals, todaysMeals, remainingCalories, preferences }) {
+async function chatWithAI({ message, history, goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate }) {
   const cuisinePrefs = preferences.filter(p => p.preference_type === 'cuisine').map(p => p.value);
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
   const favorites = preferences.filter(p => p.preference_type === 'favorite').map(p => p.value);
@@ -110,22 +110,41 @@ async function chatWithAI({ message, history, goals, todaysMeals, remainingCalor
     ? todaysMeals.map(m => `${m.name} (${m.calories} cal) for ${m.meal_type}`).join(', ')
     : 'nothing yet';
 
+  const plannedDescription = plannedMeals && plannedMeals.length > 0
+    ? plannedMeals.map(m => {
+        const date = typeof m.planned_date === 'string' ? m.planned_date.split('T')[0] : m.planned_date;
+        return `${m.name} (${m.calories} cal) for ${m.meal_type} on ${date}`;
+      }).join(', ')
+    : 'none';
+
   const systemPrompt = `You are a friendly nutrition assistant inside a calorie tracking app.
+Today's date: ${clientDate || new Date().toISOString().split('T')[0]}
 
 User context:
 - Daily calorie goal: ${goals.daily_total} cal${goals.breakfast ? ` (breakfast: ${goals.breakfast}, lunch: ${goals.lunch}, dinner: ${goals.dinner}, snacks: ${goals.snacks})` : ''}
 - Calories remaining today: ${remainingCalories} cal
 - Already ate today: ${mealsDescription}
+- Planned meals (upcoming): ${plannedDescription}
 ${cuisinePrefs.length > 0 ? `- Cuisine preferences: ${cuisinePrefs.join(', ')}` : ''}
 ${dietaryPrefs.length > 0 ? `- Dietary requirements: ${dietaryPrefs.join(', ')}` : ''}
 ${favorites.length > 0 ? `- Favorite foods: ${favorites.join(', ')}` : ''}
 ${dislikes.length > 0 ? `- Dislikes (avoid these): ${dislikes.join(', ')}` : ''}
 
-When suggesting meals the user can log, wrap each meal in a fenced code block tagged "meal" like this:
+You can suggest meals in two ways:
 
+1. To log a meal NOW (for today), use a "meal" block:
 \`\`\`meal
 {"name": "Grilled Chicken Salad", "calories": 420, "meal_type": "lunch"}
 \`\`\`
+
+2. To PLAN a meal for a specific date (today or future), use a "planned_meal" block. The planned_date must be YYYY-MM-DD format:
+\`\`\`planned_meal
+{"name": "Grilled Chicken Salad", "calories": 420, "meal_type": "lunch", "planned_date": "2026-02-24"}
+\`\`\`
+
+CRITICAL: When the user asks to "plan meals for tomorrow", "plan my day", "plan meals for [date]", or anything about planning ahead, you MUST include planned_meal blocks for EVERY meal you suggest. Each meal needs its own planned_meal block. Without these blocks the meals won't be saved. Do NOT skip the blocks. Do NOT use meal blocks for future dates.
+
+When planning a full day, plan breakfast, lunch, dinner, and optionally a snack, keeping the total within the daily calorie goal of ${goals.daily_total} cal. Output a planned_meal block for each one. Skip any meal_type that already has a planned meal for that date.
 
 When the user tells you they like or dislike a food (e.g. "I like Cheerios", "I love tacos", "I hate mushrooms"), save it by outputting a preference block:
 

@@ -764,6 +764,19 @@ input, select, textarea {
   color: white;
 }
 
+.planned-meal-pending {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .planned-meal-delete {
   background: none;
   border: none;

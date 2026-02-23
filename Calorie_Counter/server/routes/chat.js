@@ -16,7 +16,7 @@ router.post('/', async (req, res) => {
     const clientDate = today || new Date().toISOString().split('T')[0];
 
     // Gather user context
-    const [goalsResult, mealsResult, prefsResult] = await Promise.all([
+    const [goalsResult, mealsResult, prefsResult, plannedResult] = await Promise.all([
       pool.query('SELECT * FROM calorie_goals WHERE user_id = $1', [req.userId]),
       pool.query(
         `SELECT meal_type, name, calories FROM meals
@@ -27,6 +27,12 @@ router.post('/', async (req, res) => {
         'SELECT preference_type, value FROM food_preferences WHERE user_id = $1',
         [req.userId]
       ),
+      pool.query(
+        `SELECT meal_type, name, calories, planned_date FROM planned_meals
+         WHERE user_id = $1 AND planned_date >= $2::date
+         ORDER BY planned_date, created_at`,
+        [req.userId, clientDate]
+      ),
     ]);
 
     const goals = goalsResult.rows[0] || { daily_total: 2000 };
@@ -34,6 +40,7 @@ router.post('/', async (req, res) => {
     const caloriesConsumed = todaysMeals.reduce((sum, m) => sum + m.calories, 0);
     const remainingCalories = goals.daily_total - caloriesConsumed;
     const preferences = prefsResult.rows;
+    const plannedMeals = plannedResult.rows;
 
     let reply = await chatWithAI({
       message,
@@ -42,6 +49,8 @@ router.post('/', async (req, res) => {
       todaysMeals,
       remainingCalories,
       preferences,
+      plannedMeals,
+      clientDate,
     });
 
     // Parse and save any preference blocks from the AI response
@@ -68,10 +77,39 @@ router.post('/', async (req, res) => {
       } catch {}
     }
 
-    // Strip preference blocks from the visible reply
-    reply = reply.replace(/```preference\s*\n[\s\S]*?```\s*/g, '').trim();
+    // Parse and save any planned_meal blocks from the AI response
+    const plannedRegex = /```planned_meal\s*\n([\s\S]*?)```/g;
+    let plannedMatch;
+    const savedPlans = [];
+    while ((plannedMatch = plannedRegex.exec(reply)) !== null) {
+      try {
+        const plan = JSON.parse(plannedMatch[1].trim());
+        if (plan.name && plan.calories && plan.meal_type && plan.planned_date) {
+          const validTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+          if (validTypes.includes(plan.meal_type)) {
+            // Skip if a planned meal with same name+date already exists
+            const existing = await pool.query(
+              `SELECT id FROM planned_meals WHERE user_id = $1 AND LOWER(name) = LOWER($2) AND planned_date = $3`,
+              [req.userId, plan.name, plan.planned_date]
+            );
+            if (existing.rows.length === 0) {
+              const inserted = await pool.query(
+                `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date)
+                 VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+                [req.userId, plan.meal_type, plan.name, parseInt(plan.calories), plan.notes || null, plan.planned_date]
+              );
+              savedPlans.push(inserted.rows[0]);
+            }
+          }
+        }
+      } catch {}
+    }
 
-    res.json({ reply, learnedPreferences: learnedPrefs });
+    // Strip preference and planned_meal blocks from the visible reply
+    reply = reply.replace(/```preference\s*\n[\s\S]*?```\s*/g, '').trim();
+    reply = reply.replace(/```planned_meal\s*\n[\s\S]*?```\s*/g, '').trim();
+
+    res.json({ reply, learnedPreferences: learnedPrefs, savedPlans });
   } catch (err) {
     console.error('Chat error:', err);
     res.status(500).json({ error: 'Failed to get AI response' });
