@@ -69,13 +69,12 @@ router.get('/', async (req, res) => {
     // Search local DB and Open Food Facts in parallel
     const [localResult, usdaResults] = await Promise.all([
       pool.query(
-        `SELECT id, name, category, calories_per_serving, serving_size
+        `SELECT DISTINCT ON (LOWER(name)) id, name, category, calories_per_serving, serving_size
          FROM food_database
          WHERE name ILIKE $1
-         ORDER BY
+         ORDER BY LOWER(name),
            CASE WHEN name ILIKE $2 THEN 0 ELSE 1 END,
-           length(name),
-           name
+           length(name)
          LIMIT 10`,
         [`%${q}%`, `${q}%`]
       ),
@@ -87,10 +86,10 @@ router.get('/', async (req, res) => {
     // If ILIKE found nothing locally, try full-text search
     if (localRows.length === 0) {
       const fallback = await pool.query(
-        `SELECT id, name, category, calories_per_serving, serving_size
+        `SELECT DISTINCT ON (LOWER(name)) id, name, category, calories_per_serving, serving_size
          FROM food_database
          WHERE search_vector @@ plainto_tsquery('english', $1)
-         ORDER BY ts_rank(search_vector, plainto_tsquery('english', $1)) DESC
+         ORDER BY LOWER(name), ts_rank(search_vector, plainto_tsquery('english', $1)) DESC
          LIMIT 10`,
         [q]
       );
