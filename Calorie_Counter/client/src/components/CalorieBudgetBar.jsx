@@ -1,7 +1,7 @@
 const barContainerStyle = {
   background: 'var(--color-border)',
-  borderRadius: 12,
-  height: 24,
+  borderRadius: 10,
+  height: 18,
   overflow: 'hidden',
   position: 'relative',
 };
@@ -51,10 +51,10 @@ export default function CalorieBudgetBar({ consumed, goal, macros, macroGoals })
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.875rem' }}>
-        <span style={{ fontWeight: 600 }}>{consumed.toLocaleString()} cal consumed</span>
-        <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
-          {isOver ? `${(consumed - goal).toLocaleString()} over` : `${remaining.toLocaleString()} remaining`}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: '0.8rem' }}>
+        <span style={{ fontWeight: 600 }}>{consumed.toLocaleString()} cal</span>
+        <span style={{ color: isOver ? 'var(--color-danger)' : 'var(--color-text-secondary)', fontSize: '0.75rem' }}>
+          {isOver ? `${(consumed - goal).toLocaleString()} over` : `${remaining.toLocaleString()} left`} / {goal.toLocaleString()}
         </span>
       </div>
       <div style={barContainerStyle}>
@@ -63,16 +63,13 @@ export default function CalorieBudgetBar({ consumed, goal, macros, macroGoals })
             height: '100%',
             width: `${pct}%`,
             background: barColor,
-            borderRadius: 12,
+            borderRadius: 10,
             transition: 'width 0.4s ease, background 0.3s',
           }}
         />
       </div>
-      <div style={{ textAlign: 'right', marginTop: 4, fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
-        Goal: {goal.toLocaleString()} cal
-      </div>
       {showMacros && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 6 }}>
           <MacroBar label="P" current={macros.protein} goal={macroGoals.protein} color={macroColors.protein} />
           <MacroBar label="C" current={macros.carbs} goal={macroGoals.carbs} color={macroColors.carbs} />
           <MacroBar label="F" current={macros.fat} goal={macroGoals.fat} color={macroColors.fat} />

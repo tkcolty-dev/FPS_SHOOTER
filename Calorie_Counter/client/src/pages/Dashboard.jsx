@@ -187,7 +187,7 @@ export default function Dashboard() {
         <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
 
-      <div className="card" style={{ marginBottom: '1rem' }}>
+      <div className="card" style={{ marginBottom: '0.75rem', padding: '0.6rem 0.75rem' }}>
         <CalorieBudgetBar consumed={totalCalories} goal={dailyGoal} macros={macroTotals} macroGoals={macroGoals} />
       </div>
 
