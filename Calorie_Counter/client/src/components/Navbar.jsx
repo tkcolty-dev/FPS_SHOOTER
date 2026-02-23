@@ -1,7 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
-import { useTheme } from '../hooks/useTheme';
 
 const tabs = [
   { to: '/', label: 'Dashboard', icon: '□' },
@@ -23,7 +22,6 @@ const badgeDot = {
 export default function Navbar() {
   const { user, logout } = useAuth();
   const { newCount } = useNewShares();
-  const { theme, toggleTheme } = useTheme();
 
   return (
     <>
@@ -48,14 +46,6 @@ export default function Navbar() {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              onClick={toggleTheme}
-              className="desktop-link"
-              style={{ background: 'none', border: 'none', fontSize: '1.1rem', padding: '0.375rem 0.5rem' }}
-              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            >
-              {theme === 'dark' ? '\u2600' : '\u263E'}
-            </button>
             <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
               {user?.username}
             </span>

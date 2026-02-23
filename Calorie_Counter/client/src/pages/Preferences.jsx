@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
-import { useTheme } from '../hooks/useTheme';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 const typeLabels = {
@@ -29,7 +28,6 @@ export default function Preferences() {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const queryClient = useQueryClient();
-  const { theme, toggleTheme } = useTheme();
   const { isSubscribed, isSupported, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
 
   const { data: preferences = [], isLoading } = useQuery({
@@ -71,24 +69,6 @@ export default function Preferences() {
       <div className="page-header">
         <h1>Food Preferences</h1>
         <p>Help the AI give you better meal suggestions</p>
-      </div>
-
-      <div className="card" style={{ marginBottom: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <label style={{ fontWeight: 600, fontSize: '0.875rem' }}>Theme</label>
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: 2 }}>
-              {theme === 'dark' ? 'Dark mode' : 'Light mode'}
-            </p>
-          </div>
-          <button
-            className="btn btn-secondary"
-            onClick={toggleTheme}
-            style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}
-          >
-            {theme === 'dark' ? '\u2600 Light' : '\u263E Dark'}
-          </button>
-        </div>
       </div>
 
       {isSupported && (
