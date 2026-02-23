@@ -1,27 +1,72 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import MealCard from '../components/MealCard';
 import CalorieBudgetBar from '../components/CalorieBudgetBar';
+import { markSharesSeen } from '../hooks/useNewShares';
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function isToday(dateStr) {
+  return dateStr === new Date().toISOString().split('T')[0];
+}
 
 export default function Sharing() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [viewingUser, setViewingUser] = useState(null);
+  const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [commentText, setCommentText] = useState('');
+  const commentsEndRef = useRef(null);
   const queryClient = useQueryClient();
-
-  const today = new Date().toISOString().split('T')[0];
 
   const { data: sharingData, isLoading } = useQuery({
     queryKey: ['sharing'],
     queryFn: () => api.get('/sharing').then(r => r.data),
   });
 
+  // Mark all shares as seen when page loads
+  useEffect(() => {
+    if (sharingData?.sharedWithMe) {
+      markSharesSeen(sharingData.sharedWithMe.map(s => s.id));
+    }
+  }, [sharingData?.sharedWithMe]);
+
   const { data: sharedMeals } = useQuery({
-    queryKey: ['shared-meals', viewingUser?.owner_id, today],
-    queryFn: () => api.get(`/sharing/${viewingUser.owner_id}/meals`, { params: { date: today } }).then(r => r.data),
+    queryKey: ['shared-meals', viewingUser?.owner_id, viewDate],
+    queryFn: () => api.get(`/sharing/${viewingUser.owner_id}/meals`, { params: { date: viewDate } }).then(r => r.data),
     enabled: !!viewingUser,
   });
+
+  const { data: sharedPlanned } = useQuery({
+    queryKey: ['shared-planned', viewingUser?.owner_id, viewDate],
+    queryFn: () => api.get(`/sharing/${viewingUser.owner_id}/planned-meals`, { params: { from: viewDate } }).then(r => r.data),
+    enabled: !!viewingUser && !!viewingUser.share_planned,
+  });
+
+  const activeShareId = viewingUser
+    ? (sharingData?.sharedWithMe?.find(s => s.owner_id === viewingUser.owner_id)?.id)
+    : null;
+
+  const { data: commentsData } = useQuery({
+    queryKey: ['share-comments', activeShareId],
+    queryFn: () => api.get(`/sharing/${activeShareId}/comments`).then(r => r.data),
+    enabled: !!activeShareId,
+    refetchInterval: 15000,
+  });
+
+  useEffect(() => {
+    commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [commentsData?.comments?.length]);
 
   const addShare = useMutation({
     mutationFn: (viewer_username) => api.post('/sharing', { viewer_username }),
@@ -38,15 +83,35 @@ export default function Sharing() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sharing'] }),
   });
 
+  const togglePlanned = useMutation({
+    mutationFn: ({ id, share_planned }) => api.patch(`/sharing/${id}`, { share_planned }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sharing'] }),
+  });
+
+  const postComment = useMutation({
+    mutationFn: (text) => api.post(`/sharing/${activeShareId}/comments`, { text }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['share-comments', activeShareId] });
+      setCommentText('');
+    },
+  });
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!username.trim()) return;
     addShare.mutate(username.trim());
   };
 
+  const handleCommentSubmit = (e) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+    postComment.mutate(commentText.trim());
+  };
+
   if (isLoading) return <div className="loading">Loading sharing settings...</div>;
 
   const { sharing = [], sharedWithMe = [] } = sharingData || {};
+  const plannedMeals = sharedPlanned?.plannedMeals || [];
 
   return (
     <div>
@@ -95,22 +160,30 @@ export default function Sharing() {
               <div
                 key={share.id}
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
                   padding: '0.5rem 0.75rem',
                   background: '#f8fafc',
                   borderRadius: 'var(--radius)',
                 }}
               >
-                <span style={{ fontWeight: 500 }}>{share.viewer_username}</span>
-                <button
-                  className="btn btn-danger"
-                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
-                  onClick={() => removeShare.mutate(share.id)}
-                >
-                  Revoke
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 500 }}>{share.viewer_username}</span>
+                  <button
+                    className="btn btn-danger"
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                    onClick={() => removeShare.mutate(share.id)}
+                  >
+                    Revoke
+                  </button>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!share.share_planned}
+                    onChange={() => togglePlanned.mutate({ id: share.id, share_planned: !share.share_planned })}
+                    style={{ accentColor: 'var(--color-primary)' }}
+                  />
+                  Share planned meals
+                </label>
               </div>
             ))}
           </div>
@@ -129,7 +202,14 @@ export default function Sharing() {
             {sharedWithMe.map(share => (
               <button
                 key={share.id}
-                onClick={() => setViewingUser(viewingUser?.owner_id === share.owner_id ? null : share)}
+                onClick={() => {
+                  if (viewingUser?.owner_id === share.owner_id) {
+                    setViewingUser(null);
+                  } else {
+                    setViewingUser(share);
+                    setViewDate(new Date().toISOString().split('T')[0]);
+                  }
+                }}
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -154,23 +234,134 @@ export default function Sharing() {
           </div>
         )}
 
-        {/* Viewing shared user's meals */}
-        {viewingUser && sharedMeals && (
+        {/* Viewing shared user's data */}
+        {viewingUser && (
           <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem' }}>
-              {viewingUser.owner_username}'s meals today
-            </h3>
-            <CalorieBudgetBar
-              consumed={sharedMeals.meals.reduce((s, m) => s + m.calories, 0)}
-              goal={sharedMeals.goals.daily_total}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
-              {sharedMeals.meals.length === 0 ? (
-                <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No meals logged today.</p>
-              ) : (
-                sharedMeals.meals.map(meal => <MealCard key={meal.id} meal={meal} />)
-              )}
+            {/* Date navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+              <button
+                className="btn"
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                onClick={() => setViewDate(addDays(viewDate, -1))}
+              >
+                &larr; Prev
+              </button>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                {isToday(viewDate) ? 'Today' : formatDate(viewDate)}
+              </span>
+              <button
+                className="btn"
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}
+                onClick={() => setViewDate(addDays(viewDate, 1))}
+              >
+                Next &rarr;
+              </button>
             </div>
+
+            {/* Logged meals */}
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+              {viewingUser.owner_username}'s Logged Meals
+            </h3>
+            {sharedMeals && (
+              <>
+                <CalorieBudgetBar
+                  consumed={sharedMeals.meals.reduce((s, m) => s + m.calories, 0)}
+                  goal={sharedMeals.goals.daily_total}
+                />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  {sharedMeals.meals.length === 0 ? (
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No meals logged.</p>
+                  ) : (
+                    sharedMeals.meals.map(meal => <MealCard key={meal.id} meal={meal} />)
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Planned meals */}
+            {viewingUser.share_planned && (
+              <div style={{ marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.5rem' }}>
+                  <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>Planned Meals</h3>
+                  {plannedMeals.length > 0 && (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                      {plannedMeals.reduce((s, m) => s + m.calories, 0)} cal planned
+                    </span>
+                  )}
+                </div>
+                {plannedMeals.length === 0 ? (
+                  <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>No planned meals for this day.</p>
+                ) : (
+                  plannedMeals.map(meal => (
+                    <div key={meal.id} className="planned-meal-item" style={{ cursor: 'default' }}>
+                      <span className="planned-meal-pending" title="Planned">&#x25CB;</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {meal.name}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                          {meal.meal_type} &middot; {meal.calories} cal
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Comments */}
+            {activeShareId && (
+              <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
+                <h3 style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Comments</h3>
+                <div style={{
+                  maxHeight: '200px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem',
+                  marginBottom: '0.75rem',
+                  padding: '0.5rem',
+                  background: '#f8fafc',
+                  borderRadius: 'var(--radius)',
+                  minHeight: '60px',
+                }}>
+                  {(!commentsData?.comments || commentsData.comments.length === 0) ? (
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', margin: 'auto', textAlign: 'center' }}>
+                      No comments yet. Send some encouragement!
+                    </p>
+                  ) : (
+                    commentsData.comments.map(c => (
+                      <div key={c.id} style={{ fontSize: '0.85rem' }}>
+                        <span style={{ fontWeight: 600 }}>{c.sender_username}</span>
+                        <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.75rem', marginLeft: '0.4rem' }}>
+                          {new Date(c.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <div style={{ marginTop: '0.1rem' }}>{c.text}</div>
+                      </div>
+                    ))
+                  )}
+                  <div ref={commentsEndRef} />
+                </div>
+                <form onSubmit={handleCommentSubmit} style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={e => setCommentText(e.target.value)}
+                    placeholder="Write a comment..."
+                    style={{
+                      flex: 1,
+                      padding: '0.4rem 0.6rem',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius)',
+                      fontSize: '0.85rem',
+                    }}
+                  />
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }} disabled={postComment.isPending}>
+                    Send
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         )}
       </div>

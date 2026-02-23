@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNewShares } from '../hooks/useNewShares';
 
 const links = [
   { to: '/goals', label: 'Calorie Goals', desc: 'Set daily calorie targets' },
@@ -9,6 +10,7 @@ const links = [
 
 export default function Profile() {
   const { user, logout } = useAuth();
+  const { newCount } = useNewShares();
 
   return (
     <div>
@@ -21,7 +23,21 @@ export default function Profile() {
         {links.map(l => (
           <Link key={l.to} to={l.to} className="card profile-link">
             <div>
-              <div style={{ fontWeight: 600 }}>{l.label}</div>
+              <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {l.label}
+                {l.to === '/sharing' && newCount > 0 && (
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    background: 'var(--color-danger)',
+                    color: '#fff',
+                    padding: '1px 6px',
+                    borderRadius: 10,
+                  }}>
+                    {newCount} new
+                  </span>
+                )}
+              </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>{l.desc}</div>
             </div>
             <span style={{ color: 'var(--color-text-secondary)', fontSize: '1.2rem' }}>&rsaquo;</span>

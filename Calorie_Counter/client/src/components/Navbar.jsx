@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNewShares } from '../hooks/useNewShares';
 
 const tabs = [
   { to: '/', label: 'Dashboard', icon: '□' },
@@ -8,8 +9,19 @@ const tabs = [
   { to: '/profile', label: 'Profile', icon: '⚙' },
 ];
 
+const badgeDot = {
+  position: 'absolute',
+  top: 2,
+  right: 2,
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: 'var(--color-danger)',
+};
+
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { newCount } = useNewShares();
 
   return (
     <>
@@ -25,8 +37,10 @@ export default function Navbar() {
                   to={t.to}
                   end={t.to === '/'}
                   className={({ isActive }) => `desktop-link${isActive ? ' active' : ''}`}
+                  style={{ position: 'relative' }}
                 >
                   {t.label}
+                  {t.to === '/profile' && newCount > 0 && <span style={badgeDot} />}
                 </NavLink>
               ))}
             </div>
@@ -55,9 +69,11 @@ export default function Navbar() {
             to={t.to}
             end={t.to === '/'}
             className={({ isActive }) => `mobile-tab${isActive ? ' active' : ''}`}
+            style={{ position: 'relative' }}
           >
             <span className="mobile-tab-icon">{t.icon}</span>
             <span className="mobile-tab-label">{t.label}</span>
+            {t.to === '/profile' && newCount > 0 && <span style={badgeDot} />}
           </NavLink>
         ))}
       </nav>
