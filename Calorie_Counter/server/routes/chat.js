@@ -17,7 +17,7 @@ router.post('/', async (req, res) => {
     const clientDate = today || new Date().toISOString().split('T')[0];
 
     // Gather user context
-    const [goalsResult, mealsResult, prefsResult, plannedResult] = await Promise.all([
+    const [goalsResult, mealsResult, prefsResult, plannedResult, sharesResult] = await Promise.all([
       pool.query('SELECT * FROM calorie_goals WHERE user_id = $1', [req.userId]),
       pool.query(
         `SELECT meal_type, name, calories FROM meals
@@ -34,6 +34,15 @@ router.post('/', async (req, res) => {
          ORDER BY planned_date, created_at`,
         [req.userId, clientDate]
       ),
+      // Accepted shares: users who shared with me (I can log/plan for them)
+      pool.query(
+        `SELECT u.id as user_id, u.username
+         FROM shares s
+         JOIN share_status ss ON ss.share_id = s.id
+         JOIN users u ON u.id = s.owner_id
+         WHERE s.viewer_id = $1 AND ss.status = 'accepted'`,
+        [req.userId]
+      ),
     ]);
 
     const goals = goalsResult.rows[0] || { daily_total: 2000 };
@@ -42,6 +51,7 @@ router.post('/', async (req, res) => {
     const remainingCalories = goals.daily_total - caloriesConsumed;
     const preferences = prefsResult.rows;
     const plannedMeals = plannedResult.rows;
+    const sharedUsers = sharesResult.rows;
 
     // Look up calorie data for foods mentioned in the message
     const foodWords = message.toLowerCase().replace(/[^a-z\s]/g, '').split(/\s+/).filter(w => w.length > 2);
@@ -114,11 +124,32 @@ router.post('/', async (req, res) => {
       plannedMeals,
       clientDate,
       foodReference,
+      sharedUsers,
     });
 
     if (!reply) {
       return res.status(500).json({ error: 'AI returned an empty response' });
     }
+
+    // Resolve for_user in meal blocks → inject for_user_id/for_user_name for frontend
+    const mealBlockRegex = /```meal\s*\n([\s\S]*?)```/g;
+    reply = reply.replace(mealBlockRegex, (fullMatch, jsonStr) => {
+      try {
+        const meal = JSON.parse(jsonStr.trim());
+        if (meal.for_user) {
+          const target = sharedUsers.find(u => u.username.toLowerCase() === meal.for_user.toLowerCase());
+          if (target) {
+            meal.for_user_id = target.user_id;
+            meal.for_user_name = target.username;
+          }
+          delete meal.for_user;
+          return '```meal\n' + JSON.stringify(meal) + '\n```';
+        }
+        return fullMatch;
+      } catch {
+        return fullMatch;
+      }
+    });
 
     // Parse and save any preference blocks from the AI response
     const prefRegex = /```preference\s*\n([\s\S]*?)```/g;
@@ -154,16 +185,24 @@ router.post('/', async (req, res) => {
         if (plan.name && plan.calories && plan.meal_type && plan.planned_date) {
           const validTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
           if (validTypes.includes(plan.meal_type)) {
+            // Resolve target user for shared-user planned meals
+            let planTargetUserId = req.userId;
+            if (plan.for_user) {
+              const target = sharedUsers.find(u => u.username.toLowerCase() === plan.for_user.toLowerCase());
+              if (target) {
+                planTargetUserId = target.user_id;
+              }
+            }
             // Skip if a planned meal with same name+date already exists
             const existing = await pool.query(
               `SELECT id FROM planned_meals WHERE user_id = $1 AND LOWER(name) = LOWER($2) AND planned_date = $3`,
-              [req.userId, plan.name, plan.planned_date]
+              [planTargetUserId, plan.name, plan.planned_date]
             );
             if (existing.rows.length === 0) {
               const inserted = await pool.query(
                 `INSERT INTO planned_meals (user_id, meal_type, name, calories, notes, planned_date, protein_g, carbs_g, fat_g)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-                [req.userId, plan.meal_type, plan.name, parseInt(plan.calories), plan.notes || null, plan.planned_date, plan.protein_g || null, plan.carbs_g || null, plan.fat_g || null]
+                [planTargetUserId, plan.meal_type, plan.name, parseInt(plan.calories), plan.notes || null, plan.planned_date, plan.protein_g || null, plan.carbs_g || null, plan.fat_g || null]
               );
               savedPlans.push(inserted.rows[0]);
             }

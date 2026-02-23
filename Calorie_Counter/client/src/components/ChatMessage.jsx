@@ -56,6 +56,7 @@ function MealCard({ meal }) {
         protein_g: meal.protein_g || undefined,
         carbs_g: meal.carbs_g || undefined,
         fat_g: meal.fat_g || undefined,
+        for_user_id: meal.for_user_id || undefined,
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
@@ -80,7 +81,10 @@ function MealCard({ meal }) {
         onClick={() => logMeal.mutate()}
         disabled={logMeal.isPending || logMeal.isSuccess}
       >
-        {logMeal.isSuccess ? 'Logged' : logMeal.isPending ? '...' : 'Log this'}
+        {logMeal.isSuccess
+          ? (meal.for_user_name ? `Logged for ${meal.for_user_name}` : 'Logged')
+          : logMeal.isPending ? '...'
+          : (meal.for_user_name ? `Log for ${meal.for_user_name}` : 'Log this')}
       </button>
     </div>
   );
