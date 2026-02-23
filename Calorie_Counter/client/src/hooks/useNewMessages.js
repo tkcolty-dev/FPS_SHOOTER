@@ -10,21 +10,30 @@ function getLastCheck() {
   return localStorage.getItem(LAST_CHECK_KEY) || new Date(0).toISOString();
 }
 
-// Play a short notification ding using Web Audio API
+// Play Apple iMessage-style tri-tone notification using Web Audio API
 function playDing() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.3);
+    const t = ctx.currentTime;
+    // Three notes: B5 → E6 → G#6 (iMessage tri-tone intervals)
+    const notes = [
+      { freq: 988, start: 0, dur: 0.12 },
+      { freq: 1319, start: 0.14, dur: 0.12 },
+      { freq: 1661, start: 0.28, dur: 0.18 },
+    ];
+    for (const n of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(n.freq, t + n.start);
+      gain.gain.setValueAtTime(0, t + n.start);
+      gain.gain.linearRampToValueAtTime(0.25, t + n.start + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + n.start + n.dur);
+      osc.start(t + n.start);
+      osc.stop(t + n.start + n.dur + 0.05);
+    }
   } catch {}
 }
 
