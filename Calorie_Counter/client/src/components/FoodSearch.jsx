@@ -13,7 +13,7 @@ async function searchOFF(query) {
     const params = new URLSearchParams({
       search_terms: query,
       json: '1',
-      page_size: '15',
+      page_size: '50',
       search_simple: '1',
       action: 'process',
       fields: 'product_name,brands,nutriments,serving_size,code',
@@ -48,21 +48,20 @@ async function searchOFF(query) {
 }
 
 function mergeResults(localRes, offResults) {
-  const localNames = new Set(localRes.map((r) => r.name.toLowerCase()));
   const seen = new Set();
   const merged = [...localRes];
+  let brandedCount = 0;
   for (const item of offResults) {
-    if (item.brand) {
+    if (item.brand && brandedCount < 15) {
       const key = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
       if (!seen.has(key)) {
         seen.add(key);
         merged.push(item);
+        brandedCount++;
       }
-    } else if (!localNames.has(item.name.toLowerCase())) {
-      merged.push(item);
     }
   }
-  return merged.slice(0, 30);
+  return merged;
 }
 
 export default function FoodSearch({ onSelect }) {
