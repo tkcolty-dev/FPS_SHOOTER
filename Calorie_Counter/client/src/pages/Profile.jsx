@@ -2,23 +2,25 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNewShares } from '../hooks/useNewShares';
 
+const ICON_COLOR = '#2563eb';
+
 const links = [
-  { to: '/goals', label: 'Calorie Goals', desc: 'Set daily calorie targets', color: '#2563eb', icon: (
+  { to: '/goals', label: 'Calorie Goals', desc: 'Set daily calorie targets', icon: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
   )},
-  { to: '/preferences', label: 'Food Preferences', desc: 'Cuisines, dietary needs, favorites', color: '#f59e0b', icon: (
+  { to: '/preferences', label: 'Food Preferences', desc: 'Cuisines, dietary needs, favorites', icon: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
   )},
-  { to: '/sharing', label: 'Sharing', desc: 'Share your log with others', color: '#8b5cf6', icon: (
+  { to: '/sharing', label: 'Sharing', desc: 'Share your log with others', icon: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
   )},
-  { to: '/weight', label: 'Weight Log', desc: 'Track your weight over time', color: '#06b6d4', icon: (
+  { to: '/weight', label: 'Weight Log', desc: 'Track your weight over time', icon: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg>
   )},
-  { to: '/reports', label: 'Reports', desc: 'Charts, streaks, and insights', color: '#16a34a', icon: (
+  { to: '/reports', label: 'Reports', desc: 'Charts, streaks, and insights', icon: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
   )},
-  { to: '/challenges', label: 'Challenges', desc: 'Compete with friends', color: '#ea580c', icon: (
+  { to: '/challenges', label: 'Challenges', desc: 'Compete with friends', icon: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
   )},
 ];
@@ -40,8 +42,8 @@ export default function Profile() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{
                 width: 40, height: 40, borderRadius: 10,
-                background: `color-mix(in srgb, ${l.color} 12%, transparent)`,
-                color: l.color,
+                background: `color-mix(in srgb, ${ICON_COLOR} 12%, transparent)`,
+                color: ICON_COLOR,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>

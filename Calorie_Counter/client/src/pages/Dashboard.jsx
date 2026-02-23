@@ -158,19 +158,19 @@ export default function Dashboard() {
 
       {/* Quick actions grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1rem' }}>
-        <Link to="/log" className="quick-action-tile" style={{ '--tile-color': '#2563eb' }}>
+        <Link to="/log" className="quick-action-tile">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
           <span>Log</span>
         </Link>
-        <Link to="/reports" className="quick-action-tile" style={{ '--tile-color': '#16a34a' }}>
+        <Link to="/reports" className="quick-action-tile">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
           <span>Reports</span>
         </Link>
-        <Link to="/weight" className="quick-action-tile" style={{ '--tile-color': '#06b6d4' }}>
+        <Link to="/weight" className="quick-action-tile">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><path d="M16 7l-4-4-4 4"/><path d="M8 17l4 4 4-4"/></svg>
           <span>Weight</span>
         </Link>
-        <Link to="/challenges" className="quick-action-tile" style={{ '--tile-color': '#ea580c' }}>
+        <Link to="/challenges" className="quick-action-tile">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
           <span>Challenges</span>
         </Link>
