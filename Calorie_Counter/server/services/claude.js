@@ -168,7 +168,7 @@ IMPORTANT: Always use the calorie values from this reference when available. The
     { role: 'user', content: message },
   ];
 
-  return await callLLM({ messages, systemPrompt, maxTokens: 2048 });
+  return await callLLM({ messages, systemPrompt, maxTokens: 4096 });
 }
 
 module.exports = { getSuggestions, chatWithAI };
