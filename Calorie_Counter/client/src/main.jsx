@@ -5,7 +5,7 @@ import App from './App';
 import './index.css';
 
 // Apply saved theme before render to prevent flash
-const savedTheme = localStorage.getItem('theme') || 'dark';
+const savedTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
 const queryClient = new QueryClient({
