@@ -45,7 +45,7 @@ export default function Register() {
       <div style={{ width: '100%', maxWidth: 400, padding: '0 1rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>
-            CalorieCounter
+            Bitewise
           </h1>
           <p style={{ color: 'var(--color-text-secondary)', marginTop: 4 }}>
             Create your account

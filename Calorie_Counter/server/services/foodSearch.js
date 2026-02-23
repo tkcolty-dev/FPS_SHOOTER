@@ -21,7 +21,7 @@ async function searchOpenFoodFacts(query) {
     });
     const resp = await fetch(`${OFF_BASE}?${params}`, {
       signal: AbortSignal.timeout(8000),
-      headers: { 'User-Agent': 'CalorieCounter/1.0' },
+      headers: { 'User-Agent': 'Bitewise/1.0' },
     });
     if (!resp.ok) return [];
     const data = await resp.json();

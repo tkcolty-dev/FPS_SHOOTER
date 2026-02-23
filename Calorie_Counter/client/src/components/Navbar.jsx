@@ -29,7 +29,7 @@ export default function Navbar() {
       <nav className="desktop-nav">
         <div className="desktop-nav-inner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <span className="brand">CalorieCounter</span>
+            <span className="brand">Bitewise</span>
             <div className="desktop-links">
               {tabs.map(t => (
                 <NavLink

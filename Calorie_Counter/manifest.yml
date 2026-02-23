@@ -1,5 +1,5 @@
 applications:
-  - name: calorie-counter
+  - name: bitewise
     memory: 512M
     buildpacks:
       - nodejs_buildpack

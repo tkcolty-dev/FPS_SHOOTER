@@ -1,10 +1,10 @@
 self.addEventListener('push', (event) => {
-  let data = { title: 'CalorieCounter', body: 'You have a notification' };
+  let data = { title: 'Bitewise', body: 'You have a notification' };
   try {
     data = event.data.json();
   } catch {}
   event.waitUntil(
-    self.registration.showNotification(data.title || 'CalorieCounter', {
+    self.registration.showNotification(data.title || 'Bitewise', {
       body: data.body || '',
       icon: '/favicon.ico',
       badge: '/favicon.ico',
