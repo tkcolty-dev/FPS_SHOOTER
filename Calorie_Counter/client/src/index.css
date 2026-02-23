@@ -1038,6 +1038,31 @@ input, select, textarea {
   .meal-table-row-time {
     display: none;
   }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .dashboard-meal-actions {
+    flex-wrap: wrap;
+  }
+
+  .pref-add-form {
+    flex-direction: column;
+  }
+
+  .goals-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .top-food-item {
+    padding: 0.5rem 0.625rem;
+  }
+
+  .chat-mic-btn {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 @media (min-width: 769px) {

@@ -92,7 +92,7 @@ export default function Goals() {
           Optionally set per-meal budgets (used for AI suggestions):
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        <div className="goals-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
           <div className="form-group">
             <label htmlFor="breakfast">Breakfast</label>
             <input id="breakfast" type="number" value={breakfast} onChange={(e) => setBreakfast(e.target.value)} placeholder="e.g. 400" min="0" />

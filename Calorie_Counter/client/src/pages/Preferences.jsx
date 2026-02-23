@@ -94,7 +94,7 @@ export default function Preferences() {
       <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '1.5rem' }}>
         {error && <div className="error-message">{error}</div>}
 
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+        <div className="pref-add-form" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
           <div className="form-group" style={{ marginBottom: 0, minWidth: 140 }}>
             <label htmlFor="prefType">Type</label>
             <select id="prefType" value={type} onChange={(e) => setType(e.target.value)}>

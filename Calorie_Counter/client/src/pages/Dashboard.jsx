@@ -139,7 +139,7 @@ export default function Dashboard() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Meals</h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className="dashboard-meal-actions" style={{ display: 'flex', gap: '0.5rem' }}>
           {meals.length > 0 && (
             <button
               className="btn btn-secondary"
