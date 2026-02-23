@@ -18,9 +18,7 @@ async function searchOFF(query) {
       action: 'process',
       fields: 'product_name,brands,nutriments,serving_size,code',
     });
-    const resp = await fetch(`${OFF_BASE}?${params}`, {
-      signal: AbortSignal.timeout(5000),
-    });
+    const resp = await fetch(`${OFF_BASE}?${params}`);
     if (!resp.ok) return [];
     const data = await resp.json();
     if (!data.products) return [];
@@ -49,12 +47,31 @@ async function searchOFF(query) {
   }
 }
 
+function mergeResults(localRes, offResults) {
+  const localNames = new Set(localRes.map((r) => r.name.toLowerCase()));
+  const seen = new Set();
+  const merged = [...localRes];
+  for (const item of offResults) {
+    if (item.brand) {
+      const key = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(item);
+      }
+    } else if (!localNames.has(item.name.toLowerCase())) {
+      merged.push(item);
+    }
+  }
+  return merged.slice(0, 25);
+}
+
 export default function FoodSearch({ onSelect }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const wrapperRef = useRef(null);
+  const searchId = useRef(0);
 
   useEffect(() => {
     if (query.length < 2) {
@@ -64,37 +81,34 @@ export default function FoodSearch({ onSelect }) {
     }
 
     setSearching(true);
+    const currentSearch = ++searchId.current;
+
     const timer = setTimeout(async () => {
       try {
-        // Search local DB (server) and Open Food Facts (browser) in parallel
-        const [localRes, offResults] = await Promise.all([
-          api.get('/foods', { params: { q: query } }).then((r) => r.data),
-          searchOFF(query),
-        ]);
+        // Show local results immediately, then append OFF results
+        const localRes = await api.get('/foods', { params: { q: query } }).then((r) => r.data);
+        if (searchId.current !== currentSearch) return;
 
-        // Merge: local first, then branded OFF results
-        const localNames = new Set(localRes.map((r) => r.name.toLowerCase()));
-        const seen = new Set();
-        const merged = [...localRes];
-
-        for (const item of offResults) {
-          if (item.brand) {
-            const key = `${item.name.toLowerCase()}|${item.brand.toLowerCase()}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              merged.push(item);
-            }
-          } else if (!localNames.has(item.name.toLowerCase())) {
-            merged.push(item);
-          }
+        if (localRes.length > 0) {
+          setResults(localRes);
+          setOpen(true);
         }
 
-        setResults(merged.slice(0, 25));
+        // Fetch branded results from Open Food Facts (browser-side)
+        const offResults = await searchOFF(query);
+        if (searchId.current !== currentSearch) return;
+
+        const merged = mergeResults(localRes, offResults);
+        setResults(merged);
         setOpen(true);
       } catch {
-        setResults([]);
+        if (searchId.current === currentSearch) {
+          setResults([]);
+        }
       } finally {
-        setSearching(false);
+        if (searchId.current === currentSearch) {
+          setSearching(false);
+        }
       }
     }, 300);
 
