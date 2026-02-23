@@ -399,7 +399,7 @@ export default function MealLog() {
           <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: showMacros ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
             <polyline points="6 4 14 10 6 16" />
           </svg>
-          {showMacros ? 'Hide macros' : 'Add macros (protein, carbs, fat)'}
+          {showMacros ? 'Close advanced' : 'Open advanced'}
         </button>
         <div
           ref={macrosRef}
