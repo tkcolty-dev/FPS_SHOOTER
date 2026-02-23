@@ -18,6 +18,7 @@ export default function Dashboard() {
   const today = formatDate(now);
   const [selectedDate, setSelectedDate] = useState(today);
   const [showPlanForm, setShowPlanForm] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [dismissedSuggestion, setDismissedSuggestion] = useState(false);
   const [dismissedWeekly, setDismissedWeekly] = useState(() => {
     const saved = localStorage.getItem('weekly-summary-dismissed');
@@ -248,18 +249,6 @@ export default function Dashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Meals</h2>
         <div className="dashboard-meal-actions" style={{ display: 'flex', gap: '0.5rem' }}>
-          {meals.length > 0 && (
-            <button
-              className="btn btn-secondary"
-              style={{ fontSize: '0.8rem', padding: '0.375rem 0.75rem' }}
-              onClick={() => {
-                if (confirm('Clear all meals for today?')) clearToday.mutate();
-              }}
-              disabled={clearToday.isPending}
-            >
-              Clear All
-            </button>
-          )}
           <button
             className="btn btn-secondary"
             style={{ fontSize: '0.85rem' }}
@@ -272,6 +261,41 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {meals.length > 0 && !confirmClear && (
+        <div style={{ textAlign: 'right', marginBottom: '0.5rem', marginTop: '-0.5rem' }}>
+          <button
+            className="btn"
+            style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', color: 'var(--color-text-secondary)', border: 'none', background: 'none', textDecoration: 'underline' }}
+            onClick={() => {
+              setConfirmClear(true);
+              setTimeout(() => setConfirmClear(false), 4000);
+            }}
+          >
+            Clear all meals
+          </button>
+        </div>
+      )}
+      {confirmClear && (
+        <div style={{ textAlign: 'right', marginBottom: '0.5rem', marginTop: '-0.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-danger)' }}>Delete all today's meals?</span>
+          <button
+            className="btn btn-danger"
+            style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+            onClick={() => { clearToday.mutate(); setConfirmClear(false); }}
+            disabled={clearToday.isPending}
+          >
+            Yes, clear
+          </button>
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+            onClick={() => setConfirmClear(false)}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       {showPlanForm && (
         <PlanMealForm
