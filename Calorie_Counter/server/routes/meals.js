@@ -110,6 +110,20 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+// Delete all meals for today
+router.delete('/today', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'DELETE FROM meals WHERE user_id = $1 AND logged_at::date = CURRENT_DATE RETURNING id',
+      [req.userId]
+    );
+    res.json({ message: `Deleted ${result.rowCount} meals`, count: result.rowCount });
+  } catch (err) {
+    console.error('Delete today meals error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Delete a meal
 router.delete('/:id', async (req, res) => {
   try {

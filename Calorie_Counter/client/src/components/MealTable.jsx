@@ -7,6 +7,13 @@ const typeColors = {
   snack: '#10b981',
 };
 
+const typeEmoji = {
+  breakfast: '\u2600\ufe0f',
+  lunch: '\ud83c\udf5e',
+  dinner: '\ud83c\udf19',
+  snack: '\ud83c\udf7f',
+};
+
 const typeOrder = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 export default function MealTable({ meals, onDelete }) {
@@ -38,7 +45,7 @@ export default function MealTable({ meals, onDelete }) {
           <div key={type} className="meal-table-section">
             <div className="meal-table-header" onClick={() => toggle(type)}>
               <div className="meal-table-header-left">
-                <span className="meal-type-dot" style={{ background: typeColors[type] }} />
+                <span style={{ fontSize: '1.1rem' }}>{typeEmoji[type]}</span>
                 <span className="meal-table-header-label">{type}</span>
                 <span className="meal-table-header-count">({items.length})</span>
               </div>
@@ -46,21 +53,20 @@ export default function MealTable({ meals, onDelete }) {
             </div>
             {!isCollapsed && (
               <div className="meal-table-rows">
-                {items.map(meal => {
-                  const time = new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  return (
-                    <div key={meal.id} className="meal-table-row">
-                      <span className="meal-table-row-name">{meal.name}</span>
-                      <span className="meal-table-row-cal">{meal.calories} cal</span>
-                      <span className="meal-table-row-time">{time}</span>
-                      {onDelete && (
-                        <button className="meal-table-row-delete" onClick={() => onDelete(meal.id)}>
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
+                {items.map(meal => (
+                  <div key={meal.id} className="meal-table-row">
+                    <span className="meal-table-row-name">{meal.name}</span>
+                    <span className="meal-table-row-cal">{meal.calories} cal</span>
+                    <span className="meal-table-row-time">
+                      {new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {onDelete && (
+                      <button className="meal-table-row-delete" onClick={() => onDelete(meal.id)}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

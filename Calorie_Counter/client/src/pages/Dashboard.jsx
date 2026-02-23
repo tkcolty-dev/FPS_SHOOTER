@@ -34,6 +34,11 @@ export default function Dashboard() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
   });
 
+  const clearToday = useMutation({
+    mutationFn: () => api.delete('/meals/today'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['meals'] }),
+  });
+
   const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
   const dailyGoal = goals?.daily_total || 2000;
 
@@ -60,9 +65,23 @@ export default function Dashboard() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Meals</h2>
-        <Link to="/log" className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
-          + Log Meal
-        </Link>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {meals.length > 0 && (
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.8rem', padding: '0.375rem 0.75rem' }}
+              onClick={() => {
+                if (confirm('Clear all meals for today?')) clearToday.mutate();
+              }}
+              disabled={clearToday.isPending}
+            >
+              Clear All
+            </button>
+          )}
+          <Link to="/log" className="btn btn-primary" style={{ fontSize: '0.85rem' }}>
+            + Log Meal
+          </Link>
+        </div>
       </div>
 
       {mealsLoading ? (

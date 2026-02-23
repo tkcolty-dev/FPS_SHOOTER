@@ -287,7 +287,7 @@ input, select, textarea {
 
 .meal-table-header-label {
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   text-transform: capitalize;
 }
 
@@ -310,8 +310,8 @@ input, select, textarea {
   grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.9rem;
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -320,7 +320,8 @@ input, select, textarea {
 }
 
 .meal-table-row-name {
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.925rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
