@@ -43,7 +43,7 @@ export default function MealTable({ meals, onDelete }) {
                 <span className="meal-table-header-count">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="meal-table-header-cal">{subtotal} cal</span>
+                {items.length > 1 && <span className="meal-table-header-cal">{subtotal} cal</span>}
                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', transition: 'transform 0.2s', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}>&#9662;</span>
               </div>
             </div>
@@ -66,12 +66,10 @@ export default function MealTable({ meals, onDelete }) {
                           )}
                         </div>
                       </div>
-                      {items.length > 1 && (
-                        <div className="meal-table-row-right">
-                          <span className="meal-table-row-cal">{meal.calories}</span>
-                          <span className="meal-table-row-cal-unit">cal</span>
-                        </div>
-                      )}
+                      <div className="meal-table-row-right">
+                        <span className="meal-table-row-cal">{meal.calories}</span>
+                        <span className="meal-table-row-cal-unit">cal</span>
+                      </div>
                     </div>
                     {onDelete && (
                       <button className="meal-table-row-delete" onClick={() => onDelete(meal.id)}>
