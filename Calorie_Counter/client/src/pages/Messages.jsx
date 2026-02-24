@@ -49,7 +49,8 @@ export default function Messages() {
   // Mark messages as read when opening this page
   useEffect(() => {
     markMessagesRead();
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ['new-messages'] });
+  }, [queryClient]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

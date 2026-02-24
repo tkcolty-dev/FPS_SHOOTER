@@ -1,26 +1,21 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 
-const LAST_CHECK_KEY = 'msg-last-check';
-
-function getLastCheck() {
-  return localStorage.getItem(LAST_CHECK_KEY) || new Date(0).toISOString();
-}
-
 export function markMessagesRead() {
-  localStorage.setItem(LAST_CHECK_KEY, new Date().toISOString());
+  api.post('/sharing/mark-messages-read').catch(() => {});
 }
 
 export function useNewMessages() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const prevCount = useRef(0);
   const [toastMessage, setToastMessage] = useState(null);
 
   const { data } = useQuery({
-    queryKey: ['new-messages', getLastCheck()],
-    queryFn: () => api.get('/sharing/new-messages', { params: { since: getLastCheck() } }).then(r => r.data),
+    queryKey: ['new-messages'],
+    queryFn: () => api.get('/sharing/new-messages').then(r => r.data),
     enabled: !!user,
     refetchInterval: 5000,
     staleTime: 2000,
@@ -39,7 +34,8 @@ export function useNewMessages() {
 
   const clearCount = useCallback(() => {
     markMessagesRead();
-  }, []);
+    queryClient.invalidateQueries({ queryKey: ['new-messages'] });
+  }, [queryClient]);
 
   return { newMessageCount: count, latestMessage: toastMessage, clearCount };
 }

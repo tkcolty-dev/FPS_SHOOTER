@@ -116,7 +116,11 @@ router.post('/', async (req, res) => {
 // Check for new messages across all shares (for notification badge)
 router.get('/new-messages', async (req, res) => {
   try {
-    const since = req.query.since || new Date(0).toISOString();
+    const readRow = await pool.query(
+      'SELECT last_read_at FROM message_reads WHERE user_id = $1',
+      [req.userId]
+    );
+    const since = readRow.rows[0]?.last_read_at || new Date(0).toISOString();
     const result = await pool.query(
       `SELECT sc.id, sc.share_id, sc.text, sc.created_at, u.username as sender_username
        FROM share_comments sc
@@ -134,6 +138,21 @@ router.get('/new-messages', async (req, res) => {
     res.json({ messages: result.rows, count: result.rows.length });
   } catch (err) {
     console.error('New messages check error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Mark messages as read (stores in DB so it persists across devices/logins)
+router.post('/mark-messages-read', async (req, res) => {
+  try {
+    await pool.query(
+      `INSERT INTO message_reads (user_id, last_read_at) VALUES ($1, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET last_read_at = NOW()`,
+      [req.userId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Mark messages read error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
