@@ -31,6 +31,7 @@ export default function MealLog() {
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [forUserIds, setForUserIds] = useState([]);
+  const [logForSelf, setLogForSelf] = useState(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -81,9 +82,11 @@ export default function MealLog() {
 
   const createMeal = useMutation({
     mutationFn: async (data) => {
-      const { for_user_ids, ...rest } = data;
-      // Always log for yourself, plus any selected users
-      const targets = [undefined, ...(for_user_ids || [])];
+      const { for_user_ids, log_for_self, ...rest } = data;
+      const targets = [
+        ...(log_for_self ? [undefined] : []),
+        ...(for_user_ids || []),
+      ];
       const res = await Promise.all(targets.map(uid =>
         api.post('/meals', { ...rest, for_user_id: uid })
       ));
@@ -164,6 +167,10 @@ export default function MealLog() {
       setError('Name and calories are required');
       return;
     }
+    if (!logForSelf && forUserIds.length === 0) {
+      setError('Select at least one person to log for');
+      return;
+    }
     // Send local datetime so logged_at::date matches user's local date
     const now = new Date();
     const localISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`;
@@ -177,6 +184,7 @@ export default function MealLog() {
       carbs_g: carbs ? parseFloat(carbs) : undefined,
       fat_g: fat ? parseFloat(fat) : undefined,
       for_user_ids: forUserIds.map(id => parseInt(id)),
+      log_for_self: logForSelf,
     });
   };
 
@@ -279,8 +287,17 @@ export default function MealLog() {
 
         {sharedUsers.length > 0 && (
           <div className="form-group">
-            <label>Also log for</label>
+            <label>Log for</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.25rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={logForSelf}
+                  onChange={(e) => setLogForSelf(e.target.checked)}
+                  style={{ width: 16, height: 16 }}
+                />
+                Me
+              </label>
               {sharedUsers.map(s => (
                 <label key={s.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer' }}>
                   <input
@@ -453,7 +470,7 @@ export default function MealLog() {
             disabled={createMeal.isPending}
             style={{ flex: 1, padding: '0.625rem' }}
           >
-            {createMeal.isPending ? 'Logging...' : forUserIds.length > 0 ? `Log for me + ${forUserIds.length}` : 'Log Meal'}
+            {createMeal.isPending ? 'Logging...' : forUserIds.length > 0 && logForSelf ? `Log for me + ${forUserIds.length}` : forUserIds.length > 0 && !logForSelf ? `Log for ${forUserIds.length} other${forUserIds.length > 1 ? 's' : ''}` : 'Log Meal'}
           </button>
           <button
             type="button"
