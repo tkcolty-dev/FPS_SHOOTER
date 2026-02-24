@@ -4,6 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import './index.css';
 
+// Clean up old localStorage keys (now stored in DB)
+localStorage.removeItem('msg-last-check');
+localStorage.removeItem('seen-share-ids');
+
 // Apply saved theme before render to prevent flash
 const savedTheme = localStorage.getItem('theme') || 'light';
 document.documentElement.setAttribute('data-theme', savedTheme);
