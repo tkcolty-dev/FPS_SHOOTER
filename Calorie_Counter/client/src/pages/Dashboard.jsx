@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import api from '../api/client';
@@ -11,7 +11,6 @@ import WelcomeTutorial from '../components/WelcomeTutorial';
 
 function CollapsibleSection({ title, subtitle, defaultOpen = true, children, actions }) {
   const [open, setOpen] = useState(defaultOpen);
-  const contentRef = useRef(null);
 
   return (
     <div className="collapsible-section">
@@ -29,13 +28,11 @@ function CollapsibleSection({ title, subtitle, defaultOpen = true, children, act
           </div>
         </div>
       </button>
-      <div
-        className={`collapsible-content ${open ? 'open' : ''}`}
-        ref={contentRef}
-        style={{ maxHeight: open ? (contentRef.current?.scrollHeight || 9999) + 'px' : '0px' }}
-      >
-        {children}
-      </div>
+      {open && (
+        <div className="collapsible-content open">
+          {children}
+        </div>
+      )}
     </div>
   );
 }
@@ -77,11 +74,6 @@ export default function Dashboard() {
   const { data: historyMeals = [] } = useQuery({
     queryKey: ['meals-history', today],
     queryFn: () => api.get('/meals/history', { params: { days: 7, today } }).then(r => r.data),
-  });
-
-  const { data: topFoods = [] } = useQuery({
-    queryKey: ['top-foods', today],
-    queryFn: () => api.get('/meals/top-foods', { params: { days: 30, today } }).then(r => r.data),
   });
 
   const { data: suggestionData } = useQuery({
@@ -177,8 +169,6 @@ export default function Dashboard() {
     acc[date].push(meal);
     return acc;
   }, {});
-
-  const maxFoodCount = topFoods.length > 0 ? topFoods[0].count : 1;
 
   return (
     <div>
@@ -363,33 +353,6 @@ export default function Dashboard() {
           )}
         </div>
       </CollapsibleSection>
-
-      {topFoods.length > 0 && (
-        <CollapsibleSection title="Your Favorites" subtitle="Last 30 days">
-          <div style={{ padding: '0.5rem 0.75rem 0.75rem' }}>
-            <div className="top-foods-list">
-              {topFoods.map((food, i) => (
-                <div key={food.name} className="top-food-item">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>
-                      {i + 1}. {food.name}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap', marginLeft: 8 }}>
-                      {food.count}x · ~{food.avg_calories} cal
-                    </span>
-                  </div>
-                  <div className="top-food-bar-track">
-                    <div
-                      className="top-food-bar"
-                      style={{ width: `${(food.count / maxFoodCount) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </CollapsibleSection>
-      )}
 
       {Object.keys(historyByDate).length > 0 && (
         <CollapsibleSection title="Recent History" subtitle="Last 7 days">
