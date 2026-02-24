@@ -66,10 +66,12 @@ export default function MealTable({ meals, onDelete }) {
                           )}
                         </div>
                       </div>
-                      <div className="meal-table-row-right">
-                        <span className="meal-table-row-cal">{meal.calories}</span>
-                        <span className="meal-table-row-cal-unit">cal</span>
-                      </div>
+                      {items.length > 1 && (
+                        <div className="meal-table-row-right">
+                          <span className="meal-table-row-cal">{meal.calories}</span>
+                          <span className="meal-table-row-cal-unit">cal</span>
+                        </div>
+                      )}
                     </div>
                     {onDelete && (
                       <button className="meal-table-row-delete" onClick={() => onDelete(meal.id)}>
