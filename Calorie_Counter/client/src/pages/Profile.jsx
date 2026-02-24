@@ -124,7 +124,7 @@ export default function Profile() {
   return (
     <div>
       {/* Profile header with avatar */}
-      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ textAlign: 'center', marginBottom: '0.75rem' }}>
         <div
           className="profile-avatar-wrapper"
           onClick={() => fileInputRef.current?.click()}
@@ -152,7 +152,7 @@ export default function Profile() {
           onChange={handleFileSelect}
           style={{ display: 'none' }}
         />
-        <h1 style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: '0.5rem' }}>{user?.username}</h1>
+        <h1 style={{ fontSize: '1.2rem', fontWeight: 700, marginTop: '0.25rem', marginBottom: 0 }}>{user?.username}</h1>
         {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--color-primary)', marginTop: '0.25rem' }}>Uploading...</p>}
         {uploadError && <p style={{ fontSize: '0.8rem', color: 'var(--color-danger)', marginTop: '0.25rem' }}>{uploadError}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '0.5rem' }}>
@@ -170,16 +170,13 @@ export default function Profile() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
+      <div className="profile-links-list">
         {links.map(l => (
           <Link key={l.to} to={l.to} className="card profile-link">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10,
+              <div className="profile-link-icon" style={{
                 background: `color-mix(in srgb, ${ICON_COLOR} 12%, transparent)`,
                 color: ICON_COLOR,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
               }}>
                 {l.icon}
               </div>

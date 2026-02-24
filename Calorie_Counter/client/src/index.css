@@ -1380,6 +1380,45 @@ input, select, textarea {
     height: 48px;
     min-width: 48px;
   }
+
+  .profile-avatar {
+    width: 56px;
+    height: 56px;
+  }
+
+  .profile-avatar-default {
+    font-size: 1.4rem;
+  }
+
+  .profile-avatar-edit {
+    width: 22px;
+    height: 22px;
+  }
+
+  .profile-avatar-edit svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .profile-links-list {
+    gap: 0.25rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .profile-link.card {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .profile-link-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .profile-link-icon svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 @media (min-width: 769px) {
@@ -1765,6 +1804,24 @@ input, select, textarea {
   display: flex;
   justify-content: center;
   gap: 0.75rem;
+}
+
+/* ==================== Profile Links ==================== */
+.profile-links-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.profile-link-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 /* ==================== Profile Avatar ==================== */
