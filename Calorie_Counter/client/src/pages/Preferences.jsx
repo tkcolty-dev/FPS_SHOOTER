@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import BackHeader from '../components/BackHeader';
 
 const typeLabels = {
   favorite: 'Favorite Foods',
@@ -68,10 +69,7 @@ export default function Preferences() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Food Preferences</h1>
-        <p>Help the AI give you better meal suggestions</p>
-      </div>
+      <BackHeader title="Food Preferences" subtitle="Help the AI give you better meal suggestions" />
 
       {isSupported && (
         <div className="card" style={{ marginBottom: '1rem' }}>

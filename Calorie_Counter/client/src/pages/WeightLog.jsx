@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import LineChart from '../components/charts/LineChart';
+import BackHeader from '../components/BackHeader';
 
 const today = new Date().toISOString().split('T')[0];
 
@@ -51,10 +52,7 @@ export default function WeightLog() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Weight Log</h1>
-        <p>Track your weight over time</p>
-      </div>
+      <BackHeader title="Weight Log" subtitle="Track your weight over time" />
 
       <form onSubmit={handleSubmit} className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>

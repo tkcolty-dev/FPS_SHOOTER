@@ -168,6 +168,30 @@ input, select, textarea {
   margin-top: 0.25rem;
 }
 
+.back-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.back-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-primary);
+  padding: 0.25rem;
+  margin-left: -0.25rem;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.back-btn:active {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
 .loading {
   display: flex;
   align-items: center;
@@ -1355,8 +1379,40 @@ input, select, textarea {
     padding: 0.625rem 0.75rem;
   }
 
+  .page-header {
+    margin-bottom: 0.75rem;
+  }
+
   .page-header h1 {
     font-size: 1.25rem;
+  }
+
+  .page-header p {
+    font-size: 0.8rem;
+  }
+
+  .back-btn {
+    display: flex;
+  }
+
+  .form-group {
+    margin-bottom: 0.625rem;
+  }
+
+  .form-group label {
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.85rem;
+  }
+
+  .goals-grid {
+    gap: 0.5rem !important;
   }
 
   .dashboard-meal-actions {
@@ -1365,10 +1421,6 @@ input, select, textarea {
 
   .pref-add-form {
     flex-direction: column;
-  }
-
-  .goals-grid {
-    grid-template-columns: 1fr !important;
   }
 
   .top-food-item {

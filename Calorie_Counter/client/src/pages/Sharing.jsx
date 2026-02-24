@@ -7,6 +7,7 @@ import FoodSearch from '../components/FoodSearch';
 import { markSharesSeen } from '../hooks/useNewShares';
 import Leaderboard from '../components/Leaderboard';
 import { useAuth } from '../context/AuthContext';
+import BackHeader from '../components/BackHeader';
 
 function formatDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00');
@@ -163,10 +164,7 @@ export default function Sharing() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Sharing</h1>
-        <p>Share your progress or view friends' data</p>
-      </div>
+      <BackHeader title="Sharing" subtitle="Share your progress or view friends' data" />
 
       {/* Grant access */}
       <div className="card" style={{ marginBottom: '1.5rem' }}>

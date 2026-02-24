@@ -5,6 +5,7 @@ import BarChart from '../components/charts/BarChart';
 import LineChart from '../components/charts/LineChart';
 import MacroPieChart from '../components/charts/MacroPieChart';
 import StreakBadge from '../components/charts/StreakBadge';
+import BackHeader from '../components/BackHeader';
 
 const today = new Date().toISOString().split('T')[0];
 const periods = [
@@ -58,10 +59,7 @@ export default function Reports() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Reports</h1>
-        <p>Your tracking insights</p>
-      </div>
+      <BackHeader title="Reports" subtitle="Your tracking insights" />
 
       {/* Period selector */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>

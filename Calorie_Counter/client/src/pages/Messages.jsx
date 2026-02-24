@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { markMessagesRead } from '../hooks/useNewMessages';
+import BackHeader from '../components/BackHeader';
 
 export default function Messages() {
   const { user } = useAuth();
@@ -138,10 +139,7 @@ export default function Messages() {
   // User list view
   return (
     <div>
-      <div className="page-header">
-        <h1>Messages</h1>
-        <p>Chat with people you share with</p>
-      </div>
+      <BackHeader title="Messages" subtitle="Chat with people you share with" />
 
       {sharedUsers.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '2rem 1rem' }}>

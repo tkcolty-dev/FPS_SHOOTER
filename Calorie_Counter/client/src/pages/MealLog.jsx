@@ -6,6 +6,7 @@ import FoodSearch from '../components/FoodSearch';
 import TemplateBuilder from '../components/TemplateBuilder';
 import BarcodeScanner from '../components/BarcodeScanner';
 import PhotoCapture from '../components/PhotoCapture';
+import BackHeader from '../components/BackHeader';
 
 export default function MealLog() {
   const [mealType, setMealType] = useState('lunch');
@@ -181,10 +182,7 @@ export default function MealLog() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Log a Meal</h1>
-        <p>Search for a food or enter details manually</p>
-      </div>
+      <BackHeader title="Log a Meal" subtitle="Search for a food or enter details manually" />
 
       {customMeals.length > 0 && (
         <div style={{ marginBottom: '1rem' }}>
@@ -215,7 +213,7 @@ export default function MealLog() {
 
       {showTemplateBuilder && <TemplateBuilder onClose={() => setShowTemplateBuilder(false)} />}
 
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
+      <div className="card" style={{ marginBottom: '0.75rem' }}>
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 6 }}>
           Quick search from food database
         </label>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
+import BackHeader from '../components/BackHeader';
 
 const today = new Date().toISOString().split('T')[0];
 
@@ -38,10 +39,7 @@ export default function Challenges() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Challenges</h1>
-        <p>Compete with friends</p>
-      </div>
+      <BackHeader title="Challenges" subtitle="Compete with friends" />
 
       <button className="btn btn-primary" style={{ marginBottom: '1rem' }} onClick={() => setShowCreate(!showCreate)}>
         {showCreate ? 'Cancel' : '+ New Challenge'}

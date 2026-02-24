@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../api/client';
+import BackHeader from '../components/BackHeader';
 
 export default function Goals() {
   const [dailyTotal, setDailyTotal] = useState(2000);
@@ -70,10 +71,7 @@ export default function Goals() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Calorie Goals</h1>
-        <p>Set your daily calorie targets</p>
-      </div>
+      <BackHeader title="Calorie Goals" subtitle="Set your daily calorie targets" />
 
       <form onSubmit={handleSubmit} className="card">
         {error && <div className="error-message">{error}</div>}
