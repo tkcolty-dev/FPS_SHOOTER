@@ -87,8 +87,12 @@ export default function FoodSearch({ onSelect }) {
 
     const timer = setTimeout(async () => {
       try {
-        // Show local results immediately, then append OFF results
-        const localRes = await api.get('/foods', { params: { q: query } }).then((r) => r.data);
+        // Run local DB and Open Food Facts searches in parallel
+        const localPromise = api.get('/foods', { params: { q: query } }).then((r) => r.data);
+        const offPromise = searchOFF(query);
+
+        // Show local results as soon as they arrive
+        const localRes = await localPromise;
         if (searchId.current !== currentSearch) return;
 
         if (localRes.length > 0) {
@@ -96,8 +100,8 @@ export default function FoodSearch({ onSelect }) {
           setOpen(true);
         }
 
-        // Fetch branded results from Open Food Facts (browser-side)
-        const offResults = await searchOFF(query);
+        // Merge in branded results when they arrive
+        const offResults = await offPromise;
         if (searchId.current !== currentSearch) return;
 
         const merged = mergeResults(localRes, offResults);
@@ -113,7 +117,7 @@ export default function FoodSearch({ onSelect }) {
           setSearchDone(true);
         }
       }
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(timer);
   }, [query]);
