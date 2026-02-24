@@ -44,9 +44,10 @@ export default function Sharing() {
   // Mark all shares as seen when page loads
   useEffect(() => {
     if (sharingData?.sharedWithMe) {
-      markSharesSeen(sharingData.sharedWithMe.map(s => s.id));
+      markSharesSeen();
+      queryClient.invalidateQueries({ queryKey: ['shares-seen'] });
     }
-  }, [sharingData?.sharedWithMe]);
+  }, [sharingData?.sharedWithMe, queryClient]);
 
   const { data: sharedMeals } = useQuery({
     queryKey: ['shared-meals', viewingUser?.owner_id, viewDate],

@@ -1,25 +1,16 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/client';
 
-const SEEN_KEY = 'seen-share-ids';
-
-function getSeenIds() {
-  try {
-    return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]');
-  } catch {
-    return [];
-  }
-}
-
-export function markSharesSeen(shareIds) {
-  localStorage.setItem(SEEN_KEY, JSON.stringify(shareIds));
+export function markSharesSeen() {
+  api.post('/sharing/mark-shares-seen').catch(() => {});
 }
 
 export function useNewShares() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data } = useQuery({
+  const { data: sharingData } = useQuery({
     queryKey: ['sharing'],
     queryFn: () => api.get('/sharing').then(r => r.data),
     enabled: !!user,
@@ -27,11 +18,19 @@ export function useNewShares() {
     staleTime: 10000,
   });
 
-  const sharedWithMe = data?.sharedWithMe || [];
+  const { data: seenData } = useQuery({
+    queryKey: ['shares-seen'],
+    queryFn: () => api.get('/sharing/shares-seen').then(r => r.data),
+    enabled: !!user,
+    staleTime: 10000,
+  });
+
+  const sharedWithMe = sharingData?.sharedWithMe || [];
   const pendingCount = sharedWithMe.filter(s => s.status === 'pending').length;
-  const currentIds = sharedWithMe.map(s => s.id);
-  const seenIds = getSeenIds();
-  const unseenCount = currentIds.filter(id => !seenIds.includes(id)).length;
+  const seenAt = seenData?.seenAt ? new Date(seenData.seenAt) : null;
+  const unseenCount = seenAt
+    ? sharedWithMe.filter(s => new Date(s.created_at) > seenAt).length
+    : 0;
   const newCount = Math.max(pendingCount, unseenCount);
 
   return { newCount, sharedWithMe };

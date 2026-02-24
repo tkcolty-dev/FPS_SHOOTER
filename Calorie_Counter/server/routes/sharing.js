@@ -157,6 +157,35 @@ router.post('/mark-messages-read', async (req, res) => {
   }
 });
 
+// Get shares seen timestamp for notification badge
+router.get('/shares-seen', async (req, res) => {
+  try {
+    const row = await pool.query(
+      'SELECT shares_seen_at FROM message_reads WHERE user_id = $1',
+      [req.userId]
+    );
+    res.json({ seenAt: row.rows[0]?.shares_seen_at || null });
+  } catch (err) {
+    console.error('Get shares seen error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Mark shares as seen
+router.post('/mark-shares-seen', async (req, res) => {
+  try {
+    await pool.query(
+      `INSERT INTO message_reads (user_id, shares_seen_at) VALUES ($1, NOW())
+       ON CONFLICT (user_id) DO UPDATE SET shares_seen_at = NOW()`,
+      [req.userId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Mark shares seen error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Accept or reject a pending share (viewer only)
 // MUST be defined BEFORE the generic PATCH /:id
 router.patch('/:id/respond', async (req, res) => {
