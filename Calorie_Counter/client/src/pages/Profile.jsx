@@ -155,14 +155,19 @@ export default function Profile() {
         <h1 style={{ fontSize: '1.3rem', fontWeight: 700, marginTop: '0.5rem' }}>{user?.username}</h1>
         {uploading && <p style={{ fontSize: '0.8rem', color: 'var(--color-primary)', marginTop: '0.25rem' }}>Uploading...</p>}
         {uploadError && <p style={{ fontSize: '0.8rem', color: 'var(--color-danger)', marginTop: '0.25rem' }}>{uploadError}</p>}
-        {avatarUrl && !uploading && (
-          <button
-            onClick={() => removeAvatar.mutate()}
-            style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', marginTop: '0.25rem', textDecoration: 'underline' }}
-          >
-            Remove photo
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '0.5rem' }}>
+          {avatarUrl && !uploading && (
+            <button
+              onClick={() => removeAvatar.mutate()}
+              style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Remove photo
+            </button>
+          )}
+          <button onClick={logout} style={{ fontSize: '0.75rem', color: 'var(--color-danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
+            Sign out
           </button>
-        )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
@@ -216,9 +221,6 @@ export default function Profile() {
         </div>
       </div>
 
-      <button onClick={logout} className="btn btn-danger" style={{ width: '100%', padding: '0.75rem' }}>
-        Logout
-      </button>
     </div>
   );
 }
