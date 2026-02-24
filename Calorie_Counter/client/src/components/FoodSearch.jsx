@@ -69,6 +69,7 @@ export default function FoodSearch({ onSelect }) {
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [searchDone, setSearchDone] = useState(false);
   const wrapperRef = useRef(null);
   const searchId = useRef(0);
 
@@ -76,10 +77,12 @@ export default function FoodSearch({ onSelect }) {
     if (query.length < 2) {
       setResults([]);
       setSearching(false);
+      setSearchDone(false);
       return;
     }
 
     setSearching(true);
+    setSearchDone(false);
     const currentSearch = ++searchId.current;
 
     const timer = setTimeout(async () => {
@@ -107,6 +110,7 @@ export default function FoodSearch({ onSelect }) {
       } finally {
         if (searchId.current === currentSearch) {
           setSearching(false);
+          setSearchDone(true);
         }
       }
     }, 300);
@@ -121,7 +125,11 @@ export default function FoodSearch({ onSelect }) {
       }
     }
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener('touchstart', handleClick);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('touchstart', handleClick);
+    };
   }, []);
 
   const handleSelect = (food) => {
@@ -129,6 +137,7 @@ export default function FoodSearch({ onSelect }) {
     setQuery('');
     setOpen(false);
     setResults([]);
+    setSearchDone(false);
   };
 
   const handleFavorite = async (e, food) => {
@@ -232,6 +241,16 @@ export default function FoodSearch({ onSelect }) {
               </button>
             </div>
           ))}
+        </div>
+      )}
+      {!searching && searchDone && results.length === 0 && query.length >= 2 && (
+        <div style={{
+          padding: '0.75rem',
+          fontSize: '0.85rem',
+          color: 'var(--color-text-secondary)',
+          textAlign: 'center',
+        }}>
+          No results found for &ldquo;{query}&rdquo;
         </div>
       )}
     </div>
