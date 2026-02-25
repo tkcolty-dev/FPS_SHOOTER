@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { COOKIE_TYPES, PRICE_PER_BOX } from '../data/cookies';
@@ -7,9 +8,36 @@ import Navbar from '../components/Navbar';
 export default function Dashboard() {
   const { boothId } = useParams();
   const navigate = useNavigate();
-  const { getBooth, getBoothStats } = useBooth();
-  const booth = getBooth(boothId);
-  const stats = getBoothStats(boothId);
+  const { fetchBooth, fetchOrders, computeStats } = useBooth();
+  const [booth, setBooth] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [b, o] = await Promise.all([fetchBooth(boothId), fetchOrders(boothId)]);
+        if (!cancelled) { setBooth(b); setOrders(o); }
+      } catch {}
+      if (!cancelled) setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [boothId, fetchBooth, fetchOrders]);
+
+  const stats = computeStats(booth, orders);
+
+  if (loading) {
+    return (
+      <div className="app-main">
+        <div className="container" style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        </div>
+        <Navbar />
+      </div>
+    );
+  }
 
   if (!booth) {
     return (

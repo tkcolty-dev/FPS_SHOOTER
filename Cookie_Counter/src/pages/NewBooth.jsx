@@ -11,6 +11,7 @@ export default function NewBooth() {
   const [cases, setCases] = useState(getEmptyInventory(0));
   const [boxes, setBoxes] = useState(getEmptyInventory(0));
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   function updateCases(cookieId, value) {
     const num = value === '' ? 0 : parseInt(value) || 0;
@@ -26,22 +27,25 @@ export default function NewBooth() {
     return (cases[cookieId] || 0) * BOXES_PER_CASE + (boxes[cookieId] || 0);
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     if (!name.trim()) {
       setError('Please enter a booth name');
       return;
     }
-    // Convert cases+boxes into total boxes for storage
     const inventory = {};
     COOKIE_TYPES.forEach(c => {
       inventory[c.id] = getTotalBoxes(c.id);
     });
-    const booth = createBooth(name.trim(), startingCash, inventory);
-    if (booth) {
-      navigate(`/booth/${booth.id}`);
+    setSubmitting(true);
+    try {
+      const booth = await createBooth(name.trim(), startingCash, inventory);
+      if (booth) navigate(`/booth/${booth.id}`);
+    } catch (err) {
+      setError(err.message || 'Failed to create booth');
     }
+    setSubmitting(false);
   }
 
   const totalAllBoxes = COOKIE_TYPES.reduce((sum, c) => sum + getTotalBoxes(c.id), 0);
@@ -152,8 +156,8 @@ export default function NewBooth() {
             </div>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-block btn-lg">
-            Create Booth
+          <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={submitting}>
+            {submitting ? 'Creating...' : 'Create Booth'}
           </button>
         </form>
       </div>

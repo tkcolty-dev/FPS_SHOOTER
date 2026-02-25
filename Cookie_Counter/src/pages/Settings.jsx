@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { useAuth } from '../context/AuthContext';
@@ -9,16 +9,34 @@ import Navbar from '../components/Navbar';
 export default function Settings() {
   const { boothId } = useParams();
   const navigate = useNavigate();
-  const { getBooth, deleteBooth, getBoothStats } = useBooth();
+  const { fetchBooth, deleteBooth } = useBooth();
   const { user, logout } = useAuth();
-  const booth = getBooth(boothId);
-  const stats = getBoothStats(boothId);
+  const [booth, setBooth] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    fetchBooth(boothId)
+      .then(setBooth)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [boothId, fetchBooth]);
+
+  if (loading) {
+    return (
+      <div className="app-main">
+        <div className="container" style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        </div>
+        <Navbar />
+      </div>
+    );
+  }
 
   if (!booth) return null;
 
-  function handleDelete() {
-    deleteBooth(boothId);
+  async function handleDelete() {
+    await deleteBooth(boothId);
     navigate('/booths');
   }
 

@@ -1,0 +1,59 @@
+const { Pool } = require('pg');
+
+let pool;
+
+function getDbConfig() {
+  if (process.env.VCAP_SERVICES) {
+    const vcap = JSON.parse(process.env.VCAP_SERVICES);
+    const pgService = vcap.postgres?.[0];
+    if (pgService && pgService.credentials.uri) {
+      return { connectionString: pgService.credentials.uri };
+    }
+  }
+  return {
+    connectionString: process.env.DATABASE_URL || 'postgresql://localhost:5432/cookie_counter',
+  };
+}
+
+function getPool() {
+  if (!pool) {
+    pool = new Pool(getDbConfig());
+  }
+  return pool;
+}
+
+async function initDb() {
+  const db = getPool();
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id VARCHAR(32) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      username VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      created_at BIGINT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS sessions (
+      token VARCHAR(64) PRIMARY KEY,
+      user_id VARCHAR(32) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at BIGINT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS booths (
+      id VARCHAR(32) PRIMARY KEY,
+      user_id VARCHAR(32) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name VARCHAR(255) NOT NULL,
+      starting_cash DECIMAL(10,2) DEFAULT 0,
+      inventory JSONB NOT NULL DEFAULT '{}',
+      created_at BIGINT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS orders (
+      id VARCHAR(32) PRIMARY KEY,
+      booth_id VARCHAR(32) NOT NULL REFERENCES booths(id) ON DELETE CASCADE,
+      items JSONB NOT NULL DEFAULT '[]',
+      cash_donation DECIMAL(10,2) DEFAULT 0,
+      total DECIMAL(10,2) DEFAULT 0,
+      created_at BIGINT NOT NULL
+    );
+  `);
+}
+
+module.exports = { getPool, initDb };

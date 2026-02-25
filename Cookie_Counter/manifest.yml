@@ -1,9 +1,12 @@
 ---
 applications:
   - name: cookie-counter
-    memory: 64M
-    disk_quota: 128M
+    memory: 256M
+    disk_quota: 512M
     buildpacks:
-      - staticfile_buildpack
-    path: dist
-    stack: cflinuxfs4
+      - nodejs_buildpack
+    command: node server/index.js
+    services:
+      - cookie-counter-db
+    env:
+      NODE_ENV: production

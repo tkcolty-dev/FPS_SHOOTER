@@ -5,7 +5,7 @@ import { formatDate } from '../utils/helpers';
 
 export default function BoothList() {
   const { user, logout } = useAuth();
-  const { booths, getBoothStats } = useBooth();
+  const { booths, boothsLoading } = useBooth();
 
   return (
     <div className="app-main" style={{ paddingBottom: 32 }}>
@@ -24,7 +24,11 @@ export default function BoothList() {
           </Link>
         </div>
 
-        {booths.length === 0 ? (
+        {boothsLoading ? (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>
+            Loading...
+          </div>
+        ) : booths.length === 0 ? (
           <div className="empty-state animate-in">
             <div className="empty-icon">&#127850;</div>
             <h3>No booths yet</h3>
@@ -35,22 +39,19 @@ export default function BoothList() {
           </div>
         ) : (
           <div className="animate-in">
-            {booths.map(booth => {
-              const stats = getBoothStats(booth.id);
-              return (
-                <Link to={`/booth/${booth.id}`} key={booth.id} className="booth-card">
-                  <div className="booth-icon">&#127850;</div>
-                  <div className="booth-info">
-                    <div className="booth-name">{booth.name}</div>
-                    <div className="booth-meta">
-                      {formatDate(booth.createdAt)}
-                      {stats ? ` \u00B7 ${stats.orderCount} orders` : ''}
-                    </div>
+            {booths.map(booth => (
+              <Link to={`/booth/${booth.id}`} key={booth.id} className="booth-card">
+                <div className="booth-icon">&#127850;</div>
+                <div className="booth-info">
+                  <div className="booth-name">{booth.name}</div>
+                  <div className="booth-meta">
+                    {formatDate(booth.createdAt)}
+                    {` \u00B7 ${booth.orderCount || 0} orders`}
                   </div>
-                  <div className="booth-arrow">&rsaquo;</div>
-                </Link>
-              );
-            })}
+                </div>
+                <div className="booth-arrow">&rsaquo;</div>
+              </Link>
+            ))}
           </div>
         )}
 

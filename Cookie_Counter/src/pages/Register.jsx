@@ -8,8 +8,9 @@ export default function Register() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     if (!name || !username || !password) {
@@ -20,8 +21,10 @@ export default function Register() {
       setError('Password must be at least 4 characters');
       return;
     }
-    const result = register(name.trim(), username.trim().toLowerCase(), password);
+    setSubmitting(true);
+    const result = await register(name.trim(), username.trim().toLowerCase(), password);
     if (result.error) setError(result.error);
+    setSubmitting(false);
   }
 
   return (
@@ -81,8 +84,8 @@ export default function Register() {
                 autoComplete="new-password"
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-block btn-lg">
-              Create Account
+            <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={submitting}>
+              {submitting ? 'Creating...' : 'Create Account'}
             </button>
           </div>
         </form>

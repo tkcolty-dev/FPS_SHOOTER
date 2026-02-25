@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { storage } from '../utils/storage';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { api } from '../utils/api';
 import { useAuth } from './AuthContext';
 import { COOKIE_TYPES, PRICE_PER_BOX } from '../data/cookies';
 
@@ -7,69 +7,66 @@ const BoothContext = createContext(null);
 
 export function BoothProvider({ children }) {
   const { user } = useAuth();
-  const [version, setVersion] = useState(0);
-  const refresh = useCallback(() => setVersion(v => v + 1), []);
+  const [booths, setBooths] = useState([]);
+  const [boothsLoading, setBoothsLoading] = useState(false);
 
-  const booths = useMemo(() => {
-    void version;
-    return user ? storage.getBooths(user.id) : [];
-  }, [user, version]);
+  const refreshBooths = useCallback(async () => {
+    if (!user) { setBooths([]); return; }
+    setBoothsLoading(true);
+    try {
+      const data = await api.getBooths();
+      setBooths(data);
+    } catch {
+      setBooths([]);
+    } finally {
+      setBoothsLoading(false);
+    }
+  }, [user]);
 
-  const createBooth = useCallback((name, startingCash, inventory) => {
-    if (!user) return null;
-    const booth = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      name,
-      startingCash: Number(startingCash) || 0,
-      inventory,
-      createdAt: Date.now(),
-    };
-    storage.addBooth(user.id, booth);
-    refresh();
+  useEffect(() => {
+    refreshBooths();
+  }, [refreshBooths]);
+
+  const createBooth = useCallback(async (name, startingCash, inventory) => {
+    const booth = await api.createBooth({ name, startingCash, inventory });
+    await refreshBooths();
     return booth;
-  }, [user, refresh]);
+  }, [refreshBooths]);
 
-  const getBooth = useCallback((boothId) => {
-    if (!user) return null;
-    return storage.getBooth(user.id, boothId);
-  }, [user, version]);
+  const fetchBooth = useCallback(async (boothId) => {
+    return api.getBooth(boothId);
+  }, []);
 
-  const deleteBooth = useCallback((boothId) => {
-    if (!user) return;
-    storage.deleteBooth(user.id, boothId);
-    refresh();
-  }, [user, refresh]);
+  const deleteBooth = useCallback(async (boothId) => {
+    await api.deleteBooth(boothId);
+    await refreshBooths();
+  }, [refreshBooths]);
 
-  const getOrders = useCallback((boothId) => {
-    return storage.getOrders(boothId);
-  }, [version]);
+  const fetchOrders = useCallback(async (boothId) => {
+    return api.getOrders(boothId);
+  }, []);
 
-  const addOrder = useCallback((boothId, order) => {
-    storage.addOrder(boothId, order);
-    refresh();
-  }, [refresh]);
+  const addOrder = useCallback(async (boothId, orderData) => {
+    return api.addOrder(boothId, orderData);
+  }, []);
 
-  const updateOrder = useCallback((boothId, orderId, updatedOrder) => {
-    storage.updateOrder(boothId, orderId, updatedOrder);
-    refresh();
-  }, [refresh]);
+  const updateOrder = useCallback(async (boothId, orderId, data) => {
+    return api.updateOrder(boothId, orderId, data);
+  }, []);
 
-  const deleteOrder = useCallback((boothId, orderId) => {
-    storage.deleteOrder(boothId, orderId);
-    refresh();
-  }, [refresh]);
+  const deleteOrder = useCallback(async (boothId, orderId) => {
+    await api.deleteOrder(boothId, orderId);
+  }, []);
 
-  const getBoothStats = useCallback((boothId) => {
-    const booth = user ? storage.getBooth(user.id, boothId) : null;
+  const computeStats = useCallback((booth, orders) => {
     if (!booth) return null;
 
-    const orders = storage.getOrders(boothId);
     const stats = {
       totalBoxesSold: 0,
       totalBoxesDonated: 0,
       totalCashDonations: 0,
       totalRevenue: 0,
-      orderCount: orders.length,
+      orderCount: (orders || []).length,
       perCookie: {},
     };
 
@@ -82,7 +79,7 @@ export function BoothProvider({ children }) {
       };
     });
 
-    orders.forEach(order => {
+    (orders || []).forEach(order => {
       (order.items || []).forEach(item => {
         const pc = stats.perCookie[item.cookieType];
         if (!pc) return;
@@ -104,7 +101,6 @@ export function BoothProvider({ children }) {
 
     stats.cashOnHand = booth.startingCash + stats.totalRevenue;
 
-    // Add remaining inventory
     COOKIE_TYPES.forEach(c => {
       const pc = stats.perCookie[c.id];
       pc.totalMoved = pc.sold + pc.donated;
@@ -112,20 +108,21 @@ export function BoothProvider({ children }) {
     });
 
     return stats;
-  }, [user, version]);
+  }, []);
 
   return (
     <BoothContext.Provider value={{
       booths,
+      boothsLoading,
+      refreshBooths,
       createBooth,
-      getBooth,
+      fetchBooth,
       deleteBooth,
-      getOrders,
+      fetchOrders,
       addOrder,
       updateOrder,
       deleteOrder,
-      getBoothStats,
-      refresh,
+      computeStats,
     }}>
       {children}
     </BoothContext.Provider>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { getCookieById, PRICE_PER_BOX } from '../data/cookies';
@@ -8,14 +8,33 @@ import Navbar from '../components/Navbar';
 export default function OrderHistory() {
   const { boothId } = useParams();
   const navigate = useNavigate();
-  const { getOrders, deleteOrder } = useBooth();
-  const orders = getOrders(boothId);
+  const { fetchOrders, deleteOrder } = useBooth();
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
 
-  function handleDelete(orderId) {
-    deleteOrder(boothId, orderId);
+  useEffect(() => {
+    fetchOrders(boothId)
+      .then(setOrders)
+      .finally(() => setLoading(false));
+  }, [boothId, fetchOrders]);
+
+  async function handleDelete(orderId) {
+    await deleteOrder(boothId, orderId);
+    setOrders(prev => prev.filter(o => o.id !== orderId));
     setConfirmDelete(null);
+  }
+
+  if (loading) {
+    return (
+      <div className="app-main">
+        <div className="container" style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        </div>
+        <Navbar />
+      </div>
+    );
   }
 
   return (

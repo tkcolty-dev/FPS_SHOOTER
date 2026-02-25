@@ -7,16 +7,19 @@ export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError('');
     if (!username || !password) {
       setError('Please fill in all fields');
       return;
     }
-    const result = login(username.trim().toLowerCase(), password);
+    setSubmitting(true);
+    const result = await login(username.trim().toLowerCase(), password);
     if (result.error) setError(result.error);
+    setSubmitting(false);
   }
 
   return (
@@ -65,8 +68,8 @@ export default function Login() {
                 autoComplete="current-password"
               />
             </div>
-            <button type="submit" className="btn btn-primary btn-block btn-lg">
-              Sign In
+            <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={submitting}>
+              {submitting ? 'Signing in...' : 'Sign In'}
             </button>
           </div>
         </form>

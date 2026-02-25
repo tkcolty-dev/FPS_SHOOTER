@@ -2,29 +2,45 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { COOKIE_TYPES, PRICE_PER_BOX } from '../data/cookies';
-import { generateId, formatCurrency } from '../utils/helpers';
+import { formatCurrency } from '../utils/helpers';
 import Navbar from '../components/Navbar';
 
 export default function LogOrder() {
   const { boothId, orderId } = useParams();
   const navigate = useNavigate();
-  const { getBooth, getBoothStats, getOrders, addOrder, updateOrder } = useBooth();
-  const booth = getBooth(boothId);
-  const stats = getBoothStats(boothId);
+  const { fetchBooth, fetchOrders, computeStats, addOrder, updateOrder } = useBooth();
   const isEditing = !!orderId;
 
-  // Find the existing order when editing
-  const existingOrder = useMemo(() => {
-    if (!orderId) return null;
-    const orders = getOrders(boothId);
-    return orders.find(o => o.id === orderId) || null;
-  }, [orderId, boothId, getOrders]);
+  const [booth, setBooth] = useState(null);
+  const [allOrders, setAllOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [saleQty, setSaleQty] = useState({});
   const [showDonations, setShowDonations] = useState(false);
   const [donationQty, setDonationQty] = useState({});
   const [cashDonation, setCashDonation] = useState('');
   const [initialized, setInitialized] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [b, o] = await Promise.all([fetchBooth(boothId), fetchOrders(boothId)]);
+        if (!cancelled) { setBooth(b); setAllOrders(o); }
+      } catch {}
+      if (!cancelled) setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [boothId, fetchBooth, fetchOrders]);
+
+  const stats = computeStats(booth, allOrders);
+
+  const existingOrder = useMemo(() => {
+    if (!orderId) return null;
+    return allOrders.find(o => o.id === orderId) || null;
+  }, [orderId, allOrders]);
 
   // Load existing order data when editing
   useEffect(() => {
@@ -50,10 +66,19 @@ export default function LogOrder() {
     }
   }, [isEditing, existingOrder, initialized]);
 
+  if (loading) {
+    return (
+      <div className="app-main">
+        <div className="container" style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ color: 'var(--text-secondary)' }}>Loading...</div>
+        </div>
+        <Navbar />
+      </div>
+    );
+  }
+
   if (!booth) return null;
 
-  // When editing, add back the original order's quantities to "remaining" so
-  // the user can freely adjust without being blocked by their own previous values.
   function getAdjustedRemaining(cookieId) {
     const base = stats?.perCookie[cookieId]?.remaining || 0;
     if (!isEditing || !existingOrder) return base;
@@ -92,8 +117,8 @@ export default function LogOrder() {
   const orderTotal = (totalSaleBoxes + totalDonationBoxes) * PRICE_PER_BOX + cashDonationAmt;
   const hasItems = totalSaleBoxes > 0 || totalDonationBoxes > 0 || cashDonationAmt > 0;
 
-  function handleSubmit() {
-    if (!hasItems) return;
+  async function handleSubmit() {
+    if (!hasItems || submitting) return;
 
     const items = [];
     COOKIE_TYPES.forEach(c => {
@@ -103,30 +128,32 @@ export default function LogOrder() {
       if (dq > 0) items.push({ cookieType: c.id, quantity: dq, isDonation: true });
     });
 
-    if (isEditing) {
-      updateOrder(boothId, orderId, {
-        items,
-        cashDonation: cashDonationAmt,
-        total: orderTotal,
-      });
-    } else {
-      const order = {
-        id: generateId(),
-        items,
-        cashDonation: cashDonationAmt,
-        total: orderTotal,
-        createdAt: Date.now(),
-      };
-      addOrder(boothId, order);
+    setSubmitting(true);
+    try {
+      if (isEditing) {
+        await updateOrder(boothId, orderId, {
+          items,
+          cashDonation: cashDonationAmt,
+          total: orderTotal,
+        });
+      } else {
+        await addOrder(boothId, {
+          items,
+          cashDonation: cashDonationAmt,
+          total: orderTotal,
+        });
+      }
+
+      setSaleQty({});
+      setDonationQty({});
+      setCashDonation('');
+      setShowDonations(false);
+
+      navigate(isEditing ? `/booth/${boothId}/orders` : `/booth/${boothId}`);
+    } catch (err) {
+      console.error('Submit error:', err);
     }
-
-    // Reset form
-    setSaleQty({});
-    setDonationQty({});
-    setCashDonation('');
-    setShowDonations(false);
-
-    navigate(isEditing ? `/booth/${boothId}/orders` : `/booth/${boothId}`);
+    setSubmitting(false);
   }
 
   return (
@@ -280,9 +307,9 @@ export default function LogOrder() {
           <button
             className="btn btn-primary"
             onClick={handleSubmit}
-            disabled={!hasItems}
+            disabled={!hasItems || submitting}
           >
-            {isEditing ? 'Save' : 'Submit'}
+            {submitting ? 'Saving...' : isEditing ? 'Save' : 'Submit'}
           </button>
         </div>
       </div>
