@@ -14,14 +14,19 @@ function formatDate(dateStr) {
   return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function addDays(dateStr, days) {
   const d = new Date(dateStr + 'T12:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function isToday(dateStr) {
-  return dateStr === new Date().toISOString().split('T')[0];
+  return dateStr === localToday();
 }
 
 export default function Sharing() {
@@ -29,7 +34,7 @@ export default function Sharing() {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [viewingUser, setViewingUser] = useState(null);
-  const [viewDate, setViewDate] = useState(new Date().toISOString().split('T')[0]);
+  const [viewDate, setViewDate] = useState(localToday());
   const [commentText, setCommentText] = useState('');
   const [addFoodMealType, setAddFoodMealType] = useState('snack');
   const commentsEndRef = useRef(null);
@@ -326,7 +331,7 @@ export default function Sharing() {
                       setViewingUser(null);
                     } else {
                       setViewingUser(share);
-                      setViewDate(new Date().toISOString().split('T')[0]);
+                      setViewDate(localToday());
                     }
                   }}
                   style={{

@@ -6,6 +6,7 @@ import FoodSearch from '../components/FoodSearch';
 import TemplateBuilder from '../components/TemplateBuilder';
 import BarcodeScanner from '../components/BarcodeScanner';
 import PhotoCapture from '../components/PhotoCapture';
+import VoiceLogger from '../components/VoiceLogger';
 import BackHeader from '../components/BackHeader';
 
 export default function MealLog() {
@@ -30,6 +31,7 @@ export default function MealLog() {
   const [showTemplateBuilder, setShowTemplateBuilder] = useState(false);
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [showVoiceLogger, setShowVoiceLogger] = useState(false);
   const [forUserIds, setForUserIds] = useState([]);
   const [logForSelf, setLogForSelf] = useState(true);
   const navigate = useNavigate();
@@ -226,7 +228,7 @@ export default function MealLog() {
           Quick search from food database
         </label>
         <FoodSearch onSelect={handleFoodSelect} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.75rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginTop: '0.75rem' }}>
           <button className="log-action-btn" onClick={() => setShowBarcodeScanner(true)}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5V3h4"/><path d="M17 3h4v2"/><path d="M21 19v2h-4"/><path d="M7 21H3v-2"/><path d="M7 8v8"/><path d="M11 8v8"/><path d="M15 8v8"/><path d="M19 8v8"/></svg>
             <span>Scan Barcode</span>
@@ -235,6 +237,10 @@ export default function MealLog() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             <span>Photo Log</span>
             <span style={{ fontSize: '0.65rem', color: 'var(--color-text-secondary)' }}>Coming soon</span>
+          </button>
+          <button className="log-action-btn" onClick={() => setShowVoiceLogger(true)}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <span>Voice Log</span>
           </button>
         </div>
       </div>
@@ -265,6 +271,24 @@ export default function MealLog() {
             });
           }}
           onClose={() => setShowPhotoCapture(false)}
+        />
+      )}
+
+      {showVoiceLogger && (
+        <VoiceLogger
+          onSelect={(item) => {
+            setName(item.name);
+            setCalories(String(item.calories || ''));
+            setBaseCal(null);
+            setServingSize('');
+            setQuantity(1);
+            setProtein(item.protein_g != null ? String(item.protein_g) : '');
+            setCarbs(item.carbs_g != null ? String(item.carbs_g) : '');
+            setFat(item.fat_g != null ? String(item.fat_g) : '');
+            if (item.protein_g != null || item.carbs_g != null || item.fat_g != null) setShowMacros(true);
+            if (item.meal_type) setMealType(item.meal_type);
+          }}
+          onClose={() => setShowVoiceLogger(false)}
         />
       )}
 

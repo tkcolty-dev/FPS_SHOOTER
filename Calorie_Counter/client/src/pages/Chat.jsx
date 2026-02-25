@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import api from '../api/client';
 import ChatMessage from '../components/ChatMessage';
 
 const STORAGE_KEY = 'chat-history';
@@ -21,43 +20,57 @@ function loadHistory() {
   }
 }
 
+function saveHistory(msgs) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
+}
+
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+// Module-level: survives component unmount during navigation
+let pendingRequest = null;
 
 export default function Chat() {
   const [messages, setMessages] = useState(loadHistory);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(!!pendingRequest);
+  const [streamingText, setStreamingText] = useState('');
   const [learnedNote, setLearnedNote] = useState('');
   const [listening, setListening] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const queryClient = useQueryClient();
 
+  // On mount: if a request finished while we were away, sync state
+  useEffect(() => {
+    if (pendingRequest) {
+      setLoading(true);
+      pendingRequest.then(() => {
+        setMessages(loadHistory());
+        setStreamingText('');
+        setLoading(false);
+        pendingRequest = null;
+      });
+    }
+  }, []);
+
   const toggleListening = () => {
     if (!SpeechRecognition) return;
-
     if (listening) {
       recognitionRef.current?.stop();
       setListening(false);
       return;
     }
-
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = true;
     recognition.continuous = false;
     recognitionRef.current = recognition;
-
     recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map((r) => r[0].transcript)
-        .join('');
+      const transcript = Array.from(event.results).map((r) => r[0].transcript).join('');
       setInput(transcript);
     };
-
     recognition.onend = () => setListening(false);
     recognition.onerror = () => setListening(false);
-
     recognition.start();
     setListening(true);
   };
@@ -77,10 +90,10 @@ export default function Chat() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingText]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    saveHistory(messages);
   }, [messages]);
 
   const clearChat = () => {
@@ -88,47 +101,113 @@ export default function Chat() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  const sendMessage = async (text) => {
+  const sendMessage = useCallback(async (text) => {
     const userMsg = { role: 'user', content: text };
-    const updated = [...messages, userMsg];
+    const currentHistory = loadHistory();
+    const updated = [...currentHistory, userMsg];
     setMessages(updated);
+    saveHistory(updated);
     setInput('');
     setLoading(true);
+    setStreamingText('');
 
-    try {
-      const n = new Date();
-      const localToday = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
-      const { data } = await api.post('/chat', {
-        message: text,
-        history: messages,
-        today: localToday,
-      });
+    const token = localStorage.getItem('token');
+    const n = new Date();
+    const localToday = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 
-      let content = data.reply;
+    const doRequest = async () => {
+      let accumulated = '';
+      let metadata = null;
 
-      // Append planned meal summary if AI saved plans
-      if (data.savedPlans?.length > 0) {
-        const totalCal = data.savedPlans.reduce((s, m) => s + m.calories, 0);
-        const date = data.savedPlans[0].planned_date?.split('T')[0];
-        const label = date ? new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
-        const planItems = data.savedPlans.map(m => `${m.meal_type}: ${m.name} (${m.calories} cal)`).join('\n');
-        content += `\n\n---PLANNED:${label}:${totalCal}:${planItems}`;
-        queryClient.invalidateQueries({ queryKey: ['planned-meals'] });
+      try {
+        const response = await fetch('/api/chat/stream', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            message: text,
+            history: currentHistory,
+            today: localToday,
+          }),
+        });
+
+        if (!response.ok) throw new Error('Stream failed');
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.chunk) {
+                accumulated += data.chunk;
+                setStreamingText(accumulated);
+              }
+              if (data.done) {
+                metadata = data;
+              }
+            } catch {}
+          }
+        }
+      } catch {
+        if (!accumulated) {
+          accumulated = 'Sorry, something went wrong. Please try again.';
+        }
       }
 
-      setMessages(prev => [...prev, { role: 'assistant', content }]);
-      if (data.learnedPreferences?.length > 0) {
-        const names = data.learnedPreferences.map(p => p.value).join(', ');
+      // Use post-processed reply if available
+      let finalContent = metadata?.reply || accumulated;
+
+      // Append planned meal summary if AI saved plans
+      if (metadata?.savedPlans?.length > 0) {
+        const totalCal = metadata.savedPlans.reduce((s, m) => s + m.calories, 0);
+        const date = metadata.savedPlans[0].planned_date?.split('T')[0];
+        const label = date ? new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+        const planItems = metadata.savedPlans.map(m => `${m.meal_type}: ${m.name} (${m.calories} cal)`).join('\n');
+        finalContent += `\n\n---PLANNED:${label}:${totalCal}:${planItems}`;
+      }
+
+      // Save directly to localStorage (works even if component unmounted)
+      const current = loadHistory();
+      saveHistory([...current, { role: 'assistant', content: finalContent }]);
+
+      return { content: finalContent, metadata };
+    };
+
+    const promise = doRequest();
+    pendingRequest = promise;
+
+    try {
+      const result = await promise;
+      setMessages(loadHistory());
+      setStreamingText('');
+
+      if (result.metadata?.learnedPreferences?.length > 0) {
+        const names = result.metadata.learnedPreferences.map(p => p.value).join(', ');
         setLearnedNote(`Remembered: ${names}`);
         queryClient.invalidateQueries({ queryKey: ['preferences'] });
         setTimeout(() => setLearnedNote(''), 4000);
       }
-    } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' }]);
+      if (result.metadata?.savedPlans?.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['planned-meals'] });
+      }
     } finally {
       setLoading(false);
+      pendingRequest = null;
     }
-  };
+  }, [queryClient]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -139,7 +218,7 @@ export default function Chat() {
   return (
     <div className="chat-container">
       <div className="chat-messages">
-        {messages.length === 0 && (
+        {messages.length === 0 && !loading && (
           <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '2rem 0' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>AI Meal Assistant</h2>
             <p style={{ fontSize: '0.875rem' }}>Ask me about meal planning, nutrition advice, or recipe ideas.</p>
@@ -150,7 +229,11 @@ export default function Chat() {
           <ChatMessage key={i} message={msg} />
         ))}
 
-        {loading && (
+        {loading && streamingText && (
+          <ChatMessage message={{ role: 'assistant', content: streamingText }} />
+        )}
+
+        {loading && !streamingText && (
           <div className="chat-bubble assistant" style={{ color: 'var(--color-text-secondary)' }}>
             Thinking...
           </div>
@@ -159,7 +242,7 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {messages.length === 0 && (
+      {messages.length === 0 && !loading && (
         <div className="chat-quick-actions">
           {quickActions.map(action => (
             <button

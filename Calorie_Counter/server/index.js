@@ -20,6 +20,7 @@ const challengesRoutes = require('./routes/challenges');
 const suggestionsRoutes = require('./routes/suggestions');
 const notificationsRoutes = require('./routes/notifications');
 const avatarsRoutes = require('./routes/avatars');
+const voiceLogRoutes = require('./routes/voice-log');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -45,6 +46,7 @@ app.use('/api/challenges', challengesRoutes);
 app.use('/api/suggestions', suggestionsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/avatars', avatarsRoutes);
+app.use('/api/voice-log', voiceLogRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '../api/client';
 
-const today = new Date().toISOString().split('T')[0];
-
 const BLUE = '#2563eb';
 
 const MedalIcon = ({ place }) => {
@@ -50,8 +48,10 @@ const MedalIcon = ({ place }) => {
 };
 
 export default function Leaderboard() {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const { data: leaderboard = [], isLoading } = useQuery({
-    queryKey: ['leaderboard'],
+    queryKey: ['leaderboard', today],
     queryFn: () => api.get('/reports/leaderboard', { params: { today } }).then(r => r.data),
   });
 

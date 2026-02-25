@@ -67,6 +67,77 @@ async function callLLM({ messages, systemPrompt, maxTokens = 1024 }) {
   return response.content[0].text;
 }
 
+async function callLLMStream({ messages, systemPrompt, maxTokens = 1024, onChunk }) {
+  const config = getGenAIConfig();
+
+  if (config.provider === 'genai') {
+    const allMessages = [];
+    if (systemPrompt) {
+      allMessages.push({ role: 'system', content: systemPrompt });
+    }
+    allMessages.push(...messages);
+
+    const res = await fetch(`${config.apiBase}/openai/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages: allMessages,
+        max_tokens: maxTokens,
+        stream: true,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`GenAI API error ${res.status}: ${err}`);
+    }
+
+    let full = '';
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const text = decoder.decode(value, { stream: true });
+      for (const line of text.split('\n')) {
+        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+        try {
+          const json = JSON.parse(line.slice(6));
+          const chunk = json.choices?.[0]?.delta?.content;
+          if (chunk) {
+            full += chunk;
+            onChunk(chunk);
+          }
+        } catch {}
+      }
+    }
+    return full;
+  }
+
+  // Anthropic SDK fallback for local dev
+  const Anthropic = require('@anthropic-ai/sdk');
+  const client = new Anthropic();
+  const stream = client.messages.stream({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: maxTokens,
+    system: systemPrompt || undefined,
+    messages,
+  });
+
+  let full = '';
+  stream.on('text', (text) => {
+    full += text;
+    onChunk(text);
+  });
+
+  await stream.finalMessage();
+  return full;
+}
+
 async function getSuggestions({ meal_type, remainingCalories, mealBudget, preferences, todaysMeals }) {
   const cuisinePrefs = preferences.filter(p => p.preference_type === 'cuisine').map(p => p.value);
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
@@ -101,7 +172,7 @@ Return ONLY a JSON array with exactly 3 objects, each having: name (string), des
   return JSON.parse(jsonMatch[0]);
 }
 
-async function chatWithAI({ message, history, goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate, foodReference, sharedUsers }) {
+function buildChatPrompt({ goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate, foodReference, sharedUsers }) {
   const cuisinePrefs = preferences.filter(p => p.preference_type === 'cuisine').map(p => p.value);
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
   const favorites = preferences.filter(p => p.preference_type === 'favorite').map(p => p.value);
@@ -119,7 +190,7 @@ async function chatWithAI({ message, history, goals, todaysMeals, remainingCalor
       }).join(', ')
     : 'none';
 
-  const systemPrompt = `You are a friendly nutrition assistant inside a calorie tracking app.
+  return `You are a friendly nutrition assistant inside a calorie tracking app.
 Today's date: ${clientDate || new Date().toISOString().split('T')[0]}
 
 User context:
@@ -208,13 +279,24 @@ ${foodReference.map(f => {
 }).join('\n')}
 
 IMPORTANT: Always use the calorie values from this reference when available. These are from our verified food database. If a food is not listed above, use your best estimate but be accurate.` : ''}`;
+}
 
+async function chatWithAI({ message, history, ...ctx }) {
+  const systemPrompt = buildChatPrompt(ctx);
   const messages = [
     ...history.map(h => ({ role: h.role, content: h.content })),
     { role: 'user', content: message },
   ];
-
   return await callLLM({ messages, systemPrompt, maxTokens: 4096 });
+}
+
+async function chatWithAIStream({ message, history, onChunk, ...ctx }) {
+  const systemPrompt = buildChatPrompt(ctx);
+  const messages = [
+    ...history.map(h => ({ role: h.role, content: h.content })),
+    { role: 'user', content: message },
+  ];
+  return await callLLMStream({ messages, systemPrompt, maxTokens: 4096, onChunk });
 }
 
 async function analyzePhoto(base64Image) {
@@ -275,4 +357,38 @@ Be practical with portions — estimate realistic serving sizes from what's visi
   return JSON.parse(match[0]);
 }
 
-module.exports = { getSuggestions, chatWithAI, analyzePhoto, getGenAIConfig };
+async function parseVoiceInput({ transcript, foodReference, defaultMealType }) {
+  const refLines = foodReference && foodReference.length > 0
+    ? foodReference.map(f => {
+        let line = `- ${f.name}: ${f.calories_per_serving} cal per ${f.serving_size}`;
+        const parts = [];
+        if (f.protein_g != null) parts.push(`P:${f.protein_g}g`);
+        if (f.carbs_g != null) parts.push(`C:${f.carbs_g}g`);
+        if (f.fat_g != null) parts.push(`F:${f.fat_g}g`);
+        if (parts.length) line += ` (${parts.join(', ')})`;
+        return line;
+      }).join('\n')
+    : '';
+
+  const prompt = `Parse this voice input into individual food items with calorie and macro estimates.
+
+Voice transcript: "${transcript}"
+
+${refLines ? `CALORIE REFERENCE (use these exact values when available):\n${refLines}\n` : ''}
+Return ONLY a JSON array. Each item: {"name": "food name", "calories": number, "meal_type": "${defaultMealType}", "protein_g": number, "carbs_g": number, "fat_g": number}
+
+Rules:
+- Split into individual food items (e.g. "two eggs and toast" → 2 items)
+- Honor quantities mentioned (e.g. "two eggs" = 2 eggs worth of calories)
+- Use reference data calories when available, otherwise give your best estimate
+- Use practical serving sizes
+- All meal_type values should be "${defaultMealType}"
+- Return empty array [] if no food items can be identified`;
+
+  const text = await callLLM({ messages: [{ role: 'user', content: prompt }] });
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) return [];
+  return JSON.parse(match[0]);
+}
+
+module.exports = { getSuggestions, chatWithAI, chatWithAIStream, analyzePhoto, parseVoiceInput, callLLMStream, getGenAIConfig };

@@ -1303,6 +1303,57 @@ input, select, textarea {
   background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface));
 }
 
+/* ==================== Voice Logger ==================== */
+.voice-logger-mic {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.voice-logger-mic:active {
+  transform: scale(0.95);
+}
+
+.voice-logger-mic.listening {
+  animation: voice-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 40%, transparent); }
+  50% { box-shadow: 0 0 0 16px color-mix(in srgb, var(--color-primary) 0%, transparent); }
+}
+
+.voice-transcript {
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.voice-transcript-interim {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+.voice-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.voice-result-item:last-child {
+  border-bottom: none;
+}
+
 /* ==================== Mobile Responsive ==================== */
 @media (max-width: 768px) {
   .desktop-nav {
