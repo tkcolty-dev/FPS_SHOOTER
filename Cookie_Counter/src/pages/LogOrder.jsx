@@ -187,10 +187,10 @@ export default function LogOrder() {
                   borderTopColor: cookie.color,
                 }}
               >
-                <div className="cookie-select-name" style={{ color: cookie.color, fontWeight: 600 }}>
+                <div className="cookie-select-name" style={{ color: '#222', fontWeight: 600 }}>
                   {cookie.name}
                 </div>
-                <div className="cookie-select-stock" style={{ color: cookie.color, opacity: 0.7 }}>
+                <div className="cookie-select-stock" style={{ color: '#555' }}>
                   {remaining} in stock
                 </div>
                 <div className="qty-control">
@@ -249,10 +249,10 @@ export default function LogOrder() {
                         borderTopColor: cookie.color,
                       }}
                     >
-                      <div className="cookie-select-name" style={{ color: cookie.color, fontWeight: 600 }}>
+                      <div className="cookie-select-name" style={{ color: '#222', fontWeight: 600 }}>
                         {cookie.name}
                       </div>
-                      <div className="cookie-select-stock" style={{ color: cookie.color, opacity: 0.7 }}>
+                      <div className="cookie-select-stock" style={{ color: '#555' }}>
                         {isActive ? 'Donation' : `${available} avail`}
                       </div>
                       <div className="qty-control">
