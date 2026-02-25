@@ -225,8 +225,14 @@ router.post('/', async (req, res) => {
       } catch {}
     }
 
-    // Strip preference and planned_meal blocks from the visible reply
-    reply = reply.replace(/```preference\s*\n[\s\S]*?```\s*/g, '').trim();
+    // Replace preference blocks with readable text
+    reply = reply.replace(/```preference\s*\n([\s\S]*?)```\s*/g, (_, jsonStr) => {
+      try {
+        const p = JSON.parse(jsonStr.trim());
+        const label = p.type === 'dislike' ? 'Dislike' : p.type === 'usual_meal' ? 'Usual meal' : 'Favorite';
+        return `**${label}:** ${p.value}\n`;
+      } catch { return ''; }
+    }).trim();
     reply = reply.replace(/```planned_meal\s*\n[\s\S]*?```\s*/g, '').trim();
 
     res.json({ reply, learnedPreferences: learnedPrefs, savedPlans });
@@ -366,8 +372,14 @@ async function postProcessReply(reply, userId, sharedUsers) {
     } catch {}
   }
 
-  // Strip hidden blocks
-  reply = reply.replace(/```preference\s*\n[\s\S]*?```\s*/g, '').trim();
+  // Replace preference blocks with readable text
+  reply = reply.replace(/```preference\s*\n([\s\S]*?)```\s*/g, (_, jsonStr) => {
+    try {
+      const p = JSON.parse(jsonStr.trim());
+      const label = p.type === 'dislike' ? 'Dislike' : p.type === 'usual_meal' ? 'Usual meal' : 'Favorite';
+      return `**${label}:** ${p.value}\n`;
+    } catch { return ''; }
+  }).trim();
   reply = reply.replace(/```planned_meal\s*\n[\s\S]*?```\s*/g, '').trim();
 
   return { reply, learnedPreferences: learnedPrefs, savedPlans };
