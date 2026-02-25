@@ -42,6 +42,7 @@ export function usePushNotifications() {
           p256dh: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('p256dh')))),
           auth: btoa(String.fromCharCode(...new Uint8Array(sub.getKey('auth')))),
         },
+        tz_offset: new Date().getTimezoneOffset() * -1,
       });
       setIsSubscribed(true);
       return true;

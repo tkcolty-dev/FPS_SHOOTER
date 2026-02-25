@@ -21,6 +21,7 @@ const suggestionsRoutes = require('./routes/suggestions');
 const notificationsRoutes = require('./routes/notifications');
 const avatarsRoutes = require('./routes/avatars');
 const voiceLogRoutes = require('./routes/voice-log');
+const { startMealReminders } = require('./services/mealReminder');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -63,4 +64,5 @@ if (process.env.NODE_ENV === 'production') {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  startMealReminders();
 });

@@ -13,7 +13,7 @@ router.get('/vapid-key', (req, res) => {
 // Subscribe
 router.post('/subscribe', async (req, res) => {
   try {
-    const { endpoint, keys } = req.body;
+    const { endpoint, keys, tz_offset } = req.body;
     if (!endpoint || !keys?.p256dh || !keys?.auth) {
       return res.status(400).json({ error: 'Invalid subscription' });
     }
@@ -23,6 +23,13 @@ router.post('/subscribe', async (req, res) => {
        ON CONFLICT (user_id, endpoint) DO UPDATE SET keys_p256dh = $3, keys_auth = $4`,
       [req.userId, endpoint, keys.p256dh, keys.auth]
     );
+    if (tz_offset != null) {
+      await pool.query(
+        `INSERT INTO user_timezones (user_id, tz_offset) VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE SET tz_offset = $2`,
+        [req.userId, tz_offset]
+      );
+    }
     res.json({ message: 'Subscribed' });
   } catch (err) {
     console.error('Subscribe error:', err);
