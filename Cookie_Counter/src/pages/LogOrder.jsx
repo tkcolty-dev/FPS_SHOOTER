@@ -127,6 +127,8 @@ export default function LogOrder() {
       const dq = donationQty[c.id] || 0;
       if (dq > 0) items.push({ cookieType: c.id, quantity: dq, isDonation: true });
     });
+    const uq = donationQty['unassigned'] || 0;
+    if (uq > 0) items.push({ cookieType: 'unassigned', quantity: uq, isDonation: true });
 
     setSubmitting(true);
     try {
@@ -178,13 +180,17 @@ export default function LogOrder() {
               <div
                 key={cookie.id}
                 className={`cookie-select-card${isActive ? ' active' : ''}`}
-                style={isActive ? { borderColor: cookie.color, background: cookie.bg } : {}}
+                style={{
+                  background: cookie.bg,
+                  borderColor: isActive ? cookie.color : cookie.bg,
+                  borderTopWidth: 3,
+                  borderTopColor: cookie.color,
+                }}
               >
-                <div className="cookie-select-name">
-                  <span className="cookie-select-dot" style={{ background: cookie.color }} />
+                <div className="cookie-select-name" style={{ color: cookie.color, fontWeight: 600 }}>
                   {cookie.name}
                 </div>
-                <div className="cookie-select-stock">
+                <div className="cookie-select-stock" style={{ color: cookie.color, opacity: 0.7 }}>
                   {remaining} in stock
                 </div>
                 <div className="qty-control">
@@ -268,6 +274,44 @@ export default function LogOrder() {
                     </div>
                   );
                 })}
+                {/* Unassigned donation boxes */}
+                {(() => {
+                  const qty = donationQty['unassigned'] || 0;
+                  const isActive = qty > 0;
+                  return (
+                    <div
+                      className={`cookie-select-card${isActive ? ' active' : ''}`}
+                      style={isActive ? {
+                        borderColor: 'var(--success)',
+                        background: 'var(--success-light)',
+                      } : {}}
+                    >
+                      <div className="cookie-select-name">
+                        <span className="cookie-select-dot" style={{ background: '#888' }} />
+                        Unassigned
+                      </div>
+                      <div className="cookie-select-stock" style={isActive ? { color: 'var(--success)' } : {}}>
+                        {isActive ? 'Donation' : 'No specific type'}
+                      </div>
+                      <div className="qty-control">
+                        <button
+                          className="qty-btn minus"
+                          onClick={() => setDonationQty(prev => ({ ...prev, unassigned: Math.max(0, (prev.unassigned || 0) - 1) }))}
+                          disabled={qty === 0}
+                        >
+                          &minus;
+                        </button>
+                        <span className="qty-value">{qty}</span>
+                        <button
+                          className="qty-btn plus"
+                          onClick={() => setDonationQty(prev => ({ ...prev, unassigned: (prev.unassigned || 0) + 1 }))}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </>
           )}

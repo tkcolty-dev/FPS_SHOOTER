@@ -82,15 +82,14 @@ export function BoothProvider({ children }) {
     (orders || []).forEach(order => {
       (order.items || []).forEach(item => {
         const pc = stats.perCookie[item.cookieType];
-        if (!pc) return;
         if (item.isDonation) {
-          pc.donated += item.quantity;
+          if (pc) pc.donated += item.quantity;
           stats.totalBoxesDonated += item.quantity;
         } else {
-          pc.sold += item.quantity;
+          if (pc) pc.sold += item.quantity;
           stats.totalBoxesSold += item.quantity;
         }
-        pc.revenue += item.quantity * PRICE_PER_BOX;
+        if (pc) pc.revenue += item.quantity * PRICE_PER_BOX;
       });
       stats.totalCashDonations += order.cashDonation || 0;
     });

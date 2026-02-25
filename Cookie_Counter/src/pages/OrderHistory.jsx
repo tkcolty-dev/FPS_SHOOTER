@@ -92,14 +92,14 @@ export default function OrderHistory() {
                     })}
                     {donationItems.map((item, i) => {
                       const cookie = getCookieById(item.cookieType);
-                      if (!cookie) return null;
+                      const label = cookie ? cookie.shortName : 'Box';
                       return (
                         <span
                           key={`d${i}`}
                           className="order-item-chip donation"
                           style={{ borderColor: 'var(--success)', color: 'var(--success)' }}
                         >
-                          {item.quantity}x {cookie.shortName} &#9829;
+                          {item.quantity}x {label} &#9829;
                         </span>
                       );
                     })}
@@ -164,10 +164,11 @@ export default function OrderHistory() {
                       })}
                       {donationItems.map((item, i) => {
                         const cookie = getCookieById(item.cookieType);
+                        const name = cookie ? cookie.name : 'Unassigned';
                         return (
                           <div key={`d${i}`} className="order-detail-row">
                             <span className="label" style={{ color: 'var(--success)' }}>
-                              {cookie?.name} x{item.quantity} (donated)
+                              {name} x{item.quantity} (donated)
                             </span>
                             <span className="value" style={{ color: 'var(--success)' }}>
                               {formatCurrency(item.quantity * PRICE_PER_BOX)}
