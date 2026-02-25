@@ -164,14 +164,16 @@ function PlannedCard({ plan }) {
   );
 }
 
-// Strip raw code blocks (planned_meal, preference) that shouldn't be visible while streaming
+// Strip ALL code blocks during streaming — cards appear after streaming ends
 function cleanStreamingText(text) {
-  // Remove complete blocks
-  let cleaned = text.replace(/```(?:planned_meal|preference)\s*\n[\s\S]*?```/g, '');
-  // Remove incomplete blocks that are still being typed
-  cleaned = cleaned.replace(/```(?:planned_meal|preference)\s*\n[\s\S]*$/g, '');
-  // Also hide meal/recipe/grocery blocks that are still incomplete (no closing ```)
-  cleaned = cleaned.replace(/```(?:meal|recipe|grocery_list)\s*\n(?![\s\S]*```)[^]*$/g, '');
+  // Remove all complete code blocks (meal, recipe, grocery_list, planned_meal, preference)
+  let cleaned = text.replace(/```(?:meal|recipe|grocery_list|planned_meal|preference)\s*\n[\s\S]*?```/g, '');
+  // Remove any incomplete code block still being typed (no closing ```)
+  cleaned = cleaned.replace(/```(?:meal|recipe|grocery_list|planned_meal|preference)\s*\n[\s\S]*$/g, '');
+  // Remove ---PLANNED: lines
+  cleaned = cleaned.replace(/---PLANNED:[\s\S]*?(?=\n\n|$)/g, '');
+  // Collapse multiple blank lines into one
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
   return cleaned.trim();
 }
 
