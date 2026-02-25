@@ -38,6 +38,8 @@ export default function Chat() {
   const [listening, setListening] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const streamingRef = useRef('');
+  const rafRef = useRef(null);
   const queryClient = useQueryClient();
 
   // On mount: if a request finished while we were away, sync state
@@ -90,7 +92,18 @@ export default function Chat() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingText]);
+  }, [messages]);
+
+  // Scroll during streaming, but throttled
+  const lastScrollRef = useRef(0);
+  useEffect(() => {
+    if (!streamingText) return;
+    const now = Date.now();
+    if (now - lastScrollRef.current > 300) {
+      lastScrollRef.current = now;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [streamingText]);
 
   useEffect(() => {
     saveHistory(messages);
@@ -115,6 +128,8 @@ export default function Chat() {
     const n = new Date();
     const localToday = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
 
+    streamingRef.current = '';
+
     const doRequest = async () => {
       let accumulated = '';
       let metadata = null;
@@ -128,6 +143,18 @@ export default function Chat() {
           clearInterval(timeout);
         }
       }, 5000);
+
+      // Throttle UI updates to once per animation frame
+      let dirty = false;
+      const scheduleUpdate = () => {
+        if (!dirty) {
+          dirty = true;
+          rafRef.current = requestAnimationFrame(() => {
+            setStreamingText(streamingRef.current);
+            dirty = false;
+          });
+        }
+      };
 
       try {
         const response = await fetch('/api/chat/stream', {
@@ -161,7 +188,6 @@ export default function Chat() {
           buffer = lines.pop() || '';
 
           for (const line of lines) {
-            // Handle both "data: {...}" and "data:{...}"
             let jsonStr;
             if (line.startsWith('data:')) {
               jsonStr = line.slice(5).trim();
@@ -171,7 +197,8 @@ export default function Chat() {
               const data = JSON.parse(jsonStr);
               if (data.chunk) {
                 accumulated += data.chunk;
-                setStreamingText(accumulated);
+                streamingRef.current = accumulated;
+                scheduleUpdate();
               }
               if (data.done) {
                 metadata = data;
@@ -185,6 +212,7 @@ export default function Chat() {
         }
       } finally {
         clearInterval(timeout);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
       }
 
       // Use post-processed reply if available
