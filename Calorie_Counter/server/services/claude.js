@@ -77,6 +77,7 @@ async function callLLMStream({ messages, systemPrompt, maxTokens = 1024, onChunk
     }
     allMessages.push(...messages);
 
+    // Try streaming first, fall back to non-streaming if proxy doesn't support it
     const res = await fetch(`${config.apiBase}/openai/v1/chat/completions`, {
       method: 'POST',
       headers: {
@@ -96,25 +97,69 @@ async function callLLMStream({ messages, systemPrompt, maxTokens = 1024, onChunk
       throw new Error(`GenAI API error ${res.status}: ${err}`);
     }
 
+    const contentType = res.headers.get('content-type') || '';
+
+    // If the proxy doesn't actually stream (returns JSON instead of SSE),
+    // read the full response and emit it as one chunk
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      const text = data.choices?.[0]?.message?.content || '';
+      if (text) onChunk(text);
+      return text;
+    }
+
+    // SSE streaming response
     let full = '';
+    let buffer = '';
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const text = decoder.decode(value, { stream: true });
-      for (const line of text.split('\n')) {
-        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        // Handle both "data: {...}" and "data:{...}" (no space)
+        let jsonStr;
+        if (line.startsWith('data:')) {
+          const rest = line.slice(5).trim();
+          if (rest === '[DONE]' || !rest) continue;
+          jsonStr = rest;
+        } else {
+          continue;
+        }
         try {
-          const json = JSON.parse(line.slice(6));
-          const chunk = json.choices?.[0]?.delta?.content;
-          if (chunk) {
-            full += chunk;
-            onChunk(chunk);
+          const json = JSON.parse(jsonStr);
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) {
+            full += delta;
+            onChunk(delta);
           }
         } catch {}
       }
     }
+
+    // Process any remaining buffer
+    if (buffer) {
+      for (const line of buffer.split('\n')) {
+        let jsonStr;
+        if (line.startsWith('data:')) {
+          const rest = line.slice(5).trim();
+          if (rest === '[DONE]' || !rest) continue;
+          jsonStr = rest;
+        } else continue;
+        try {
+          const json = JSON.parse(jsonStr);
+          const delta = json.choices?.[0]?.delta?.content;
+          if (delta) {
+            full += delta;
+            onChunk(delta);
+          }
+        } catch {}
+      }
+    }
+
     return full;
   }
 
