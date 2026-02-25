@@ -242,16 +242,17 @@ export default function LogOrder() {
                     <div
                       key={cookie.id}
                       className={`cookie-select-card${isActive ? ' active' : ''}`}
-                      style={isActive ? {
-                        borderColor: 'var(--success)',
-                        background: 'var(--success-light)',
-                      } : {}}
+                      style={{
+                        background: cookie.bg,
+                        borderColor: isActive ? cookie.color : cookie.bg,
+                        borderTopWidth: 3,
+                        borderTopColor: cookie.color,
+                      }}
                     >
-                      <div className="cookie-select-name">
-                        <span className="cookie-select-dot" style={{ background: cookie.color }} />
+                      <div className="cookie-select-name" style={{ color: cookie.color, fontWeight: 600 }}>
                         {cookie.name}
                       </div>
-                      <div className="cookie-select-stock" style={isActive ? { color: 'var(--success)' } : {}}>
+                      <div className="cookie-select-stock" style={{ color: cookie.color, opacity: 0.7 }}>
                         {isActive ? 'Donation' : `${available} avail`}
                       </div>
                       <div className="qty-control">
