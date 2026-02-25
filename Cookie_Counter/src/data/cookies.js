@@ -1,12 +1,12 @@
 export const COOKIE_TYPES = [
-  { id: 'thin-mints', name: 'Thin Mints', shortName: 'TM', color: '#15803d', bg: '#dcfce7' },
-  { id: 'adventurefuls', name: 'Adventurefuls', shortName: 'AF', color: '#7c3aed', bg: '#ede9fe' },
-  { id: 'explore-mores', name: 'Explore Mores', shortName: 'EM', color: '#b45309', bg: '#fef3c7' },
-  { id: 'lemonades', name: 'Lemonades', shortName: 'LM', color: '#ca8a04', bg: '#fef9c3' },
-  { id: 'trefoils', name: 'Trefoils', shortName: 'TF', color: '#d97706', bg: '#ffedd5' },
-  { id: 'pb-patties', name: 'PB Patties', shortName: 'PP', color: '#78350f', bg: '#fde68a' },
-  { id: 'caramel-delites', name: 'Caramel deLites', shortName: 'CD', color: '#dc2626', bg: '#fee2e2' },
-  { id: 'pb-sandwich', name: 'PB Sandwich', shortName: 'PS', color: '#ea580c', bg: '#ffedd5' },
+  { id: 'thin-mints', name: 'Thin Mints', shortName: 'TM', color: '#2e8b57', bg: '#e0f5ea' },
+  { id: 'adventurefuls', name: 'Adventurefuls', shortName: 'AF', color: '#c97068', bg: '#fbe8e6' },
+  { id: 'explore-mores', name: 'Explore Mores', shortName: 'EM', color: '#d4a843', bg: '#fdf4dc' },
+  { id: 'lemonades', name: 'Lemonades', shortName: 'LM', color: '#4a9ec9', bg: '#e0f0fa' },
+  { id: 'trefoils', name: 'Trefoils', shortName: 'TF', color: '#3b7dd8', bg: '#e0ebfa' },
+  { id: 'pb-patties', name: 'PB Patties', shortName: 'PP', color: '#d86a2c', bg: '#fde8d8' },
+  { id: 'caramel-delites', name: 'Caramel deLites', shortName: 'CD', color: '#7b2d8e', bg: '#f3e4f7' },
+  { id: 'pb-sandwich', name: 'PB Sandwich', shortName: 'PS', color: '#8b2332', bg: '#f8e0e3' },
 ];
 
 export const PRICE_PER_BOX = 6;
