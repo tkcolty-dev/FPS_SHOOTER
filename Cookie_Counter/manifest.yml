@@ -1,0 +1,9 @@
+---
+applications:
+  - name: cookie-counter
+    memory: 64M
+    disk_quota: 128M
+    buildpacks:
+      - staticfile_buildpack
+    path: dist
+    stack: cflinuxfs4
