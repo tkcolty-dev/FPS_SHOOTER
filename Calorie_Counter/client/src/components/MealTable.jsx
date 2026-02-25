@@ -1,5 +1,15 @@
 import { useState } from 'react';
 
+function formatTime(logged_at) {
+  if (!logged_at) return '';
+  const d = new Date(logged_at);
+  const h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 const typeColors = {
   breakfast: '#f59e0b',
   lunch: '#3b82f6',
@@ -55,7 +65,7 @@ export default function MealTable({ meals, onDelete }) {
                       <div className="meal-table-row-left">
                         <span className="meal-table-row-name">{meal.name}</span>
                         <div className="meal-table-row-meta">
-                          <span>{new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>{formatTime(meal.logged_at)}</span>
                           {(meal.protein_g != null || meal.carbs_g != null || meal.fat_g != null) && (
                             <>
                               <span className="meal-meta-sep">&middot;</span>

@@ -119,6 +119,16 @@ export default function Chat() {
       let accumulated = '';
       let metadata = null;
 
+      // Abort if no data received within 60 seconds
+      const controller = new AbortController();
+      let lastActivity = Date.now();
+      const timeout = setInterval(() => {
+        if (Date.now() - lastActivity > 60000) {
+          controller.abort();
+          clearInterval(timeout);
+        }
+      }, 5000);
+
       try {
         const response = await fetch('/api/chat/stream', {
           method: 'POST',
@@ -130,7 +140,9 @@ export default function Chat() {
             message: text,
             history: currentHistory,
             today: localToday,
+            hour: n.getHours(),
           }),
+          signal: controller.signal,
         });
 
         if (!response.ok) throw new Error('Stream failed');
@@ -141,6 +153,7 @@ export default function Chat() {
 
         while (true) {
           const { done, value } = await reader.read();
+          lastActivity = Date.now();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
 
@@ -148,9 +161,14 @@ export default function Chat() {
           buffer = lines.pop() || '';
 
           for (const line of lines) {
-            if (!line.startsWith('data: ')) continue;
+            // Handle both "data: {...}" and "data:{...}"
+            let jsonStr;
+            if (line.startsWith('data:')) {
+              jsonStr = line.slice(5).trim();
+              if (!jsonStr) continue;
+            } else continue;
             try {
-              const data = JSON.parse(line.slice(6));
+              const data = JSON.parse(jsonStr);
               if (data.chunk) {
                 accumulated += data.chunk;
                 setStreamingText(accumulated);
@@ -165,6 +183,8 @@ export default function Chat() {
         if (!accumulated) {
           accumulated = 'Sorry, something went wrong. Please try again.';
         }
+      } finally {
+        clearInterval(timeout);
       }
 
       // Use post-processed reply if available
@@ -230,7 +250,7 @@ export default function Chat() {
         ))}
 
         {loading && streamingText && (
-          <ChatMessage message={{ role: 'assistant', content: streamingText }} />
+          <ChatMessage message={{ role: 'assistant', content: streamingText }} isStreaming />
         )}
 
         {loading && !streamingText && (

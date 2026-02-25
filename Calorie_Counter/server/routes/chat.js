@@ -376,11 +376,12 @@ async function postProcessReply(reply, userId, sharedUsers) {
 // Streaming chat endpoint
 router.post('/stream', async (req, res) => {
   try {
-    const { message, history, today } = req.body;
+    const { message, history, today, hour } = req.body;
     if (!message) return res.status(400).json({ error: 'message is required' });
     if (containsProfanity(message)) return res.status(400).json({ error: 'Message contains inappropriate language' });
 
     const ctx = await gatherChatContext(req.userId, message, today);
+    if (hour != null) ctx.clientHour = hour;
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');

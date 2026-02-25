@@ -449,6 +449,21 @@ input, select, textarea {
   border-bottom-left-radius: 4px;
 }
 
+.chat-typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--color-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 0.8s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 .chat-meal-card {
   background: var(--color-bg);
   border: 1px solid var(--color-border);

@@ -164,11 +164,33 @@ function PlannedCard({ plan }) {
   );
 }
 
-export default function ChatMessage({ message }) {
+// Strip raw code blocks (planned_meal, preference) that shouldn't be visible while streaming
+function cleanStreamingText(text) {
+  // Remove complete blocks
+  let cleaned = text.replace(/```(?:planned_meal|preference)\s*\n[\s\S]*?```/g, '');
+  // Remove incomplete blocks that are still being typed
+  cleaned = cleaned.replace(/```(?:planned_meal|preference)\s*\n[\s\S]*$/g, '');
+  // Also hide meal/recipe/grocery blocks that are still incomplete (no closing ```)
+  cleaned = cleaned.replace(/```(?:meal|recipe|grocery_list)\s*\n(?![\s\S]*```)[^]*$/g, '');
+  return cleaned.trim();
+}
+
+export default function ChatMessage({ message, isStreaming }) {
   const isUser = message.role === 'user';
 
   if (isUser) {
     return <div className="chat-bubble user">{message.content}</div>;
+  }
+
+  // During streaming, render plain text without parsing blocks (avoids flicker)
+  if (isStreaming) {
+    const cleaned = cleanStreamingText(message.content);
+    return (
+      <div className="chat-bubble assistant">
+        <span style={{ whiteSpace: 'pre-wrap' }}>{cleaned}</span>
+        <span className="chat-typing-cursor" />
+      </div>
+    );
   }
 
   const parts = parseBlocks(message.content);

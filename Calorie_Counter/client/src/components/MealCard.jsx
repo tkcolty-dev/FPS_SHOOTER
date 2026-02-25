@@ -5,9 +5,20 @@ const typeColors = {
   snack: '#10b981',
 };
 
+function formatTime(logged_at) {
+  if (!logged_at) return '';
+  // logged_at is local time stored as UTC — use UTC hours/minutes to get the original local time
+  const d = new Date(logged_at);
+  const h = d.getUTCHours();
+  const m = d.getUTCMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 export default function MealCard({ meal, onDelete }) {
   const color = typeColors[meal.meal_type] || '#64748b';
-  const time = new Date(meal.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const time = formatTime(meal.logged_at);
 
   return (
     <div

@@ -217,7 +217,7 @@ Return ONLY a JSON array with exactly 3 objects, each having: name (string), des
   return JSON.parse(jsonMatch[0]);
 }
 
-function buildChatPrompt({ goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate, foodReference, sharedUsers }) {
+function buildChatPrompt({ goals, todaysMeals, remainingCalories, preferences, plannedMeals, clientDate, clientHour, foodReference, sharedUsers }) {
   const cuisinePrefs = preferences.filter(p => p.preference_type === 'cuisine').map(p => p.value);
   const dietaryPrefs = preferences.filter(p => p.preference_type === 'dietary').map(p => p.value);
   const favorites = preferences.filter(p => p.preference_type === 'favorite').map(p => p.value);
@@ -235,8 +235,12 @@ function buildChatPrompt({ goals, todaysMeals, remainingCalories, preferences, p
       }).join(', ')
     : 'none';
 
+  const timeLabel = clientHour != null
+    ? `${clientHour % 12 || 12}:00 ${clientHour >= 12 ? 'PM' : 'AM'}`
+    : null;
+
   return `You are a friendly nutrition assistant inside a calorie tracking app.
-Today's date: ${clientDate || new Date().toISOString().split('T')[0]}
+Today's date: ${clientDate || new Date().toISOString().split('T')[0]}${timeLabel ? `\nCurrent time: ${timeLabel}` : ''}
 
 User context:
 - Daily calorie goal: ${goals.daily_total} cal${goals.breakfast ? ` (breakfast: ${goals.breakfast}, lunch: ${goals.lunch}, dinner: ${goals.dinner}, snacks: ${goals.snacks})` : ''}
