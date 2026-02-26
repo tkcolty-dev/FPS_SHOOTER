@@ -187,6 +187,9 @@ export default function LogOrder() {
                   borderTopColor: cookie.color,
                 }}
               >
+                {cookie.image && (
+                  <img src={cookie.image} alt={cookie.name} className="cookie-select-img" />
+                )}
                 <div className="cookie-select-name" style={{ color: '#222', fontWeight: 600 }}>
                   {cookie.name}
                 </div>
@@ -249,6 +252,9 @@ export default function LogOrder() {
                         borderTopColor: cookie.color,
                       }}
                     >
+                      {cookie.image && (
+                        <img src={cookie.image} alt={cookie.name} className="cookie-select-img" />
+                      )}
                       <div className="cookie-select-name" style={{ color: '#222', fontWeight: 600 }}>
                         {cookie.name}
                       </div>

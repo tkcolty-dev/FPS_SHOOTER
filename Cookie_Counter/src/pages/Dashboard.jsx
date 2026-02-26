@@ -167,7 +167,10 @@ export default function Dashboard() {
                     borderRadius: '12px 12px 0 0',
                   }} />
                   <div className="cookie-inv-header">
-                    <div className="cookie-inv-dot" style={{ background: cookie.color }} />
+                    {cookie.image
+                      ? <img src={cookie.image} alt="" className="cookie-inv-thumb" />
+                      : <div className="cookie-inv-dot" style={{ background: cookie.color }} />
+                    }
                     <span className="cookie-inv-name">{cookie.name}</span>
                   </div>
                   <div className="cookie-inv-stats">
