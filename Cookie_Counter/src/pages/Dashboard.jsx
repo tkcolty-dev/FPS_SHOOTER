@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { COOKIE_TYPES, PRICE_PER_BOX } from '../data/cookies';
@@ -12,19 +12,26 @@ export default function Dashboard() {
   const [booth, setBooth] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const pollRef = useRef(null);
+
+  const loadData = useCallback(async (isInitial) => {
+    try {
+      const [b, o] = await Promise.all([fetchBooth(boothId), fetchOrders(boothId)]);
+      setBooth(b);
+      setOrders(o);
+    } catch {}
+    if (isInitial) setLoading(false);
+  }, [boothId, fetchBooth, fetchOrders]);
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const [b, o] = await Promise.all([fetchBooth(boothId), fetchOrders(boothId)]);
-        if (!cancelled) { setBooth(b); setOrders(o); }
-      } catch {}
-      if (!cancelled) setLoading(false);
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [boothId, fetchBooth, fetchOrders]);
+    loadData(true).then(() => {
+      if (!cancelled) {
+        pollRef.current = setInterval(() => loadData(false), 5000);
+      }
+    });
+    return () => { cancelled = true; clearInterval(pollRef.current); };
+  }, [loadData]);
 
   const stats = computeStats(booth, orders);
 
@@ -75,6 +82,9 @@ export default function Dashboard() {
           </button>
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
             {booth.name}
+            {booth.isOwner === false && (
+              <span style={{ marginLeft: 6, fontSize: '0.7rem', opacity: 0.7 }}>(shared)</span>
+            )}
           </span>
         </div>
 

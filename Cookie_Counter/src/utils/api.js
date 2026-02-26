@@ -52,4 +52,15 @@ export const api = {
     request(`/booths/${boothId}/orders/${orderId}`, { method: 'PUT', body: data }),
   deleteOrder: (boothId, orderId) =>
     request(`/booths/${boothId}/orders/${orderId}`, { method: 'DELETE' }),
+
+  // Members
+  getMembers: (boothId) => request(`/booths/${boothId}/members`),
+  addMember: (boothId, username) =>
+    request(`/booths/${boothId}/members`, { method: 'POST', body: { username } }),
+  removeMember: (boothId, memberId) =>
+    request(`/booths/${boothId}/members/${memberId}`, { method: 'DELETE' }),
+
+  // Notifications
+  getNotifications: () => request('/booths/notifications'),
+  markNotificationsSeen: () => request('/booths/notifications/seen', { method: 'POST' }),
 };

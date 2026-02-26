@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useBooth } from '../context/BoothContext';
@@ -5,7 +6,13 @@ import { formatDate } from '../utils/helpers';
 
 export default function BoothList() {
   const { user, logout } = useAuth();
-  const { booths, boothsLoading } = useBooth();
+  const { booths, boothsLoading, refreshBooths } = useBooth();
+  const pollRef = useRef(null);
+
+  useEffect(() => {
+    pollRef.current = setInterval(refreshBooths, 5000);
+    return () => clearInterval(pollRef.current);
+  }, [refreshBooths]);
 
   return (
     <div className="app-main" style={{ paddingBottom: 32 }}>
@@ -41,11 +48,13 @@ export default function BoothList() {
           <div className="animate-in">
             {booths.map(booth => (
               <Link to={`/booth/${booth.id}`} key={booth.id} className="booth-card">
-                <div className="booth-icon">&#127850;</div>
+                <div className="booth-icon">{booth.isOwner ? '\u{1F36A}' : '\u{1F91D}'}</div>
                 <div className="booth-info">
                   <div className="booth-name">{booth.name}</div>
                   <div className="booth-meta">
-                    {formatDate(booth.createdAt)}
+                    {booth.isOwner
+                      ? formatDate(booth.createdAt)
+                      : `Shared by ${booth.ownerName}`}
                     {` \u00B7 ${booth.orderCount || 0} orders`}
                   </div>
                 </div>

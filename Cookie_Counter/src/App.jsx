@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import LogOrder from './pages/LogOrder';
 import OrderHistory from './pages/OrderHistory';
 import Settings from './pages/Settings';
+import ShareToast from './components/ShareToast';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
         <BoothProvider>
           <div className="app">
             <AppRoutes />
+            <ShareToast />
           </div>
         </BoothProvider>
       </AuthProvider>

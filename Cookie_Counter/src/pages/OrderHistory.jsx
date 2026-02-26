@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { getCookieById, PRICE_PER_BOX } from '../data/cookies';
@@ -13,12 +13,25 @@ export default function OrderHistory() {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const pollRef = useRef(null);
+
+  const loadOrders = useCallback(async (isInitial) => {
+    try {
+      const data = await fetchOrders(boothId);
+      setOrders(data);
+    } catch {}
+    if (isInitial) setLoading(false);
+  }, [boothId, fetchOrders]);
 
   useEffect(() => {
-    fetchOrders(boothId)
-      .then(setOrders)
-      .finally(() => setLoading(false));
-  }, [boothId, fetchOrders]);
+    let cancelled = false;
+    loadOrders(true).then(() => {
+      if (!cancelled) {
+        pollRef.current = setInterval(() => loadOrders(false), 5000);
+      }
+    });
+    return () => { cancelled = true; clearInterval(pollRef.current); };
+  }, [loadOrders]);
 
   async function handleDelete(orderId) {
     await deleteOrder(boothId, orderId);
@@ -79,7 +92,10 @@ export default function OrderHistory() {
                 >
                   <div className="order-card-header">
                     <span className="order-number">Order #{orderNum}</span>
-                    <span className="order-time">{formatDateTime(order.createdAt)}</span>
+                    <span className="order-time">
+                      {order.loggedByName && <span style={{ marginRight: 6, fontWeight: 500 }}>{order.loggedByName}</span>}
+                      {formatDateTime(order.createdAt)}
+                    </span>
                   </div>
 
                   <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', padding: '4px 0' }}>

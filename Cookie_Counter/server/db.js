@@ -48,11 +48,26 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS orders (
       id VARCHAR(32) PRIMARY KEY,
       booth_id VARCHAR(32) NOT NULL REFERENCES booths(id) ON DELETE CASCADE,
+      user_id VARCHAR(32) REFERENCES users(id) ON DELETE SET NULL,
       items JSONB NOT NULL DEFAULT '[]',
       cash_donation DECIMAL(10,2) DEFAULT 0,
       total DECIMAL(10,2) DEFAULT 0,
       created_at BIGINT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS booth_members (
+      id VARCHAR(32) PRIMARY KEY,
+      booth_id VARCHAR(32) NOT NULL REFERENCES booths(id) ON DELETE CASCADE,
+      user_id VARCHAR(32) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      added_at BIGINT NOT NULL,
+      seen_at BIGINT,
+      UNIQUE(booth_id, user_id)
+    );
+  `);
+
+  // Add columns if they don't exist (for existing deployments)
+  await db.query(`
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id VARCHAR(32) REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE booth_members ADD COLUMN IF NOT EXISTS seen_at BIGINT;
   `);
 }
 

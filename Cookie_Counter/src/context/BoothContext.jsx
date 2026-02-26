@@ -58,6 +58,18 @@ export function BoothProvider({ children }) {
     await api.deleteOrder(boothId, orderId);
   }, []);
 
+  const fetchMembers = useCallback(async (boothId) => {
+    return api.getMembers(boothId);
+  }, []);
+
+  const addMember = useCallback(async (boothId, username) => {
+    return api.addMember(boothId, username);
+  }, []);
+
+  const removeMember = useCallback(async (boothId, memberId) => {
+    await api.removeMember(boothId, memberId);
+  }, []);
+
   const computeStats = useCallback((booth, orders) => {
     if (!booth) return null;
 
@@ -121,6 +133,9 @@ export function BoothProvider({ children }) {
       addOrder,
       updateOrder,
       deleteOrder,
+      fetchMembers,
+      addMember,
+      removeMember,
       computeStats,
     }}>
       {children}
