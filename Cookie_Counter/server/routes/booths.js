@@ -28,6 +28,7 @@ async function getBoothWithAccess(db, boothId, userId) {
     booth: {
       id: r.id,
       name: r.name,
+      thumbnail: r.thumbnail || null,
       startingCash: Number(r.starting_cash),
       inventory: r.inventory,
       createdAt: Number(r.created_at),
@@ -98,6 +99,7 @@ router.get('/', async (req, res) => {
     const booths = result.rows.map(r => ({
       id: r.id,
       name: r.name,
+      thumbnail: r.thumbnail || null,
       startingCash: Number(r.starting_cash),
       inventory: r.inventory,
       createdAt: Number(r.created_at),
@@ -115,20 +117,21 @@ router.get('/', async (req, res) => {
 // Create booth
 router.post('/', async (req, res) => {
   try {
-    const { name, startingCash, inventory } = req.body;
+    const { name, startingCash, inventory, thumbnail } = req.body;
     if (!name) return res.status(400).json({ error: 'Booth name is required' });
 
     const id = genId();
     const now = Date.now();
     const db = getPool();
     await db.query(
-      'INSERT INTO booths (id, user_id, name, starting_cash, inventory, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
-      [id, req.user.id, name, Number(startingCash) || 0, JSON.stringify(inventory || {}), now]
+      'INSERT INTO booths (id, user_id, name, starting_cash, inventory, thumbnail, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      [id, req.user.id, name, Number(startingCash) || 0, JSON.stringify(inventory || {}), thumbnail || null, now]
     );
 
     res.json({
       id,
       name,
+      thumbnail: thumbnail || null,
       startingCash: Number(startingCash) || 0,
       inventory: inventory || {},
       createdAt: now,
@@ -148,6 +151,22 @@ router.get('/:id', async (req, res) => {
     res.json(access.booth);
   } catch (err) {
     console.error('Get booth error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update booth thumbnail (owner only)
+router.patch('/:id', async (req, res) => {
+  try {
+    const db = getPool();
+    const { thumbnail } = req.body;
+    await db.query(
+      'UPDATE booths SET thumbnail = $1 WHERE id = $2 AND user_id = $3',
+      [thumbnail || null, req.params.id, req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Update booth error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

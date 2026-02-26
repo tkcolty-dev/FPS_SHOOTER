@@ -63,6 +63,7 @@ export const api = {
   getBooths: () => request('/booths'),
   createBooth: (data) => request('/booths', { method: 'POST', body: data }),
   getBooth: (id) => request(`/booths/${id}`),
+  updateBooth: (id, data) => request(`/booths/${id}`, { method: 'PATCH', body: data }),
   deleteBooth: (id) => request(`/booths/${id}`, { method: 'DELETE' }),
 
   // Orders

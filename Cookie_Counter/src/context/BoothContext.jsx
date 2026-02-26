@@ -56,10 +56,15 @@ export function BoothProvider({ children }) {
     refreshBooths();
   }, [refreshBooths]);
 
-  const createBooth = useCallback(async (name, startingCash, inventory) => {
-    const booth = await api.createBooth({ name, startingCash, inventory });
+  const createBooth = useCallback(async (name, startingCash, inventory, thumbnail) => {
+    const booth = await api.createBooth({ name, startingCash, inventory, thumbnail });
     await refreshBooths();
     return booth;
+  }, [refreshBooths]);
+
+  const updateBooth = useCallback(async (boothId, data) => {
+    await api.updateBooth(boothId, data);
+    await refreshBooths();
   }, [refreshBooths]);
 
   const fetchBooth = useCallback(async (boothId) => {
@@ -244,6 +249,7 @@ export function BoothProvider({ children }) {
       boothsLoading,
       refreshBooths,
       createBooth,
+      updateBooth,
       fetchBooth,
       deleteBooth,
       fetchOrders,

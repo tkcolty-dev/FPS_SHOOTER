@@ -68,6 +68,7 @@ async function initDb() {
   await db.query(`
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id VARCHAR(32) REFERENCES users(id) ON DELETE SET NULL;
     ALTER TABLE booth_members ADD COLUMN IF NOT EXISTS seen_at BIGINT;
+    ALTER TABLE booths ADD COLUMN IF NOT EXISTS thumbnail TEXT;
   `);
 }
 

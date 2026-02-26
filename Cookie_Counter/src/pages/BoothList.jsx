@@ -48,7 +48,13 @@ export default function BoothList() {
           <div className="animate-in">
             {booths.map(booth => (
               <Link to={`/booth/${booth.id}`} key={booth.id} className="booth-card">
-                <div className="booth-icon">{booth.isOwner ? '\u{1F36A}' : '\u{1F91D}'}</div>
+                {booth.thumbnail ? (
+                  <div className="booth-icon" style={{ padding: 0, overflow: 'hidden' }}>
+                    <img src={booth.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ) : (
+                  <div className="booth-icon">{booth.isOwner ? '\u{1F36A}' : '\u{1F91D}'}</div>
+                )}
                 <div className="booth-info">
                   <div className="booth-name">{booth.name}</div>
                   <div className="booth-meta">

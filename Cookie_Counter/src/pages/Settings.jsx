@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { useAuth } from '../context/AuthContext';
@@ -6,14 +6,36 @@ import { COOKIE_TYPES } from '../data/cookies';
 import { formatCurrency, formatDateTime } from '../utils/helpers';
 import Navbar from '../components/Navbar';
 
+function resizeImage(file, maxSize = 256) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > h) { h = (h / w) * maxSize; w = maxSize; }
+        else { w = (w / h) * maxSize; h = maxSize; }
+        canvas.width = w;
+        canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.8));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function Settings() {
   const { boothId } = useParams();
   const navigate = useNavigate();
-  const { fetchBooth, deleteBooth, fetchMembers, addMember, removeMember } = useBooth();
+  const { fetchBooth, updateBooth, deleteBooth, fetchMembers, addMember, removeMember } = useBooth();
   const { user, logout } = useAuth();
   const [booth, setBooth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const fileRef = useRef(null);
 
   // Members state
   const [membersData, setMembersData] = useState(null);
@@ -50,6 +72,19 @@ export default function Settings() {
   if (!booth) return null;
 
   const isOwner = booth.isOwner !== false;
+
+  async function handleThumbnailChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const dataUrl = await resizeImage(file);
+    await updateBooth(boothId, { thumbnail: dataUrl });
+    setBooth(prev => ({ ...prev, thumbnail: dataUrl }));
+  }
+
+  async function handleRemoveThumbnail() {
+    await updateBooth(boothId, { thumbnail: null });
+    setBooth(prev => ({ ...prev, thumbnail: null }));
+  }
 
   async function handleDelete() {
     await deleteBooth(boothId);
@@ -94,6 +129,60 @@ export default function Settings() {
         {/* Booth info */}
         <div className="settings-section">
           <div className="settings-section-title">Booth Info</div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleThumbnailChange}
+            style={{ display: 'none' }}
+          />
+          <div className="settings-item" style={{ paddingTop: 8, paddingBottom: 8 }}>
+            <span className="settings-item-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              Thumbnail
+            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {booth.thumbnail ? (
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  overflow: 'hidden', flexShrink: 0,
+                  border: '1px solid var(--border)',
+                }}>
+                  <img src={booth.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              ) : (
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10,
+                  background: 'var(--bg)', border: '1px dashed var(--border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: 'var(--text-secondary)', fontSize: '0.75rem',
+                }}>
+                  None
+                </div>
+              )}
+              {isOwner && (
+                <>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => fileRef.current?.click()}
+                    style={{ fontSize: '0.75rem', padding: '4px 10px', minHeight: 0 }}
+                  >
+                    {booth.thumbnail ? 'Change' : 'Add'}
+                  </button>
+                  {booth.thumbnail && (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={handleRemoveThumbnail}
+                      style={{ color: 'var(--danger)', fontSize: '0.75rem', padding: '4px 10px', minHeight: 0 }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
           <div className="settings-item">
             <span className="settings-item-label">Name</span>
             <span className="settings-item-value">{booth.name}</span>

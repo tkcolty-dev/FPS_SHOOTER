@@ -5,7 +5,7 @@ const authRoutes = require('./routes/auth');
 const boothRoutes = require('./routes/booths');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/booths', boothRoutes);
