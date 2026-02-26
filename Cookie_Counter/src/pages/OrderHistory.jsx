@@ -68,7 +68,7 @@ export default function OrderHistory() {
               const totalBoxes = (order.items || []).reduce((sum, i) => sum + i.quantity, 0);
               const saleBoxes = saleItems.reduce((sum, i) => sum + i.quantity, 0);
               const donationBoxes = donationItems.reduce((sum, i) => sum + i.quantity, 0);
-              const barPct = Math.round((totalBoxes / maxBoxes) * 100);
+              const barPct = Math.round((totalBoxes / maxBoxes) * 60);
 
               return (
                 <div
@@ -88,7 +88,7 @@ export default function OrderHistory() {
                     {(order.cashDonation || 0) > 0 && ` + ${formatCurrency(order.cashDonation)} tip`}
                   </div>
                   <div style={{ height: 6, borderRadius: 3, background: 'var(--border-light)', overflow: 'hidden' }}>
-                    <div style={{ width: `${barPct}%`, height: '100%', borderRadius: 3, background: 'var(--primary)', transition: 'width 0.3s' }} />
+                    <div style={{ width: `${barPct}%`, height: '100%', borderRadius: 3, background: '#00b451', transition: 'width 0.3s' }} />
                   </div>
 
                   <div className="order-footer">
