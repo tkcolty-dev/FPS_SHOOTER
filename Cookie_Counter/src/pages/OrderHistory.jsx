@@ -57,7 +57,9 @@ export default function OrderHistory() {
           </div>
         ) : (
           <div className="order-list">
-            {orders.map((order, index) => {
+            {(() => {
+              const maxBoxes = Math.max(...orders.map(o => (o.items || []).reduce((s, i) => s + i.quantity, 0)), 1);
+              return orders.map((order, index) => {
               const orderNum = orders.length - index;
               const saleItems = (order.items || []).filter(i => !i.isDonation);
               const donationItems = (order.items || []).filter(i => i.isDonation);
@@ -66,13 +68,23 @@ export default function OrderHistory() {
               const totalBoxes = (order.items || []).reduce((sum, i) => sum + i.quantity, 0);
               const saleBoxes = saleItems.reduce((sum, i) => sum + i.quantity, 0);
               const donationBoxes = donationItems.reduce((sum, i) => sum + i.quantity, 0);
+              const heat = totalBoxes / maxBoxes;
+              // Cool (blue) to warm (orange/red): hue 210 → 15
+              const hue = Math.round(210 - heat * 195);
+              const sat = Math.round(50 + heat * 40);
+              const borderColor = `hsl(${hue}, ${sat}%, 55%)`;
+              const bgColor = `hsl(${hue}, ${sat}%, 97%)`;
 
               return (
                 <div
                   key={order.id}
                   className="order-card"
                   onClick={() => setExpandedId(isExpanded ? null : order.id)}
-                  style={{ cursor: 'pointer' }}
+                  style={{
+                    cursor: 'pointer',
+                    borderLeft: `4px solid ${borderColor}`,
+                    background: bgColor,
+                  }}
                 >
                   <div className="order-card-header">
                     <span className="order-number">Order #{orderNum}</span>
@@ -178,7 +190,8 @@ export default function OrderHistory() {
                   )}
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         )}
       </div>
