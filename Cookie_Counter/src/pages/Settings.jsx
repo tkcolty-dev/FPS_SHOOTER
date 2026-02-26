@@ -117,13 +117,10 @@ export default function Settings() {
             return (
               <div key={cookie.id} className="settings-item">
                 <span className="settings-item-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    background: cookie.color,
-                    flexShrink: 0,
-                  }} />
+                  {cookie.image
+                    ? <img src={cookie.image} alt="" style={{ width: 24, height: 24, borderRadius: 5, objectFit: 'contain', flexShrink: 0 }} />
+                    : <span style={{ width: 8, height: 8, borderRadius: '50%', background: cookie.color, flexShrink: 0 }} />
+                  }
                   {cookie.name}
                 </span>
                 <span className="settings-item-value">{starting} boxes</span>

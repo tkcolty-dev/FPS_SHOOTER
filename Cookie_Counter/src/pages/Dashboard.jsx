@@ -231,16 +231,13 @@ export default function Dashboard() {
                     pc.sold > 0 && (
                       <tr key={cookie.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <td style={{ padding: '10px 14px', fontWeight: 500 }}>
-                          <span style={{
-                            display: 'inline-block',
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: cookie.color,
-                            marginRight: 8,
-                            verticalAlign: 'middle',
-                          }} />
-                          {cookie.name}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            {cookie.image
+                              ? <img src={cookie.image} alt="" style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'contain' }} />
+                              : <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: cookie.color }} />
+                            }
+                            {cookie.name}
+                          </span>
                         </td>
                         <td style={{ textAlign: 'center', padding: '10px 8px', fontWeight: 600 }}>
                           {pc.sold}
@@ -253,16 +250,13 @@ export default function Dashboard() {
                     pc.donated > 0 && (
                       <tr key={`${cookie.id}-donated`} style={{ borderBottom: '1px solid var(--border-light)' }}>
                         <td style={{ padding: '10px 14px', fontWeight: 500, color: 'var(--success)' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: cookie.color,
-                            marginRight: 8,
-                            verticalAlign: 'middle',
-                          }} />
-                          {cookie.name} <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>(donated)</span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            {cookie.image
+                              ? <img src={cookie.image} alt="" style={{ width: 22, height: 22, borderRadius: 4, objectFit: 'contain' }} />
+                              : <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: cookie.color }} />
+                            }
+                            {cookie.name} <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>(donated)</span>
+                          </span>
                         </td>
                         <td style={{ textAlign: 'center', padding: '10px 8px', fontWeight: 600, color: 'var(--success)' }}>
                           {pc.donated}

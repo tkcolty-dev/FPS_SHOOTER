@@ -149,15 +149,11 @@ export default function OrderHistory() {
                         const cookie = getCookieById(item.cookieType);
                         return (
                           <div key={i} className="order-detail-row">
-                            <span className="label">
-                              <span style={{
-                                display: 'inline-block',
-                                width: 6,
-                                height: 6,
-                                borderRadius: '50%',
-                                background: cookie?.color,
-                                marginRight: 6,
-                              }} />
+                            <span className="label" style={{ display: 'flex', alignItems: 'center' }}>
+                              {cookie?.image
+                                ? <img src={cookie.image} alt="" style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'contain', marginRight: 6 }} />
+                                : <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: cookie?.color, marginRight: 6 }} />
+                              }
                               {cookie?.name} x{item.quantity}
                             </span>
                             <span className="value">{formatCurrency(item.quantity * PRICE_PER_BOX)}</span>
@@ -169,7 +165,11 @@ export default function OrderHistory() {
                         const name = cookie ? cookie.name : 'Unassigned';
                         return (
                           <div key={`d${i}`} className="order-detail-row">
-                            <span className="label" style={{ color: 'var(--success)' }}>
+                            <span className="label" style={{ display: 'flex', alignItems: 'center', color: 'var(--success)' }}>
+                              {cookie?.image
+                                ? <img src={cookie.image} alt="" style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'contain', marginRight: 6 }} />
+                                : null
+                              }
                               {name} x{item.quantity} (donated)
                             </span>
                             <span className="value" style={{ color: 'var(--success)' }}>
