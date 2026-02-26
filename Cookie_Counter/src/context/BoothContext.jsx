@@ -85,6 +85,12 @@ export function BoothProvider({ children }) {
     await refreshBooths();
   }, [refreshBooths]);
 
+  const restockBooth = useCallback(async (boothId, inventory) => {
+    const updated = await api.restockBooth(boothId, inventory);
+    await refreshBooths();
+    return updated;
+  }, [refreshBooths]);
+
   const fetchOrders = useCallback(async (boothId) => {
     try {
       const data = await api.getOrders(boothId);
@@ -252,6 +258,7 @@ export function BoothProvider({ children }) {
       updateBooth,
       fetchBooth,
       deleteBooth,
+      restockBooth,
       fetchOrders,
       addOrder,
       updateOrder,

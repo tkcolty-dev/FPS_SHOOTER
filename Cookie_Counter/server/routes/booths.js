@@ -171,6 +171,48 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
+// Restock booth inventory
+router.post('/:id/restock', async (req, res) => {
+  try {
+    const db = getPool();
+    const access = await getBoothWithAccess(db, req.params.id, req.user.id);
+    if (!access) return res.status(404).json({ error: 'Booth not found' });
+
+    const { inventory } = req.body;
+    if (!inventory || typeof inventory !== 'object') {
+      return res.status(400).json({ error: 'Inventory object is required' });
+    }
+
+    // Build JSONB additions: for each cookie type, add the new quantity to existing
+    const entries = Object.entries(inventory).filter(([, qty]) => qty > 0);
+    if (entries.length === 0) {
+      return res.status(400).json({ error: 'No quantities to add' });
+    }
+
+    // Use jsonb concatenation — build a new object with summed values
+    const setClauses = entries.map(([key], i) =>
+      `jsonb_build_object($${i * 2 + 2}::text, COALESCE((inventory->>$${i * 2 + 2}::text)::int, 0) + $${i * 2 + 3}::int)`
+    ).join(' || ');
+
+    const params = [req.params.id];
+    entries.forEach(([key, qty]) => {
+      params.push(key, Number(qty));
+    });
+
+    await db.query(
+      `UPDATE booths SET inventory = inventory || ${setClauses} WHERE id = $1`,
+      params
+    );
+
+    // Return updated booth
+    const updated = await getBoothWithAccess(db, req.params.id, req.user.id);
+    res.json(updated.booth);
+  } catch (err) {
+    console.error('Restock booth error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Delete booth (owner only)
 router.delete('/:id', async (req, res) => {
   try {

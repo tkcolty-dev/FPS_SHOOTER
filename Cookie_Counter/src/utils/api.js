@@ -65,6 +65,8 @@ export const api = {
   getBooth: (id) => request(`/booths/${id}`),
   updateBooth: (id, data) => request(`/booths/${id}`, { method: 'PATCH', body: data }),
   deleteBooth: (id) => request(`/booths/${id}`, { method: 'DELETE' }),
+  restockBooth: (id, inventory) =>
+    request(`/booths/${id}/restock`, { method: 'POST', body: { inventory } }),
 
   // Orders
   getOrders: (boothId) => request(`/booths/${boothId}/orders`),

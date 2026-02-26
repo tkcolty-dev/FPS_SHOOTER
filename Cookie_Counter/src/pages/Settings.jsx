@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useBooth } from '../context/BoothContext';
 import { useAuth } from '../context/AuthContext';
-import { COOKIE_TYPES } from '../data/cookies';
+import { COOKIE_TYPES, BOXES_PER_CASE, getEmptyInventory } from '../data/cookies';
 import { formatCurrency, formatDateTime } from '../utils/helpers';
 import Navbar from '../components/Navbar';
 
@@ -30,7 +30,7 @@ function resizeImage(file, maxSize = 256) {
 export default function Settings() {
   const { boothId } = useParams();
   const navigate = useNavigate();
-  const { fetchBooth, updateBooth, deleteBooth, fetchMembers, addMember, removeMember } = useBooth();
+  const { fetchBooth, updateBooth, deleteBooth, fetchMembers, addMember, removeMember, restockBooth } = useBooth();
   const { user, logout } = useAuth();
   const [booth, setBooth] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,10 @@ export default function Settings() {
   const [newUsername, setNewUsername] = useState('');
   const [memberError, setMemberError] = useState('');
   const [addingMember, setAddingMember] = useState(false);
+  const [showRestock, setShowRestock] = useState(false);
+  const [restockCases, setRestockCases] = useState(getEmptyInventory(0));
+  const [restockBoxes, setRestockBoxes] = useState(getEmptyInventory(0));
+  const [restocking, setRestocking] = useState(false);
 
   useEffect(() => {
     fetchBooth(boothId)
@@ -115,6 +119,36 @@ export default function Settings() {
       setMembersData(data);
     } catch (err) {
       setMemberError(err.message);
+    }
+  }
+
+  const getRestockTotal = (cookieId) =>
+    (restockCases[cookieId] || 0) * BOXES_PER_CASE + (restockBoxes[cookieId] || 0);
+
+  const totalRestockBoxes = COOKIE_TYPES.reduce((sum, c) => sum + getRestockTotal(c.id), 0);
+
+  function openRestock() {
+    setRestockCases(getEmptyInventory(0));
+    setRestockBoxes(getEmptyInventory(0));
+    setShowRestock(true);
+  }
+
+  async function handleRestock() {
+    const inventory = {};
+    COOKIE_TYPES.forEach(c => {
+      const total = getRestockTotal(c.id);
+      if (total > 0) inventory[c.id] = total;
+    });
+    if (Object.keys(inventory).length === 0) return;
+    setRestocking(true);
+    try {
+      const updated = await restockBooth(boothId, inventory);
+      setBooth(updated);
+      setShowRestock(false);
+    } catch (err) {
+      alert(err.message || 'Failed to restock');
+    } finally {
+      setRestocking(false);
     }
   }
 
@@ -199,7 +233,16 @@ export default function Settings() {
 
         {/* Starting inventory */}
         <div className="settings-section">
-          <div className="settings-section-title">Starting Inventory</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="settings-section-title" style={{ marginBottom: 0 }}>Inventory</div>
+            <button
+              onClick={openRestock}
+              className="btn btn-primary btn-sm"
+              style={{ fontSize: '0.75rem', padding: '5px 14px', minHeight: 0 }}
+            >
+              + Restock
+            </button>
+          </div>
           {COOKIE_TYPES.map(cookie => {
             const starting = booth.inventory[cookie.id] || 0;
             if (starting === 0) return null;
@@ -351,6 +394,84 @@ export default function Settings() {
               </button>
               <button className="btn btn-danger" onClick={handleDelete}>
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Restock modal */}
+      {showRestock && (
+        <div className="modal-overlay" onClick={() => setShowRestock(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: 440 }}>
+            <div className="card-header" style={{ marginBottom: 8 }}>
+              <span className="card-title">Restock Inventory</span>
+              {totalRestockBoxes > 0 && (
+                <span className="badge badge-primary">+{totalRestockBoxes} boxes</span>
+              )}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+              1 case = {BOXES_PER_CASE} boxes
+            </div>
+            <div className="inv-setup-list">
+              {COOKIE_TYPES.map(cookie => {
+                const total = getRestockTotal(cookie.id);
+                return (
+                  <div className="inv-setup-row" key={cookie.id}>
+                    <div className="inv-setup-label">
+                      {cookie.image
+                        ? <img src={cookie.image} alt="" style={{ width: 24, height: 24, borderRadius: 5, objectFit: 'contain', flexShrink: 0 }} />
+                        : <span className="inventory-dot" style={{ background: cookie.color }} />
+                      }
+                      <span className="inv-setup-name">{cookie.name}</span>
+                      {total > 0 && (
+                        <span className="inv-setup-total">= +{total}</span>
+                      )}
+                    </div>
+                    <div className="inv-setup-inputs">
+                      <div className="inv-setup-field">
+                        <input
+                          type="number"
+                          className="inventory-input"
+                          inputMode="numeric"
+                          min="0"
+                          value={restockCases[cookie.id] || ''}
+                          placeholder="0"
+                          onChange={e => setRestockCases(prev => ({ ...prev, [cookie.id]: parseInt(e.target.value) || 0 }))}
+                        />
+                        <span className="inv-setup-unit">cs</span>
+                      </div>
+                      <div className="inv-setup-field">
+                        <input
+                          type="number"
+                          className="inventory-input"
+                          inputMode="numeric"
+                          min="0"
+                          value={restockBoxes[cookie.id] || ''}
+                          placeholder="0"
+                          onChange={e => setRestockBoxes(prev => ({ ...prev, [cookie.id]: parseInt(e.target.value) || 0 }))}
+                        />
+                        <span className="inv-setup-unit">bx</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+              <button
+                className="btn btn-block"
+                style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                onClick={() => setShowRestock(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary btn-block"
+                disabled={totalRestockBoxes === 0 || restocking}
+                onClick={handleRestock}
+              >
+                {restocking ? 'Adding...' : 'Confirm'}
               </button>
             </div>
           </div>
