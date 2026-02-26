@@ -68,23 +68,14 @@ export default function OrderHistory() {
               const totalBoxes = (order.items || []).reduce((sum, i) => sum + i.quantity, 0);
               const saleBoxes = saleItems.reduce((sum, i) => sum + i.quantity, 0);
               const donationBoxes = donationItems.reduce((sum, i) => sum + i.quantity, 0);
-              const heat = totalBoxes / maxBoxes;
-              // Single color (green) with varying intensity
-              const borderLight = Math.round(75 - heat * 45);
-              const bgLight = Math.round(98 - heat * 10);
-              const borderColor = `hsl(152, 60%, ${borderLight}%)`;
-              const bgColor = `hsl(152, 50%, ${bgLight}%)`;
+              const barPct = Math.round((totalBoxes / maxBoxes) * 100);
 
               return (
                 <div
                   key={order.id}
                   className="order-card"
                   onClick={() => setExpandedId(isExpanded ? null : order.id)}
-                  style={{
-                    cursor: 'pointer',
-                    borderLeft: `4px solid ${borderColor}`,
-                    background: bgColor,
-                  }}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="order-card-header">
                     <span className="order-number">Order #{orderNum}</span>
@@ -95,6 +86,9 @@ export default function OrderHistory() {
                     {totalBoxes} box{totalBoxes !== 1 ? 'es' : ''}
                     {donationBoxes > 0 && ` (${donationBoxes} donated)`}
                     {(order.cashDonation || 0) > 0 && ` + ${formatCurrency(order.cashDonation)} tip`}
+                  </div>
+                  <div style={{ height: 6, borderRadius: 3, background: 'var(--border-light)', overflow: 'hidden' }}>
+                    <div style={{ width: `${barPct}%`, height: '100%', borderRadius: 3, background: 'var(--primary)', transition: 'width 0.3s' }} />
                   </div>
 
                   <div className="order-footer">
