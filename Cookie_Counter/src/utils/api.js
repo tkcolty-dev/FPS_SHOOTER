@@ -1,3 +1,6 @@
+import { syncQueue } from './syncQueue';
+import { storage } from './storage';
+
 const API = '/api';
 
 function getToken() {
@@ -7,6 +10,10 @@ function getToken() {
 function setToken(token) {
   if (token) localStorage.setItem('cc_token', token);
   else localStorage.removeItem('cc_token');
+}
+
+function isNetworkError(err) {
+  return err instanceof TypeError && err.message.includes('fetch');
 }
 
 async function request(path, options = {}) {
@@ -24,6 +31,19 @@ async function request(path, options = {}) {
     throw new Error(err.error || 'Request failed');
   }
   return res.json();
+}
+
+// Wrapper for read operations that falls back to cached data
+async function readWithFallback(path, cacheKey, cacheFallback, options) {
+  try {
+    const data = await request(path, options);
+    return data;
+  } catch (err) {
+    if (isNetworkError(err) && cacheFallback) {
+      return cacheFallback();
+    }
+    throw err;
+  }
 }
 
 export const api = {
@@ -63,4 +83,8 @@ export const api = {
   // Notifications
   getNotifications: () => request('/booths/notifications'),
   markNotificationsSeen: () => request('/booths/notifications/seen', { method: 'POST' }),
+
+  // Offline helpers
+  isNetworkError,
+  request,
 };

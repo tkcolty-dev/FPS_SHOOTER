@@ -91,7 +91,10 @@ export default function OrderHistory() {
                   style={{ cursor: 'pointer' }}
                 >
                   <div className="order-card-header">
-                    <span className="order-number">Order #{orderNum}</span>
+                    <span className="order-number">
+                      Order #{orderNum}
+                      {order._pending && <span className="pending-sync-badge">Pending sync</span>}
+                    </span>
                     <span className="order-time">
                       {order.loggedByName && <span style={{ marginRight: 6, fontWeight: 500 }}>{order.loggedByName}</span>}
                       {formatDateTime(order.createdAt)}

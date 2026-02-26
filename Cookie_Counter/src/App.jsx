@@ -10,6 +10,7 @@ import LogOrder from './pages/LogOrder';
 import OrderHistory from './pages/OrderHistory';
 import Settings from './pages/Settings';
 import ShareToast from './components/ShareToast';
+import OfflineBanner from './components/OfflineBanner';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
       <AuthProvider>
         <BoothProvider>
           <div className="app">
+            <OfflineBanner />
             <AppRoutes />
             <ShareToast />
           </div>
