@@ -817,6 +817,72 @@ a {
   background: var(--primary-light);
 }
 
+/* Cookie row layout (compact horizontal) */
+.cookie-row-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.cookie-row-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cookie-row-card.active {
+  border-color: var(--border);
+}
+
+.cookie-row-img {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.cookie-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cookie-row-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.cookie-row-stock {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.cookie-row-card .qty-control {
+  flex-shrink: 0;
+}
+
+.cookie-row-card .qty-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 1rem;
+}
+
+.cookie-row-card .qty-value {
+  width: 30px;
+  font-size: 1rem;
+}
+
 .cookie-select-img {
   width: 100%;
   height: 80px;

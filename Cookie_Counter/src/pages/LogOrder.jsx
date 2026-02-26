@@ -166,9 +166,9 @@ export default function LogOrder() {
           <p>{isEditing ? 'Update this order' : 'Select cookies for this order'}</p>
         </div>
 
-        {/* Sale cookie grid */}
+        {/* Sale cookie list */}
         <div className="dash-section-title">Cookies</div>
-        <div className="cookie-selector-grid">
+        <div className="cookie-row-list">
           {COOKIE_TYPES.map(cookie => {
             const remaining = getAdjustedRemaining(cookie.id);
             const qty = saleQty[cookie.id] || 0;
@@ -179,22 +179,18 @@ export default function LogOrder() {
             return (
               <div
                 key={cookie.id}
-                className={`cookie-select-card${isActive ? ' active' : ''}`}
+                className={`cookie-row-card${isActive ? ' active' : ''}`}
                 style={{
-                  background: cookie.bg,
-                  borderColor: isActive ? cookie.color : cookie.bg,
-                  borderTopWidth: 3,
-                  borderTopColor: cookie.color,
+                  borderLeftColor: cookie.color,
+                  background: isActive ? cookie.bg : undefined,
                 }}
               >
                 {cookie.image && (
-                  <img src={cookie.image} alt={cookie.name} className="cookie-select-img" />
+                  <img src={cookie.image} alt={cookie.name} className="cookie-row-img" />
                 )}
-                <div className="cookie-select-name" style={{ color: '#222', fontWeight: 600 }}>
-                  {cookie.name}
-                </div>
-                <div className="cookie-select-stock" style={{ color: '#555' }}>
-                  {remaining} in stock
+                <div className="cookie-row-info">
+                  <div className="cookie-row-name">{cookie.name}</div>
+                  <div className="cookie-row-stock">{remaining} in stock</div>
                 </div>
                 <div className="qty-control">
                   <button
@@ -233,7 +229,7 @@ export default function LogOrder() {
 
           {showDonations && (
             <>
-              <div className="cookie-selector-grid" style={{ marginBottom: 12 }}>
+              <div className="cookie-row-list" style={{ marginBottom: 12 }}>
                 {COOKIE_TYPES.map(cookie => {
                   const remaining = getAdjustedRemaining(cookie.id);
                   const selling = saleQty[cookie.id] || 0;
@@ -244,22 +240,20 @@ export default function LogOrder() {
                   return (
                     <div
                       key={cookie.id}
-                      className={`cookie-select-card${isActive ? ' active' : ''}`}
+                      className={`cookie-row-card${isActive ? ' active' : ''}`}
                       style={{
-                        background: cookie.bg,
-                        borderColor: isActive ? cookie.color : cookie.bg,
-                        borderTopWidth: 3,
-                        borderTopColor: cookie.color,
+                        borderLeftColor: cookie.color,
+                        background: isActive ? cookie.bg : undefined,
                       }}
                     >
                       {cookie.image && (
-                        <img src={cookie.image} alt={cookie.name} className="cookie-select-img" />
+                        <img src={cookie.image} alt={cookie.name} className="cookie-row-img" />
                       )}
-                      <div className="cookie-select-name" style={{ color: '#222', fontWeight: 600 }}>
-                        {cookie.name}
-                      </div>
-                      <div className="cookie-select-stock" style={{ color: '#555' }}>
-                        {isActive ? 'Donation' : `${available} avail`}
+                      <div className="cookie-row-info">
+                        <div className="cookie-row-name">{cookie.name}</div>
+                        <div className="cookie-row-stock">
+                          {isActive ? 'Donation' : `${available} avail`}
+                        </div>
                       </div>
                       <div className="qty-control">
                         <button
@@ -287,18 +281,17 @@ export default function LogOrder() {
                   const isActive = qty > 0;
                   return (
                     <div
-                      className={`cookie-select-card${isActive ? ' active' : ''}`}
+                      className={`cookie-row-card${isActive ? ' active' : ''}`}
                       style={isActive ? {
-                        borderColor: 'var(--success)',
+                        borderLeftColor: 'var(--success)',
                         background: 'var(--success-light)',
                       } : {}}
                     >
-                      <div className="cookie-select-name">
-                        <span className="cookie-select-dot" style={{ background: '#888' }} />
-                        Unassigned
-                      </div>
-                      <div className="cookie-select-stock" style={isActive ? { color: 'var(--success)' } : {}}>
-                        {isActive ? 'Donation' : 'No specific type'}
+                      <div className="cookie-row-info">
+                        <div className="cookie-row-name">Unassigned</div>
+                        <div className="cookie-row-stock" style={isActive ? { color: 'var(--success)' } : {}}>
+                          {isActive ? 'Donation' : 'No specific type'}
+                        </div>
                       </div>
                       <div className="qty-control">
                         <button
