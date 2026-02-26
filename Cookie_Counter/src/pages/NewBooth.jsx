@@ -118,7 +118,10 @@ export default function NewBooth() {
                 return (
                   <div className="inv-setup-row" key={cookie.id}>
                     <div className="inv-setup-label">
-                      <span className="inventory-dot" style={{ background: cookie.color }} />
+                      {cookie.image
+                        ? <img src={cookie.image} alt="" style={{ width: 24, height: 24, borderRadius: 5, objectFit: 'contain', flexShrink: 0 }} />
+                        : <span className="inventory-dot" style={{ background: cookie.color }} />
+                      }
                       <span className="inv-setup-name">{cookie.name}</span>
                       {total > 0 && (
                         <span className="inv-setup-total">= {total}</span>
