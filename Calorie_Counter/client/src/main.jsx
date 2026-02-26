@@ -7,6 +7,7 @@ import './index.css';
 // Clean up old localStorage keys (now stored in DB)
 localStorage.removeItem('msg-last-check');
 localStorage.removeItem('seen-share-ids');
+localStorage.removeItem('chat-history');
 
 // Apply saved theme before render to prevent flash
 const savedTheme = localStorage.getItem('theme') || 'light';

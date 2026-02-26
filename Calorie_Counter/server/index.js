@@ -21,6 +21,7 @@ const suggestionsRoutes = require('./routes/suggestions');
 const notificationsRoutes = require('./routes/notifications');
 const avatarsRoutes = require('./routes/avatars');
 const voiceLogRoutes = require('./routes/voice-log');
+const chatHistoryRoutes = require('./routes/chat-history');
 const { startMealReminders } = require('./services/mealReminder');
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/suggestions', suggestionsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/avatars', avatarsRoutes);
 app.use('/api/voice-log', voiceLogRoutes);
+app.use('/api/chat-history', chatHistoryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import api from '../api/client';
 import ChatMessage from '../components/ChatMessage';
-
-const STORAGE_KEY = 'chat-history';
 
 const quickActions = [
   'What should I eat right now?',
@@ -11,43 +10,44 @@ const quickActions = [
   'Make a grocery list for my planned meals',
 ];
 
-function loadHistory() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveHistory(msgs) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(msgs));
-}
-
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
 // Module-level: survives component unmount during navigation
 let pendingRequest = null;
+let pendingMessages = null; // cache for messages while navigating away
 
 export default function Chat() {
-  const [messages, setMessages] = useState(loadHistory);
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(!!pendingRequest);
   const [streamingText, setStreamingText] = useState('');
   const [learnedNote, setLearnedNote] = useState('');
   const [listening, setListening] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const streamingRef = useRef('');
   const rafRef = useRef(null);
   const queryClient = useQueryClient();
 
-  // On mount: if a request finished while we were away, sync state
+  // Load chat history from server on mount
   useEffect(() => {
+    if (pendingMessages) {
+      setMessages(pendingMessages);
+      setHistoryLoaded(true);
+    } else {
+      api.get('/chat-history').then(res => {
+        setMessages(res.data);
+        pendingMessages = res.data;
+        setHistoryLoaded(true);
+      }).catch(() => setHistoryLoaded(true));
+    }
     if (pendingRequest) {
       setLoading(true);
       pendingRequest.then(() => {
-        setMessages(loadHistory());
+        if (pendingMessages) {
+          setMessages(pendingMessages);
+        }
         setStreamingText('');
         setLoading(false);
         pendingRequest = null;
@@ -80,7 +80,7 @@ export default function Chat() {
   // Auto-send prefilled message from dashboard "What should I eat?"
   const prefillHandled = useRef(false);
   useEffect(() => {
-    if (prefillHandled.current) return;
+    if (!historyLoaded || prefillHandled.current) return;
     const prefill = localStorage.getItem('chat-prefill');
     if (prefill) {
       prefillHandled.current = true;
@@ -88,7 +88,7 @@ export default function Chat() {
       sendMessage(prefill);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [historyLoaded]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -105,21 +105,17 @@ export default function Chat() {
     }
   }, [streamingText]);
 
-  useEffect(() => {
-    saveHistory(messages);
-  }, [messages]);
-
   const clearChat = () => {
     setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
+    pendingMessages = [];
+    api.delete('/chat-history').catch(() => {});
   };
 
   const sendMessage = useCallback(async (text) => {
     const userMsg = { role: 'user', content: text };
-    const currentHistory = loadHistory();
-    const updated = [...currentHistory, userMsg];
+    const updated = [...messages, userMsg];
     setMessages(updated);
-    saveHistory(updated);
+    pendingMessages = updated;
     setInput('');
     setLoading(true);
     setStreamingText('');
@@ -165,7 +161,7 @@ export default function Chat() {
           },
           body: JSON.stringify({
             message: text,
-            history: currentHistory,
+            history: messages,
             today: localToday,
             hour: n.getHours(),
           }),
@@ -227,9 +223,11 @@ export default function Chat() {
         finalContent += `\n\n---PLANNED:${label}:${totalCal}:${planItems}`;
       }
 
-      // Save directly to localStorage (works even if component unmounted)
-      const current = loadHistory();
-      saveHistory([...current, { role: 'assistant', content: finalContent }]);
+      // Save both messages to server
+      const newMessages = [userMsg, { role: 'assistant', content: finalContent }];
+      const allMessages = [...updated, { role: 'assistant', content: finalContent }];
+      pendingMessages = allMessages;
+      api.post('/chat-history', { messages: newMessages }).catch(() => {});
 
       return { content: finalContent, metadata };
     };
@@ -239,7 +237,7 @@ export default function Chat() {
 
     try {
       const result = await promise;
-      setMessages(loadHistory());
+      setMessages(pendingMessages || []);
       setStreamingText('');
 
       if (result.metadata?.learnedPreferences?.length > 0) {
@@ -255,7 +253,7 @@ export default function Chat() {
       setLoading(false);
       pendingRequest = null;
     }
-  }, [queryClient]);
+  }, [queryClient, messages]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -266,7 +264,7 @@ export default function Chat() {
   return (
     <div className="chat-container">
       <div className="chat-messages">
-        {messages.length === 0 && !loading && (
+        {messages.length === 0 && !loading && historyLoaded && (
           <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '2rem 0' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.5rem' }}>AI Meal Assistant</h2>
             <p style={{ fontSize: '0.875rem' }}>Ask me about meal planning, nutrition advice, or recipe ideas.</p>
@@ -290,7 +288,7 @@ export default function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {messages.length === 0 && !loading && (
+      {messages.length === 0 && !loading && historyLoaded && (
         <div className="chat-quick-actions">
           {quickActions.map(action => (
             <button

@@ -390,8 +390,8 @@ export default function MealLog() {
                   if (baseCarbs != null) setCarbs(String(Math.round(baseCarbs * q * 10) / 10));
                   if (baseFat != null) setFat(String(Math.round(baseFat * q * 10) / 10));
                 }}
-                min="0.5"
-                step="0.5"
+                min="0.25"
+                step="any"
                 style={{ width: '5rem' }}
                 required
               />
