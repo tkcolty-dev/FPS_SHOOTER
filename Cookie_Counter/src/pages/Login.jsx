@@ -27,7 +27,7 @@ export default function Login() {
       <div className="auth-card animate-in">
         <div className="auth-header">
           <div className="auth-logo">
-            <span role="img" aria-label="cookie">&#127850;</span>
+            <img src="/cookies/thin-mints.png" alt="Cookie" style={{ width: 38, height: 38, objectFit: 'contain' }} />
           </div>
           <h1>Cookie Counter</h1>
           <p>Girl Scout Cookie Booth Tracker</p>

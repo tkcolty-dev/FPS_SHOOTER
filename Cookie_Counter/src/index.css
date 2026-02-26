@@ -367,13 +367,12 @@ a {
 .auth-logo {
   width: 64px;
   height: 64px;
-  background: var(--primary);
+  background: #d9f5e6;
   border-radius: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 16px;
-  font-size: 28px;
 }
 
 .auth-header h1 {
