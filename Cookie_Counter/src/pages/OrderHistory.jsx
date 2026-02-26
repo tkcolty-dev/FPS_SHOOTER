@@ -63,6 +63,9 @@ export default function OrderHistory() {
               const donationItems = (order.items || []).filter(i => i.isDonation);
               const isExpanded = expandedId === order.id;
               const hasDonations = donationItems.length > 0 || (order.cashDonation || 0) > 0;
+              const totalBoxes = (order.items || []).reduce((sum, i) => sum + i.quantity, 0);
+              const saleBoxes = saleItems.reduce((sum, i) => sum + i.quantity, 0);
+              const donationBoxes = donationItems.reduce((sum, i) => sum + i.quantity, 0);
 
               return (
                 <div
@@ -76,33 +79,10 @@ export default function OrderHistory() {
                     <span className="order-time">{formatDateTime(order.createdAt)}</span>
                   </div>
 
-                  <div className="order-items">
-                    {saleItems.map((item, i) => {
-                      const cookie = getCookieById(item.cookieType);
-                      if (!cookie) return null;
-                      return (
-                        <span
-                          key={i}
-                          className="order-item-chip"
-                          style={{ background: cookie.bg, color: cookie.color }}
-                        >
-                          {item.quantity}x {cookie.shortName}
-                        </span>
-                      );
-                    })}
-                    {donationItems.map((item, i) => {
-                      const cookie = getCookieById(item.cookieType);
-                      const label = cookie ? cookie.shortName : 'Box';
-                      return (
-                        <span
-                          key={`d${i}`}
-                          className="order-item-chip donation"
-                          style={{ borderColor: 'var(--success)', color: 'var(--success)' }}
-                        >
-                          {item.quantity}x {label} &#9829;
-                        </span>
-                      );
-                    })}
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', padding: '4px 0' }}>
+                    {totalBoxes} box{totalBoxes !== 1 ? 'es' : ''}
+                    {donationBoxes > 0 && ` (${donationBoxes} donated)`}
+                    {(order.cashDonation || 0) > 0 && ` + ${formatCurrency(order.cashDonation)} tip`}
                   </div>
 
                   <div className="order-footer">
