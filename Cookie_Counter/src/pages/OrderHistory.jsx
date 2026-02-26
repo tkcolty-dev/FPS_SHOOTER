@@ -69,11 +69,11 @@ export default function OrderHistory() {
               const saleBoxes = saleItems.reduce((sum, i) => sum + i.quantity, 0);
               const donationBoxes = donationItems.reduce((sum, i) => sum + i.quantity, 0);
               const heat = totalBoxes / maxBoxes;
-              // Cool (blue) to warm (orange/red): hue 210 → 15
-              const hue = Math.round(210 - heat * 195);
-              const sat = Math.round(50 + heat * 40);
-              const borderColor = `hsl(${hue}, ${sat}%, 55%)`;
-              const bgColor = `hsl(${hue}, ${sat}%, 97%)`;
+              // Single color (green) with varying intensity
+              const borderLight = Math.round(75 - heat * 45);
+              const bgLight = Math.round(98 - heat * 10);
+              const borderColor = `hsl(152, 60%, ${borderLight}%)`;
+              const bgColor = `hsl(152, 50%, ${bgLight}%)`;
 
               return (
                 <div
