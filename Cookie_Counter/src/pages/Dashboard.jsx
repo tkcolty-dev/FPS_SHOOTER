@@ -94,7 +94,7 @@ export default function Dashboard() {
             <div className="stat-value">{formatCurrency(stats?.cashOnHand || 0)}</div>
             <div className="stat-label">Cash On Hand</div>
           </div>
-          <div className="stat-card success">
+          <div className="stat-card">
             <div className="stat-value">{formatCurrency(stats?.totalRevenue || 0)}</div>
             <div className="stat-label">Revenue</div>
           </div>
