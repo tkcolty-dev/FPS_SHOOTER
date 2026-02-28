@@ -20,7 +20,11 @@ function cacheGet(key, fallback = null) {
 }
 
 function cacheSet(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn('[cacheSet] localStorage write failed (possibly quota exceeded):', err);
+  }
 }
 
 export function BoothProvider({ children }) {
@@ -99,7 +103,16 @@ export function BoothProvider({ children }) {
         .filter((p) => p.type === 'addOrder' && p.boothId === boothId)
         .map((p) => p.optimisticOrder);
       const serverIds = new Set(data.map((o) => o.id));
-      const offlineOnly = pending.filter((o) => o && !serverIds.has(o.id));
+      const offlineOnly = pending.filter((o) => {
+        if (!o) return false;
+        // Drop if server already has this temp ID
+        if (serverIds.has(o.id)) return false;
+        // Drop if server has a matching order (same items + timestamp) — synced copy with real ID
+        return !data.some((s) =>
+          s.createdAt === o.createdAt &&
+          JSON.stringify(s.items) === JSON.stringify(o.items)
+        );
+      });
       const merged = [...offlineOnly, ...data];
       cacheSet(cacheOrdersKey(boothId), merged);
       return merged;

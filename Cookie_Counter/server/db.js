@@ -17,7 +17,7 @@ function getDbConfig() {
 
 function getPool() {
   if (!pool) {
-    pool = new Pool(getDbConfig());
+    pool = new Pool({ ...getDbConfig(), max: 10 });
   }
   return pool;
 }

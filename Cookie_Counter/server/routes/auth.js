@@ -84,8 +84,9 @@ router.post('/logout', authenticate, async (req, res) => {
     const db = getPool();
     await db.query('DELETE FROM sessions WHERE token = $1', [token]);
     res.json({ ok: true });
-  } catch {
-    res.json({ ok: true });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.status(500).json({ error: 'Failed to logout' });
   }
 });
 
