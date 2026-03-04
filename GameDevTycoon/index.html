@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Dev Tycoon</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #2a1f14;
+  color: #e8dcc8;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh; width: 100vw;
+  user-select: none;
+}
+
+/* TITLE SCREEN */
+#title-screen {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #2a1f14; z-index: 100;
+}
+#title-screen h1 {
+  font-size: 3.5rem; font-weight: 900; color: #4ade80;
+  text-shadow: 0 0 30px rgba(74,222,128,0.4), 2px 2px 0 #1a1a1a;
+  margin-bottom: 0.3rem;
+}
+#title-screen .subtitle { color: #a89070; font-size: 1.1rem; margin-bottom: 2.5rem; }
+#title-screen button {
+  display: block; width: 220px; padding: 14px; margin: 8px auto;
+  background: #3d2e1e; border: 2px solid #4ade80;
+  color: #e8dcc8; font-size: 1.1rem; border-radius: 10px;
+  cursor: pointer; transition: all 0.2s;
+}
+#title-screen button:hover { background: #4ade80; color: #1a1a1a; transform: scale(1.05); }
+#title-screen button:disabled { opacity: 0.4; cursor: default; transform: none; border-color: #665544; }
+#title-screen button:disabled:hover { background: #3d2e1e; color: #e8dcc8; }
+
+#name-screen {
+  position: fixed; inset: 0; display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #2a1f14; z-index: 99;
+}
+#name-screen h2 { font-size: 2rem; margin-bottom: 1.5rem; color: #4ade80; }
+#name-screen input {
+  width: 300px; padding: 14px; font-size: 1.2rem;
+  background: #3d2e1e; border: 2px solid #4ade80;
+  color: #e8dcc8; border-radius: 10px; text-align: center; outline: none;
+}
+#name-screen input:focus { border-color: #86efac; }
+#name-screen button {
+  margin-top: 1.5rem; padding: 12px 40px;
+  background: #4ade80; border: none; color: #1a1a1a;
+  font-size: 1.1rem; border-radius: 10px; cursor: pointer; font-weight: 700;
+}
+#name-screen button:hover { background: #86efac; }
+
+/* GAME UI */
+#game-ui { display: none; width: 100vw; height: 100vh; position: relative; }
+#game-canvas { width: 100%; height: 100%; display: block; }
+
+/* SCREEN OVERLAY — all UI lives here, positioned over the monitor area */
+#screen-overlay {
+  position: fixed; display: none;
+  overflow: hidden; border-radius: 2px;
+  z-index: 10;
+}
+#screen-overlay .xp-titlebar {
+  height: 24px; display: flex; align-items: center;
+  padding: 0 4px;
+  background: linear-gradient(180deg, #0058e6 0%, #0a6eff 45%, #0058e6 100%);
+  color: #fff; font: bold 11px Tahoma, sans-serif;
+  cursor: default;
+}
+#screen-overlay .xp-titlebar .title { flex: 1; padding-left: 4px; }
+#screen-overlay .xp-titlebar .win-btns { display: flex; gap: 2px; }
+#screen-overlay .xp-titlebar .win-btn {
+  width: 16px; height: 14px; border: none; border-radius: 2px;
+  font-size: 9px; line-height: 14px; text-align: center;
+  cursor: pointer; color: #fff;
+}
+.win-btn.close { background: #c75050; }
+.win-btn.max { background: #3c7fb1; }
+.win-btn.min { background: #3c7fb1; }
+
+#screen-overlay .xp-content {
+  background: #ECE9D8;
+  overflow-y: auto; color: #000;
+  font: 11px Tahoma, sans-serif;
+}
+
+/* XP Taskbar */
+#screen-taskbar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 28px;
+  background: linear-gradient(180deg, #1f56c5 0%, #3c8fe2 30%, #245edc 100%);
+  display: flex; align-items: center; padding: 0 2px;
+  z-index: 11;
+}
+#start-btn {
+  height: 24px; padding: 0 10px;
+  background: linear-gradient(180deg, #3c9b36 0%, #5ebd56 50%, #3c9b36 100%);
+  border: none; border-radius: 4px; color: #fff;
+  font: bold 11px Tahoma, sans-serif; cursor: pointer;
+  display: flex; align-items: center; gap: 3px;
+}
+#start-btn:hover { filter: brightness(1.1); }
+.start-flag { display: inline-block; width: 12px; height: 12px; position: relative; }
+.start-flag::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 5px; height: 5px; background: #ff0000;
+  box-shadow: 6px 0 0 #00ff00, 0 6px 0 #0000ff, 6px 6px 0 #ffff00;
+}
+#taskbar-items { flex: 1; display: flex; gap: 2px; padding: 0 4px; overflow: hidden; }
+.taskbar-item {
+  height: 22px; padding: 0 8px; border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.1); border-radius: 2px;
+  color: #fff; font: 11px Tahoma, sans-serif;
+  display: flex; align-items: center; cursor: pointer; white-space: nowrap;
+  max-width: 120px; overflow: hidden;
+}
+.taskbar-item.active { background: rgba(255,255,255,0.25); }
+#taskbar-clock {
+  padding: 0 8px; color: #fff; font: 11px Tahoma, sans-serif;
+  background: rgba(0,0,0,0.15); height: 24px; line-height: 24px;
+  border-left: 1px solid rgba(255,255,255,0.15);
+}
+
+/* XP Desktop area (inside monitor) */
+#screen-desktop {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 28px;
+  overflow: hidden;
+}
+
+/* XP Desktop Icons */
+.desktop-icon {
+  position: absolute; width: 64px; text-align: center;
+  cursor: pointer; padding: 4px;
+  border: 1px solid transparent; border-radius: 3px;
+}
+.desktop-icon:hover { background: rgba(0,80,200,0.25); border-color: rgba(0,80,200,0.4); }
+.desktop-icon img, .desktop-icon .icon-img {
+  width: 32px; height: 32px; margin: 0 auto 2px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.desktop-icon .icon-label {
+  font: 11px Tahoma, sans-serif; color: #fff;
+  text-shadow: 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000;
+  word-wrap: break-word;
+}
+
+/* XP Window (floating on desktop) */
+.xp-window {
+  position: absolute; background: #ECE9D8;
+  border: 2px solid #0054e3; border-radius: 6px 6px 0 0;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+  display: none; overflow: hidden;
+  z-index: 20;
+}
+.xp-window.active { display: flex; flex-direction: column; }
+.xp-window .win-titlebar {
+  height: 26px; display: flex; align-items: center; padding: 0 4px;
+  background: linear-gradient(180deg, #0058e6 0%, #0a6eff 45%, #0058e6 100%);
+  color: #fff; font: bold 11px Tahoma, sans-serif;
+  cursor: default; flex-shrink: 0;
+}
+.xp-window .win-titlebar .title { flex: 1; padding-left: 4px; }
+.xp-window .win-body {
+  flex: 1; padding: 8px; overflow-y: auto;
+  font: 11px Tahoma, sans-serif; color: #000;
+}
+
+/* XP-styled form elements inside windows */
+.xp-btn {
+  padding: 3px 12px; background: #ECE9D8;
+  border: 1px solid #7F9DB9; border-radius: 3px;
+  font: 11px Tahoma, sans-serif; cursor: pointer;
+  color: #000;
+}
+.xp-btn:hover { background: #D6D2C2; }
+.xp-btn.primary { background: #4a94d6; color: #fff; border-color: #3a7bb8; }
+.xp-btn.primary:hover { background: #5aa4e6; }
+.xp-btn.green { background: #3c9b36; color: #fff; border-color: #2a7a28; }
+.xp-btn.green:hover { background: #4caa46; }
+.xp-btn:disabled { opacity: 0.5; cursor: default; }
+
+.xp-input {
+  padding: 2px 4px; border: 1px solid #7F9DB9;
+  font: 11px Tahoma, sans-serif; background: #fff;
+  outline: none; color: #000;
+}
+.xp-input:focus { border-color: #0058e6; }
+
+.xp-select {
+  padding: 2px; border: 1px solid #7F9DB9;
+  font: 11px Tahoma, sans-serif; background: #fff;
+}
+
+.xp-group {
+  border: 1px solid #7F9DB9; padding: 8px; margin: 6px 0;
+  border-radius: 3px;
+}
+.xp-group legend { font: bold 11px Tahoma, sans-serif; color: #003399; padding: 0 4px; }
+
+.xp-grid { display: grid; gap: 4px; margin: 4px 0; }
+.xp-grid-btn {
+  padding: 6px; border: 2px solid #ACA899; background: #fff;
+  cursor: pointer; text-align: center; border-radius: 3px;
+  font: 11px Tahoma, sans-serif;
+}
+.xp-grid-btn:hover { border-color: #0058e6; background: #e8f0fe; }
+.xp-grid-btn.selected { border-color: #0058e6; background: #cde4ff; }
+.xp-grid-btn:disabled { opacity: 0.4; cursor: default; }
+.xp-grid-btn:disabled:hover { border-color: #ACA899; background: #fff; }
+
+/* Progress bar XP style */
+.xp-progress { height: 16px; background: #fff; border: 1px solid #7F9DB9; position: relative; }
+.xp-progress-fill {
+  height: 100%; display: flex; gap: 2px; padding: 1px; overflow: hidden;
+}
+.xp-progress-block { width: 8px; height: 100%; background: #33AD33; flex-shrink: 0; }
+
+/* Candidate in hire window */
+.xp-candidate {
+  display: flex; gap: 8px; padding: 6px; margin: 4px 0;
+  border: 1px solid #ACA899; background: #fff; border-radius: 3px; align-items: center;
+}
+.xp-candidate .avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  flex-shrink: 0;
+}
+.xp-candidate .info { flex: 1; font: 11px Tahoma, sans-serif; }
+.xp-candidate .info b { color: #003399; }
+
+/* Upgrade item */
+.xp-upgrade {
+  display: flex; gap: 8px; padding: 6px; margin: 3px 0;
+  border: 1px solid #ACA899; background: #fff; border-radius: 3px; align-items: center;
+}
+.xp-upgrade .u-icon { font-size: 18px; width: 28px; text-align: center; }
+.xp-upgrade .u-info { flex: 1; }
+
+/* Portfolio game */
+.xp-port-game {
+  padding: 4px 6px; margin: 2px 0; border: 1px solid #ACA899;
+  background: #fff; border-radius: 2px; font: 11px Tahoma, sans-serif;
+}
+
+/* NOTIFICATIONS */
+.notification {
+  position: fixed; top: 10px; right: 16px;
+  padding: 10px 18px; border-radius: 8px;
+  font: bold 12px Tahoma, sans-serif; z-index: 200; pointer-events: none;
+  animation: notif-in 0.3s ease-out;
+}
+@keyframes notif-in { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.notification.success { background: #4ade80; color: #1a1a1a; }
+.notification.info { background: #60a5fa; color: #000; }
+.notification.warning { background: #fbbf24; color: #000; }
+
+.click-particle {
+  position: fixed; pointer-events: none;
+  font: bold 12px monospace; color: #4ade80; z-index: 200;
+  animation: pfloat 1s ease-out forwards;
+}
+@keyframes pfloat { 0% { opacity:1; transform:translateY(0); } 100% { opacity:0; transform:translateY(-50px); } }
+
+/* Tooltip */
+#tooltip {
+  position: fixed; padding: 4px 10px;
+  background: #ffffe1; border: 1px solid #000; color: #000;
+  font: 11px Tahoma, sans-serif; pointer-events: none;
+  z-index: 100; display: none;
+}
+</style>
+</head>
+<body>
+
+<div id="title-screen">
+  <h1>Game Dev Tycoon</h1>
+  <p class="subtitle">Build your dream studio</p>
+  <button id="btn-new-game">New Game</button>
+  <button id="btn-continue" disabled>Continue</button>
+</div>
+
+<div id="name-screen">
+  <h2>Name Your Studio</h2>
+  <input type="text" id="studio-name-input" placeholder="Enter studio name..." maxlength="24" />
+  <button id="btn-start">Start Building</button>
+</div>
+
+<div id="game-ui">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- This div is positioned exactly over the monitor screen area -->
+  <div id="screen-overlay">
+    <!-- XP Desktop background + icons -->
+    <div id="screen-desktop">
+      <!-- Icons injected by JS -->
+    </div>
+
+    <!-- XP Taskbar -->
+    <div id="screen-taskbar">
+      <button id="start-btn"><span class="start-flag"></span> start</button>
+      <div id="taskbar-items"></div>
+      <div id="taskbar-clock"></div>
+    </div>
+  </div>
+
+  <div id="tooltip"></div>
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+const GENRES = [
+  { name:'Action', icon:'⚔️', unlock:null }, { name:'Puzzle', icon:'🧩', unlock:null },
+  { name:'RPG', icon:'🐉', unlock:{type:'games',count:5} }, { name:'Horror', icon:'👻', unlock:{type:'fans',count:10000} },
+  { name:'Simulation', icon:'🏗️', unlock:{type:'fans',count:50000} }, { name:'Strategy', icon:'♟️', unlock:null },
+];
+const PLATFORMS = [
+  { name:'PC', icon:'💻', unlock:null }, { name:'Console', icon:'🎮', unlock:{type:'earned',count:100000} },
+  { name:'Mobile', icon:'📱', unlock:{type:'earned',count:500000} }, { name:'VR', icon:'🥽', unlock:{type:'location',level:3} },
+];
+const LOCATIONS = [
+  { name:'Garage', cost:0, slots:1, speedBonus:0, desc:'A humble beginning' },
+  { name:'Small Office', cost:25000, slots:3, speedBonus:0.1, desc:'+10% speed, 3 slots' },
+  { name:'Office Building', cost:150000, slots:6, speedBonus:0.25, desc:'+25% speed, 6 slots' },
+  { name:'Tech Campus', cost:750000, slots:12, speedBonus:0.5, desc:'+50% speed, 12 slots' },
+];
+const TECH_UPGRADES = [
+  { id:'engine', name:'Game Engine', cost:10000, icon:'⚙️', desc:'+15% quality' },
+  { id:'marketing', name:'Marketing Tools', cost:8000, icon:'📢', desc:'+20% hype' },
+  { id:'qa', name:'QA Automation', cost:12000, icon:'🐛', desc:'Fewer bugs' },
+  { id:'analytics', name:'Analytics', cost:5000, icon:'📊', desc:'See trends' },
+  { id:'sequel', name:'Sequel Framework', cost:15000, icon:'🔄', desc:'+30% sequel fans' },
+];
+const ACHIEVEMENTS = [
+  { id:'first_release', name:'First Release', desc:'Release your first game', icon:'🎮' },
+  { id:'hit_game', name:'Hit Game', desc:'Quality 80+', icon:'⭐' },
+  { id:'millionaire', name:'Millionaire', desc:'Earn $1M total', icon:'💰' },
+  { id:'full_house', name:'Full House', desc:'Fill all dev slots', icon:'👥' },
+  { id:'five_games', name:'Prolific', desc:'Release 5 games', icon:'📚' },
+  { id:'ten_games', name:'Veteran', desc:'Release 10 games', icon:'🏆' },
+  { id:'campus', name:'Big Time', desc:'Tech Campus', icon:'🏢' },
+  { id:'perfect', name:'Masterpiece', desc:'Quality 95+', icon:'💎' },
+  { id:'fans_100k', name:'Famous', desc:'100K fans', icon:'📣' },
+  { id:'speed_run', name:'Speed Run', desc:'Ship in < 35 days', icon:'⚡' },
+];
+const PHONE_EVENTS = [
+  { title:'Publisher Offer', msg:'A publisher offers $3,000 upfront for your next game!', effect:s=>{s.money+=3000;}, btn:'Accept' },
+  { title:'Gaming Convention', msg:'Attend a game expo for $2,000? +500 fans, +3 rep.', cost:2000, effect:s=>{s.fans+=500;s.reputation=Math.min(100,s.reputation+3);}, btn:'Attend' },
+  { title:'Interview Request', msg:'A gaming magazine wants an interview! +300 fans.', effect:s=>{s.fans+=300;}, btn:'Sure!' },
+  { title:'Investor Call', msg:'An angel investor offers $8,000 for a stake in your studio.', effect:s=>{s.money+=8000;}, btn:'Accept' },
+  { title:'Award Nomination', msg:'Your studio is nominated for Best Indie! +5 rep.', effect:s=>{s.reputation=Math.min(100,s.reputation+5);}, btn:'Celebrate' },
+  { title:'Charity Stream', msg:'A streamer wants to showcase your game! +800 fans.', effect:s=>{s.fans+=800;}, btn:'Awesome!' },
+  { title:'Bug Bounty', msg:'A hacker found a bug. Pay $1,500 to fix, or lose 5 rep.', cost:1500, effect:s=>{s.reputation=Math.min(100,s.reputation+2);}, failEffect:s=>{s.reputation=Math.max(0,s.reputation-5);}, btn:'Fix', failBtn:'Ignore' },
+  { title:'Server Issues', msg:'Servers struggling! Pay $2,500 to upgrade or lose 200 fans.', cost:2500, effect:s=>{}, failEffect:s=>{s.fans=Math.max(0,s.fans-200);}, btn:'Upgrade', failBtn:'Ignore' },
+];
+const FIRST_NAMES = ['Alex','Sam','Jordan','Taylor','Morgan','Casey','Riley','Quinn','Avery','Drew','Jamie','Skyler','Reese','Dakota','Sage','Phoenix','Blake','Rowan','Ellis','Kai'];
+const LAST_NAMES = ['Chen','Smith','Park','Garcia','Mueller','Sato','Kim','Singh','Kowalski','Nguyen','Brown','Silva','Rossi','Erikson','Ali','Yamamoto','Fischer','Lee','Patel','Okafor'];
+const SPECIALTIES = [{name:'Code',color:'#60a5fa'},{name:'Art',color:'#f87171'},{name:'Design',color:'#fbbf24'},{name:'Marketing',color:'#4ade80'}];
+const QUIRKS = ['Lives on energy drinks','Always wears headphones','Codes at 3am','Rubber duck debugger','Tab vs spaces crusader','Obsessed with dark mode','Vim enthusiast','Deploys on Fridays','Keyboard clacker','Has opinions about fonts'];
+const ADJ = ['Dark','Cyber','Epic','Lost','Crystal','Shadow','Iron','Mystic','Neon','Wild','Frozen','Ancient','Hyper','Star','Thunder'];
+const NOUN = ['Quest','Wars','Legends','Realm','Fury','Saga','World','Blade','Storm','Drift','Rising','Dawn','Core','Forge','Pulse'];
+
+// ============================================================
+// STATE
+// ============================================================
+let S = null;
+function newState(name) {
+  return { studioName:name, money:5000, fans:0, reputation:10, day:1, location:0,
+    developers:[], currentGame:null, releasedGames:[], upgrades:{}, achievements:[],
+    stats:{totalEarned:0,gamesReleased:0,totalClicks:0},
+    candidates:[], candidateRefreshDay:1, genreTrends:{},
+    phoneRinging:false, nextPhoneDay:30+rand(0,30), stickyNotes:[] };
+}
+
+// ============================================================
+// AUDIO
+// ============================================================
+let actx = null;
+function initAudio() { if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); }
+function snd(type) {
+  if(!actx) return;
+  const o=actx.createOscillator(), g=actx.createGain();
+  o.connect(g); g.connect(actx.destination); g.gain.value=0.06;
+  const t=actx.currentTime;
+  if(type==='click'){ o.frequency.setValueAtTime(800,t); o.frequency.exponentialRampToValueAtTime(1200,t+0.05); g.gain.exponentialRampToValueAtTime(0.001,t+0.1); o.start(t); o.stop(t+0.1); }
+  else if(type==='release'){ o.type='triangle'; o.frequency.setValueAtTime(523,t); o.frequency.setValueAtTime(659,t+0.1); o.frequency.setValueAtTime(784,t+0.2); g.gain.setValueAtTime(0.1,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.5); o.start(t); o.stop(t+0.5); }
+  else if(type==='phone'){ o.type='sine'; for(let i=0;i<6;i++){o.frequency.setValueAtTime(1200,t+i*0.15);o.frequency.setValueAtTime(900,t+i*0.15+0.075);} g.gain.exponentialRampToValueAtTime(0.001,t+0.9); o.start(t); o.stop(t+0.9); }
+  else if(type==='hire'){ o.type='triangle'; o.frequency.setValueAtTime(400,t); o.frequency.setValueAtTime(600,t+0.1); o.frequency.setValueAtTime(800,t+0.2); g.gain.exponentialRampToValueAtTime(0.001,t+0.4); o.start(t); o.stop(t+0.4); }
+  else if(type==='upgrade'){ o.type='square'; g.gain.value=0.04; o.frequency.setValueAtTime(300,t); o.frequency.exponentialRampToValueAtTime(900,t+0.3); g.gain.exponentialRampToValueAtTime(0.001,t+0.4); o.start(t); o.stop(t+0.4); }
+  else if(type==='achieve'){ o.type='triangle'; g.gain.value=0.1; [523,659,784,1047].forEach((f,i)=>o.frequency.setValueAtTime(f,t+i*0.12)); g.gain.exponentialRampToValueAtTime(0.001,t+0.6); o.start(t); o.stop(t+0.6); }
+  else if(type==='type'){ o.type='square'; g.gain.value=0.015; o.frequency.setValueAtTime(200+rand(0,100),t); g.gain.exponentialRampToValueAtTime(0.001,t+0.03); o.start(t); o.stop(t+0.03); }
+}
+
+// ============================================================
+// SAVE / LOAD
+// ============================================================
+function save() { if(S) localStorage.setItem('gameDevTycoon', JSON.stringify(S)); }
+function load() {
+  const d=localStorage.getItem('gameDevTycoon');
+  if(!d) return false;
+  try { S=JSON.parse(d);
+    S.stats.totalClicks=S.stats.totalClicks||0; S.genreTrends=S.genreTrends||{};
+    S.candidateRefreshDay=S.candidateRefreshDay||S.day; S.candidates=S.candidates||[];
+    if(S.nextPhoneDay===undefined) S.nextPhoneDay=S.day+30;
+    S.stickyNotes=S.stickyNotes||[]; return true;
+  } catch { return false; }
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function notify(msg,type='info'){ const e=document.createElement('div'); e.className='notification '+type; e.textContent=msg; document.body.appendChild(e); setTimeout(()=>e.remove(),2500); }
+function fmt(n){ if(n>=1e6) return (n/1e6).toFixed(1)+'M'; if(n>=1e3) return (n/1e3).toFixed(1)+'K'; return Math.floor(n).toLocaleString(); }
+function fmtM(n){ return '$'+fmt(n); }
+function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+function getMonthInYear(d){ return (((Math.floor((d-1)/30))%12)+1); }
+function getYear(d){ return Math.floor((d-1)/360)+1; }
+function getMaxSlots(){ return LOCATIONS[S.location].slots; }
+function getSpeedMult(){ return 1+LOCATIONS[S.location].speedBonus; }
+function isUnlocked(u){ if(!u) return true; if(u.type==='games') return S.stats.gamesReleased>=u.count; if(u.type==='fans') return S.fans>=u.count; if(u.type==='earned') return S.stats.totalEarned>=u.count; if(u.type==='location') return S.location>=u.level; return false; }
+function randGameName(){ return pick(ADJ)+' '+pick(NOUN); }
+function genCandidate(){ const sk=Math.min(10,Math.max(1,rand(1,Math.ceil(S.reputation/12))+rand(0,2))); const sp=pick(SPECIALTIES); return {name:pick(FIRST_NAMES)+' '+pick(LAST_NAMES),skill:sk,specialty:sp.name,color:sp.color,salary:Math.round((300+sk*450+rand(0,200))/100)*100,quirk:pick(QUIRKS)}; }
+function refreshCandidates(){ S.candidates=[]; for(let i=0;i<3;i++) S.candidates.push(genCandidate()); S.candidateRefreshDay=S.day+30; }
+function updateTrends(){ GENRES.forEach(g=>{ if(!S.genreTrends[g.name]) S.genreTrends[g.name]=0.8+Math.random()*0.4; }); if(S.day%60===0) GENRES.forEach(g=>{ S.genreTrends[g.name]=Math.max(0.5,Math.min(1.5,S.genreTrends[g.name]+(Math.random()-0.5)*0.3)); }); }
+
+// ============================================================
+// GAME SYSTEMS
+// ============================================================
+function codeReq(genre,plat){ let b=500; if(genre==='RPG') b=900; else if(genre==='Simulation') b=800; else if(genre==='Action') b=600; if(plat==='Console') b*=1.3; if(plat==='Mobile') b*=0.8; if(plat==='VR') b*=1.6; return Math.round(b); }
+function teamSkill(){ let t=3; S.developers.forEach(d=>t+=d.skill*(d.specialty==='Code'?1.3:1)); return t; }
+function passiveCPS(){ let c=0; S.developers.forEach(d=>c+=d.skill*0.5*(d.specialty==='Code'?1.5:0.8)); return c*getSpeedMult(); }
+function clickPower(){ return Math.round(5*getSpeedMult()); }
+function calcQuality(g){ const ts=Math.min(100,teamSkill()*5), tr=(S.genreTrends[g.genre]||1)*50, dt=Math.min(100,(g.devDays/(g.codeRequired/8))*50), bf=g.bugsFixed?Math.min(100,(g.bugsFixed/Math.max(1,g.bugsFound))*100):80, rn=rand(0,100); let q=ts*0.4+tr*0.2+dt*0.2+bf*0.1+rn*0.1; S.developers.filter(d=>d.specialty==='Art').forEach(d=>q+=d.skill*0.5); S.developers.filter(d=>d.specialty==='Design').forEach(d=>q+=d.skill*0.5); if(S.upgrades.engine) q*=1.15; return Math.min(100,Math.max(1,Math.round(q))); }
+function gameRev(g){ const d=S.day-g.releaseDay; let p=g.peakPop; if(d<=14) p=g.peakPop*(d/14); else if(d>42) p=g.peakPop*Math.max(0.05,Math.pow(0.95,Math.floor((d-42)/7))); g.popularity=p; return p*g.quality*(1+S.fans*0.00001)*0.5; }
+function totalRev(){ let t=0; S.releasedGames.forEach(g=>t+=gameRev(g)); return t; }
+
+function releaseGame(){
+  const g=S.currentGame; g.quality=calcQuality(g); g.releaseDay=S.day; g.phase='released';
+  let hype=g.quality*0.5+(g.budget/100)+S.fans*0.001;
+  S.developers.filter(d=>d.specialty==='Marketing').forEach(d=>hype*=1+d.skill*0.05);
+  if(S.upgrades.marketing) hype*=1.2;
+  g.peakPop=Math.min(200,hype); g.popularity=g.peakPop*0.3;
+  g.isSequel=S.releasedGames.some(r=>r.genre===g.genre);
+  S.releasedGames.push({...g}); S.currentGame=null; S.stats.gamesReleased++;
+  let fg=Math.round(g.quality*2+g.peakPop*0.5);
+  if(g.isSequel&&S.upgrades.sequel) fg=Math.round(fg*1.3);
+  S.fans+=fg;
+  if(g.quality>=70) S.reputation=Math.min(100,S.reputation+Math.round((g.quality-60)/5));
+  else if(g.quality<40) S.reputation=Math.max(0,S.reputation-5);
+  snd('release'); notify(`${g.name} released! Quality: ${g.quality}/100`, g.quality>=70?'success':'warning');
+  if(g.devDays<35) unlockAch('speed_run');
+  S.stickyNotes.push({text:g.name+': '+g.quality,day:S.day}); if(S.stickyNotes.length>3) S.stickyNotes.shift();
+  checkAch(); buildDesktopIcons();
+}
+
+function unlockAch(id){ if(S.achievements.includes(id)) return; S.achievements.push(id); snd('achieve'); const a=ACHIEVEMENTS.find(x=>x.id===id); notify(`Achievement: ${a.icon} ${a.name}!`,'success'); }
+function checkAch(){
+  if(S.stats.gamesReleased>=1) unlockAch('first_release'); if(S.stats.gamesReleased>=5) unlockAch('five_games');
+  if(S.stats.gamesReleased>=10) unlockAch('ten_games'); if(S.stats.totalEarned>=1e6) unlockAch('millionaire');
+  if(S.developers.length+1>=getMaxSlots()&&getMaxSlots()>1) unlockAch('full_house');
+  if(S.location>=3) unlockAch('campus'); if(S.fans>=1e5) unlockAch('fans_100k');
+  if(S.releasedGames.some(g=>g.quality>=80)) unlockAch('hit_game');
+  if(S.releasedGames.some(g=>g.quality>=95)) unlockAch('perfect');
+}
+
+// ============================================================
+// GAME TICK
+// ============================================================
+let tickAcc=0;
+function gameTick(){
+  if(!S) return; S.day++;
+  updateTrends();
+  if(S.currentGame){
+    const g=S.currentGame;
+    if(g.phase==='concept'){ g.phaseProgress++; if(g.phaseProgress>=5){g.phase='development'; g.phaseProgress=0;} }
+    else if(g.phase==='development'){ g.codeProgress+=passiveCPS(); g.devDays++; if(g.codeProgress>=g.codeRequired){g.phase='testing'; g.phaseProgress=0; g.testDays=rand(5,10); let bugs=rand(2,8); if(S.upgrades.qa) bugs=Math.round(bugs*0.5); g.bugsFound=bugs; g.bugsFixed=0; notify(g.name+': testing — '+bugs+' bugs!','info');} }
+    else if(g.phase==='testing'){ g.phaseProgress++; if(g.bugsFixed<g.bugsFound&&g.phaseProgress%2===0) g.bugsFixed++; if(g.phaseProgress>=g.testDays) releaseGame(); }
+  }
+  const rev=totalRev(); if(rev>0){S.money+=rev; S.stats.totalEarned+=rev;}
+  if(S.day%30===0){ let sal=0; S.developers.forEach(d=>sal+=d.salary); if(sal>0){S.money-=sal; if(S.money<-10000&&S.developers.length>0){S.developers.sort((a,b)=>b.salary-a.salary); const f=S.developers.shift(); notify(f.name+' left — no salary!','warning'); buildDesktopIcons();}} }
+  if(S.day>=S.candidateRefreshDay) refreshCandidates();
+  if(S.day>=S.nextPhoneDay&&!S.phoneRinging){ S.phoneRinging=true; S.currentPhoneEvent=pick(PHONE_EVENTS); snd('phone'); }
+  if(S.day%60===0) save();
+  updateScreenUI();
+}
+
+function writeCode(e){
+  if(!S||!S.currentGame||S.currentGame.phase!=='development') return;
+  initAudio(); const pw=clickPower(); S.currentGame.codeProgress+=pw; S.stats.totalClicks++; snd('type');
+  const p=document.createElement('div'); p.className='click-particle';
+  p.textContent='+'+pw; p.style.left=(e?e.clientX:monRect.x+monRect.w/2)+'px'; p.style.top=(e?e.clientY-20:monRect.y+monRect.h/2)+'px';
+  document.body.appendChild(p); setTimeout(()=>p.remove(),1000);
+}
+
+// ============================================================
+// CANVAS — DESK SCENE
+// ============================================================
+const canvas=document.getElementById('game-canvas');
+const ctx=canvas.getContext('2d');
+let W,H,anim=0;
+let monRect={x:0,y:0,w:0,h:0}; // screen area in page coords
+let phoneRect={x:0,y:0,w:0,h:0};
+let hovZone=null;
+
+function resize(){
+  const dpr=devicePixelRatio;
+  W=window.innerWidth; H=window.innerHeight;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+'px'; canvas.style.height=H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  positionOverlay();
+}
+
+function positionOverlay(){
+  const ol=document.getElementById('screen-overlay');
+  if(!S){ ol.style.display='none'; return; }
+  // Monitor screen rect (matches what we draw on canvas)
+  const cx=W*0.5, deskY=H*0.52;
+  const mw=W*0.32, mh=H*0.42;
+  const mx=cx-mw/2, my=deskY-mh-H*0.08;
+  // Inner screen (inside CRT bezel)
+  const pad=14;
+  monRect = { x:mx+pad, y:my+pad, w:mw-pad*2, h:mh-pad*2 };
+
+  ol.style.display='block';
+  ol.style.left=monRect.x+'px'; ol.style.top=monRect.y+'px';
+  ol.style.width=monRect.w+'px'; ol.style.height=monRect.h+'px';
+  // Bliss wallpaper background
+  ol.style.background='linear-gradient(180deg, #3A6EA5 0%, #6CA6CD 45%, #7CCD7C 55%, #4A8B3F 100%)';
+
+  // Phone rect
+  const pw=W*0.12, ph=H*0.2;
+  phoneRect = { x: cx-W*0.35, y: deskY+H*0.02, w: pw, h: ph };
+}
+
+function drawScene(){
+  if(!S) return;
+  ctx.clearRect(0,0,W,H);
+  const cx=W*0.5, deskY=H*0.52;
+
+  // === BACK WALL ===
+  // Wall with perspective — lighter at top
+  const wallGrad=ctx.createLinearGradient(0,0,0,deskY);
+  wallGrad.addColorStop(0,'#9B8365');
+  wallGrad.addColorStop(1,'#8B7355');
+  ctx.fillStyle=wallGrad;
+  ctx.fillRect(0,0,W,deskY);
+
+  // Wall trim / baseboard
+  ctx.fillStyle='#6B5740';
+  ctx.fillRect(0,deskY-4,W,8);
+
+  // Right wall (perspective)
+  ctx.fillStyle='#8B7860';
+  ctx.beginPath();
+  ctx.moveTo(W*0.75,0); ctx.lineTo(W,0); ctx.lineTo(W,deskY); ctx.lineTo(W*0.75,deskY);
+  ctx.fill();
+  // Right wall shadow line
+  ctx.fillStyle='rgba(0,0,0,0.08)';
+  ctx.fillRect(W*0.75-2,0,4,deskY);
+
+  // Ceiling edge
+  ctx.fillStyle='#A8946E';
+  ctx.fillRect(0,0,W,4);
+
+  // === BULLETIN BOARD (back wall, left) ===
+  const bx=W*0.04, by=H*0.06, bw=W*0.22, bh=H*0.3;
+  // Frame
+  ctx.fillStyle='#808080'; ctx.fillRect(bx-5,by-5,bw+10,bh+10);
+  ctx.fillStyle='#909090'; ctx.fillRect(bx-3,by-3,bw+6,bh+6);
+  // Cork
+  ctx.fillStyle='#B8943E'; ctx.fillRect(bx,by,bw,bh);
+  // Cork texture spots
+  ctx.fillStyle='rgba(160,120,40,0.4)';
+  for(let i=0;i<12;i++) ctx.fillRect(bx+rand(4,bw-15),by+rand(4,bh-12),rand(6,18),rand(4,10));
+
+  // Pinned notes (hired devs)
+  const noteColors=['#FFE066','#FF8A80','#80D8FF','#B9F6CA'];
+  if(S.developers.length===0){
+    ctx.fillStyle='#FFE066'; ctx.fillRect(bx+bw*0.2,by+bh*0.25,bw*0.6,bh*0.5);
+    ctx.fillStyle='#E53935'; ctx.beginPath(); ctx.arc(bx+bw*0.5,by+bh*0.27,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#333'; ctx.font=`bold ${Math.max(14,bw*0.08)}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText('HIRING',bx+bw*0.5,by+bh*0.55); ctx.textAlign='left';
+  } else {
+    S.developers.slice(0,4).forEach((d,i)=>{
+      const nx=bx+12+(i%2)*(bw*0.48), ny=by+12+Math.floor(i/2)*(bh*0.45);
+      ctx.fillStyle=noteColors[i%4]; ctx.fillRect(nx,ny,bw*0.42,bh*0.38);
+      ctx.fillStyle='#E53935'; ctx.beginPath(); ctx.arc(nx+bw*0.21,ny+3,4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#333'; ctx.font=`${Math.max(10,bw*0.055)}px sans-serif`;
+      ctx.fillText(d.name.split(' ')[0],nx+5,ny+bh*0.15);
+      ctx.font=`${Math.max(8,bw*0.045)}px sans-serif`;
+      ctx.fillText(d.specialty+' '+d.skill,nx+5,ny+bh*0.27);
+    });
+  }
+
+  // === DESK SURFACE (large, fills bottom) ===
+  // Desk top surface with perspective
+  ctx.fillStyle='#C4A87C';
+  ctx.beginPath();
+  ctx.moveTo(-W*0.05,deskY);
+  ctx.lineTo(W*1.05,deskY);
+  ctx.lineTo(W*1.15,H+20);
+  ctx.lineTo(-W*0.15,H+20);
+  ctx.fill();
+  // Desk front edge
+  ctx.fillStyle='#A88A60';
+  ctx.fillRect(-10,deskY,W+20,6);
+
+  // === CRT MONITOR (center, big) ===
+  const mw=W*0.32, mh=H*0.42;
+  const mx=cx-mw/2, my=deskY-mh-H*0.08;
+
+  // CRT outer shell
+  ctx.fillStyle='#C8C0B0';
+  roundRect(ctx,mx-16,my-16,mw+32,mh+32,10); ctx.fill();
+  ctx.fillStyle='#B8B0A0';
+  roundRect(ctx,mx-14,my-14,mw+28,mh+28,8); ctx.fill();
+  // Inner bezel
+  ctx.fillStyle='#2a2a2a';
+  ctx.fillRect(mx-4,my-4,mw+8,mh+8);
+  // Screen (rendered by overlay div, just draw a dark backing)
+  ctx.fillStyle='#0a0a0a';
+  ctx.fillRect(mx,my,mw,mh);
+
+  // CRT bottom bezel details
+  ctx.fillStyle='#C8C0B0';
+  ctx.fillRect(mx-16,my+mh+4,mw+32,14);
+  // Power LED
+  ctx.fillStyle=S.currentGame?'#4ade80':'#666';
+  ctx.beginPath(); ctx.arc(mx+mw+8,my+mh+11,3,0,Math.PI*2); ctx.fill();
+  // Brand text
+  ctx.fillStyle='#888'; ctx.font='bold 8px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('DEVTRON',cx,my+mh+14); ctx.textAlign='left';
+
+  // Monitor stand
+  ctx.fillStyle='#A0A0A0';
+  ctx.fillRect(cx-20,my+mh+18,40,10);
+  ctx.fillStyle='#909090';
+  ctx.fillRect(cx-35,my+mh+28,70,6);
+
+  // Screen glare
+  ctx.fillStyle='rgba(255,255,255,0.07)';
+  ctx.beginPath(); ctx.moveTo(mx,my); ctx.lineTo(mx+mw*0.4,my); ctx.lineTo(mx,my+mh*0.5); ctx.fill();
+
+  // Sticky notes on monitor side
+  S.stickyNotes.forEach((n,i)=>{
+    const sx=mx+mw+20, sy=my+8+i*40;
+    ctx.save(); ctx.translate(sx+25,sy+15); ctx.rotate((i%2===0?1:-1)*0.05); ctx.translate(-25,-15);
+    ctx.fillStyle='#FFE066'; ctx.fillRect(0,0,55,32);
+    ctx.fillStyle='#333'; ctx.font='7px sans-serif';
+    const t=n.text.length>14?n.text.slice(0,14)+'..':n.text;
+    ctx.fillText(t,3,12); ctx.fillText('Q:'+n.text.split(':')[1],3,24);
+    ctx.restore();
+  });
+
+  // === KEYBOARD ===
+  const kbW=W*0.24, kbH=H*0.065;
+  const kbX=cx-kbW/2, kbY=deskY+H*0.21;
+  ctx.fillStyle='#333';
+  roundRect(ctx,kbX,kbY,kbW,kbH,3); ctx.fill();
+  ctx.fillStyle='#444';
+  for(let r=0;r<4;r++) for(let c=0;c<14;c++){
+    const kw=kbW/15, kx=kbX+3+c*(kw+1), ky=kbY+3+r*(kbH/4.8);
+    ctx.fillRect(kx,ky,kw-1,kbH/5.5);
+  }
+  // Typing flash
+  if(S.currentGame&&S.currentGame.phase==='development'&&anim%18<9){
+    ctx.fillStyle='#4ade80';
+    const rk=rand(0,13), rr=rand(0,3), kw=kbW/15;
+    ctx.fillRect(kbX+3+rk*(kw+1),kbY+3+rr*(kbH/4.8),kw-1,kbH/5.5);
+  }
+
+  // Mouse
+  ctx.fillStyle='#444';
+  roundRect(ctx,kbX+kbW+15,kbY+kbH*0.1,24,36,10); ctx.fill();
+  ctx.strokeStyle='#555'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(kbX+kbW+27,kbY+kbH*0.1);
+  ctx.quadraticCurveTo(kbX+kbW+50,kbY-10,kbX+kbW+55,kbY+5); ctx.stroke();
+
+  // === PHONE (left, big and detailed) ===
+  const pr=phoneRect;
+  // Phone base
+  ctx.fillStyle='#666'; roundRect(ctx,pr.x,pr.y,pr.w,pr.h,6); ctx.fill();
+  ctx.fillStyle='#5a5a5a'; roundRect(ctx,pr.x+2,pr.y+2,pr.w-4,pr.h-4,5); ctx.fill();
+
+  // Handset cradle
+  ctx.fillStyle='#555'; ctx.fillRect(pr.x+pr.w*0.1,pr.y+pr.h*0.08,pr.w*0.8,pr.h*0.12);
+  // Handset
+  if(S.phoneRinging){
+    ctx.save(); ctx.translate(pr.x+pr.w*0.5,pr.y+pr.h*0.14);
+    ctx.rotate(Math.sin(anim*0.3)*0.12);
+    ctx.fillStyle='#444'; roundRect(ctx,-pr.w*0.38,-pr.h*0.06,pr.w*0.76,pr.h*0.12,4); ctx.fill();
+    // Earpiece + mouthpiece
+    ctx.fillStyle='#333';
+    roundRect(ctx,-pr.w*0.38,-pr.h*0.06,pr.w*0.18,pr.h*0.12,3); ctx.fill();
+    roundRect(ctx,pr.w*0.2,-pr.h*0.06,pr.w*0.18,pr.h*0.12,3); ctx.fill();
+    ctx.restore();
+    // Ring glow
+    ctx.fillStyle=`rgba(74,222,128,${0.5+Math.sin(anim*0.2)*0.5})`;
+    ctx.beginPath(); ctx.arc(pr.x+pr.w*0.5,pr.y-6,6,0,Math.PI*2); ctx.fill();
+  } else {
+    ctx.fillStyle='#444'; roundRect(ctx,pr.x+pr.w*0.1,pr.y+pr.h*0.06,pr.w*0.8,pr.h*0.14,4); ctx.fill();
+    ctx.fillStyle='#333';
+    roundRect(ctx,pr.x+pr.w*0.1,pr.y+pr.h*0.06,pr.w*0.2,pr.h*0.14,3); ctx.fill();
+    roundRect(ctx,pr.x+pr.w*0.7,pr.y+pr.h*0.06,pr.w*0.2,pr.h*0.14,3); ctx.fill();
+  }
+
+  // Phone screen
+  ctx.fillStyle=S.phoneRinging?'#4ade80':'#2a3a2a';
+  ctx.fillRect(pr.x+pr.w*0.15,pr.y+pr.h*0.3,pr.w*0.7,pr.h*0.2);
+  if(S.phoneRinging){
+    ctx.fillStyle='#1a1a1a'; ctx.font=`bold ${Math.max(10,pr.w*0.12)}px sans-serif`;
+    ctx.textAlign='center'; ctx.fillText('RING!',pr.x+pr.w*0.5,pr.y+pr.h*0.44); ctx.textAlign='left';
+  }
+
+  // Phone buttons (4x3 grid)
+  for(let r=0;r<4;r++) for(let c=0;c<3;c++){
+    ctx.fillStyle='#888';
+    const bx=pr.x+pr.w*0.2+c*pr.w*0.22, by=pr.y+pr.h*0.55+r*pr.h*0.1;
+    roundRect(ctx,bx,by,pr.w*0.16,pr.h*0.07,2); ctx.fill();
+  }
+
+  // === JOBBOT (right wall, mounted on shelf) ===
+  const jx=W*0.78, jy=H*0.08, jw=W*0.14, jh=H*0.28;
+  // Shelf
+  ctx.fillStyle='#B8A88C';
+  ctx.fillRect(jx-10,jy+jh*0.75,jw+20,8);
+  ctx.fillStyle='#A89878';
+  ctx.fillRect(jx-10,jy+jh*0.75+8,jw+20,4);
+  // Monitor body
+  ctx.fillStyle='#B0A090';
+  roundRect(ctx,jx,jy,jw,jh*0.7,4); ctx.fill();
+  // Screen
+  ctx.fillStyle=hovZone==='jobbot'?'#1a4a1a':'#0a3a0a';
+  ctx.fillRect(jx+5,jy+5,jw-10,jh*0.55);
+  // Face
+  const fcx=jx+jw/2, fcy=jy+5+jh*0.55/2;
+  ctx.fillStyle='#4ade80';
+  ctx.beginPath(); ctx.arc(fcx-jw*0.15,fcy-6,Math.max(4,jw*0.06),0,Math.PI*2); ctx.arc(fcx+jw*0.15,fcy-6,Math.max(4,jw*0.06),0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#4ade80'; ctx.lineWidth=2; ctx.beginPath();
+  const mouthW=jw*0.3;
+  ctx.moveTo(fcx-mouthW/2,fcy+8);
+  for(let i=0;i<5;i++) ctx.lineTo(fcx-mouthW/2+i*mouthW/4,fcy+8+(i%2===0?0:6));
+  ctx.stroke();
+  // "JOBBOT" label
+  ctx.fillStyle='#4ade80'; ctx.font=`bold ${Math.max(8,jw*0.08)}px sans-serif`;
+  ctx.textAlign='center'; ctx.fillText('JOBBOT',fcx,jy+jh*0.68); ctx.textAlign='left';
+  // Tie
+  ctx.fillStyle='#E53935';
+  ctx.beginPath(); ctx.moveTo(fcx,jy+jh*0.7); ctx.lineTo(fcx-6,jy+jh*0.7+10); ctx.lineTo(fcx+6,jy+jh*0.7+10); ctx.fill();
+  ctx.fillRect(fcx-2,jy+jh*0.7+10,4,16);
+  // Speaker grille
+  ctx.fillStyle='#999';
+  for(let i=0;i<3;i++) ctx.fillRect(jx+jw-16,jy+jh*0.35+i*7,10,3);
+
+  // === FILE CABINET (far right, on desk) ===
+  const fcbx=W*0.88, fcby=deskY+H*0.01, fcbw=W*0.08, fcbh=H*0.22;
+  ctx.fillStyle=hovZone==='cabinet'?'#777':'#6a6a6a';
+  roundRect(ctx,fcbx,fcby,fcbw,fcbh,3); ctx.fill();
+  for(let i=0;i<3;i++){
+    ctx.strokeStyle='#555'; ctx.lineWidth=1;
+    ctx.strokeRect(fcbx+4,fcby+5+i*(fcbh/3),fcbw-8,fcbh/3-6);
+    ctx.fillStyle='#999';
+    ctx.fillRect(fcbx+fcbw/2-5,fcby+5+i*(fcbh/3)+fcbh/6-3,10,6);
+  }
+
+  // === DESK DRAWER (bottom right, under desk edge) ===
+  const ddx=cx+W*0.06, ddy=deskY+H*0.35, ddw=W*0.1, ddh=H*0.05;
+  ctx.fillStyle=hovZone==='drawer'?'#B8A070':'#A89060';
+  ctx.fillRect(ddx,ddy,ddw,ddh);
+  ctx.fillStyle='#8A7550'; ctx.fillRect(ddx+ddw/2-8,ddy+ddh*0.2,16,ddh*0.6);
+
+  anim++;
+}
+
+function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.lineTo(x+w-r,y); c.quadraticCurveTo(x+w,y,x+w,y+r); c.lineTo(x+w,y+h-r); c.quadraticCurveTo(x+w,y+h,x+w-r,y+h); c.lineTo(x+r,y+h); c.quadraticCurveTo(x,y+h,x,y+h-r); c.lineTo(x,y+r); c.quadraticCurveTo(x,y,x+r,y); c.closePath(); }
+
+// ============================================================
+// MOUSE ON CANVAS (phone click, hover zones)
+// ============================================================
+function inRect(mx,my,r){ return mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h; }
+
+canvas.addEventListener('click', e=>{
+  initAudio();
+  if(inRect(e.clientX,e.clientY,phoneRect)){
+    if(S.phoneRinging) openPhoneWindow();
+    else notify('No calls right now.','info');
+  }
+});
+canvas.addEventListener('mousemove', e=>{
+  const tip=document.getElementById('tooltip');
+  if(inRect(e.clientX,e.clientY,phoneRect)){
+    hovZone='phone'; canvas.style.cursor='pointer';
+    tip.style.display='block'; tip.textContent=S.phoneRinging?'Answer phone!':'Phone';
+    tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-8)+'px';
+  } else { hovZone=null; canvas.style.cursor='default'; tip.style.display='none'; }
+});
+
+// ============================================================
+// XP DESKTOP + WINDOWS (all inside screen overlay)
+// ============================================================
+let openWindows = {};
+let windowZ = 30;
+
+function buildDesktopIcons(){
+  const desk=document.getElementById('screen-desktop');
+  desk.innerHTML='';
+  const icons = [
+    { id:'newgame', label:'New Game', emoji:'💾', x:8, y:8 },
+    { id:'devstudio', label:S.currentGame?S.currentGame.name:'My Studio', emoji:S.currentGame?'🔨':'🏠', x:8, y:80 },
+    { id:'hire', label:'Hire Staff', emoji:'👤', x:8, y:152 },
+    { id:'upgrades', label:'Upgrades', emoji:'⚙️', x:8, y:224 },
+    { id:'portfolio', label:'Portfolio', emoji:'📁', x:80, y:8 },
+    { id:'achievements', label:'Achievements', emoji:'🏆', x:80, y:80 },
+  ];
+  icons.forEach(ic=>{
+    const d=document.createElement('div');
+    d.className='desktop-icon'; d.style.left=ic.x+'px'; d.style.top=ic.y+'px';
+    d.innerHTML=`<div class="icon-img">${ic.emoji}</div><div class="icon-label">${ic.label}</div>`;
+    d.ondblclick=()=>openWindow(ic.id);
+    d.onclick=()=>{ desk.querySelectorAll('.desktop-icon').forEach(x=>x.style.background=''); d.style.background='rgba(0,80,200,0.3)'; };
+    desk.appendChild(d);
+  });
+}
+
+function openWindow(id){
+  // Close if already open, then reopen
+  closeWindow(id);
+  let title='', bodyHTML='', width=280, height=220;
+  const sw=monRect.w, sh=monRect.h-28;
+
+  if(id==='newgame'){
+    if(S.currentGame){ notify('Finish current game first!','warning'); return; }
+    title='Create New Game';
+    width=Math.min(sw*0.85,320); height=Math.min(sh*0.9,300);
+    let genreHTML='<div class="xp-grid" style="grid-template-columns:repeat(3,1fr)">';
+    GENRES.forEach(g=>{ const ok=isUnlocked(g.unlock); genreHTML+=`<button class="xp-grid-btn" data-genre="${g.name}" ${ok?'':'disabled'} title="${ok?'':getUnlockDesc(g.unlock)}">${g.icon} ${g.name}</button>`; });
+    genreHTML+='</div>';
+    let platHTML='<div class="xp-grid" style="grid-template-columns:repeat(2,1fr)">';
+    PLATFORMS.forEach(p=>{ const ok=isUnlocked(p.unlock); platHTML+=`<button class="xp-grid-btn" data-plat="${p.name}" ${ok?'':'disabled'} title="${ok?'':getUnlockDesc(p.unlock)}">${p.icon} ${p.name}</button>`; });
+    platHTML+='</div>';
+    bodyHTML=`
+      <div style="margin-bottom:4px"><b>Game Name:</b></div>
+      <input class="xp-input" id="xp-gname" style="width:100%" placeholder="(auto-generated)">
+      <div style="margin-top:6px"><b>Genre:</b></div>${genreHTML}
+      <div style="margin-top:6px"><b>Platform:</b></div>${platHTML}
+      <div style="margin-top:6px"><b>Marketing: $<span id="xp-budget-v">1000</span></b></div>
+      <input type="range" id="xp-budget" min="0" max="${Math.min(S.money,10000)}" step="500" value="1000" style="width:100%" oninput="document.getElementById('xp-budget-v').textContent=this.value">
+      <div style="margin-top:8px;text-align:right">
+        <button class="xp-btn" onclick="closeWindow('newgame')">Cancel</button>
+        <button class="xp-btn green" id="xp-startdev">Start Dev</button>
+      </div>`;
+  } else if(id==='devstudio'){
+    title=S.currentGame?S.currentGame.name+' - Dev Studio':'My Studio';
+    width=Math.min(sw*0.85,300); height=Math.min(sh*0.85,240);
+    if(S.currentGame){
+      const g=S.currentGame;
+      let pct=0, phaseStr=g.phase;
+      if(g.phase==='concept'){pct=g.phaseProgress/5*100; phaseStr='Concept ('+g.phaseProgress+'/5)';}
+      else if(g.phase==='development'){pct=g.codeProgress/g.codeRequired*100; phaseStr='Development ('+Math.floor(pct)+'%)';}
+      else if(g.phase==='testing'){pct=g.phaseProgress/g.testDays*100; phaseStr='Testing — Bugs: '+g.bugsFixed+'/'+g.bugsFound;}
+      const blocks=Math.floor(Math.min(100,pct)/100*20);
+      let progHTML='<div class="xp-progress"><div class="xp-progress-fill">';
+      for(let i=0;i<blocks;i++) progHTML+='<div class="xp-progress-block"></div>';
+      progHTML+='</div></div>';
+      bodyHTML=`
+        <div style="font-size:14px;font-weight:bold;color:#003399;margin-bottom:4px">${g.name}</div>
+        <div>${g.genre} · ${g.platform}</div>
+        <div style="margin:6px 0"><b>Phase:</b> ${phaseStr}</div>
+        ${progHTML}
+        <div style="margin-top:6px"><b>Team:</b> You + ${S.developers.length} devs | <b>Speed:</b> ${getSpeedMult().toFixed(1)}x</div>
+        <div style="margin-top:4px"><b>Click Power:</b> ${clickPower()} | <b>Passive:</b> ${passiveCPS().toFixed(1)}/day</div>
+        ${g.phase==='development'?'<div style="margin-top:8px;text-align:center"><button class="xp-btn green" style="font-size:14px;padding:8px 20px" id="xp-writecode">✏️ Write Code!</button></div>':''}
+        <div style="margin-top:8px;color:#666">Day ${S.day-g.startDay} of development</div>`;
+    } else {
+      bodyHTML=`
+        <div style="font-size:14px;font-weight:bold;color:#003399">${S.studioName}</div>
+        <div style="margin:6px 0"><b>Revenue:</b> ${fmtM(Math.round(totalRev()))}/day</div>
+        <div><b>Games Released:</b> ${S.stats.gamesReleased}</div>
+        <div><b>Total Earned:</b> ${fmtM(Math.floor(S.stats.totalEarned))}</div>
+        <div><b>Fans:</b> ${fmt(S.fans)} | <b>Reputation:</b> ${S.reputation}/100</div>
+        <div><b>Location:</b> ${LOCATIONS[S.location].name}</div>
+        <div><b>Team Size:</b> ${S.developers.length+1}/${getMaxSlots()}</div>
+        <div style="margin-top:8px;text-align:center">
+          <button class="xp-btn primary" ondblclick="openWindow('newgame')" onclick="openWindow('newgame')">Start New Game</button>
+        </div>`;
+    }
+  } else if(id==='hire'){
+    title='Hire Staff'; width=Math.min(sw*0.9,320); height=Math.min(sh*0.9,280);
+    if(S.candidates.length===0) refreshCandidates();
+    let html=`<div style="margin-bottom:6px">Team: ${S.developers.length+1}/${getMaxSlots()} | New candidates in ${Math.max(0,S.candidateRefreshDay-S.day)} days</div>`;
+    S.candidates.forEach((c,i)=>{
+      const canH=S.developers.length+1<getMaxSlots()&&S.money>=c.salary;
+      html+=`<div class="xp-candidate">
+        <div class="avatar" style="background:${c.color}33;color:${c.color}">${c.specialty==='Code'?'💻':c.specialty==='Art'?'🎨':c.specialty==='Design'?'✏️':'📢'}</div>
+        <div class="info"><b>${c.name}</b><br>${c.specialty} · Skill ${c.skill}/10 · ${fmtM(c.salary)}/mo<br><i>"${c.quirk}"</i></div>
+        <button class="xp-btn green" data-hire="${i}" ${canH?'':'disabled'}>Hire</button>
+      </div>`;
+    });
+    if(S.developers.length>0){
+      html+='<div style="margin-top:8px;border-top:1px solid #ACA899;padding-top:6px"><b>Current Team:</b></div>';
+      S.developers.forEach((d,i)=>{
+        html+=`<div class="xp-candidate"><div class="avatar" style="background:${d.color}33;color:${d.color}">${d.specialty==='Code'?'💻':d.specialty==='Art'?'🎨':d.specialty==='Design'?'✏️':'📢'}</div>
+        <div class="info"><b>${d.name}</b> · ${d.specialty} ${d.skill}/10 · ${fmtM(d.salary)}/mo</div>
+        <button class="xp-btn" data-fire="${i}" style="color:red">Fire</button></div>`;
+      });
+    }
+    bodyHTML=html;
+  } else if(id==='upgrades'){
+    title='Upgrades'; width=Math.min(sw*0.9,320); height=Math.min(sh*0.9,280);
+    let html='<b>Studio Location</b>';
+    LOCATIONS.forEach((l,i)=>{
+      const cur=S.location===i, past=i<S.location, canB=!cur&&i===S.location+1&&S.money>=l.cost;
+      html+=`<div class="xp-upgrade"><div class="u-icon">${['🏠','🏢','🏗️','🏛️'][i]}</div><div class="u-info"><b>${l.name}</b>${cur?' (Current)':''}<br>${l.desc}${l.cost?' — '+fmtM(l.cost):''}</div>
+      ${past?'<button class="xp-btn" disabled>✓</button>':cur?'<button class="xp-btn" disabled>Current</button>':
+      `<button class="xp-btn green" data-buyloc="${i}" ${canB?'':'disabled'}>${fmtM(l.cost)}</button>`}</div>`;
+    });
+    html+='<div style="margin-top:8px"><b>Tech Upgrades</b></div>';
+    TECH_UPGRADES.forEach(u=>{
+      const owned=!!S.upgrades[u.id], canB=!owned&&S.money>=u.cost;
+      html+=`<div class="xp-upgrade"><div class="u-icon">${u.icon}</div><div class="u-info"><b>${u.name}</b><br>${u.desc} — ${fmtM(u.cost)}</div>
+      ${owned?'<button class="xp-btn" disabled>✓</button>':`<button class="xp-btn green" data-buytech="${u.id}" ${canB?'':'disabled'}>${fmtM(u.cost)}</button>`}</div>`;
+    });
+    bodyHTML=html;
+  } else if(id==='portfolio'){
+    title='Portfolio'; width=Math.min(sw*0.85,300); height=Math.min(sh*0.85,250);
+    if(S.releasedGames.length===0) bodyHTML='<div style="text-align:center;padding:20px;color:#666">No games released yet.</div>';
+    else { let h=''; [...S.releasedGames].reverse().forEach(g=>{
+      const qc=g.quality>=80?'green':g.quality>=50?'#b8860b':'red';
+      h+=`<div class="xp-port-game"><b>${g.name}</b> <span style="color:${qc}">${g.quality}/100</span><br>${g.genre} · ${g.platform} · <span style="color:green">${fmtM(Math.round(gameRev(g)))}/day</span></div>`;
+    }); bodyHTML=h; }
+  } else if(id==='achievements'){
+    title='Achievements'; width=Math.min(sw*0.8,280); height=Math.min(sh*0.8,220);
+    let h='';
+    ACHIEVEMENTS.forEach(a=>{
+      const ok=S.achievements.includes(a.id);
+      h+=`<div style="display:inline-block;padding:4px 8px;margin:2px;border:1px solid ${ok?'#003399':'#ccc'};background:${ok?'#e8f0fe':'#f5f5f5'};border-radius:3px;opacity:${ok?1:0.5}" title="${a.desc}">${a.icon} ${a.name}</div>`;
+    });
+    bodyHTML=h;
+  } else if(id==='phone'){
+    title='Incoming Call'; width=Math.min(sw*0.8,260); height=Math.min(sh*0.7,180);
+    const ev=S.currentPhoneEvent;
+    bodyHTML=`<div style="margin-bottom:8px"><b>${ev.title}</b></div><div style="margin-bottom:10px">${ev.msg}</div>
+    <div style="text-align:right">
+      ${ev.failBtn?`<button class="xp-btn" data-phone="decline">${ev.failBtn}</button> `:'<button class="xp-btn" data-phone="decline">Decline</button> '}
+      <button class="xp-btn green" data-phone="accept">${ev.btn}</button>
+    </div>`;
+  }
+
+  // Create window element
+  const win=document.createElement('div');
+  win.className='xp-window active'; win.id='win-'+id;
+  win.style.width=width+'px'; win.style.height=height+'px';
+  win.style.zIndex=++windowZ;
+  // Center in screen
+  win.style.left=Math.max(0,(monRect.w-width)/2)+'px';
+  win.style.top=Math.max(0,(monRect.h-28-height)/2)+'px';
+  win.innerHTML=`<div class="win-titlebar"><span class="title">${title}</span><div style="display:flex;gap:2px">
+    <button class="win-btn min" onclick="closeWindow('${id}')">_</button>
+    <button class="win-btn max">□</button>
+    <button class="win-btn close" onclick="closeWindow('${id}')">×</button>
+  </div></div><div class="win-body">${bodyHTML}</div>`;
+
+  document.getElementById('screen-desktop').appendChild(win);
+  openWindows[id]=win;
+
+  // Add to taskbar
+  updateTaskbar();
+
+  // Wire up events
+  wireWindowEvents(id, win);
+}
+
+function wireWindowEvents(id, win){
+  // Make window focusable
+  win.addEventListener('mousedown', ()=>{ win.style.zIndex=++windowZ; updateTaskbar(); });
+
+  if(id==='newgame'){
+    let selGenre=null, selPlat=null;
+    win.querySelectorAll('[data-genre]').forEach(b=>b.onclick=()=>{
+      win.querySelectorAll('[data-genre]').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected'); selGenre=b.dataset.genre;
+    });
+    win.querySelectorAll('[data-plat]').forEach(b=>b.onclick=()=>{
+      win.querySelectorAll('[data-plat]').forEach(x=>x.classList.remove('selected'));
+      b.classList.add('selected'); selPlat=b.dataset.plat;
+    });
+    const startBtn=win.querySelector('#xp-startdev');
+    if(startBtn) startBtn.onclick=()=>{
+      if(!selGenre){notify('Pick a genre!','warning');return;}
+      if(!selPlat){notify('Pick a platform!','warning');return;}
+      const name=win.querySelector('#xp-gname').value.trim()||randGameName();
+      const budget=parseInt(win.querySelector('#xp-budget').value);
+      if(budget>S.money){notify('Not enough money!','warning');return;}
+      S.money-=budget;
+      S.currentGame={name,genre:selGenre,platform:selPlat,budget,phase:'concept',phaseProgress:0,codeProgress:0,codeRequired:codeReq(selGenre,selPlat),devDays:0,bugsFound:0,bugsFixed:0,testDays:0,startDay:S.day};
+      closeWindow('newgame');
+      notify('Started "'+name+'"!','success');
+      buildDesktopIcons();
+      openWindow('devstudio');
+    };
+  } else if(id==='devstudio'){
+    const codeBtn=win.querySelector('#xp-writecode');
+    if(codeBtn){
+      codeBtn.onclick=(e)=>writeCode(e);
+      // Allow spacebar while this window is open
+    }
+  } else if(id==='hire'){
+    win.querySelectorAll('[data-hire]').forEach(b=>b.onclick=()=>{
+      const i=parseInt(b.dataset.hire);
+      if(S.developers.length+1>=getMaxSlots()) return;
+      const c=S.candidates[i]; S.developers.push(c); S.candidates.splice(i,1);
+      snd('hire'); notify(c.name+' hired!','success'); checkAch();
+      closeWindow('hire'); openWindow('hire'); buildDesktopIcons();
+    });
+    win.querySelectorAll('[data-fire]').forEach(b=>b.onclick=()=>{
+      const i=parseInt(b.dataset.fire); const d=S.developers[i];
+      S.developers.splice(i,1); notify(d.name+' let go.','warning');
+      closeWindow('hire'); openWindow('hire'); buildDesktopIcons();
+    });
+  } else if(id==='upgrades'){
+    win.querySelectorAll('[data-buyloc]').forEach(b=>b.onclick=()=>{
+      const i=parseInt(b.dataset.buyloc); S.money-=LOCATIONS[i].cost; S.location=i;
+      snd('upgrade'); notify('Upgraded to '+LOCATIONS[i].name+'!','success'); checkAch();
+      closeWindow('upgrades'); openWindow('upgrades');
+    });
+    win.querySelectorAll('[data-buytech]').forEach(b=>b.onclick=()=>{
+      const id2=b.dataset.buytech; const u=TECH_UPGRADES.find(x=>x.id===id2);
+      S.money-=u.cost; S.upgrades[id2]=true; snd('upgrade'); notify('Purchased '+u.name+'!','success');
+      closeWindow('upgrades'); openWindow('upgrades');
+    });
+  } else if(id==='phone'){
+    win.querySelectorAll('[data-phone]').forEach(b=>b.onclick=()=>{
+      const ev=S.currentPhoneEvent;
+      if(b.dataset.phone==='accept'){
+        if(ev.cost&&S.money<ev.cost){notify("Can't afford!",'warning');return;}
+        if(ev.cost) S.money-=ev.cost;
+        ev.effect(S); notify(ev.title+' — Done!','success');
+      } else {
+        if(ev.failEffect) ev.failEffect(S); notify('Declined '+ev.title,'warning');
+      }
+      S.phoneRinging=false; S.currentPhoneEvent=null;
+      S.nextPhoneDay=S.day+25+rand(0,40);
+      closeWindow('phone');
+    });
+  }
+}
+
+function closeWindow(id){
+  const w=document.getElementById('win-'+id);
+  if(w) w.remove();
+  delete openWindows[id];
+  updateTaskbar();
+}
+
+function openPhoneWindow(){ openWindow('phone'); }
+
+function getUnlockDesc(u){ if(!u) return ''; if(u.type==='games') return 'Release '+u.count+' games'; if(u.type==='fans') return fmt(u.count)+' fans'; if(u.type==='earned') return 'Earn '+fmtM(u.count); if(u.type==='location') return 'Need '+LOCATIONS[u.level].name; return ''; }
+
+function updateTaskbar(){
+  const items=document.getElementById('taskbar-items');
+  items.innerHTML='';
+  Object.keys(openWindows).forEach(id=>{
+    const ti=document.createElement('div');
+    ti.className='taskbar-item';
+    const w=openWindows[id];
+    const title=w.querySelector('.title').textContent;
+    ti.textContent=title.length>14?title.slice(0,14)+'..':title;
+    ti.onclick=()=>{ w.style.zIndex=++windowZ; };
+    items.appendChild(ti);
+  });
+}
+
+function updateScreenUI(){
+  // Clock
+  const clk=document.getElementById('taskbar-clock');
+  if(clk) clk.textContent=`M${getMonthInYear(S.day)} Y${getYear(S.day)}`;
+
+  // Auto-update dev studio window if open
+  if(openWindows.devstudio && S.currentGame){
+    const g=S.currentGame;
+    let pct=0;
+    if(g.phase==='concept') pct=g.phaseProgress/5*100;
+    else if(g.phase==='development') pct=g.codeProgress/g.codeRequired*100;
+    else if(g.phase==='testing') pct=g.phaseProgress/g.testDays*100;
+    // Refresh the whole window if phase changed or significant progress
+    if(anim%30===0){ closeWindow('devstudio'); openWindow('devstudio'); }
+  }
+  // If current game just finished, refresh icons
+  if(!S.currentGame && openWindows.devstudio){ closeWindow('devstudio'); buildDesktopIcons(); }
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+let lastT=0;
+function loop(ts){
+  if(!S){requestAnimationFrame(loop);return;}
+  tickAcc+=ts-lastT; lastT=ts;
+  while(tickAcc>=1000){gameTick(); tickAcc-=1000;}
+  drawScene();
+  requestAnimationFrame(loop);
+}
+
+// Spacebar = write code
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!e.target.matches('input,textarea,button')){
+    e.preventDefault();
+    if(S&&S.currentGame&&S.currentGame.phase==='development') writeCode(null);
+  }
+});
+
+// ============================================================
+// INIT
+// ============================================================
+function startGame(isNew,name){
+  if(isNew){S=newState(name); updateTrends(); refreshCandidates();}
+  document.getElementById('title-screen').style.display='none';
+  document.getElementById('name-screen').style.display='none';
+  document.getElementById('game-ui').style.display='block';
+  resize();
+  buildDesktopIcons();
+  lastT=performance.now(); tickAcc=0;
+  setInterval(save,60000);
+}
+
+document.getElementById('btn-new-game').onclick=()=>{ initAudio(); document.getElementById('title-screen').style.display='none'; document.getElementById('name-screen').style.display='flex'; document.getElementById('studio-name-input').focus(); };
+document.getElementById('btn-continue').onclick=()=>{ initAudio(); if(load()) startGame(false); };
+document.getElementById('btn-start').onclick=()=>{ const n=document.getElementById('studio-name-input').value.trim(); if(!n){document.getElementById('studio-name-input').style.borderColor='#ef4444';return;} startGame(true,n); };
+document.getElementById('studio-name-input').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('btn-start').click(); });
+if(localStorage.getItem('gameDevTycoon')) document.getElementById('btn-continue').disabled=false;
+window.addEventListener('resize',()=>{ if(S) resize(); });
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
