@@ -30,7 +30,7 @@ function resizeImage(file, maxSize = 256) {
 export default function Settings() {
   const { boothId } = useParams();
   const navigate = useNavigate();
-  const { fetchBooth, updateBooth, deleteBooth, fetchMembers, addMember, removeMember, restockBooth } = useBooth();
+  const { fetchBooth, updateBooth, deleteBooth, fetchMembers, addMember, removeMember, restockBooth, setInventory } = useBooth();
   const { user, logout } = useAuth();
   const [booth, setBooth] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,8 @@ export default function Settings() {
   const [newUsername, setNewUsername] = useState('');
   const [memberError, setMemberError] = useState('');
   const [addingMember, setAddingMember] = useState(false);
+  const [editingCookie, setEditingCookie] = useState(null);
+  const [adjusting, setAdjusting] = useState(false);
   const [showRestock, setShowRestock] = useState(false);
   const [restockCases, setRestockCases] = useState(getEmptyInventory(0));
   const [restockBoxes, setRestockBoxes] = useState(getEmptyInventory(0));
@@ -152,6 +154,21 @@ export default function Settings() {
     }
   }
 
+  async function handleAdjust(cookieId, delta) {
+    const current = booth.inventory[cookieId] || 0;
+    const next = Math.max(0, current + delta);
+    if (next === current) return;
+    setAdjusting(true);
+    try {
+      const updated = await setInventory(boothId, cookieId, next);
+      setBooth(updated);
+    } catch (err) {
+      alert(err.message || 'Failed to update inventory');
+    } finally {
+      setAdjusting(false);
+    }
+  }
+
   return (
     <div className="app-main">
       <div className="container animate-in">
@@ -244,10 +261,16 @@ export default function Settings() {
             </button>
           </div>
           {COOKIE_TYPES.map(cookie => {
-            const starting = booth.inventory[cookie.id] || 0;
-            if (starting === 0) return null;
+            const count = booth.inventory[cookie.id] || 0;
+            if (count === 0 && editingCookie !== cookie.id) return null;
+            const isEditing = editingCookie === cookie.id;
             return (
-              <div key={cookie.id} className="settings-item">
+              <div
+                key={cookie.id}
+                className="settings-item"
+                onClick={() => !adjusting && setEditingCookie(isEditing ? null : cookie.id)}
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+              >
                 <span className="settings-item-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {cookie.image
                     ? <img src={cookie.image} alt="" style={{ width: 24, height: 24, borderRadius: 5, objectFit: 'contain', flexShrink: 0 }} />
@@ -255,7 +278,39 @@ export default function Settings() {
                   }
                   {cookie.name}
                 </span>
-                <span className="settings-item-value">{starting} boxes</span>
+                {isEditing ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} onClick={e => e.stopPropagation()}>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={adjusting || count <= 0}
+                      onClick={() => handleAdjust(cookie.id, -1)}
+                      style={{
+                        width: 44, height: 44, minHeight: 0, padding: 0,
+                        fontSize: '1.3rem', fontWeight: 700, borderRadius: 12,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      −
+                    </button>
+                    <span style={{ minWidth: 48, textAlign: 'center', fontWeight: 600, fontSize: '0.95rem' }}>
+                      {count}
+                    </span>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={adjusting}
+                      onClick={() => handleAdjust(cookie.id, 1)}
+                      style={{
+                        width: 44, height: 44, minHeight: 0, padding: 0,
+                        fontSize: '1.3rem', fontWeight: 700, borderRadius: 12,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}
+                    >
+                      +
+                    </button>
+                  </div>
+                ) : (
+                  <span className="settings-item-value">{count} boxes</span>
+                )}
               </div>
             );
           })}

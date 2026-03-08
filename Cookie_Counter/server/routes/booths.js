@@ -213,6 +213,31 @@ router.post('/:id/restock', async (req, res) => {
   }
 });
 
+// Set inventory for a single cookie type
+router.patch('/:id/inventory', async (req, res) => {
+  try {
+    const db = getPool();
+    const access = await getBoothWithAccess(db, req.params.id, req.user.id);
+    if (!access) return res.status(404).json({ error: 'Booth not found' });
+
+    const { cookieId, quantity } = req.body;
+    if (!cookieId || typeof quantity !== 'number' || quantity < 0) {
+      return res.status(400).json({ error: 'Valid cookieId and quantity (>= 0) required' });
+    }
+
+    await db.query(
+      `UPDATE booths SET inventory = inventory || jsonb_build_object($2::text, $3::int) WHERE id = $1`,
+      [req.params.id, cookieId, Math.floor(quantity)]
+    );
+
+    const updated = await getBoothWithAccess(db, req.params.id, req.user.id);
+    res.json(updated.booth);
+  } catch (err) {
+    console.error('Set inventory error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Delete booth (owner only)
 router.delete('/:id', async (req, res) => {
   try {

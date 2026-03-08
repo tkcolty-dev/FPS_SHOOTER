@@ -67,6 +67,8 @@ export const api = {
   deleteBooth: (id) => request(`/booths/${id}`, { method: 'DELETE' }),
   restockBooth: (id, inventory) =>
     request(`/booths/${id}/restock`, { method: 'POST', body: { inventory } }),
+  setInventory: (id, cookieId, quantity) =>
+    request(`/booths/${id}/inventory`, { method: 'PATCH', body: { cookieId, quantity } }),
 
   // Orders
   getOrders: (boothId) => request(`/booths/${boothId}/orders`),
