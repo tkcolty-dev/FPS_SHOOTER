@@ -1,0 +1,3981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XS Chess</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #e8e8e8;
+      color: #111;
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ===== APP FRAME ===== */
+    .app-frame {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #f5f5f5;
+      overflow: hidden;
+    }
+
+    /* Header bar */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 56px;
+      background: #111;
+      border-bottom: 1px solid #222;
+      flex-shrink: 0;
+    }
+
+    .hdr-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+
+    .hdr-brand .hdr-icon {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      color: #fff;
+    }
+
+    .hdr-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .hdr-btn {
+      width: 38px;
+      height: 38px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .hdr-btn:hover { background: rgba(255,255,255,0.25); }
+
+    /* SVG icon alignment */
+    .hdr-btn svg, .ca-btn svg, .menu-btn svg, .menu-btn-outline svg,
+    .profile-edit-btn svg, .bt-back svg, .exit-btn svg,
+    .mb-icon svg, .mbo-icon svg, .ca-icon svg {
+      vertical-align: middle;
+      display: inline-block;
+    }
+
+    /* Footer bar */
+    .app-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      height: 36px;
+      background: #111;
+      border-top: 1px solid #222;
+      color: #777;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    /* ===== PAGES ===== */
+    .page { display: none; flex: 1; overflow: auto; }
+    .page.active { display: flex; flex-direction: column; }
+
+    /* Custom scrollbar */
+    .page::-webkit-scrollbar { width: 6px; }
+    .page::-webkit-scrollbar-track { background: transparent; }
+    .page::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+
+    /* ===== HOME CONTENT ===== */
+    .home-content {
+      display: grid;
+      grid-template-columns: 280px 1fr 280px;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* Left: Profile */
+    .home-left {
+      padding: 24px 20px;
+      border-right: 1px solid #ddd;
+      background: #fff;
+      overflow-y: auto;
+    }
+
+    .profile-head {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 6px;
+    }
+
+    .profile-avatar {
+      width: 64px;
+      height: 64px;
+      background: #f0f0f0;
+      border: 2px solid #ccc;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 38px;
+      flex-shrink: 0;
+    }
+
+    .profile-head-right {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .profile-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 12px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .profile-edit-btn:hover { background: #333; }
+
+    .profile-username {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #111;
+    }
+
+    .profile-stats {
+      margin-top: 16px;
+    }
+
+    .ps-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      font-size: 12px;
+      font-weight: 600;
+      border-bottom: 1px solid #eee;
+    }
+
+    .ps-label { color: #888; }
+    .ps-val { color: #111; }
+    .ps-val.green { color: #27ae60; }
+    .ps-val.red { color: #e74c3c; }
+
+    .ps-eff-row {
+      margin-top: 4px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-weight: 800;
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      color: #111;
+    }
+
+    /* Efficiency chart */
+    .eff-chart {
+      margin-top: 16px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 12px;
+      height: 110px;
+      position: relative;
+    }
+
+    .eff-chart .eff-y-label {
+      position: absolute;
+      left: -2px;
+      top: 50%;
+      transform: rotate(-90deg) translateX(-50%);
+      font-size: 9px;
+      font-weight: 700;
+      color: #aaa;
+      transform-origin: left center;
+    }
+
+    .eff-chart .eff-x-label {
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 9px;
+      font-weight: 700;
+      color: #aaa;
+    }
+
+    .eff-chart .eff-100 {
+      position: absolute;
+      top: 10px;
+      left: 14px;
+      font-size: 9px;
+      font-weight: 700;
+      color: #aaa;
+    }
+
+    .eff-chart .eff-0 {
+      position: absolute;
+      bottom: 14px;
+      left: 14px;
+      font-size: 9px;
+      font-weight: 700;
+      color: #aaa;
+    }
+
+    .eff-chart .eff-line {
+      position: absolute;
+      top: 40%;
+      left: 30px;
+      right: 10px;
+      height: 2px;
+      background: #ddd;
+      border-radius: 1px;
+    }
+
+    /* Center: Hero + Actions */
+    .home-center {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      overflow-y: auto;
+      position: relative;
+      background: #e8e8e8;
+    }
+
+    /* Hero banner */
+    .hero-banner {
+      background: #111;
+      padding: 32px 30px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .hero-banner::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-conic-gradient(rgba(255,255,255,0.03) 0% 25%, transparent 0% 50%) 0 0 / 40px 40px;
+      pointer-events: none;
+    }
+
+    .hero-top-row {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      z-index: 1;
+    }
+
+    /* Decorative chess board background */
+    .hero-board {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      flex-shrink: 0;
+    }
+
+    .hero-board .hb-sq { aspect-ratio: 1; }
+    .hero-board .hb-sq.l { background: #f0d9b5; }
+    .hero-board .hb-sq.d { background: #b58863; }
+
+    .hero-board .hb-piece {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .hero-board .hb-piece img {
+      width: 80%;
+      height: 80%;
+      filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
+    }
+
+    .hero-title {
+      text-align: left;
+      flex-shrink: 0;
+      z-index: 1;
+    }
+
+    .hero-title h1 {
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 4px;
+      color: #fff;
+      line-height: 1;
+      margin-bottom: 4px;
+      text-shadow: 0 0 20px rgba(255,255,255,0.3), 0 0 40px rgba(255,255,255,0.1);
+    }
+
+    .hero-title .hero-sub {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 10px;
+    }
+
+    .online-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .online-badge .ob-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #2ecc71;
+      animation: pulse-dot 2s infinite;
+    }
+
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+    /* Action buttons grid */
+    .center-body {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .center-actions {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .ca-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 6px;
+      padding: 14px 10px;
+      background: #fff;
+      color: #111;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 800;
+      font-family: inherit;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+
+    .ca-btn:hover { border-color: #111; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
+    .ca-btn .ca-icon { font-size: 22px; color: #111; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: #f5f5f5; border-radius: 9px; }
+
+    .ca-btn.primary {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+      grid-column: 1 / -1;
+      flex-direction: row;
+      gap: 12px;
+      padding: 14px 24px;
+      font-size: 15px;
+    }
+    .ca-btn.primary:hover { background: #222; box-shadow: 0 6px 24px rgba(0,0,0,0.2); }
+    .ca-btn.primary .ca-icon { color: #fff; background: rgba(255,255,255,0.15); }
+
+    .ca-btn.soon { opacity: 0.5; cursor: default; }
+    .ca-btn.soon:hover { border-color: #ddd; transform: none; box-shadow: none; }
+    .ca-btn.soon .ca-tag { font-size: 9px; font-weight: 700; background: #eee; color: #999; padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px; }
+
+    /* Find Game pulse/glow when games available */
+    @keyframes find-game-pulse {
+      0% { box-shadow: 0 0 0 0 rgba(17,17,17,0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(17,17,17,0); }
+      100% { box-shadow: 0 0 0 0 rgba(17,17,17,0); }
+    }
+    .ca-btn.has-games { border-color: #111; animation: find-game-pulse 2s infinite; position: relative; }
+    .ca-btn.has-games::after { content: ''; position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; background: #2ecc71; border-radius: 50%; }
+
+    /* Quick Play searching state */
+    .ca-btn.searching { opacity: 0.7; pointer-events: none; }
+
+    /* Bot difficulty overlay */
+    .bot-diff-grid { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .bot-diff-btn { padding: 16px; background: #f5f5f5; border: 2px solid #ddd; border-radius: 12px; cursor: pointer; font-family: inherit; text-align: left; transition: all 0.2s; }
+    .bot-diff-btn:hover { border-color: #111; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .bot-diff-btn .bdf-title { font-size: 15px; font-weight: 800; color: #111; margin-bottom: 4px; }
+    .bot-diff-btn .bdf-desc { font-size: 12px; color: #888; }
+
+    /* Profile avatar img */
+    .profile-avatar img, .pm-avatar img { width: 70%; height: 70%; object-fit: contain; }
+
+    /* Move sound, slide animation, shake, capture flash */
+    .piece.sliding { transition: transform 0.15s ease-out; }
+
+    /* Piece gliding animation */
+    .piece-glide {
+      position: absolute;
+      width: 85%;
+      height: 85%;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 20;
+      pointer-events: none;
+      filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.4));
+      transition: left ease-out, top ease-out;
+    }
+    .piece-glide.fast { transition-duration: 100ms; }
+    .piece-glide.normal { transition-duration: 200ms; }
+    .piece-glide.slow { transition-duration: 400ms; }
+
+    /* Capture animations */
+    @keyframes piece-captured-classic {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(0.5); opacity: 0; }
+    }
+    @keyframes piece-captured-pop {
+      0% { transform: scale(1); opacity: 1; }
+      30% { transform: scale(1.3); opacity: 0.8; }
+      100% { transform: scale(0); opacity: 0; }
+    }
+    @keyframes piece-captured-lightning {
+      0% { transform: scale(1); opacity: 1; filter: brightness(1) drop-shadow(1px 1px 2px rgba(0,0,0,0.4)); }
+      15% { transform: scale(1.1); opacity: 1; filter: brightness(3) drop-shadow(0 0 12px #fff); }
+      30% { transform: scale(1.2); opacity: 0.9; filter: brightness(5) drop-shadow(0 0 20px #fff); }
+      50% { transform: scale(1.1); opacity: 0.6; filter: brightness(3) drop-shadow(0 0 8px rgba(255,255,255,0.5)); }
+      100% { transform: scale(0); opacity: 0; filter: brightness(1); }
+    }
+    .piece-capture-anim {
+      position: absolute;
+      width: 85%;
+      height: 85%;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 19;
+      pointer-events: none;
+      filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.4));
+    }
+    .piece-capture-anim.anim-classic { animation: piece-captured-classic 0.3s ease-out forwards; }
+    .piece-capture-anim.anim-pop { animation: piece-captured-pop 0.4s ease-out forwards; }
+    .piece-capture-anim.anim-lightning { animation: piece-captured-lightning 0.5s ease-out forwards; }
+
+    /* Shatter particles */
+    .shatter-particle {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      z-index: 19;
+      pointer-events: none;
+      opacity: 1;
+      transition: all 0.5s ease-out;
+    }
+    .shatter-particle.fly {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    /* Smoke particles */
+    .smoke-particle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(100,100,100,0.7);
+      z-index: 19;
+      pointer-events: none;
+      opacity: 0.8;
+      transition: all 0.6s ease-out;
+    }
+    .smoke-particle.rise {
+      opacity: 0;
+      transform: scale(2.5) translateY(-20px);
+    }
+
+    @keyframes board-shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+      20%, 40%, 60%, 80% { transform: translateX(3px); }
+    }
+    .chess-board.shake { animation: board-shake 0.4s ease-out; }
+
+    .square.capture-flash { animation: capture-flash-anim 0.4s ease-out; }
+    @keyframes capture-flash-anim {
+      0% { background: rgba(231,76,60,0.5) !important; }
+      100% { background: inherit; }
+    }
+
+    /* ===== COSMETICS PAGE ===== */
+    .cosmetics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 14px;
+    }
+    .cosmetic-card {
+      background: #fff;
+      border: 2px solid #ddd;
+      border-radius: 14px;
+      padding: 20px 16px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .cosmetic-card:hover { border-color: #999; }
+    .cosmetic-card.selected { border-color: #111; box-shadow: 0 0 0 2px #111; }
+    .cosmetic-card.locked { opacity: 0.55; }
+    .cosmetic-card .cos-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .cosmetic-card .cos-icon img {
+      width: 100%;
+      height: 100%;
+    }
+    .cosmetic-card .cos-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: #111;
+      margin-bottom: 4px;
+    }
+    .cosmetic-card .cos-req {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .cosmetic-card .cos-btn {
+      display: inline-block;
+      padding: 7px 20px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .cosmetic-card .cos-btn.select-btn {
+      background: #111;
+      color: #fff;
+    }
+    .cosmetic-card .cos-btn.select-btn:hover {
+      background: #333;
+    }
+    .cosmetic-card .cos-btn.selected-btn {
+      background: #f0f0f0;
+      color: #111;
+      border: 1px solid #ccc;
+      cursor: default;
+    }
+    .cosmetic-card .cos-btn.locked-btn {
+      background: #eee;
+      color: #aaa;
+      cursor: default;
+    }
+    .cosmetic-card .cos-preview {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .square.last-move-from.light { background: rgba(245,246,130,0.5); }
+    .square.last-move-from.dark { background: rgba(200,209,74,0.5); }
+
+    /* Move counter */
+    .move-counter { text-align: center; padding: 6px 12px; font-size: 12px; font-weight: 700; color: #888; }
+
+    /* Material advantage */
+    .p-material { font-size: 12px; font-weight: 800; color: #888; margin-left: 4px; }
+
+    /* FPS counter */
+    .fps-counter { font-size: 10px; font-weight: 700; color: #555; }
+
+    /* Left sidebar extra sections */
+    .sidebar-section { margin-top: 16px; }
+    .sidebar-section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #aaa; margin-bottom: 8px; }
+    .mh-result { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; }
+    .mh-result.win { background: rgba(46,204,113,0.15); color: #27ae60; }
+    .mh-result.loss { background: rgba(231,76,60,0.15); color: #e74c3c; }
+    .mh-result.draw { background: rgba(149,165,166,0.15); color: #95a5a6; }
+
+    .achievement-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #f5f5f5; border: 1px solid #eee; border-radius: 6px; font-size: 10px; font-weight: 700; color: #555; margin: 2px; }
+    .achievement-badge.unlocked { background: #111; color: #fff; border-color: #111; }
+
+    .friend-online-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 12px; font-weight: 600; color: #aaa; }
+
+    /* Settings extras */
+    .setting-select { padding: 6px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 13px; font-family: inherit; background: #f5f5f5; color: #111; outline: none; cursor: pointer; }
+    .setting-select:focus { border-color: #111; }
+
+    /* Tip / info cards in center */
+    .center-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .center-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .cc-icon {
+      width: 36px;
+      height: 36px;
+      background: #111;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .cc-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cc-title {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #111;
+      margin-bottom: 3px;
+    }
+
+    .cc-text {
+      font-size: 12px;
+      color: #777;
+      line-height: 1.5;
+    }
+
+    /* Right: Menu buttons */
+    .home-right {
+      padding: 16px 14px;
+      border-left: 1px solid #ddd;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+    }
+
+    .hr-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #bbb;
+      padding: 6px 4px 2px;
+    }
+
+    .menu-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      background: #fff;
+      color: #111;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+
+    .menu-btn:hover { background: #f5f5f5; border-color: #111; }
+    .menu-btn .mb-icon { font-size: 16px; width: 28px; height: 28px; background: #111; color: #fff; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+    .menu-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .menu-btn-outline {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 12px 8px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+
+    .menu-btn-outline:hover { background: #222; }
+    .menu-btn-outline .mbo-icon { font-size: 20px; }
+
+    /* ===== GAME BROWSER PAGE ===== */
+    .browser-content {
+      flex: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .browser-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 24px;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 0;
+    }
+
+    .browser-top h2 {
+      font-size: 18px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #111;
+    }
+
+    .browser-top .bt-count {
+      background: #111;
+      color: #fff;
+      padding: 3px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 800;
+      margin-left: 8px;
+    }
+
+    .bt-back {
+      padding: 8px 20px;
+      background: #f0f0f0;
+      color: #333;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .bt-back:hover { background: #e0e0e0; color: #111; }
+
+    .gb-head {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 100px;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #999;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .gb-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 100px;
+      padding: 14px;
+      align-items: center;
+      border-bottom: 1px solid #f0f0f0;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-radius: 8px;
+    }
+
+    .gb-row:hover { background: #f0f0f0; }
+
+    .gb-player { display: flex; align-items: center; gap: 10px; }
+
+    .gb-av {
+      width: 32px; height: 32px;
+      background: #f0f0f0;
+      border: 1px solid #111;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 12px; color: #111;
+    }
+
+    .gb-info { display: flex; flex-direction: column; }
+    .gb-name { font-weight: 800; font-size: 14px; color: #111; }
+    .gb-creator { font-size: 11px; color: #888; }
+
+    .gb-join {
+      padding: 8px 18px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .gb-join:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+
+    .gb-empty {
+      padding: 60px 20px;
+      text-align: center;
+      color: #aaa;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .gb-empty-icon { font-size: 40px; opacity: 0.3; margin-bottom: 10px; }
+
+    .create-inline {
+      margin-top: 20px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .create-inline h3 {
+      font-size: 14px;
+      font-weight: 800;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      color: #111;
+    }
+
+    .ci-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .ci-row input, .ci-row select {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #f0f0f0;
+      color: #111;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .ci-row input::placeholder { color: #aaa; }
+    .ci-row input:focus, .ci-row select:focus { border-color: #111; }
+    .ci-row select option { background: #1a1a2e; color: #111; }
+
+    .ci-create {
+      padding: 10px 24px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ci-create:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+
+    /* ===== PROFILE PAGE ===== */
+    .profile-content {
+      flex: 1;
+      max-width: 800px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .profile-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 24px;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 0;
+    }
+
+    .profile-top h2 {
+      font-size: 18px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #111;
+    }
+
+    .profile-body {
+      padding: 20px 24px;
+    }
+
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .profile-main {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .pm-avatar {
+      width: 100px; height: 100px;
+      background: #f0f0f0;
+      border: 2px solid #111;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      margin-bottom: 10px;
+    }
+
+    .pm-arrows { display: flex; gap: 6px; margin-bottom: 14px; }
+
+    .pm-arrow {
+      padding: 6px 18px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .pm-arrow:hover { background: #333; }
+
+    .pm-name { font-size: 22px; font-weight: 900; margin-bottom: 16px; color: #111; }
+
+    .pm-rows { width: 100%; }
+
+    .pm-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .pm-row:last-child { border-bottom: none; }
+    .pm-row .pml { color: #777; }
+    .pm-row .pmv { font-weight: 900; color: #111; }
+    .pm-row .pmv.purple { color: #111; }
+    .pm-row .pmv.green { color: #2ecc71; }
+    .pm-row .pmv.red { color: #e74c3c; }
+
+    .friend-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .friend-card h3 {
+      font-size: 16px;
+      font-weight: 900;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 18px;
+      color: #111;
+    }
+
+    .friend-empty {
+      height: 200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: 13px;
+      gap: 10px;
+    }
+
+    .friend-empty .fe-icon { font-size: 32px; opacity: 0.4; color: #111; }
+
+    .profile-exit {
+      margin-top: 24px;
+      text-align: center;
+    }
+
+    .exit-btn {
+      padding: 12px 40px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .exit-btn:hover { background: #333; }
+
+    /* ===== SETTINGS PAGE ===== */
+    .settings-content {
+      flex: 1;
+      max-width: 600px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .settings-body {
+      padding: 20px 24px;
+    }
+
+    .settings-section {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+    }
+
+    .settings-section h3 {
+      font-size: 13px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin-bottom: 14px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .setting-row:last-child { border-bottom: none; }
+
+    .setting-label { font-size: 14px; font-weight: 700; color: #111; }
+    .setting-desc { font-size: 11px; color: #999; margin-top: 2px; }
+
+    .setting-toggle {
+      width: 48px; height: 26px;
+      background: #ccc;
+      border: none;
+      border-radius: 13px;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+    }
+
+    .setting-toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: transform 0.2s;
+    }
+
+    .setting-toggle.on { background: #27ae60; }
+    .setting-toggle.on::after { transform: translateX(22px); }
+
+    .theme-options {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .theme-opt {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 6px;
+      background: transparent;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      color: #aaa;
+      transition: all 0.2s;
+    }
+
+    .theme-opt:hover { border-color: #111; }
+    .theme-opt.active { border-color: #111; color: #111; background: #f5f5f5; }
+
+    .theme-preview {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 36px; height: 36px;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    /* ===== INFO PAGES (Rules, Help, About, Players) ===== */
+    .info-content {
+      flex: 1;
+      width: 100%;
+    }
+
+    .info-top {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 24px;
+      border-bottom: 1px solid #ddd;
+      margin-bottom: 0;
+    }
+
+    .info-top h2 {
+      font-size: 18px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #111;
+    }
+
+    .info-body {
+      padding: 20px 24px;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .info-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .info-card h3 {
+      font-size: 15px;
+      font-weight: 800;
+      color: #111;
+      margin-bottom: 10px;
+    }
+
+    .info-card p, .info-card li {
+      font-size: 13px;
+      line-height: 1.7;
+      color: #555;
+    }
+
+    .info-card ul { margin-left: 18px; }
+    .info-card li { margin-bottom: 4px; }
+
+    .piece-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    .piece-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #999;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .piece-table td {
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #555;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .piece-table .piece-icon { font-size: 24px; }
+
+    /* Players table */
+    .players-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card .stat-val {
+      font-size: 28px;
+      font-weight: 900;
+      color: #111;
+    }
+
+    .stat-card .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #999;
+      margin-top: 4px;
+    }
+
+    .stat-card.purple .stat-val { color: #111; }
+    .stat-card.green .stat-val { color: #2ecc71; }
+    .stat-card.red .stat-val { color: #e74c3c; }
+
+    /* ===== OVERLAYS ===== */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .overlay.active { display: flex; }
+
+    .overlay-card {
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .overlay-card h3 { font-size: 18px; font-weight: 900; text-transform: uppercase; margin-bottom: 16px; color: #111; }
+
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #ccc;
+      border-top-color: #333;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .ov-cancel {
+      padding: 10px 30px;
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      color: #333;
+      transition: all 0.2s;
+    }
+
+    .ov-cancel:hover { background: #ddd; }
+
+    /* ===== GAME VIEW ===== */
+    .game-body {
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      align-items: flex-start;
+      justify-content: center;
+      flex: 1;
+    }
+
+    .board-col { display: flex; flex-direction: column; gap: 6px; }
+
+    .player-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 10px 14px;
+      transition: all 0.2s;
+    }
+
+    .player-bar.active-turn { border-color: #4caf50; border-left: 4px solid #4caf50; box-shadow: 0 0 12px rgba(76,175,80,0.2); }
+    .player-bar:not(.active-turn) { opacity: 0.6; }
+    .player-bar.active-turn .p-dot { background: #4caf50 !important; border-color: #4caf50 !important; animation: pulse-turn-dot 1.5s infinite; }
+    @keyframes pulse-turn-dot { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(76,175,80,0.5)} 50%{opacity:0.7;box-shadow:0 0 0 6px rgba(76,175,80,0)} }
+    .player-bar .turn-label { display: none; font-size: 11px; font-weight: 800; color: #4caf50; text-transform: uppercase; letter-spacing: 1px; margin-left: 8px; }
+    .player-bar.active-turn.is-you .turn-label { display: inline; }
+
+    .p-info { display: flex; align-items: center; gap: 8px; }
+    .p-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #aaa; }
+    .p-name { font-weight: 800; font-size: 14px; color: #111; }
+    .p-captured { font-size: 13px; letter-spacing: 1px; color: #777; }
+    .p-timer { font-size: 16px; font-weight: 900; background: #f0f0f0; padding: 6px 12px; border-radius: 8px; border: 1px solid #ccc; min-width: 62px; text-align: center; color: #111; }
+    .p-timer.low-time { color: #e74c3c; animation: pulse-t 1s infinite; }
+    @keyframes pulse-t { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .chess-board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      width: min(calc(100vw - 48px), 520px);
+      height: min(calc(100vw - 48px), 520px);
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      overflow: hidden;
+      user-select: none;
+      position: relative;
+    }
+
+    .square { position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .square.light { background: #f0d9b5; }
+    .square.dark { background: #b58863; }
+    .square.selected.light { background: #f7ec7d; }
+    .square.selected.dark { background: #baca44; }
+    .square.last-move.light { background: #f5f682; }
+    .square.last-move.dark { background: #c8d14a; }
+    .square.in-check { background: rgba(231,76,60,0.6) !important; }
+
+    .square .coord { position: absolute; font-size: 9px; font-weight: 700; opacity: 0.5; pointer-events: none; }
+    .square .coord.file { bottom: 1px; right: 2px; }
+    .square .coord.rank { top: 1px; left: 2px; }
+    .square.light .coord { color: #b58863; }
+    .square.dark .coord { color: #f0d9b5; }
+
+    .piece {
+      width: 85%;
+      height: 85%;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      cursor: grab;
+      z-index: 2;
+      filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.4));
+    }
+
+    .piece:active { cursor: grabbing; }
+    .piece.dragging {
+      position: fixed !important;
+      pointer-events: none !important;
+      z-index: 9999 !important;
+      transform: scale(1.1);
+      filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
+      cursor: grabbing;
+      width: 65px;
+      height: 65px;
+    }
+
+    .move-dot { position: absolute; width: 32%; height: 32%; background: rgba(0,0,0,0.3); border-radius: 50%; pointer-events: none; z-index: 1; }
+    .move-dot.capture { width: 88%; height: 88%; background: rgba(220,40,40,0.15); border: 4px solid rgba(220,40,40,0.65); border-radius: 50%; }
+
+    .sidebar { display: flex; flex-direction: column; gap: 8px; width: 260px; flex-shrink: 0; }
+    .sb-card { background: #fff; border: 1px solid #ddd; border-radius: 12px; overflow: hidden; }
+    .sb-card h3 { padding: 10px 14px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #999; border-bottom: 1px solid #eee; }
+
+    .move-list { padding: 6px; max-height: 240px; overflow-y: auto; font-size: 13px; }
+    .move-list::-webkit-scrollbar { width: 3px; }
+    .move-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    .move-row { display: flex; margin-bottom: 1px; }
+    .move-num { width: 28px; color: #aaa; text-align: right; padding-right: 5px; }
+    .move-san { width: 56px; padding: 2px 5px; border-radius: 4px; color: #111; }
+    .move-san:hover { background: #f0f0f0; }
+
+    .game-actions { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .ga-btn { width: 100%; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; border: 2px solid #ccc; background: #fff; color: #111; transition: all 0.2s; }
+    .ga-btn:hover { border-color: #111; }
+    .ga-btn.danger { background: rgba(231,76,60,0.15); color: #e74c3c; border-color: rgba(231,76,60,0.3); }
+    .ga-btn.danger:hover { background: rgba(231,76,60,0.25); }
+
+    .chat-msgs { height: 120px; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+    .chat-m { font-size: 12px; }
+    .chat-m .cs { font-weight: 700; color: #111; }
+    .chat-m .ct { color: #666; }
+    .chat-row { display: flex; border-top: 1px solid #eee; }
+    .chat-row input { flex: 1; background: none; border: none; padding: 8px 10px; font-size: 12px; font-family: inherit; outline: none; color: #111; }
+    .chat-row input::placeholder { color: #bbb; }
+    .chat-row button { background: none; border: none; color: #111; padding: 8px 12px; cursor: pointer; font-weight: 700; font-size: 12px; font-family: inherit; }
+
+    .draw-banner { display: none; background: rgba(243,156,18,0.15); color: #f39c12; padding: 10px 14px; border-radius: 10px; border: 1px solid rgba(243,156,18,0.3); font-size: 12px; font-weight: 700; align-items: center; justify-content: space-between; }
+    .draw-banner.active { display: flex; }
+    .draw-banner button { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; border: none; margin-left: 6px; }
+    .draw-banner .db-accept { background: #2ecc71; color: #fff; }
+    .draw-banner .db-decline { background: #e74c3c; color: #fff; }
+
+    /* Promo & Game Over modals */
+    .promo-pieces { display: flex; gap: 8px; justify-content: center; }
+    .promo-piece { font-size: 40px; padding: 10px 14px; background: #eee; border: 1px solid #ccc; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+    .promo-piece:hover { border-color: #111; transform: scale(1.1); background: #eee; }
+
+    .go-modal { max-width: 360px; }
+    .go-modal .go-icon { font-size: 52px; margin-bottom: 8px; }
+    .go-modal h3 { font-size: 24px; font-weight: 900; }
+    .go-modal .go-detail { color: #777; margin-bottom: 18px; font-size: 14px; }
+
+    .go-btn {
+      width: 100%;
+      padding: 14px;
+      background: #111;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .go-btn:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); background: #111; color: #fff; padding: 12px 24px; border-radius: 10px; font-size: 13px; font-weight: 600; z-index: 300; transition: transform 0.3s; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Board themes */
+    .chess-board.theme-blue .square.light { background: #dee3e6; }
+    .chess-board.theme-blue .square.dark { background: #8ca2ad; }
+    .chess-board.theme-blue .square.selected.light { background: #f7ec7d; }
+    .chess-board.theme-blue .square.selected.dark { background: #baca44; }
+    .chess-board.theme-blue .square.last-move.light { background: #d4e157; }
+    .chess-board.theme-blue .square.last-move.dark { background: #a2b549; }
+
+    .chess-board.theme-green .square.light { background: #eeeed2; }
+    .chess-board.theme-green .square.dark { background: #769656; }
+    .chess-board.theme-green .square.selected.light { background: #f7ec7d; }
+    .chess-board.theme-green .square.selected.dark { background: #baca44; }
+    .chess-board.theme-green .square.last-move.light { background: #f5f682; }
+    .chess-board.theme-green .square.last-move.dark { background: #c8d14a; }
+
+    .chess-board.theme-purple .square.light { background: #e8dff5; }
+    .chess-board.theme-purple .square.dark { background: #7b61a5; }
+    .chess-board.theme-purple .square.selected.light { background: #f7ec7d; }
+    .chess-board.theme-purple .square.selected.dark { background: #baca44; }
+    .chess-board.theme-purple .square.last-move.light { background: #d4b4ff; }
+    .chess-board.theme-purple .square.last-move.dark { background: #9a7dc8; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .home-content { grid-template-columns: 1fr; }
+      .home-left { border-right: none; border-bottom: 1px solid #eee; }
+      .home-right { border-left: none; border-top: 1px solid #eee; }
+      .profile-grid { grid-template-columns: 1fr; }
+      .game-body { flex-direction: column; align-items: center; }
+      .sidebar { width: 100%; max-width: min(calc(100vw - 48px), 520px); }
+      .players-stats { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== APP FRAME ===== -->
+<div class="app-frame" id="app-frame">
+
+  <!-- Header -->
+  <div class="app-header">
+    <div class="hdr-brand" style="cursor:pointer" onclick="showPage('home-page')">
+      <img src="/pieces/wN.svg" width="30" height="30" style="filter:brightness(10);margin-right:2px">
+      <span style="font-weight:900;font-size:22px;letter-spacing:1px">XS Chess</span>
+    </div>
+    <div class="hdr-right">
+      <button class="hdr-btn" id="hdr-save" title="Save"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+      <button class="hdr-btn" id="hdr-settings" title="Settings"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+      <button class="hdr-btn" id="hdr-profile" title="Profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+    </div>
+  </div>
+
+  <!-- ===== HOME PAGE ===== -->
+  <div class="page active" id="home-page">
+    <div class="home-content">
+      <!-- Left: Profile -->
+      <div class="home-left">
+        <div class="profile-head">
+          <div class="profile-avatar" id="home-avatar"><img src="/pieces/wN.svg" alt="avatar"></div>
+          <div class="profile-head-right">
+            <button class="profile-edit-btn" id="edit-name-btn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> edit</button>
+            <div class="profile-username" id="home-username">ANONYMOUS</div>
+          </div>
+        </div>
+        <div class="profile-stats">
+          <div class="ps-row"><span class="ps-label">registration date:</span><span class="ps-val" id="ps-joined">--</span></div>
+          <div class="ps-row"><span class="ps-label">rank:</span><span class="ps-val" id="ps-rank" style="color:#111">NEW</span></div>
+          <div class="ps-row"><span class="ps-label">games played:</span><span class="ps-val" id="ps-games">0</span></div>
+          <div class="ps-row"><span class="ps-label">wins:</span><span class="ps-val green" id="ps-wins">0</span></div>
+          <div class="ps-row"><span class="ps-label">losses:</span><span class="ps-val red" id="ps-losses">0</span></div>
+          <div class="ps-row"><span class="ps-label">draws:</span><span class="ps-val" id="ps-draws">0</span></div>
+          <div class="ps-eff-row"><span>efficiency:</span><span id="ps-eff">0%</span></div>
+        </div>
+        <div class="eff-chart">
+          <span class="eff-100">100</span>
+          <span class="eff-0">0</span>
+          <span class="eff-y-label">efficiency</span>
+          <span class="eff-x-label">days</span>
+          <div class="eff-line"></div>
+        </div>
+
+        <!-- Achievements -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="Achievements">Achievements</div>
+          <div id="achievements-list" style="background:#fff;border:1px solid #ddd;border-radius:10px;padding:8px;">
+          </div>
+        </div>
+
+        <!-- Friends Online -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-title" data-i18n="Friends Online">Friends Online</div>
+          <div style="background:#fff;border:1px solid #ddd;border-radius:10px;padding:10px;">
+            <div class="friend-online-item">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              No friends online
+            </div>
+            <div style="font-size:10px;color:#bbb;margin-top:4px">Play games to meet other players!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center -->
+      <div class="home-center">
+        <div class="hero-banner">
+          <div class="hero-top-row">
+            <div class="hero-board" id="hero-board"></div>
+            <div class="hero-title">
+              <h1>XS CHESS</h1>
+              <div class="hero-sub">Online Multiplayer</div>
+              <div class="online-badge"><span class="ob-dot"></span> <span id="online-count">1</span> <span data-i18n="Online">Online</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="center-body">
+          <div class="center-actions">
+            <button class="ca-btn primary" id="btn-create"><span class="ca-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span> <span data-i18n="Create Game">Create Game</span></button>
+            <button class="ca-btn" id="btn-play"><span class="ca-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span> <span data-i18n="Find Game">Find Game</span></button>
+            <button class="ca-btn" id="btn-watch"><span class="ca-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span> <span data-i18n="Watch">Watch</span></button>
+            <button class="ca-btn" id="btn-quick"><span class="ca-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span> <span data-i18n="Quick Play">Quick Play</span></button>
+            <button class="ca-btn" id="btn-vs-bot"><span class="ca-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="3"/><line x1="8" y1="16" x2="8" y2="16.01"/><line x1="16" y1="16" x2="16" y2="16.01"/><line x1="12" y1="16" x2="12" y2="19"/></svg></span> <span data-i18n="Play vs Bot">Play vs Bot</span></button>
+            <button class="ca-btn" id="btn-puzzles"><span class="ca-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span> <span data-i18n="Puzzles">Puzzles</span></button>
+            <button class="ca-btn" id="btn-tourney"><span class="ca-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></span> <span data-i18n="Tournaments">Tournaments</span></button>
+          </div>
+          <div class="center-cards">
+            <div class="center-card">
+              <div class="cc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+              <div class="cc-body">
+                <div class="cc-title" data-i18n="Quick Tip">Quick Tip</div>
+                <div class="cc-text">Control the center of the board early. Knights and bishops are strongest when placed on central squares.</div>
+              </div>
+            </div>
+            <div class="center-card">
+              <div class="cc-icon"><img src="/pieces/wK.svg" width="22" height="22" alt="king"></div>
+              <div class="cc-body">
+                <div class="cc-title" data-i18n="Daily Challenge">Daily Challenge</div>
+                <div class="cc-text">Win 3 games today to earn the "Hat Trick" achievement. Progress: <strong id="daily-progress">0/3</strong></div>
+              </div>
+            </div>
+            <div class="center-card">
+              <div class="cc-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+              <div class="cc-body">
+                <div class="cc-title" data-i18n="Recent Activity">Recent Activity</div>
+                <div class="cc-text" id="recent-activity">No games played yet. Create or join a game to get started!</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Menu -->
+      <div class="home-right">
+        <div class="hr-label" data-i18n="Account">Account</div>
+        <div class="menu-row">
+          <button class="menu-btn-outline" id="btn-save-profile"><span class="mbo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></span> <span data-i18n="Save">save</span></button>
+          <button class="menu-btn-outline" id="btn-profile"><span class="mbo-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span> <span data-i18n="Profile">profile</span></button>
+        </div>
+        <button class="menu-btn" id="btn-settings2"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> <span data-i18n="Settings">Settings</span></button>
+        <button class="menu-btn" id="btn-players"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg></span> <span data-i18n="My Stats">My Stats</span></button>
+        <div class="hr-label" data-i18n="Learn">Learn</div>
+        <button class="menu-btn" id="btn-cosmetics"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/></svg></span> <span data-i18n="Cosmetics">Cosmetics</span></button>
+        <button class="menu-btn" id="btn-openings"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span> <span data-i18n="Openings">Openings</span></button>
+        <button class="menu-btn" id="btn-analysis"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> <span data-i18n="Analysis">Analysis</span></button>
+        <div class="hr-label" data-i18n="More">More</div>
+        <button class="menu-btn" id="btn-help"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span> <span data-i18n="Help">Help</span></button>
+        <button class="menu-btn" id="btn-leaderboard"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span> <span data-i18n="Leaderboard">Leaderboard</span></button>
+        <button class="menu-btn" id="btn-about"><span class="mb-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></span> <span data-i18n="About">About</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAME BROWSER PAGE ===== -->
+  <div class="page" id="browser-page">
+    <div class="browser-content">
+      <div class="browser-top">
+        <h2>Open Games <span class="bt-count" id="games-count">0</span></h2>
+        <button class="bt-back" id="browser-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+      </div>
+      <div style="padding:0 24px 24px">
+        <div class="gb-head"><span>Game</span><span>Time</span><span>Created</span><span></span></div>
+        <div id="game-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CREATE GAME PAGE ===== -->
+  <div class="page" id="create-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="create-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Create Game</h2>
+      </div>
+      <div class="info-body">
+        <div class="info-card" style="padding:32px">
+          <h3 style="margin-bottom:20px">Game Settings</h3>
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div class="setting-label" style="margin-bottom:6px">Game Name</div>
+              <input type="text" id="game-name" placeholder="Enter a name (optional)" maxlength="30" style="width:100%;padding:12px 14px;border:1px solid #ccc;border-radius:10px;font-size:14px;font-family:inherit;background:#f0f0f0;color:#111;outline:none;">
+            </div>
+            <div>
+              <div class="setting-label" style="margin-bottom:6px">Time Control</div>
+              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="time-grid">
+                <button class="theme-opt" data-time="none">No Limit</button>
+                <button class="theme-opt" data-time="1">1 min</button>
+                <button class="theme-opt" data-time="3">3 min</button>
+                <button class="theme-opt" data-time="5">5 min</button>
+                <button class="theme-opt active" data-time="10">10 min</button>
+                <button class="theme-opt" data-time="15">15 min</button>
+                <button class="theme-opt" data-time="30">30 min</button>
+              </div>
+            </div>
+            <button class="go-btn" id="create-btn" style="margin-top:8px;padding:16px;font-size:16px">Create Game</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROFILE PAGE ===== -->
+  <div class="page" id="profile-page">
+    <div class="profile-content">
+      <div class="profile-top">
+        <button class="bt-back" id="profile-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Player Profile</h2>
+      </div>
+      <div class="profile-body">
+        <div class="profile-grid">
+          <div class="profile-main">
+            <div class="pm-avatar" id="pm-avatar"><img src="/pieces/wN.svg" alt="avatar"></div>
+            <div class="pm-arrows">
+              <button class="pm-arrow" id="pm-prev">&#9664;</button>
+              <button class="pm-arrow" id="pm-next">&#9654;</button>
+            </div>
+            <div class="pm-name" id="pm-name">Anonymous</div>
+            <button class="go-btn" id="pm-edit-name" style="width:100%;margin-bottom:16px;padding:10px;font-size:13px">Edit Name</button>
+            <div class="pm-rows">
+              <div class="pm-row"><span class="pml">Player Rank</span><span class="pmv purple" id="pm-rank">NEW</span></div>
+              <div class="pm-row"><span class="pml">Joined</span><span class="pmv" id="pm-joined">--</span></div>
+              <div class="pm-row"><span class="pml">Championships</span><span class="pmv green" id="pm-wins">0</span></div>
+              <div class="pm-row"><span class="pml">Losses</span><span class="pmv red" id="pm-losses">0</span></div>
+              <div class="pm-row"><span class="pml">Draws</span><span class="pmv" id="pm-draws">0</span></div>
+            </div>
+          </div>
+          <div class="friend-card">
+            <h3>Friend List</h3>
+            <div class="friend-empty">
+              <div class="fe-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+              <p>No friends yet.<br>Play to meet players!</p>
+            </div>
+          </div>
+        </div>
+        <div class="profile-exit">
+          <button class="exit-btn" id="profile-exit"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back to Home</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SETTINGS PAGE ===== -->
+  <div class="page" id="settings-page">
+    <div class="settings-content">
+      <div class="info-top">
+        <button class="bt-back" id="settings-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> <span data-i18n="Back">Back</span></button>
+        <h2 data-i18n="Settings">Settings</h2>
+      </div>
+      <div class="settings-body">
+      <div class="settings-section">
+        <h3 data-i18n="Board Theme">Board Theme</h3>
+        <div class="theme-options" id="theme-options">
+          <button class="theme-opt active" data-theme="classic">
+            <div class="theme-preview"><div style="background:#f0d9b5"></div><div style="background:#b58863"></div><div style="background:#b58863"></div><div style="background:#f0d9b5"></div></div>
+            Classic
+          </button>
+          <button class="theme-opt" data-theme="blue">
+            <div class="theme-preview"><div style="background:#dee3e6"></div><div style="background:#8ca2ad"></div><div style="background:#8ca2ad"></div><div style="background:#dee3e6"></div></div>
+            Ice
+          </button>
+          <button class="theme-opt" data-theme="green">
+            <div class="theme-preview"><div style="background:#eeeed2"></div><div style="background:#769656"></div><div style="background:#769656"></div><div style="background:#eeeed2"></div></div>
+            Forest
+          </button>
+          <button class="theme-opt" data-theme="purple">
+            <div class="theme-preview"><div style="background:#e8dff5"></div><div style="background:#7b61a5"></div><div style="background:#7b61a5"></div><div style="background:#e8dff5"></div></div>
+            Royal
+          </button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3 data-i18n="Gameplay">Gameplay</h3>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Sound Effects">Sound Effects</div><div class="setting-desc">Play sounds on moves and captures</div></div>
+          <button class="setting-toggle on" id="toggle-sound"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Notifications">Notifications</div><div class="setting-desc">Show game notifications and alerts</div></div>
+          <button class="setting-toggle on" id="toggle-notifications"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Show Coordinates">Show Coordinates</div><div class="setting-desc">Display rank and file labels on the board</div></div>
+          <button class="setting-toggle on" id="toggle-coords"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Show Legal Moves">Show Legal Moves</div><div class="setting-desc">Highlight valid squares when selecting a piece</div></div>
+          <button class="setting-toggle on" id="toggle-legal"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Auto-Queen">Auto-Queen</div><div class="setting-desc">Automatically promote pawns to queen</div></div>
+          <button class="setting-toggle" id="toggle-autoqueen"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Move Confirmation">Move Confirmation</div><div class="setting-desc">Require confirmation before making a move</div></div>
+          <button class="setting-toggle" id="toggle-moveconfirm"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Board Animation Speed">Board Animation Speed</div><div class="setting-desc">Speed of piece movement animations</div></div>
+          <select class="setting-select" id="select-animspeed">
+            <option value="fast">Fast</option>
+            <option value="normal" selected>Normal</option>
+            <option value="slow">Slow</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3 data-i18n="Language">Language</h3>
+        <div class="setting-row">
+          <div><div class="setting-label">Interface Language</div><div class="setting-desc">Select your preferred language</div></div>
+          <select class="setting-select" id="select-language">
+            <option value="en" selected>English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="pt">Portuguese</option>
+            <option value="ru">Russian</option>
+            <option value="zh">Chinese</option>
+            <option value="ja">Japanese</option>
+            <option value="ko">Korean</option>
+          </select>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3 data-i18n="Account">Account</h3>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Player Name">Player Name</div><div class="setting-desc" id="settings-name-display">Anonymous</div></div>
+          <button style="padding:6px 16px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:#111;color:#fff;border:none;border-radius:8px" id="settings-edit-name">Change</button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-label" data-i18n="Reset Stats">Reset Stats</div><div class="setting-desc">Clear all game history and statistics</div></div>
+          <button style="padding:6px 16px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;background:rgba(231,76,60,0.1);color:#e74c3c;border:1px solid rgba(231,76,60,0.3);border-radius:8px" id="settings-reset">Reset</button>
+        </div>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CHESS RULES PAGE ===== -->
+  <div class="page" id="rules-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="rules-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Chess Rules</h2>
+      </div>
+      <div class="info-body">
+      <div class="info-card">
+        <h3>The Pieces</h3>
+        <table class="piece-table">
+          <tr><th>Piece</th><th>Name</th><th>Movement</th></tr>
+          <tr><td class="piece-icon"><img src="/pieces/wK.svg" width="28" height="28"></td><td>King</td><td>One square in any direction</td></tr>
+          <tr><td class="piece-icon"><img src="/pieces/wQ.svg" width="28" height="28"></td><td>Queen</td><td>Any number of squares in any direction</td></tr>
+          <tr><td class="piece-icon"><img src="/pieces/wR.svg" width="28" height="28"></td><td>Rook</td><td>Any number of squares horizontally or vertically</td></tr>
+          <tr><td class="piece-icon"><img src="/pieces/wB.svg" width="28" height="28"></td><td>Bishop</td><td>Any number of squares diagonally</td></tr>
+          <tr><td class="piece-icon"><img src="/pieces/wN.svg" width="28" height="28"></td><td>Knight</td><td>L-shape: 2 squares + 1 square, can jump pieces</td></tr>
+          <tr><td class="piece-icon"><img src="/pieces/wP.svg" width="28" height="28"></td><td>Pawn</td><td>Forward 1 (or 2 from start), captures diagonally</td></tr>
+        </table>
+      </div>
+      <div class="info-card">
+        <h3>Special Moves</h3>
+        <ul>
+          <li><strong>Castling</strong> &mdash; Move king 2 squares toward a rook. The rook jumps to the other side. Neither piece can have moved before, and the king cannot pass through check.</li>
+          <li><strong>En Passant</strong> &mdash; If a pawn moves 2 squares forward and lands beside an enemy pawn, the enemy can capture it as if it moved only 1 square. Must be done immediately.</li>
+          <li><strong>Promotion</strong> &mdash; When a pawn reaches the opposite end of the board, it must be promoted to a queen, rook, bishop, or knight.</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>Winning the Game</h3>
+        <ul>
+          <li><strong>Checkmate</strong> &mdash; The king is in check and has no legal moves to escape.</li>
+          <li><strong>Resignation</strong> &mdash; A player can resign at any time.</li>
+          <li><strong>Timeout</strong> &mdash; In timed games, running out of time means you lose.</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>Draws</h3>
+        <ul>
+          <li><strong>Stalemate</strong> &mdash; The player to move has no legal moves but is not in check.</li>
+          <li><strong>Agreement</strong> &mdash; Both players agree to a draw.</li>
+          <li><strong>Insufficient Material</strong> &mdash; Neither side has enough pieces to checkmate.</li>
+        </ul>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HELP PAGE ===== -->
+  <div class="page" id="help-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="help-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Help</h2>
+      </div>
+      <div class="info-body">
+      <div class="info-card">
+        <h3>Getting Started</h3>
+        <ul>
+          <li>Click <strong>Play Online</strong> to find or create a game</li>
+          <li>Set your name by clicking the <strong>edit</strong> button on the home screen</li>
+          <li>Choose a time control when creating a game, or play with no time limit</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>Playing a Game</h3>
+        <ul>
+          <li><strong>Click a piece</strong> to select it, then click a highlighted square to move</li>
+          <li>Legal moves are shown as dots on the board</li>
+          <li>Use the <strong>Chat</strong> panel to message your opponent</li>
+          <li>You can <strong>Offer a Draw</strong> or <strong>Resign</strong> from the Actions panel</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>Your Profile</h3>
+        <ul>
+          <li>Your stats (wins, losses, draws) are saved locally in your browser</li>
+          <li>Change your avatar from the Profile page using the arrow buttons</li>
+          <li>Your rank updates automatically based on your win rate</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>Settings</h3>
+        <ul>
+          <li>Change the <strong>board theme</strong> in Settings (Classic, Ice, Forest, Royal)</li>
+          <li>Toggle sound effects, coordinates, and legal move highlights</li>
+          <li>Reset your stats if you want a fresh start</li>
+        </ul>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MY STATS PAGE ===== -->
+  <div class="page" id="stats-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="stats-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>My Stats</h2>
+      </div>
+      <div class="info-body">
+      <div class="players-stats">
+        <div class="stat-card"><div class="stat-val" id="st-games">0</div><div class="stat-label">Games</div></div>
+        <div class="stat-card green"><div class="stat-val" id="st-wins">0</div><div class="stat-label">Wins</div></div>
+        <div class="stat-card red"><div class="stat-val" id="st-losses">0</div><div class="stat-label">Losses</div></div>
+        <div class="stat-card"><div class="stat-val" id="st-draws">0</div><div class="stat-label">Draws</div></div>
+      </div>
+      <div class="info-card">
+        <h3>Performance</h3>
+        <table class="piece-table">
+          <tr><th>Metric</th><th>Value</th></tr>
+          <tr><td>Win Rate</td><td id="st-winrate">0%</td></tr>
+          <tr><td>Current Rank</td><td id="st-rank" style="color:#111;font-weight:800">NEW</td></tr>
+          <tr><td>Member Since</td><td id="st-joined">--</td></tr>
+          <tr><td>Current Streak</td><td id="st-streak">0</td></tr>
+          <tr><td>Best Streak</td><td id="st-best">0</td></tr>
+        </table>
+      </div>
+      <div class="info-card">
+        <h3>Rank Progression</h3>
+        <table class="piece-table">
+          <tr><th>Rank</th><th>Requirement</th></tr>
+          <tr><td style="color:#111;font-weight:800">NEW</td><td>Less than 5 games played</td></tr>
+          <tr><td style="color:#2ecc71;font-weight:800">BEGINNER</td><td>5-14 games played</td></tr>
+          <tr><td style="color:#f39c12;font-weight:800">INTERMEDIATE</td><td>15+ games, under 50% win rate</td></tr>
+          <tr><td style="color:#e74c3c;font-weight:800">ADVANCED</td><td>15+ games, 50-69% win rate</td></tr>
+          <tr><td style="color:#9b59b6;font-weight:800">MASTER</td><td>15+ games, 70%+ win rate</td></tr>
+        </table>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ABOUT PAGE ===== -->
+  <div class="page" id="about-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="about-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>About</h2>
+      </div>
+      <div class="info-body">
+      <div class="info-card" style="text-align:center;padding:40px">
+        <div style="display:flex;justify-content:center;gap:8px;margin-bottom:12px"><img src="/pieces/bK.svg" width="56" height="56"><img src="/pieces/bQ.svg" width="56" height="56"></div>
+        <h3 style="font-size:24px;color:#111;margin-bottom:4px">XS Chess</h3>
+        <p style="color:#999;margin-bottom:20px">Version 1.0</p>
+        <p>A real-time online multiplayer chess game. Play against friends or strangers from around the world with customizable time controls.</p>
+      </div>
+      <div class="info-card">
+        <h3>Features</h3>
+        <ul>
+          <li>Real-time multiplayer with WebSocket connections</li>
+          <li>Multiple time controls (1, 3, 5, 10, 15, 30 minutes)</li>
+          <li>In-game chat with your opponent</li>
+          <li>Draw offers and resignation</li>
+          <li>Move history and captured pieces tracking</li>
+          <li>Customizable board themes</li>
+          <li>Local stats tracking with rank progression</li>
+        </ul>
+      </div>
+      <div class="info-card">
+        <h3>Tech Stack</h3>
+        <ul>
+          <li><strong>Frontend</strong> &mdash; Vanilla HTML/CSS/JS</li>
+          <li><strong>Backend</strong> &mdash; Node.js + Express</li>
+          <li><strong>Real-time</strong> &mdash; Socket.IO</li>
+          <li><strong>Chess Engine</strong> &mdash; chess.js</li>
+        </ul>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== COSMETICS PAGE ===== -->
+  <div class="page" id="cosmetics-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="cosmetics-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> <span data-i18n="Back">Back</span></button>
+        <h2 data-i18n="Cosmetics">Cosmetics</h2>
+      </div>
+      <div class="info-body">
+        <div class="info-card">
+          <h3>Capture Animations</h3>
+          <p style="font-size:12px;color:#888;margin-bottom:16px">Unlock new capture effects by winning games. Select your favorite style below.</p>
+          <div class="cosmetics-grid" id="cosmetics-grid"></div>
+        </div>
+        <div class="info-card" style="text-align:center;padding:20px">
+          <button class="go-btn" id="cosmetics-rules" style="padding:12px 30px;font-size:14px;background:#f0f0f0;color:#111;border:1px solid #ccc"><span data-i18n="Chess Rules">Chess Rules</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WATCH PAGE ===== -->
+  <div class="page" id="watch-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="watch-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Watch Games</h2>
+      </div>
+      <div class="info-body">
+      <div class="info-card" style="text-align:center;padding:48px">
+        <div style="opacity:0.3;margin-bottom:12px"><img src="/pieces/wN.svg" width="48" height="48"></div>
+        <h3 style="color:#777">No Active Games</h3>
+        <p>When players are in a match, you'll be able to spectate their games here. Check back when more players are online!</p>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BOT GAME PAGE ===== -->
+  <div class="page" id="bot-page">
+    <div class="game-body">
+      <div class="board-col">
+        <div class="player-bar" id="bot-top-bar">
+          <div class="p-info"><div class="p-dot" style="background:#333"></div><span class="p-name" id="bot-top-name">Bot</span><span class="turn-label">YOUR TURN</span></div>
+          <div class="p-captured" id="bot-top-cap"></div>
+        </div>
+        <div class="chess-board" id="bot-board"></div>
+        <div class="player-bar" id="bot-bot-bar">
+          <div class="p-info"><div class="p-dot" style="background:#fff;border:2px solid #ccc"></div><span class="p-name" id="bot-bot-name">You</span><span class="turn-label">YOUR TURN</span></div>
+          <div class="p-captured" id="bot-bot-cap"></div>
+        </div>
+        <div class="move-counter" id="bot-move-counter">Move: 1</div>
+      </div>
+      <div class="sidebar">
+        <div class="sb-card"><h3>Moves</h3><div class="move-list" id="bot-move-list"></div></div>
+        <div class="sb-card"><h3>Actions</h3><div class="game-actions">
+          <button class="ga-btn" id="bot-undo">Undo Move</button>
+          <button class="ga-btn" id="bot-restart">New Game</button>
+          <button class="ga-btn danger" id="bot-resign">Resign</button>
+          <button class="ga-btn" id="bot-quit" style="border-color:#111">Back to Menu</button>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== OPENINGS PAGE ===== -->
+  <div class="page" id="openings-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="openings-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Chess Openings</h2>
+      </div>
+      <div class="info-body">
+        <div class="info-card">
+          <h3>King's Pawn Openings (1. e4)</h3>
+          <table class="piece-table">
+            <tr><th>Opening</th><th>Moves</th><th>Style</th></tr>
+            <tr><td><strong>Italian Game</strong></td><td>1.e4 e5 2.Nf3 Nc6 3.Bc4</td><td>Aggressive</td></tr>
+            <tr><td><strong>Ruy Lopez</strong></td><td>1.e4 e5 2.Nf3 Nc6 3.Bb5</td><td>Positional</td></tr>
+            <tr><td><strong>Sicilian Defense</strong></td><td>1.e4 c5</td><td>Counter-attack</td></tr>
+            <tr><td><strong>French Defense</strong></td><td>1.e4 e6 2.d4 d5</td><td>Solid</td></tr>
+            <tr><td><strong>Caro-Kann</strong></td><td>1.e4 c6 2.d4 d5</td><td>Solid</td></tr>
+            <tr><td><strong>Scandinavian</strong></td><td>1.e4 d5</td><td>Aggressive</td></tr>
+            <tr><td><strong>Pirc Defense</strong></td><td>1.e4 d6 2.d4 Nf6</td><td>Flexible</td></tr>
+          </table>
+        </div>
+        <div class="info-card">
+          <h3>Queen's Pawn Openings (1. d4)</h3>
+          <table class="piece-table">
+            <tr><th>Opening</th><th>Moves</th><th>Style</th></tr>
+            <tr><td><strong>Queen's Gambit</strong></td><td>1.d4 d5 2.c4</td><td>Classical</td></tr>
+            <tr><td><strong>King's Indian</strong></td><td>1.d4 Nf6 2.c4 g6</td><td>Dynamic</td></tr>
+            <tr><td><strong>Nimzo-Indian</strong></td><td>1.d4 Nf6 2.c4 e6 3.Nc3 Bb4</td><td>Flexible</td></tr>
+            <tr><td><strong>Slav Defense</strong></td><td>1.d4 d5 2.c4 c6</td><td>Solid</td></tr>
+            <tr><td><strong>Dutch Defense</strong></td><td>1.d4 f5</td><td>Aggressive</td></tr>
+            <tr><td><strong>London System</strong></td><td>1.d4 d5 2.Bf4</td><td>Simple</td></tr>
+          </table>
+        </div>
+        <div class="info-card">
+          <h3>Tips for Beginners</h3>
+          <ul>
+            <li>Start with <strong>1.e4</strong> or <strong>1.d4</strong> &mdash; they control the center immediately</li>
+            <li>Develop your knights before bishops in most openings</li>
+            <li>Castle early to protect your king</li>
+            <li>Don't move the same piece twice in the opening unless necessary</li>
+            <li>Control the center with pawns and pieces</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ANALYSIS PAGE ===== -->
+  <div class="page" id="analysis-page">
+    <div class="game-body">
+      <div class="board-col">
+        <div class="player-bar"><div class="p-info"><div class="p-dot" style="background:#333"></div><span class="p-name">Black</span></div></div>
+        <div class="chess-board" id="analysis-board"></div>
+        <div class="player-bar"><div class="p-info"><div class="p-dot" style="background:#fff;border:2px solid #ccc"></div><span class="p-name">White</span></div></div>
+      </div>
+      <div class="sidebar">
+        <div class="sb-card"><h3>Analysis Board</h3><div style="padding:10px;font-size:12px;color:#777">Free play mode. Move pieces for both sides to analyze positions.</div></div>
+        <div class="sb-card"><h3>Moves</h3><div class="move-list" id="analysis-move-list"></div></div>
+        <div class="sb-card"><h3>Actions</h3><div class="game-actions">
+          <button class="ga-btn" id="analysis-undo">Undo Move</button>
+          <button class="ga-btn" id="analysis-reset">Reset Board</button>
+          <button class="ga-btn" id="analysis-flip">Flip Board</button>
+          <button class="ga-btn" id="analysis-quit" style="border-color:#111">Back to Menu</button>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== LEADERBOARD PAGE ===== -->
+  <div class="page" id="leaderboard-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="leaderboard-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Leaderboard</h2>
+      </div>
+      <div class="info-body">
+        <div class="players-stats">
+          <div class="stat-card"><div class="stat-val" id="lb-online">0</div><div class="stat-label">Online Now</div></div>
+          <div class="stat-card green"><div class="stat-val" id="lb-games">0</div><div class="stat-label">Your Games</div></div>
+          <div class="stat-card"><div class="stat-val" id="lb-winrate">0%</div><div class="stat-label">Win Rate</div></div>
+          <div class="stat-card"><div class="stat-val" id="lb-rank">NEW</div><div class="stat-label">Your Rank</div></div>
+        </div>
+        <div class="info-card">
+          <h3>Your Standing</h3>
+          <table class="piece-table" id="lb-table">
+            <tr><th>#</th><th>Player</th><th>W</th><th>L</th><th>D</th><th>Win%</th></tr>
+          </table>
+        </div>
+        <div class="info-card" style="text-align:center;padding:24px">
+          <p style="color:#888">Play more games to climb the ranks! The leaderboard tracks all players on this server.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PUZZLES PAGE ===== -->
+  <div class="page" id="puzzles-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="puzzles-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Puzzles</h2>
+      </div>
+      <div class="info-body">
+        <div style="text-align:center;margin-bottom:16px">
+          <span style="font-size:14px;font-weight:800;color:#111" id="puzzle-label">Puzzle 1 of 6</span>
+          <span style="display:block;font-size:12px;color:#888;margin-top:4px" id="puzzle-hint"></span>
+        </div>
+        <div style="display:flex;justify-content:center;margin-bottom:16px">
+          <div class="chess-board" id="puzzle-board" style="width:min(calc(100vw - 48px), 400px);height:min(calc(100vw - 48px), 400px)"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button class="go-btn" id="puzzle-prev" style="padding:10px 20px;font-size:13px">Previous</button>
+          <button class="go-btn" id="puzzle-next" style="padding:10px 20px;font-size:13px">Next</button>
+        </div>
+        <div id="puzzle-result" style="text-align:center;margin-top:12px;font-size:14px;font-weight:800"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TOURNAMENTS PAGE ===== -->
+  <div class="page" id="tourney-page">
+    <div class="info-content">
+      <div class="info-top">
+        <button class="bt-back" id="tourney-back"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Back</button>
+        <h2>Tournaments</h2>
+      </div>
+      <div class="info-body">
+        <div class="players-stats">
+          <div class="stat-card"><div class="stat-val" id="trn-active">0</div><div class="stat-label">Active</div></div>
+          <div class="stat-card green"><div class="stat-val" id="trn-upcoming">0</div><div class="stat-label">Upcoming</div></div>
+          <div class="stat-card"><div class="stat-val" id="trn-completed">0</div><div class="stat-label">Completed</div></div>
+          <div class="stat-card"><div class="stat-val" id="trn-yours">0</div><div class="stat-label">Your Entries</div></div>
+        </div>
+        <div class="info-card" style="text-align:center;padding:40px">
+          <div style="opacity:0.3;margin-bottom:12px"><img src="/pieces/wQ.svg" width="48" height="48"></div>
+          <h3 style="color:#777">No Active Tournaments</h3>
+          <p style="margin-bottom:20px">Tournaments require at least 4 players online. Invite friends and check back soon!</p>
+          <button class="go-btn" id="trn-create" style="padding:12px 30px;font-size:14px">Create Tournament</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAME PAGE ===== -->
+  <div class="page" id="game-page">
+    <div class="game-body">
+      <div class="board-col">
+        <div class="player-bar" id="top-bar">
+          <div class="p-info"><div class="p-dot" id="top-dot"></div><span class="p-name" id="top-name">Opponent</span><span class="turn-label">YOUR TURN</span></div>
+          <div class="p-captured" id="top-cap"></div>
+          <div class="p-timer" id="top-timer" style="display:none">10:00</div>
+        </div>
+        <div class="chess-board" id="chess-board"></div>
+        <div class="player-bar" id="bot-bar">
+          <div class="p-info"><div class="p-dot" id="bot-dot"></div><span class="p-name" id="bot-name">You</span><span class="turn-label">YOUR TURN</span></div>
+          <div class="p-captured" id="bot-cap"></div>
+          <div class="p-timer" id="bot-timer" style="display:none">10:00</div>
+        </div>
+        <div class="move-counter" id="game-move-counter">Move: 1</div>
+      </div>
+      <div class="sidebar">
+        <div class="draw-banner" id="draw-banner"><span>Draw offered</span><div><button class="db-accept" id="accept-draw">Accept</button><button class="db-decline" id="decline-draw">Decline</button></div></div>
+        <div class="sb-card"><h3>Moves</h3><div class="move-list" id="move-list"></div></div>
+        <div class="sb-card"><h3>Actions</h3><div class="game-actions" id="game-actions"><button class="ga-btn" id="offer-draw-btn">Offer Draw</button><button class="ga-btn danger" id="resign-btn">Resign</button></div></div>
+        <div class="sb-card"><h3>Chat</h3><div class="chat-msgs" id="chat-msgs"></div><div class="chat-row"><input type="text" id="chat-input" placeholder="Type..." maxlength="200"><button id="chat-send">Send</button></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="app-footer">
+    <span class="fps-counter" id="fps-counter">0 FPS</span>
+    <span>XS Chess &mdash; Online Multiplayer</span>
+    <span>Version 1.0</span>
+  </div>
+</div>
+
+<!-- Hidden name input for editing -->
+<div class="overlay" id="name-overlay">
+  <div class="overlay-card">
+    <h3>Edit Name</h3>
+    <input type="text" id="player-name" placeholder="Enter name..." maxlength="20" style="width:100%;padding:14px;border:1px solid #ccc;border-radius:10px;font-size:16px;font-family:inherit;text-align:center;outline:none;margin-bottom:16px;background:#f0f0f0;color:#111;">
+    <button class="go-btn" id="name-save">Save</button>
+  </div>
+</div>
+
+<!-- Waiting -->
+<div class="overlay" id="wait-overlay">
+  <div class="overlay-card">
+    <div class="spinner"></div>
+    <h3>Waiting for opponent...</h3>
+    <p style="color:#888;margin-bottom:16px;">Your game is in the lobby</p>
+    <button class="ov-cancel" id="cancel-wait">Cancel</button>
+  </div>
+</div>
+
+<!-- Promotion -->
+<div class="overlay" id="promo-overlay">
+  <div class="overlay-card">
+    <h3>Promote Pawn</h3>
+    <div class="promo-pieces" id="promo-pieces"></div>
+  </div>
+</div>
+
+<!-- Game Over -->
+<div class="overlay" id="go-overlay">
+  <div class="overlay-card go-modal">
+    <div class="go-icon" id="go-icon"></div>
+    <h3 id="go-title">Game Over</h3>
+    <p class="go-detail" id="go-detail"></p>
+    <button class="go-btn" id="go-lobby">Back to Lobby</button>
+  </div>
+</div>
+
+<!-- Bot Difficulty Selection -->
+<div class="overlay" id="bot-diff-overlay">
+  <div class="overlay-card" style="max-width:420px">
+    <h3>Select Difficulty</h3>
+    <div class="bot-diff-grid">
+      <button class="bot-diff-btn" data-diff="easy">
+        <div class="bdf-title">Easy</div>
+        <div class="bdf-desc">Random moves only. Great for beginners.</div>
+      </button>
+      <button class="bot-diff-btn" data-diff="medium">
+        <div class="bdf-title">Medium</div>
+        <div class="bdf-desc">Prefers captures and checks. A step up.</div>
+      </button>
+      <button class="bot-diff-btn" data-diff="hard">
+        <div class="bdf-title">Hard</div>
+        <div class="bdf-desc">Evaluates material advantage, looks 1 move ahead.</div>
+      </button>
+    </div>
+    <button class="ov-cancel" style="margin-top:16px" id="bot-diff-cancel">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/chess-browser.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// Piece image paths
+const PI = {};
+['wK','wQ','wR','wB','wN','wP','bK','bQ','bR','bB','bN','bP'].forEach(p => {
+  PI[p] = '/pieces/' + p + '.svg';
+});
+
+// Map chess.js color+type to piece image key
+function pieceKey(color, type) {
+  return color + type.toUpperCase();
+}
+
+const PU = { // Unicode fallback for UI (not board)
+  wp:'\u2659',wn:'\u2658',wb:'\u2657',wr:'\u2656',wq:'\u2655',wk:'\u2654',
+  bp:'\u265F',bn:'\u265E',bb:'\u265D',br:'\u265C',bq:'\u265B',bk:'\u265A'
+};
+const PV = {p:1,n:3,b:3,r:5,q:9,k:0};
+const AVATARS = ['\u2654','\u2655','\u2656','\u2657','\u2658','\u2659','\u265A','\u265B','\u265C','\u265D','\u265E','\u265F'];
+
+const socket = io();
+let myColor=null,currentGameId=null,selectedSquare=null,legalMoves=[];
+let gameState=null,boardFlipped=false,moveHistory=[],timerInterval=null;
+let whiteTime=0,blackTime=0,lastMoveTime=0,currentTurn='w';
+let hasTimeControl=false,gameOver=false,localChess=null;
+
+let stats=JSON.parse(localStorage.getItem('xs-chess-stats')||'{"games":0,"wins":0,"losses":0,"draws":0,"streak":0,"best":0}');
+if(!stats.joined){stats.joined=new Date().toLocaleDateString();localStorage.setItem('xs-chess-stats',JSON.stringify(stats));}
+if(stats.streak===undefined){stats.streak=0;stats.best=0;}
+let avatarIdx=parseInt(localStorage.getItem('xs-chess-avatar')||'0');
+let playerName=localStorage.getItem('xs-chess-name')||'Anonymous';
+
+// Settings
+let settings=JSON.parse(localStorage.getItem('xs-chess-settings')||'{"theme":"classic","sound":true,"coords":true,"legal":true,"autoqueen":false,"notifications":true,"moveconfirm":false,"animspeed":"normal","language":"en"}');
+// Ensure new settings exist for upgrades
+if(settings.notifications===undefined)settings.notifications=true;
+if(settings.moveconfirm===undefined)settings.moveconfirm=false;
+if(settings.animspeed===undefined)settings.animspeed='normal';
+if(settings.language===undefined)settings.language='en';
+
+// Match history from localStorage
+let matchHistory=JSON.parse(localStorage.getItem('xs-chess-match-history')||'[]');
+
+// Bot difficulty
+let botDifficulty='medium';
+
+// Capture animation setting
+let captureAnim=localStorage.getItem('xs-chess-capture-anim')||'classic';
+
+// ===== TRANSLATION SYSTEM =====
+const TRANSLATIONS = {
+  en: {},
+  es: {
+    "Create Game":"Crear Partida","Find Game":"Buscar Partida","Watch":"Ver","Quick Play":"Partida Rapida",
+    "Play vs Bot":"Jugar vs Bot","Puzzles":"Puzzles","Tournaments":"Torneos","Settings":"Ajustes",
+    "Profile":"Perfil","Leaderboard":"Clasificacion","About":"Acerca de","Help":"Ayuda",
+    "Openings":"Aperturas","Analysis":"Analisis","My Stats":"Mis Estadisticas","Back":"Volver",
+    "Save":"Guardar","Chess Rules":"Reglas de Ajedrez","Achievements":"Logros","Friends Online":"Amigos en Linea",
+    "Quick Tip":"Consejo Rapido","Daily Challenge":"Desafio Diario","Recent Activity":"Actividad Reciente",
+    "Online":"En Linea","Board Theme":"Tema del Tablero","Sound Effects":"Efectos de Sonido",
+    "Notifications":"Notificaciones","Show Coordinates":"Mostrar Coordenadas","Show Legal Moves":"Mostrar Movimientos Legales",
+    "Auto-Queen":"Auto-Dama","Move Confirmation":"Confirmar Movimiento","Board Animation Speed":"Velocidad de Animacion",
+    "Language":"Idioma","Player Name":"Nombre del Jugador","Reset Stats":"Reiniciar Estadisticas",
+    "Gameplay":"Jugabilidad","Account":"Cuenta","Learn":"Aprender","More":"Mas","Cosmetics":"Cosmeticos"
+  },
+  fr: {
+    "Create Game":"Creer une Partie","Find Game":"Chercher une Partie","Watch":"Regarder","Quick Play":"Partie Rapide",
+    "Play vs Bot":"Jouer vs Bot","Puzzles":"Puzzles","Tournaments":"Tournois","Settings":"Parametres",
+    "Profile":"Profil","Leaderboard":"Classement","About":"A Propos","Help":"Aide",
+    "Openings":"Ouvertures","Analysis":"Analyse","My Stats":"Mes Stats","Back":"Retour",
+    "Save":"Sauvegarder","Chess Rules":"Regles des Echecs","Achievements":"Succes","Friends Online":"Amis en Ligne",
+    "Quick Tip":"Conseil Rapide","Daily Challenge":"Defi du Jour","Recent Activity":"Activite Recente",
+    "Online":"En Ligne","Board Theme":"Theme du Plateau","Sound Effects":"Effets Sonores",
+    "Notifications":"Notifications","Show Coordinates":"Afficher Coordonnees","Show Legal Moves":"Afficher Coups Legaux",
+    "Auto-Queen":"Auto-Dame","Move Confirmation":"Confirmation de Coup","Board Animation Speed":"Vitesse d'Animation",
+    "Language":"Langue","Player Name":"Nom du Joueur","Reset Stats":"Reinitialiser Stats",
+    "Gameplay":"Jouabilite","Account":"Compte","Learn":"Apprendre","More":"Plus","Cosmetics":"Cosmetiques"
+  },
+  de: {
+    "Create Game":"Spiel Erstellen","Find Game":"Spiel Suchen","Watch":"Zuschauen","Quick Play":"Schnellspiel",
+    "Play vs Bot":"Gegen Bot Spielen","Puzzles":"Ratsel","Tournaments":"Turniere","Settings":"Einstellungen",
+    "Profile":"Profil","Leaderboard":"Rangliste","About":"Uber","Help":"Hilfe",
+    "Openings":"Eroffnungen","Analysis":"Analyse","My Stats":"Meine Statistiken","Back":"Zuruck",
+    "Save":"Speichern","Chess Rules":"Schachregeln","Achievements":"Erfolge","Friends Online":"Freunde Online",
+    "Quick Tip":"Schneller Tipp","Daily Challenge":"Tagliche Herausforderung","Recent Activity":"Letzte Aktivitat",
+    "Online":"Online","Board Theme":"Brett-Thema","Sound Effects":"Soundeffekte",
+    "Notifications":"Benachrichtigungen","Show Coordinates":"Koordinaten Anzeigen","Show Legal Moves":"Legale Zuge Anzeigen",
+    "Auto-Queen":"Auto-Dame","Move Confirmation":"Zugbestatigung","Board Animation Speed":"Animationsgeschwindigkeit",
+    "Language":"Sprache","Player Name":"Spielername","Reset Stats":"Statistiken Zurucksetzen",
+    "Gameplay":"Spielablauf","Account":"Konto","Learn":"Lernen","More":"Mehr","Cosmetics":"Kosmetik"
+  },
+  pt: {
+    "Create Game":"Criar Jogo","Find Game":"Buscar Jogo","Watch":"Assistir","Quick Play":"Jogo Rapido",
+    "Play vs Bot":"Jogar vs Bot","Puzzles":"Puzzles","Tournaments":"Torneios","Settings":"Configuracoes",
+    "Profile":"Perfil","Leaderboard":"Classificacao","About":"Sobre","Help":"Ajuda",
+    "Openings":"Aberturas","Analysis":"Analise","My Stats":"Minhas Estatisticas","Back":"Voltar",
+    "Save":"Salvar","Chess Rules":"Regras de Xadrez","Achievements":"Conquistas","Friends Online":"Amigos Online",
+    "Quick Tip":"Dica Rapida","Daily Challenge":"Desafio Diario","Recent Activity":"Atividade Recente",
+    "Online":"Online","Board Theme":"Tema do Tabuleiro","Sound Effects":"Efeitos Sonoros",
+    "Notifications":"Notificacoes","Show Coordinates":"Mostrar Coordenadas","Show Legal Moves":"Mostrar Jogadas Legais",
+    "Auto-Queen":"Auto-Dama","Move Confirmation":"Confirmacao de Jogada","Board Animation Speed":"Velocidade de Animacao",
+    "Language":"Idioma","Player Name":"Nome do Jogador","Reset Stats":"Resetar Estatisticas",
+    "Gameplay":"Jogabilidade","Account":"Conta","Learn":"Aprender","More":"Mais","Cosmetics":"Cosmeticos"
+  },
+  ru: {
+    "Create Game":"Sozdatj Igru","Find Game":"Naiti Igru","Watch":"Smotretj","Quick Play":"Bystraya Igra",
+    "Play vs Bot":"Igra s Botom","Puzzles":"Zadachi","Tournaments":"Turniry","Settings":"Nastroiki",
+    "Profile":"Profilj","Leaderboard":"Rejting","About":"O Nas","Help":"Pomoshj",
+    "Openings":"Debyuty","Analysis":"Analiz","My Stats":"Moya Statistika","Back":"Nazad",
+    "Save":"Sohranitj","Chess Rules":"Pravila Shahmat","Achievements":"Dostizheniya","Friends Online":"Druzjya Onlain",
+    "Quick Tip":"Bystryi Sovet","Daily Challenge":"Zadacha Dnya","Recent Activity":"Poslednyaya Aktivnostj",
+    "Online":"Onlain","Board Theme":"Tema Doski","Sound Effects":"Zvukovye Effekty",
+    "Notifications":"Uvedomleniya","Show Coordinates":"Pokazatj Koordinaty","Show Legal Moves":"Pokazatj Hody",
+    "Auto-Queen":"Avto-Ferzj","Move Confirmation":"Podtverzhdenie Hoda","Board Animation Speed":"Skorostj Animacii",
+    "Language":"Yazyk","Player Name":"Imya Igroka","Reset Stats":"Sbrosit Statistiku",
+    "Gameplay":"Igrovoi Process","Account":"Akkount","Learn":"Obuchenie","More":"Eshje","Cosmetics":"Kosmetika"
+  },
+  zh: {
+    "Create Game":"创建游戏","Find Game":"查找游戏","Watch":"观看","Quick Play":"快速开始",
+    "Play vs Bot":"人机对战","Puzzles":"谜题","Tournaments":"锦标赛","Settings":"设置",
+    "Profile":"个人资料","Leaderboard":"排行榜","About":"关于","Help":"帮助",
+    "Openings":"开局","Analysis":"分析","My Stats":"我的统计","Back":"返回",
+    "Save":"保存","Chess Rules":"棋规","Achievements":"成就","Friends Online":"在线好友",
+    "Quick Tip":"小贴士","Daily Challenge":"每日挑战","Recent Activity":"最近活动",
+    "Online":"在线","Board Theme":"棋盘主题","Sound Effects":"音效",
+    "Notifications":"通知","Show Coordinates":"显示坐标","Show Legal Moves":"显示合法走法",
+    "Auto-Queen":"自动升变","Move Confirmation":"走棋确认","Board Animation Speed":"动画速度",
+    "Language":"语言","Player Name":"玩家名称","Reset Stats":"重置统计",
+    "Gameplay":"游戏设置","Account":"账户","Learn":"学习","More":"更多","Cosmetics":"装饰"
+  },
+  ja: {
+    "Create Game":"ゲーム作成","Find Game":"ゲーム検索","Watch":"観戦","Quick Play":"クイックプレイ",
+    "Play vs Bot":"ボット対戦","Puzzles":"パズル","Tournaments":"トーナメント","Settings":"設定",
+    "Profile":"プロフィール","Leaderboard":"ランキング","About":"概要","Help":"ヘルプ",
+    "Openings":"オープニング","Analysis":"分析","My Stats":"統計","Back":"戻る",
+    "Save":"保存","Chess Rules":"チェスルール","Achievements":"実績","Friends Online":"オンラインの友達",
+    "Quick Tip":"ヒント","Daily Challenge":"デイリーチャレンジ","Recent Activity":"最近の活動",
+    "Online":"オンライン","Board Theme":"ボードテーマ","Sound Effects":"効果音",
+    "Notifications":"通知","Show Coordinates":"座標表示","Show Legal Moves":"合法手表示",
+    "Auto-Queen":"自動クイーン","Move Confirmation":"着手確認","Board Animation Speed":"アニメーション速度",
+    "Language":"言語","Player Name":"プレイヤー名","Reset Stats":"統計リセット",
+    "Gameplay":"ゲームプレイ","Account":"アカウント","Learn":"学習","More":"その他","Cosmetics":"コスメ"
+  },
+  ko: {
+    "Create Game":"게임 만들기","Find Game":"게임 찾기","Watch":"관전","Quick Play":"빠른 게임",
+    "Play vs Bot":"봇 대전","Puzzles":"퍼즐","Tournaments":"토너먼트","Settings":"설정",
+    "Profile":"프로필","Leaderboard":"리더보드","About":"소개","Help":"도움말",
+    "Openings":"오프닝","Analysis":"분석","My Stats":"내 통계","Back":"뒤로",
+    "Save":"저장","Chess Rules":"체스 규칙","Achievements":"업적","Friends Online":"온라인 친구",
+    "Quick Tip":"팁","Daily Challenge":"일일 도전","Recent Activity":"최근 활동",
+    "Online":"온라인","Board Theme":"보드 테마","Sound Effects":"효과음",
+    "Notifications":"알림","Show Coordinates":"좌표 표시","Show Legal Moves":"합법 수 표시",
+    "Auto-Queen":"자동 퀸","Move Confirmation":"수 확인","Board Animation Speed":"애니메이션 속도",
+    "Language":"언어","Player Name":"플레이어 이름","Reset Stats":"통계 초기화",
+    "Gameplay":"게임플레이","Account":"계정","Learn":"학습","More":"더보기","Cosmetics":"꾸미기"
+  }
+};
+
+function t(key) {
+  const lang = settings.language || 'en';
+  if (lang === 'en') return key;
+  return (TRANSLATIONS[lang] && TRANSLATIONS[lang][key]) || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
+  });
+}
+
+// ===== PIECE GLIDING ANIMATION =====
+function getAnimDuration() {
+  const sp = settings.animspeed || 'normal';
+  if (sp === 'fast') return 100;
+  if (sp === 'slow') return 400;
+  return 200;
+}
+
+function getSquareRect(boardEl, squareName) {
+  const sqEl = boardEl.querySelector(`.square[data-square="${squareName}"]`);
+  if (!sqEl) return null;
+  return sqEl.getBoundingClientRect();
+}
+
+function animatePieceGlide(boardEl, fromSq, toSq, pieceImageUrl, callback) {
+  const fromRect = getSquareRect(boardEl, fromSq);
+  const toRect = getSquareRect(boardEl, toSq);
+  if (!fromRect || !toRect) { if (callback) callback(); return; }
+
+  const boardRect = boardEl.getBoundingClientRect();
+  // Temporarily allow overflow for animation
+  boardEl.style.overflow = 'visible';
+
+  const glide = document.createElement('div');
+  glide.className = 'piece-glide ' + (settings.animspeed || 'normal');
+  glide.style.backgroundImage = `url('${pieceImageUrl}')`;
+  // Size to match the square
+  const sqW = fromRect.width;
+  const sqH = fromRect.height;
+  glide.style.width = (sqW * 0.85) + 'px';
+  glide.style.height = (sqH * 0.85) + 'px';
+  // Position at from square center
+  const offsetX = (sqW - sqW * 0.85) / 2;
+  const offsetY = (sqH - sqH * 0.85) / 2;
+  glide.style.left = (fromRect.left - boardRect.left + offsetX) + 'px';
+  glide.style.top = (fromRect.top - boardRect.top + offsetY) + 'px';
+  glide.style.position = 'absolute';
+
+  boardEl.appendChild(glide);
+
+  // Force reflow then animate to target
+  glide.offsetHeight;
+  requestAnimationFrame(() => {
+    glide.style.left = (toRect.left - boardRect.left + offsetX) + 'px';
+    glide.style.top = (toRect.top - boardRect.top + offsetY) + 'px';
+  });
+
+  const dur = getAnimDuration();
+  setTimeout(() => {
+    glide.remove();
+    boardEl.style.overflow = '';
+    if (callback) callback();
+  }, dur + 20);
+}
+
+// ===== CAPTURE ANIMATION =====
+function animateCapture(boardEl, squareName, pieceImageUrl, callback) {
+  const sqRect = getSquareRect(boardEl, squareName);
+  if (!sqRect) { if (callback) callback(); return; }
+  const boardRect = boardEl.getBoundingClientRect();
+  boardEl.style.overflow = 'visible';
+
+  const anim = captureAnim || 'classic';
+
+  if (anim === 'shatter') {
+    // Create fragment particles
+    const cx = sqRect.left - boardRect.left + sqRect.width / 2;
+    const cy = sqRect.top - boardRect.top + sqRect.height / 2;
+    const numParticles = 8;
+    const particles = [];
+    for (let i = 0; i < numParticles; i++) {
+      const p = document.createElement('div');
+      p.className = 'shatter-particle';
+      p.style.backgroundImage = `url('${pieceImageUrl}')`;
+      p.style.backgroundSize = '300%';
+      const bx = (i % 3) * 33;
+      const by = Math.floor(i / 3) * 33;
+      p.style.backgroundPosition = `${bx}% ${by}%`;
+      p.style.left = (cx - 4) + 'px';
+      p.style.top = (cy - 4) + 'px';
+      boardEl.appendChild(p);
+      particles.push(p);
+    }
+    requestAnimationFrame(() => {
+      particles.forEach((p, i) => {
+        const angle = (i / numParticles) * Math.PI * 2;
+        const dist = 30 + Math.random() * 25;
+        p.style.left = (parseFloat(p.style.left) + Math.cos(angle) * dist) + 'px';
+        p.style.top = (parseFloat(p.style.top) + Math.sin(angle) * dist) + 'px';
+        p.classList.add('fly');
+      });
+    });
+    setTimeout(() => { particles.forEach(p => p.remove()); boardEl.style.overflow = ''; if (callback) callback(); }, 550);
+    return;
+  }
+
+  if (anim === 'smoke') {
+    const cx = sqRect.left - boardRect.left + sqRect.width / 2;
+    const cy = sqRect.top - boardRect.top + sqRect.height / 2;
+    const numPuffs = 10;
+    const puffs = [];
+    for (let i = 0; i < numPuffs; i++) {
+      const p = document.createElement('div');
+      p.className = 'smoke-particle';
+      const size = 6 + Math.random() * 10;
+      p.style.width = size + 'px';
+      p.style.height = size + 'px';
+      p.style.left = (cx - size / 2 + (Math.random() - 0.5) * 16) + 'px';
+      p.style.top = (cy - size / 2 + (Math.random() - 0.5) * 16) + 'px';
+      boardEl.appendChild(p);
+      puffs.push(p);
+    }
+    requestAnimationFrame(() => {
+      puffs.forEach(p => {
+        p.style.left = (parseFloat(p.style.left) + (Math.random() - 0.5) * 30) + 'px';
+        p.style.top = (parseFloat(p.style.top) - 15 - Math.random() * 20) + 'px';
+        p.classList.add('rise');
+      });
+    });
+    setTimeout(() => { puffs.forEach(p => p.remove()); boardEl.style.overflow = ''; if (callback) callback(); }, 650);
+    return;
+  }
+
+  // Classic, Pop, Lightning - use CSS animation class
+  const el = document.createElement('div');
+  el.className = 'piece-capture-anim anim-' + anim;
+  el.style.backgroundImage = `url('${pieceImageUrl}')`;
+  const offsetX = (sqRect.width - sqRect.width * 0.85) / 2;
+  const offsetY = (sqRect.height - sqRect.height * 0.85) / 2;
+  el.style.left = (sqRect.left - boardRect.left + offsetX) + 'px';
+  el.style.top = (sqRect.top - boardRect.top + offsetY) + 'px';
+  el.style.width = (sqRect.width * 0.85) + 'px';
+  el.style.height = (sqRect.height * 0.85) + 'px';
+  el.style.position = 'absolute';
+  boardEl.style.position = 'relative';
+  boardEl.appendChild(el);
+
+  const dur = anim === 'lightning' ? 500 : anim === 'pop' ? 400 : 300;
+  setTimeout(() => { el.remove(); boardEl.style.overflow = ''; if (callback) callback(); }, dur + 50);
+}
+
+// ===== COSMETICS PAGE =====
+const CAPTURE_ANIMS = [
+  { id: 'classic', name: 'Classic', desc: 'Simple fade out', req: 0, piece: 'bP' },
+  { id: 'pop', name: 'Pop', desc: 'Scale up then vanish', req: 3, piece: 'bN' },
+  { id: 'shatter', name: 'Shatter', desc: 'Breaks into fragments', req: 10, piece: 'bR' },
+  { id: 'smoke', name: 'Smoke', desc: 'Dissolves into smoke', req: 25, piece: 'bB' },
+  { id: 'lightning', name: 'Lightning', desc: 'Flash of light effect', req: 50, piece: 'bQ' },
+];
+
+function renderCosmeticsPage() {
+  const grid = document.getElementById('cosmetics-grid');
+  if (!grid) return;
+  const totalWins = stats.wins || 0;
+  grid.innerHTML = '';
+  CAPTURE_ANIMS.forEach(a => {
+    const unlocked = totalWins >= a.req;
+    const selected = captureAnim === a.id;
+    const card = document.createElement('div');
+    card.className = 'cosmetic-card' + (selected ? ' selected' : '') + (!unlocked ? ' locked' : '');
+    card.innerHTML = `
+      <div class="cos-icon"><img src="/pieces/${a.piece}.svg" alt="${a.name}"></div>
+      <div class="cos-name">${a.name}</div>
+      <div class="cos-req">${a.req === 0 ? 'Default' : 'Unlock at ' + a.req + ' wins'}</div>
+      <div class="cos-preview">${unlocked ? (selected ? 'EQUIPPED' : '') : totalWins + '/' + a.req + ' wins'}</div>
+      <button class="cos-btn ${unlocked ? (selected ? 'selected-btn' : 'select-btn') : 'locked-btn'}">${unlocked ? (selected ? 'Equipped' : 'Select') : 'Locked'}</button>
+    `;
+    if (unlocked && !selected) {
+      card.querySelector('.cos-btn').addEventListener('click', () => {
+        captureAnim = a.id;
+        localStorage.setItem('xs-chess-capture-anim', a.id);
+        renderCosmeticsPage();
+        showToast('Capture animation: ' + a.name);
+      });
+    }
+    grid.appendChild(card);
+  });
+}
+
+updateHome();
+applySettings();
+applyTranslations();
+renderHeroBoard();
+
+function getName(){return playerName;}
+function getRank(){
+  if(stats.games<5)return'NEW';if(stats.games<15)return'BEGINNER';
+  const wr=stats.wins/stats.games;if(wr>=.7)return'MASTER';if(wr>=.5)return'ADVANCED';return'INTERMEDIATE';
+}
+
+function renderHeroBoard(){
+  const el=document.getElementById('hero-board');
+  el.innerHTML='';
+  // Draw 8x8 board
+  for(let r=0;r<8;r++)for(let c=0;c<8;c++){
+    const sq=document.createElement('div');
+    sq.className='hb-sq '+((r+c)%2===0?'l':'d');
+    el.appendChild(sq);
+  }
+  // Place a few pieces for visual interest (opening position highlights)
+  const pieces=[
+    {r:0,c:3,p:'bQ'},{r:0,c:4,p:'bK'},{r:1,c:3,p:'bP'},{r:1,c:4,p:'bP'},
+    {r:7,c:3,p:'wQ'},{r:7,c:4,p:'wK'},{r:6,c:3,p:'wP'},{r:6,c:4,p:'wP'},
+    {r:0,c:2,p:'bB'},{r:0,c:5,p:'bB'},{r:7,c:2,p:'wB'},{r:7,c:5,p:'wB'},
+    {r:0,c:1,p:'bN'},{r:0,c:6,p:'bN'},{r:7,c:1,p:'wN'},{r:7,c:6,p:'wN'},
+    {r:0,c:0,p:'bR'},{r:0,c:7,p:'bR'},{r:7,c:0,p:'wR'},{r:7,c:7,p:'wR'},
+  ];
+  const sz=100/8;
+  pieces.forEach(({r,c,p})=>{
+    const d=document.createElement('div');
+    d.className='hb-piece';
+    d.style.cssText=`left:${c*sz}px;top:${r*sz}px;width:${sz}px;height:${sz}px;`;
+    const img=document.createElement('img');
+    img.src='/pieces/'+p+'.svg';
+    img.alt=p;
+    d.appendChild(img);
+    el.appendChild(d);
+  });
+}
+
+function updateHome(){
+  // Use img for avatar
+  const homeAv=document.getElementById('home-avatar');
+  const avPieces=['wK','wQ','wR','wB','wN','wP','bK','bQ','bR','bB','bN','bP'];
+  homeAv.innerHTML=`<img src="/pieces/${avPieces[avatarIdx]}.svg" alt="avatar">`;
+  document.getElementById('home-username').textContent=playerName.toUpperCase();
+  document.getElementById('ps-joined').textContent=stats.joined;
+  document.getElementById('ps-rank').textContent=getRank();
+  document.getElementById('ps-games').textContent=stats.games;
+  document.getElementById('ps-wins').textContent=stats.wins;
+  document.getElementById('ps-losses').textContent=stats.losses;
+  document.getElementById('ps-draws').textContent=stats.draws;
+  const eff=stats.games>0?Math.round((stats.wins/stats.games)*100):0;
+  document.getElementById('ps-eff').textContent=eff+'%';
+  // Update daily progress
+  const dp=document.getElementById('daily-progress');
+  if(dp)dp.textContent=Math.min(stats.wins,3)+'/3';
+  // Update recent activity
+  const ra=document.getElementById('recent-activity');
+  if(ra){
+    if(stats.games>0){
+      ra.innerHTML=`You've played <strong>${stats.games}</strong> game${stats.games!==1?'s':''} with a <strong>${eff}%</strong> win rate. Current streak: <strong>${stats.streak||0}</strong>`;
+    } else {
+      ra.textContent='No games played yet. Create or join a game to get started!';
+    }
+  }
+  // Update match history sidebar
+  updateMatchHistorySidebar();
+  // Update achievements
+  updateAchievements();
+}
+
+function saveStats(){localStorage.setItem('xs-chess-stats',JSON.stringify(stats));localStorage.setItem('xs-chess-match-history',JSON.stringify(matchHistory));updateHome();}
+
+function addMatchResult(result, opponent){
+  matchHistory.unshift({result:result, opponent:opponent||'Unknown', date:Date.now()});
+  if(matchHistory.length>20)matchHistory=matchHistory.slice(0,20);
+}
+
+function updateMatchHistorySidebar(){
+  const el=document.getElementById('match-history-list');
+  if(!el)return;
+  if(matchHistory.length===0){
+    el.innerHTML='<div style="text-align:center;padding:8px;color:#bbb;font-size:11px;font-weight:600">No games yet</div>';
+    return;
+  }
+  const last5=matchHistory.slice(0,5);
+  el.innerHTML=last5.map(m=>{
+    const cls=m.result==='Win'?'win':m.result==='Loss'?'loss':'draw';
+    const ago=timeAgo(m.date);
+    return `<div class="match-history-item"><span style="color:#555">${esc(m.opponent)}</span><span class="mh-result ${cls}">${m.result}</span></div>`;
+  }).join('');
+}
+
+function updateAchievements(){
+  const el=document.getElementById('achievements-list');
+  if(!el)return;
+  const achIcons={
+    'first-win':'<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>',
+    '5-streak':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/><path d="M12 6v6l4 2" stroke-linecap="round"/></svg>',
+    'bot-slayer':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="9" cy="16" r="1" fill="currentColor"/><circle cx="15" cy="16" r="1" fill="currentColor"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><path d="M12 3v1"/></svg>',
+    '10-games':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C6 4 6 5 6 5s0-1 1.5-1a2.5 2.5 0 0 1 0 5H6z"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C18 4 18 5 18 5s0-1-1.5-1a2.5 2.5 0 0 0 0 5h1.5z"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 19.24 7 20v2"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 19.24 17 20v2"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>',
+    'puzzle-solver':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.236 1.234-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02z"/></svg>',
+    'social':'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>'
+  };
+  const achievements=[
+    {id:'first-win',name:'First Win',check:()=>stats.wins>=1},
+    {id:'5-streak',name:'5 Game Streak',check:()=>(stats.best||0)>=5},
+    {id:'bot-slayer',name:'Bot Slayer',check:()=>{const bw=parseInt(localStorage.getItem('xs-chess-bot-wins')||'0');return bw>=3;}},
+    {id:'10-games',name:'Veteran (10 Games)',check:()=>stats.games>=10},
+    {id:'puzzle-solver',name:'Puzzle Solver',check:()=>localStorage.getItem('xs-chess-puzzle-solved')==='true'},
+    {id:'social',name:'Chat Master',check:()=>localStorage.getItem('xs-chess-chat-used')==='true'},
+  ];
+  el.innerHTML=achievements.map(a=>{
+    const unlocked=a.check();
+    return `<span class="achievement-badge ${unlocked?'unlocked':''}">${achIcons[a.id]} ${a.name}</span>`;
+  }).join('');
+}
+
+// Web Audio API for move sounds
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+function playMoveSound(isCapture){
+  if(!settings.sound)return;
+  try{
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
+    osc.connect(gain);gain.connect(audioCtx.destination);
+    osc.type='sine';
+    osc.frequency.setValueAtTime(isCapture?600:800,audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(isCapture?200:400,audioCtx.currentTime+0.08);
+    gain.gain.setValueAtTime(0.15,audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+(isCapture?0.15:0.08));
+    osc.start(audioCtx.currentTime);
+    osc.stop(audioCtx.currentTime+(isCapture?0.15:0.08));
+  }catch(e){}
+}
+
+// FPS counter
+let fpsFrames=0,fpsLast=performance.now();
+function fpsLoop(){
+  fpsFrames++;
+  const now=performance.now();
+  if(now-fpsLast>=1000){
+    document.getElementById('fps-counter').textContent=fpsFrames+' FPS';
+    fpsFrames=0;fpsLast=now;
+  }
+  requestAnimationFrame(fpsLoop);
+}
+requestAnimationFrame(fpsLoop);
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function formatTime(s){if(s==null)return'--:--';return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');}
+function timeAgo(ts){const d=Math.floor((Date.now()-ts)/1000);if(d<60)return'just now';if(d<3600)return Math.floor(d/60)+'m ago';return Math.floor(d/3600)+'h ago';}
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// Name editing
+document.getElementById('edit-name-btn').addEventListener('click',()=>{
+  openProfile();
+});
+document.getElementById('name-save').addEventListener('click',()=>{
+  playerName=document.getElementById('player-name').value.trim()||'Anonymous';
+  localStorage.setItem('xs-chess-name',playerName);
+  document.getElementById('name-overlay').classList.remove('active');
+  document.getElementById('settings-name-display').textContent=playerName;
+  updateHome();
+});
+document.getElementById('player-name').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('name-save').click();});
+
+// Avatar
+function cycleAvatar(d){avatarIdx=(avatarIdx+d+AVATARS.length)%AVATARS.length;localStorage.setItem('xs-chess-avatar',avatarIdx);updateHome();const avPieces=['wK','wQ','wR','wB','wN','wP','bK','bQ','bR','bB','bN','bP'];const pm=document.getElementById('pm-avatar');if(pm)pm.innerHTML=`<img src="/pieces/${avPieces[avatarIdx]}.svg" alt="avatar">`;}
+
+// Navigation - all buttons work
+document.getElementById('btn-create').addEventListener('click',()=>showPage('create-page'));
+document.getElementById('create-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('btn-play').addEventListener('click',()=>{showPage('browser-page');socket.emit('request-game-list');});
+document.getElementById('browser-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('btn-profile').addEventListener('click',openProfile);
+document.getElementById('hdr-profile').addEventListener('click',openProfile);
+document.getElementById('profile-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('profile-exit').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('pm-prev').addEventListener('click',()=>cycleAvatar(-1));
+document.getElementById('pm-next').addEventListener('click',()=>cycleAvatar(1));
+document.getElementById('pm-edit-name').addEventListener('click',()=>{
+  document.getElementById('player-name').value=playerName;
+  document.getElementById('name-overlay').classList.add('active');
+  setTimeout(()=>document.getElementById('player-name').focus(),100);
+});
+
+// Time control grid selection
+let selectedTimeControl = '10';
+document.querySelectorAll('#time-grid .theme-opt').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    selectedTimeControl = btn.dataset.time;
+    document.querySelectorAll('#time-grid .theme-opt').forEach(b=>b.classList.toggle('active',b===btn));
+  });
+});
+
+// All menu buttons now functional
+document.getElementById('btn-watch').addEventListener('click',()=>showPage('watch-page'));
+document.getElementById('watch-back').addEventListener('click',()=>showPage('home-page'));
+
+document.getElementById('btn-settings2').addEventListener('click',openSettings);
+document.getElementById('hdr-settings').addEventListener('click',openSettings);
+document.getElementById('settings-back').addEventListener('click',()=>showPage('home-page'));
+
+document.getElementById('btn-players').addEventListener('click',openStats);
+document.getElementById('stats-back').addEventListener('click',()=>showPage('home-page'));
+
+document.getElementById('btn-cosmetics').addEventListener('click',()=>{showPage('cosmetics-page');renderCosmeticsPage();});
+document.getElementById('cosmetics-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('cosmetics-rules').addEventListener('click',()=>showPage('rules-page'));
+document.getElementById('rules-back').addEventListener('click',()=>showPage('home-page'));
+
+document.getElementById('btn-help').addEventListener('click',()=>showPage('help-page'));
+document.getElementById('help-back').addEventListener('click',()=>showPage('home-page'));
+
+document.getElementById('btn-about').addEventListener('click',()=>showPage('about-page'));
+document.getElementById('about-back').addEventListener('click',()=>showPage('home-page'));
+
+// New buttons
+document.getElementById('btn-quick').addEventListener('click',()=>{
+  const qBtn=document.getElementById('btn-quick');
+  qBtn.classList.add('searching');
+  const qSpan=qBtn.querySelector('[data-i18n="Quick Play"]');
+  if(qSpan)qSpan.textContent='Searching...';
+  socket.emit('quick-play',{playerName:getName()});
+  // Fallback: if no quick-play-matched in 5s, create a game
+  setTimeout(()=>{
+    if(qBtn.classList.contains('searching')){
+      qBtn.classList.remove('searching');
+      if(qSpan)qSpan.textContent=t('Quick Play');
+      socket.emit('create-game',{playerName:getName(),gameName:getName()+"'s quick game",timeControl:'10'});
+    }
+  },5000);
+});
+
+// Listen for quick-play-matched
+socket.on('quick-play-matched',({gameId})=>{
+  const qBtn=document.getElementById('btn-quick');
+  qBtn.classList.remove('searching');
+  const qSpan=qBtn.querySelector('[data-i18n="Quick Play"]');
+  if(qSpan)qSpan.textContent=t('Quick Play');
+  joinGame(gameId);
+});
+document.getElementById('btn-vs-bot').addEventListener('click',()=>{
+  document.getElementById('bot-diff-overlay').classList.add('active');
+});
+document.getElementById('bot-diff-cancel').addEventListener('click',()=>{
+  document.getElementById('bot-diff-overlay').classList.remove('active');
+});
+document.querySelectorAll('.bot-diff-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    botDifficulty=btn.dataset.diff;
+    document.getElementById('bot-diff-overlay').classList.remove('active');
+    startBotGame();
+  });
+});
+document.getElementById('btn-puzzles').addEventListener('click',()=>{showPage('puzzles-page');loadPuzzle();});
+document.getElementById('btn-tourney').addEventListener('click',()=>showPage('tourney-page'));
+document.getElementById('btn-openings').addEventListener('click',()=>showPage('openings-page'));
+document.getElementById('btn-analysis').addEventListener('click',startAnalysis);
+document.getElementById('btn-leaderboard').addEventListener('click',openLeaderboard);
+
+// Back buttons for new pages
+document.getElementById('openings-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('leaderboard-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('puzzles-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('tourney-back').addEventListener('click',()=>showPage('home-page'));
+document.getElementById('trn-create').addEventListener('click',()=>showToast('Need at least 4 players online to create a tournament'));
+
+document.getElementById('btn-save-profile').addEventListener('click',()=>showToast('Profile saved!'));
+document.getElementById('hdr-save').addEventListener('click',()=>showToast('Profile saved!'));
+
+// Settings page
+function openSettings(){
+  showPage('settings-page');
+  document.getElementById('settings-name-display').textContent=playerName;
+  // Sync toggles
+  document.getElementById('toggle-sound').classList.toggle('on',settings.sound);
+  document.getElementById('toggle-notifications').classList.toggle('on',settings.notifications);
+  document.getElementById('toggle-coords').classList.toggle('on',settings.coords);
+  document.getElementById('toggle-legal').classList.toggle('on',settings.legal);
+  document.getElementById('toggle-autoqueen').classList.toggle('on',settings.autoqueen);
+  document.getElementById('toggle-moveconfirm').classList.toggle('on',settings.moveconfirm);
+  // Sync selects
+  document.getElementById('select-animspeed').value=settings.animspeed;
+  document.getElementById('select-language').value=settings.language;
+  // Sync theme
+  document.querySelectorAll('.theme-opt').forEach(b=>b.classList.toggle('active',b.dataset.theme===settings.theme));
+}
+
+function applySettings(){
+  const board=document.getElementById('chess-board');
+  board.className='chess-board';
+  if(settings.theme!=='classic')board.classList.add('theme-'+settings.theme);
+  localStorage.setItem('xs-chess-settings',JSON.stringify(settings));
+}
+
+// Theme selection
+document.querySelectorAll('.theme-opt').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    settings.theme=btn.dataset.theme;
+    document.querySelectorAll('.theme-opt').forEach(b=>b.classList.toggle('active',b===btn));
+    applySettings();
+    if(gameState)renderBoard(gameState);
+    showToast('Theme: '+btn.textContent.trim());
+  });
+});
+
+// Toggle switches
+['sound','coords','legal','autoqueen','notifications','moveconfirm'].forEach(key=>{
+  document.getElementById('toggle-'+key).addEventListener('click',function(){
+    settings[key]=!settings[key];
+    this.classList.toggle('on',settings[key]);
+    localStorage.setItem('xs-chess-settings',JSON.stringify(settings));
+    if(key==='coords'&&gameState)renderBoard(gameState);
+  });
+});
+
+// Select settings
+document.getElementById('select-animspeed').addEventListener('change',function(){
+  settings.animspeed=this.value;
+  localStorage.setItem('xs-chess-settings',JSON.stringify(settings));
+  showToast('Animation speed: '+this.value);
+});
+
+document.getElementById('select-language').addEventListener('change',function(){
+  settings.language=this.value;
+  localStorage.setItem('xs-chess-settings',JSON.stringify(settings));
+  applyTranslations();
+  const langNames={en:'English',es:'Spanish',fr:'French',de:'German',pt:'Portuguese',ru:'Russian',zh:'Chinese',ja:'Japanese',ko:'Korean'};
+  showToast('Language: '+(langNames[this.value]||this.value));
+});
+
+document.getElementById('settings-edit-name').addEventListener('click',()=>{
+  document.getElementById('player-name').value=playerName;
+  document.getElementById('name-overlay').classList.add('active');
+  setTimeout(()=>document.getElementById('player-name').focus(),100);
+});
+
+document.getElementById('settings-reset').addEventListener('click',()=>{
+  if(confirm('Reset all stats? This cannot be undone.')){
+    stats={games:0,wins:0,losses:0,draws:0,streak:0,best:0,joined:new Date().toLocaleDateString()};
+    matchHistory=[];
+    localStorage.removeItem('xs-chess-bot-wins');
+    localStorage.removeItem('xs-chess-puzzle-solved');
+    localStorage.removeItem('xs-chess-chat-used');
+    saveStats();showToast('Stats reset');openSettings();
+  }
+});
+
+// Stats page
+function openStats(){
+  showPage('stats-page');
+  document.getElementById('st-games').textContent=stats.games;
+  document.getElementById('st-wins').textContent=stats.wins;
+  document.getElementById('st-losses').textContent=stats.losses;
+  document.getElementById('st-draws').textContent=stats.draws;
+  document.getElementById('st-winrate').textContent=stats.games>0?Math.round((stats.wins/stats.games)*100)+'%':'0%';
+  document.getElementById('st-rank').textContent=getRank();
+  document.getElementById('st-joined').textContent=stats.joined;
+  document.getElementById('st-streak').textContent=stats.streak||0;
+  document.getElementById('st-best').textContent=stats.best||0;
+}
+
+function openProfile(){
+  showPage('profile-page');
+  const avPieces=['wK','wQ','wR','wB','wN','wP','bK','bQ','bR','bB','bN','bP'];
+  document.getElementById('pm-avatar').innerHTML=`<img src="/pieces/${avPieces[avatarIdx]}.svg" alt="avatar">`;
+  document.getElementById('pm-name').textContent=playerName;
+  document.getElementById('pm-rank').textContent=getRank();
+  document.getElementById('pm-joined').textContent=stats.joined;
+  document.getElementById('pm-wins').textContent=stats.wins;
+  document.getElementById('pm-losses').textContent=stats.losses;
+  document.getElementById('pm-draws').textContent=stats.draws;
+}
+
+// Online
+socket.on('online-count',c=>{document.getElementById('online-count').textContent=c;});
+
+// Create game
+document.getElementById('create-btn').addEventListener('click',()=>{
+  const gn=document.getElementById('game-name').value.trim();
+  socket.emit('create-game',{playerName:getName(),gameName:gn,timeControl:selectedTimeControl});
+});
+
+socket.on('game-created',({gameId,color})=>{
+  currentGameId=gameId;myColor=color;boardFlipped=color==='black';
+  document.getElementById('wait-overlay').classList.add('active');
+});
+
+document.getElementById('cancel-wait').addEventListener('click',()=>{
+  document.getElementById('wait-overlay').classList.remove('active');
+  socket.disconnect();socket.connect();currentGameId=null;
+});
+
+// Game list
+socket.on('game-list',games=>{
+  document.getElementById('games-count').textContent=games.length;
+  // Pulse the Find Game button if games available
+  const findBtn=document.getElementById('btn-play');
+  if(games.length>0){findBtn.classList.add('has-games');}else{findBtn.classList.remove('has-games');}
+  const el=document.getElementById('game-list');
+  if(!games.length){el.innerHTML='<div class="gb-empty"><div class="gb-empty-icon">\u265A</div><p>No open games right now.<br>Go back and create one!</p></div>';return;}
+  el.innerHTML=games.map(g=>{
+    const tl=g.timeControl==='none'?'No limit':g.timeControl+' min';
+    return `<div class="gb-row" onclick="joinGame('${g.id}')"><div class="gb-player"><div class="gb-av">${esc(g.creator[0].toUpperCase())}</div><div class="gb-info"><span class="gb-name">${esc(g.name)}</span><span class="gb-creator">by ${esc(g.creator)}</span></div></div><span style="font-size:13px;color:#888">${tl}</span><span style="font-size:13px;color:#aaa">${timeAgo(g.createdAt)}</span><button class="gb-join" onclick="event.stopPropagation();joinGame('${g.id}')">Join</button></div>`;
+  }).join('');
+});
+
+function joinGame(id){socket.emit('join-game',{gameId:id,playerName:getName()});}
+
+// Join
+socket.on('game-joined',({gameId,color,fen,whiteName,blackName,timeControl,whiteTime:wt,blackTime:bt})=>{
+  currentGameId=gameId;myColor=color;boardFlipped=color==='black';
+  hasTimeControl=timeControl!=='none';whiteTime=wt;blackTime=bt;
+  lastMoveTime=Date.now();currentTurn='w';gameOver=false;moveHistory=[];
+  localChess=new Chess();startGame(whiteName,blackName,fen);
+});
+
+socket.on('opponent-joined',({blackName,fen,whiteTime:wt,blackTime:bt})=>{
+  document.getElementById('wait-overlay').classList.remove('active');
+  hasTimeControl=wt!==null;whiteTime=wt;blackTime=bt;
+  lastMoveTime=Date.now();currentTurn='w';gameOver=false;moveHistory=[];
+  localChess=new Chess();startGame(getName(),blackName,fen);
+});
+
+function startGame(wn,bn,fen){
+  showPage('game-page');
+  document.getElementById('game-actions').style.display='flex';
+  const tn=boardFlipped?wn:bn,bnam=boardFlipped?bn:wn;
+  document.getElementById('top-name').textContent=tn;
+  document.getElementById('bot-name').textContent=bnam;
+  document.getElementById('top-dot').style.background=boardFlipped?'#fff':'#333';
+  document.getElementById('bot-dot').style.background=boardFlipped?'#333':'#fff';
+  if(hasTimeControl){document.getElementById('top-timer').style.display='block';document.getElementById('bot-timer').style.display='block';updateTimers();startLocalTimer();}
+  else{document.getElementById('top-timer').style.display='none';document.getElementById('bot-timer').style.display='none';}
+  applySettings();
+  renderBoard(fen);updateTurn();
+}
+
+// Board rendering with SVG pieces
+function parseFen(f){const rows=f.split(' ')[0].split('/');const b=[];for(let r=0;r<8;r++){const row=[];for(let c=0;c<rows[r].length;c++){const ch=rows[r][c];if(ch>='1'&&ch<='8'){for(let i=0;i<parseInt(ch);i++)row.push(null);}else{row.push({color:ch===ch.toUpperCase()?'w':'b',type:ch.toLowerCase()});}}b.push(row);}return b;}
+function sq(r,c){return String.fromCharCode(97+c)+(8-r);}
+
+function renderBoard(fen){
+  gameState=fen;const board=parseFen(fen);const el=document.getElementById('chess-board');
+  // Preserve theme class
+  el.className='chess-board';
+  if(settings.theme!=='classic')el.classList.add('theme-'+settings.theme);
+  el.innerHTML='';
+  for(let dr=0;dr<8;dr++){for(let dc=0;dc<8;dc++){
+    const r=boardFlipped?7-dr:dr,c=boardFlipped?7-dc:dc;
+    const s=sq(r,c),light=(r+c)%2===0,pc=board[r][c];
+    const d=document.createElement('div');d.className=`square ${light?'light':'dark'}`;d.dataset.square=s;
+    if(settings.coords){
+      if(dc===0){const co=document.createElement('span');co.className='coord rank';co.textContent=boardFlipped?dr+1:8-dr;d.appendChild(co);}
+      if(dr===7){const co=document.createElement('span');co.className='coord file';co.textContent=boardFlipped?String.fromCharCode(104-dc):String.fromCharCode(97+dc);d.appendChild(co);}
+    }
+    if(moveHistory.length>0){const lm=moveHistory[moveHistory.length-1];if(s===lm.from||s===lm.to)d.classList.add('last-move');}
+    if(selectedSquare===s)d.classList.add('selected');
+    if(settings.legal&&legalMoves.includes(s)){const dot=document.createElement('div');dot.className=`move-dot${pc?' capture':''}`;d.appendChild(dot);}
+    if(pc&&pc.type==='k'&&localChess&&localChess.inCheck()&&pc.color===localChess.turn())d.classList.add('in-check');
+    if(pc){
+      const sp=document.createElement('div');
+      sp.className='piece';
+      sp.style.backgroundImage=`url('${PI[pieceKey(pc.color,pc.type)]}')`;
+      d.appendChild(sp);
+    }
+    d.addEventListener('click',()=>onSq(s));el.appendChild(d);
+  }}
+}
+
+function onSq(s){
+  if(dragState.justDragged)return;
+  if(gameOver||!localChess||localChess.turn()!==myColor[0])return;
+  if(selectedSquare){if(legalMoves.includes(s)){const pc=localChess.get(selectedSquare),rk=s[1];if(pc&&pc.type==='p'&&(rk==='8'||rk==='1')){if(settings.autoqueen){doMove(selectedSquare,s,'q');}else{showPromo(selectedSquare,s);}return;}doMove(selectedSquare,s);}else{selSq(s);}}else{selSq(s);}
+}
+
+function selSq(s){
+  if(!localChess)return;const pc=localChess.get(s);
+  if(pc&&pc.color===myColor[0]){selectedSquare=s;legalMoves=localChess.moves({square:s,verbose:true}).map(m=>m.to);}
+  else{selectedSquare=null;legalMoves=[];}
+  renderBoard(gameState);
+}
+
+function doMove(f,t,p){socket.emit('make-move',{gameId:currentGameId,from:f,to:t,promotion:p});selectedSquare=null;legalMoves=[];}
+
+function showPromo(f,t){
+  const c=myColor[0],el=document.getElementById('promo-pieces');el.innerHTML='';
+  ['q','r','b','n'].forEach(p=>{const b=document.createElement('div');b.className='promo-piece';b.textContent=PU[c+p];b.addEventListener('click',()=>{document.getElementById('promo-overlay').classList.remove('active');doMove(f,t,p);});el.appendChild(b);});
+  document.getElementById('promo-overlay').classList.add('active');
+}
+
+socket.on('move-made',({move,fen,status,winner,whiteTime:wt,blackTime:bt,moves})=>{
+  const wasCapture=move.captured;
+  const boardEl=document.getElementById('chess-board');
+
+  // Get piece info before re-rendering for glide animation
+  const movingPieceColor = move.color;
+  const movingPieceType = move.piece;
+  const pieceImg = PI[pieceKey(movingPieceColor, movingPieceType)];
+  const capturedPieceImg = wasCapture ? PI[pieceKey(movingPieceColor === 'w' ? 'b' : 'w', move.captured)] : null;
+
+  // Hide the moving piece on source square before animation
+  const fromSqEl = boardEl.querySelector(`.square[data-square="${move.from}"]`);
+  const toSqEl = boardEl.querySelector(`.square[data-square="${move.to}"]`);
+  if (fromSqEl) { const pc = fromSqEl.querySelector('.piece'); if (pc) pc.style.opacity = '0'; }
+
+  // Start capture animation on the target square
+  if (wasCapture && capturedPieceImg && toSqEl) {
+    animateCapture(boardEl, move.to, capturedPieceImg);
+  }
+
+  // Animate the piece gliding
+  animatePieceGlide(boardEl, move.from, move.to, pieceImg, () => {
+    // After animation, do the full re-render
+    if(localChess)localChess.move(move);
+    moveHistory=moves;whiteTime=wt;blackTime=bt;lastMoveTime=Date.now();
+    currentTurn=localChess?localChess.turn():'w';
+    selectedSquare=null;legalMoves=[];
+    renderBoard(fen);updateMoveList(moves);updateTurn();updateTimers();updateCaptured(fen);
+    playMoveSound(!!wasCapture);
+    if(localChess&&localChess.inCheck()){
+      const board=document.getElementById('chess-board');
+      board.classList.add('shake');
+      setTimeout(()=>board.classList.remove('shake'),400);
+    }
+    if(wasCapture){
+      const sq=document.querySelector(`#chess-board .square[data-square="${move.to}"]`);
+      if(sq){sq.classList.add('capture-flash');setTimeout(()=>sq.classList.remove('capture-flash'),400);}
+    }
+    const mc=document.getElementById('game-move-counter');
+    if(mc)mc.textContent='Move: '+Math.ceil(moves.length/2);
+    if(status==='checkmate'){gameOver=true;const w=winner===myColor;stats.games++;if(w){stats.wins++;stats.streak=(stats.streak||0)+1;stats.best=Math.max(stats.best||0,stats.streak);addMatchResult('Win','Opponent');}else{stats.losses++;stats.streak=0;addMatchResult('Loss','Opponent');}saveStats();showGO(w?'You win!':'You lose!','Checkmate',w?'\u{1F3C6}':'\u{1F614}');}
+    else if(status==='draw'||status==='stalemate'){gameOver=true;stats.games++;stats.draws++;stats.streak=0;addMatchResult('Draw','Opponent');saveStats();showGO('Draw',status==='stalemate'?'Stalemate':'Draw','\u{1F91D}');}
+  });
+});
+
+function updateMoveList(moves){
+  const el=document.getElementById('move-list');el.innerHTML='';
+  for(let i=0;i<moves.length;i+=2){const r=document.createElement('div');r.className='move-row';const n=document.createElement('span');n.className='move-num';n.textContent=Math.floor(i/2)+1+'.';r.appendChild(n);const w=document.createElement('span');w.className='move-san';w.textContent=moves[i].san;r.appendChild(w);if(moves[i+1]){const b=document.createElement('span');b.className='move-san';b.textContent=moves[i+1].san;r.appendChild(b);}el.appendChild(r);}
+  el.scrollTop=el.scrollHeight;
+}
+
+function updateTurn(){
+  const tb=document.getElementById('top-bar'),bb=document.getElementById('bot-bar');
+  const tw=boardFlipped,wt=currentTurn==='w';
+  const topActive=tw?wt:!wt;const botActive=tw?!wt:wt;
+  tb.classList.toggle('active-turn',topActive);bb.classList.toggle('active-turn',botActive);
+  // "YOUR TURN" label: bot-bar is always 'you' in online games
+  const myTurn=currentTurn===myColor[0];
+  bb.classList.toggle('is-you',myTurn);
+  tb.classList.remove('is-you');
+}
+
+function updateCaptured(fen){
+  const init={p:8,n:2,b:2,r:2,q:1},cnt={w:{p:0,n:0,b:0,r:0,q:0},b:{p:0,n:0,b:0,r:0,q:0}};
+  for(const row of parseFen(fen))for(const pc of row)if(pc&&pc.type!=='k')cnt[pc.color][pc.type]++;
+  const gc=c=>{let s='',v=0;for(const t of['q','r','b','n','p']){const d=init[t]-cnt[c][t];for(let i=0;i<d;i++){s+=PU[c+t];v+=PV[t];}}return{s,v};};
+  const wc=gc('w'),bc=gc('b'),diff=bc.v-wc.v;const tc=boardFlipped?'w':'b';
+  document.getElementById('top-cap').textContent=(tc==='w'?bc:wc).s+(tc==='w'?(diff>0?` +${diff}`:''):(diff<0?` +${-diff}`:''));
+  document.getElementById('bot-cap').textContent=(tc==='w'?wc:bc).s+(tc==='w'?(diff<0?` +${-diff}`:''):(diff>0?` +${diff}`:''));
+}
+
+function updateTimers(){
+  if(!hasTimeControl)return;const tw=boardFlipped;
+  document.getElementById('top-timer').textContent=formatTime(tw?whiteTime:blackTime);
+  document.getElementById('bot-timer').textContent=formatTime(tw?blackTime:whiteTime);
+  document.getElementById('top-timer').classList.toggle('low-time',(tw?whiteTime:blackTime)<30);
+  document.getElementById('bot-timer').classList.toggle('low-time',(tw?blackTime:whiteTime)<30);
+}
+
+function startLocalTimer(){
+  if(timerInterval)clearInterval(timerInterval);if(!hasTimeControl)return;
+  timerInterval=setInterval(()=>{if(gameOver){clearInterval(timerInterval);return;}const el=(Date.now()-lastMoveTime)/1000;const at=currentTurn==='w'?whiteTime-el:blackTime-el;const isTop=(currentTurn==='w')===boardFlipped;const e=document.getElementById(isTop?'top-timer':'bot-timer');e.textContent=formatTime(Math.max(0,at));e.classList.toggle('low-time',at<30);},100);
+}
+
+// Chat
+document.getElementById('chat-send').addEventListener('click',sendChat);
+document.getElementById('chat-input').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat();});
+function sendChat(){const m=document.getElementById('chat-input').value.trim();if(!m||!currentGameId)return;socket.emit('chat-message',{gameId:currentGameId,message:m,playerName:getName()});document.getElementById('chat-input').value='';localStorage.setItem('xs-chess-chat-used','true');}
+socket.on('chat-message',({sender,message})=>{const d=document.createElement('div');d.className='chat-m';d.innerHTML=`<span class="cs">${esc(sender)}</span> <span class="ct">${esc(message)}</span>`;document.getElementById('chat-msgs').appendChild(d);document.getElementById('chat-msgs').scrollTop=999999;});
+
+// Game actions
+document.getElementById('resign-btn').addEventListener('click',()=>{if(gameOver||!currentGameId)return;if(confirm('Resign?'))socket.emit('resign',{gameId:currentGameId});});
+document.getElementById('offer-draw-btn').addEventListener('click',()=>{if(gameOver||!currentGameId)return;socket.emit('offer-draw',{gameId:currentGameId});showToast('Draw offer sent');});
+document.getElementById('accept-draw').addEventListener('click',()=>{socket.emit('accept-draw',{gameId:currentGameId});document.getElementById('draw-banner').classList.remove('active');});
+document.getElementById('decline-draw').addEventListener('click',()=>{socket.emit('decline-draw',{gameId:currentGameId});document.getElementById('draw-banner').classList.remove('active');});
+socket.on('draw-offered',()=>document.getElementById('draw-banner').classList.add('active'));
+socket.on('draw-declined',()=>showToast('Draw declined'));
+
+socket.on('game-over',({reason,winner})=>{
+  gameOver=true;if(timerInterval)clearInterval(timerInterval);
+  const iw=winner===myColor;let ti,de,ic;
+  if(reason==='resignation'){ti=iw?'You win!':'You lose!';de=iw?'Opponent resigned':'You resigned';ic=iw?'\u{1F3C6}':'\u{1F614}';}
+  else if(reason==='disconnect'){ti=iw?'You win!':'You lose!';de='Opponent disconnected';ic=iw?'\u{1F3C6}':'\u{1F4A8}';}
+  else if(reason==='timeout'){ti=iw?'You win!':'You lose!';de=iw?'Opponent timed out':'Time out';ic=iw?'\u{1F3C6}':'\u23F0';}
+  else{ti='Draw';de='By agreement';ic='\u{1F91D}';}
+  stats.games++;if(reason==='draw'){stats.draws++;stats.streak=0;addMatchResult('Draw','Opponent');}else if(iw){stats.wins++;stats.streak=(stats.streak||0)+1;stats.best=Math.max(stats.best||0,stats.streak);addMatchResult('Win','Opponent');}else{stats.losses++;stats.streak=0;addMatchResult('Loss','Opponent');}
+  saveStats();showGO(ti,de,ic);
+});
+
+function showGO(t,d,i){
+  document.getElementById('go-icon').textContent=i;document.getElementById('go-title').textContent=t;
+  document.getElementById('go-detail').textContent=d;document.getElementById('go-overlay').classList.add('active');
+  document.getElementById('game-actions').style.display='none';
+}
+
+document.getElementById('go-lobby').addEventListener('click',goHome);
+
+function goHome(){
+  document.getElementById('go-overlay').classList.remove('active');showPage('home-page');
+  currentGameId=null;myColor=null;selectedSquare=null;legalMoves=[];moveHistory=[];gameOver=false;localChess=null;
+  if(timerInterval)clearInterval(timerInterval);
+  document.getElementById('draw-banner').classList.remove('active');
+  document.getElementById('move-list').innerHTML='';document.getElementById('chat-msgs').innerHTML='';
+  socket.emit('request-game-list');
+}
+
+socket.on('error-msg',m=>showToast(m));
+
+// ===== PLAY VS BOT =====
+let botChess=null, botSelected=null, botLegal=[], botMoves=[], botOver=false;
+
+function startBotGame(){
+  botChess=new Chess();botSelected=null;botLegal=[];botMoves=[];botOver=false;
+  showPage('bot-page');
+  document.getElementById('bot-bot-name').textContent=getName();
+  document.getElementById('bot-top-name').textContent='Bot ('+botDifficulty.charAt(0).toUpperCase()+botDifficulty.slice(1)+')';
+  applySettings();
+  renderBotBoard();
+}
+
+function renderBotBoard(){
+  const fen=botChess.fen();const board=parseFen(fen);
+  const el=document.getElementById('bot-board');
+  el.className='chess-board';
+  if(settings.theme!=='classic')el.classList.add('theme-'+settings.theme);
+  el.innerHTML='';
+  for(let dr=0;dr<8;dr++){for(let dc=0;dc<8;dc++){
+    const r=dr,c=dc;
+    const s=sq(r,c),light=(r+c)%2===0,pc=board[r][c];
+    const d=document.createElement('div');d.className=`square ${light?'light':'dark'}`;d.dataset.square=s;
+    if(settings.coords){
+      if(dc===0){const co=document.createElement('span');co.className='coord rank';co.textContent=8-dr;d.appendChild(co);}
+      if(dr===7){const co=document.createElement('span');co.className='coord file';co.textContent=String.fromCharCode(97+dc);d.appendChild(co);}
+    }
+    if(botMoves.length>0){const lm=botMoves[botMoves.length-1];if(s===lm.from||s===lm.to)d.classList.add('last-move');}
+    if(botSelected===s)d.classList.add('selected');
+    if(settings.legal&&botLegal.includes(s)){const dot=document.createElement('div');dot.className=`move-dot${pc?' capture':''}`;d.appendChild(dot);}
+    if(pc&&pc.type==='k'&&botChess.inCheck()&&pc.color===botChess.turn())d.classList.add('in-check');
+    if(pc){const sp=document.createElement('div');sp.className='piece';sp.style.backgroundImage=`url('${PI[pieceKey(pc.color,pc.type)]}')`;d.appendChild(sp);}
+    d.addEventListener('click',()=>onBotSq(s));el.appendChild(d);
+  }}
+  updateBotMoveList();
+  // Update turn indicators for bot bars
+  const isWhiteTurn=botChess.turn()==='w';
+  const topBar=document.getElementById('bot-top-bar');
+  const botBar=document.getElementById('bot-bot-bar');
+  topBar.classList.toggle('active-turn',!isWhiteTurn);
+  botBar.classList.toggle('active-turn',isWhiteTurn);
+  // "YOUR TURN" shows on bottom bar when it's white's turn (player is white)
+  botBar.classList.toggle('is-you',isWhiteTurn);
+  topBar.classList.remove('is-you');
+}
+
+function onBotSq(s){
+  if(dragState.justDragged)return;
+  if(botOver||botChess.turn()!=='w')return;
+  if(botSelected){
+    if(botLegal.includes(s)){
+      const pc=botChess.get(botSelected),rk=s[1];
+      const promo=(pc&&pc.type==='p'&&(rk==='8'||rk==='1'))?'q':undefined;
+      const fromSq=botSelected;
+      const boardEl=document.getElementById('bot-board');
+      const pieceImg=PI[pieceKey(pc.color,pc.type)];
+      // Get captured piece image before move
+      const targetPc=botChess.get(s);
+      const capturedImg=targetPc?PI[pieceKey(targetPc.color,targetPc.type)]:null;
+
+      const mv=botChess.move({from:fromSq,to:s,promotion:promo});
+      if(mv){
+        botMoves.push(mv);botSelected=null;botLegal=[];
+        // Hide source piece
+        const fromEl=boardEl.querySelector(`.square[data-square="${fromSq}"] .piece`);
+        if(fromEl)fromEl.style.opacity='0';
+        // Capture anim
+        if(mv.captured&&capturedImg){animateCapture(boardEl,mv.to,capturedImg);}
+        // Glide anim
+        animatePieceGlide(boardEl,fromSq,mv.to,pieceImg,()=>{
+          renderBotBoard();
+          playMoveSound(!!mv.captured);
+          if(botChess.inCheck()){
+            const board=document.getElementById('bot-board');
+            board.classList.add('shake');setTimeout(()=>board.classList.remove('shake'),400);
+          }
+          if(mv.captured){
+            const sq=document.querySelector(`#bot-board .square[data-square="${mv.to}"]`);
+            if(sq){sq.classList.add('capture-flash');setTimeout(()=>sq.classList.remove('capture-flash'),400);}
+          }
+          const mc=document.getElementById('bot-move-counter');
+          if(mc)mc.textContent='Move: '+Math.ceil(botMoves.length/2);
+          checkBotEnd();if(!botOver)setTimeout(botMove,400);
+        });
+      }
+    } else {selBotSq(s);}
+  } else {selBotSq(s);}
+}
+
+function selBotSq(s){
+  const pc=botChess.get(s);
+  if(pc&&pc.color==='w'){botSelected=s;botLegal=botChess.moves({square:s,verbose:true}).map(m=>m.to);}
+  else{botSelected=null;botLegal=[];}
+  renderBotBoard();
+}
+
+function botMove(){
+  if(botOver)return;
+  const moves=botChess.moves({verbose:true});
+  if(!moves.length)return;
+  let pick=null;
+
+  if(botDifficulty==='easy'){
+    // Random moves only
+    pick=moves[Math.floor(Math.random()*moves.length)];
+  } else if(botDifficulty==='medium'){
+    // Prefer captures, then checks, then random
+    const captures=moves.filter(m=>m.captured);
+    const checks=moves.filter(m=>{botChess.move(m);const c=botChess.inCheck();botChess.undo();return c;});
+    if(captures.length>0)pick=captures[Math.floor(Math.random()*captures.length)];
+    else if(checks.length>0)pick=checks[Math.floor(Math.random()*checks.length)];
+    else pick=moves[Math.floor(Math.random()*moves.length)];
+  } else {
+    // Hard: evaluate material advantage, look 1 move ahead
+    const pieceVal={p:1,n:3,b:3,r:5,q:9,k:0};
+    function evalBoard(chess){
+      const board=chess.board();let score=0;
+      for(const row of board)for(const pc of row){
+        if(pc){const v=pieceVal[pc.type]||0;score+=pc.color==='b'?v:-v;}
+      }
+      return score;
+    }
+    let bestScore=-Infinity;let bestMoves=[];
+    for(const m of moves){
+      botChess.move(m);
+      // Check for checkmate (instant win)
+      if(botChess.isCheckmate()){botChess.undo();pick=m;break;}
+      // Evaluate after opponent's best reply
+      const oppMoves=botChess.moves({verbose:true});
+      let worstReply=Infinity;
+      if(oppMoves.length===0){
+        worstReply=evalBoard(botChess);
+      } else {
+        for(const om of oppMoves){
+          botChess.move(om);
+          const sc=evalBoard(botChess);
+          if(sc<worstReply)worstReply=sc;
+          botChess.undo();
+        }
+      }
+      botChess.undo();
+      if(pick)break; // checkmate found
+      if(worstReply>bestScore){bestScore=worstReply;bestMoves=[m];}
+      else if(worstReply===bestScore)bestMoves.push(m);
+    }
+    if(!pick)pick=bestMoves[Math.floor(Math.random()*bestMoves.length)];
+  }
+
+  // Get info before making move for animation
+  const boardEl=document.getElementById('bot-board');
+  const movingPieceImg=PI[pieceKey('b',pick.piece)];
+  const targetPc=botChess.get(pick.to);
+  const capturedImg=targetPc?PI[pieceKey(targetPc.color,targetPc.type)]:null;
+  const fromSq=pick.from;
+
+  const mv=botChess.move(pick);
+  if(mv){
+    botMoves.push(mv);
+    // Hide source piece
+    const fromEl=boardEl.querySelector(`.square[data-square="${fromSq}"] .piece`);
+    if(fromEl)fromEl.style.opacity='0';
+    // Capture anim
+    if(mv.captured&&capturedImg){animateCapture(boardEl,mv.to,capturedImg);}
+    // Glide anim
+    animatePieceGlide(boardEl,fromSq,mv.to,movingPieceImg,()=>{
+      renderBotBoard();
+      playMoveSound(!!mv.captured);
+      if(botChess.inCheck()){
+        const board=document.getElementById('bot-board');
+        board.classList.add('shake');setTimeout(()=>board.classList.remove('shake'),400);
+      }
+      if(mv.captured){
+        const sq=document.querySelector(`#bot-board .square[data-square="${mv.to}"]`);
+        if(sq){sq.classList.add('capture-flash');setTimeout(()=>sq.classList.remove('capture-flash'),400);}
+      }
+      const mc=document.getElementById('bot-move-counter');
+      if(mc)mc.textContent='Move: '+Math.ceil(botMoves.length/2);
+      checkBotEnd();
+    });
+  }
+}
+
+function checkBotEnd(){
+  if(botChess.isCheckmate()){
+    botOver=true;
+    const w=botChess.turn()==='b';
+    const diffLabel='Bot ('+botDifficulty.charAt(0).toUpperCase()+botDifficulty.slice(1)+')';
+    if(w){
+      stats.games++;stats.wins++;stats.streak=(stats.streak||0)+1;stats.best=Math.max(stats.best||0,stats.streak);
+      addMatchResult('Win',diffLabel);
+      // Track bot wins for achievement
+      const bw=parseInt(localStorage.getItem('xs-chess-bot-wins')||'0')+1;
+      localStorage.setItem('xs-chess-bot-wins',String(bw));
+      saveStats();
+    }
+    else{stats.games++;stats.losses++;stats.streak=0;addMatchResult('Loss',diffLabel);saveStats();}
+    setTimeout(()=>showToast(w?'Checkmate! You win!':'Checkmate! Bot wins!'),200);
+  } else if(botChess.isDraw()||botChess.isStalemate()){
+    botOver=true;stats.games++;stats.draws++;stats.streak=0;
+    const diffLabel='Bot ('+botDifficulty.charAt(0).toUpperCase()+botDifficulty.slice(1)+')';
+    addMatchResult('Draw',diffLabel);saveStats();
+    setTimeout(()=>showToast('Draw!'),200);
+  }
+}
+
+function updateBotMoveList(){
+  const el=document.getElementById('bot-move-list');el.innerHTML='';
+  for(let i=0;i<botMoves.length;i+=2){
+    const r=document.createElement('div');r.className='move-row';
+    const n=document.createElement('span');n.className='move-num';n.textContent=Math.floor(i/2)+1+'.';r.appendChild(n);
+    const w=document.createElement('span');w.className='move-san';w.textContent=botMoves[i].san;r.appendChild(w);
+    if(botMoves[i+1]){const b=document.createElement('span');b.className='move-san';b.textContent=botMoves[i+1].san;r.appendChild(b);}
+    el.appendChild(r);
+  }
+  el.scrollTop=el.scrollHeight;
+}
+
+document.getElementById('bot-undo').addEventListener('click',()=>{
+  if(botOver||botMoves.length<2)return;
+  botChess.undo();botChess.undo();botMoves.pop();botMoves.pop();
+  botSelected=null;botLegal=[];renderBotBoard();
+});
+document.getElementById('bot-restart').addEventListener('click',()=>{
+  document.getElementById('bot-diff-overlay').classList.add('active');
+});
+document.getElementById('bot-resign').addEventListener('click',()=>{
+  if(botOver)return;botOver=true;stats.games++;stats.losses++;stats.streak=0;
+  const diffLabel='Bot ('+botDifficulty.charAt(0).toUpperCase()+botDifficulty.slice(1)+')';
+  addMatchResult('Loss',diffLabel);saveStats();
+  showToast('You resigned. Bot wins!');
+});
+document.getElementById('bot-quit').addEventListener('click',()=>showPage('home-page'));
+
+// ===== ANALYSIS BOARD =====
+let anaChess=null, anaSelected=null, anaLegal=[], anaMoves=[], anaFlipped=false;
+
+function startAnalysis(){
+  anaChess=new Chess();anaSelected=null;anaLegal=[];anaMoves=[];anaFlipped=false;
+  showPage('analysis-page');applySettings();renderAnalysisBoard();
+}
+
+function renderAnalysisBoard(){
+  const fen=anaChess.fen();const board=parseFen(fen);
+  const el=document.getElementById('analysis-board');
+  el.className='chess-board';
+  if(settings.theme!=='classic')el.classList.add('theme-'+settings.theme);
+  el.innerHTML='';
+  for(let dr=0;dr<8;dr++){for(let dc=0;dc<8;dc++){
+    const r=anaFlipped?7-dr:dr,c=anaFlipped?7-dc:dc;
+    const s=sq(r,c),light=(r+c)%2===0,pc=board[r][c];
+    const d=document.createElement('div');d.className=`square ${light?'light':'dark'}`;d.dataset.square=s;
+    if(settings.coords){
+      if(dc===0){const co=document.createElement('span');co.className='coord rank';co.textContent=anaFlipped?dr+1:8-dr;d.appendChild(co);}
+      if(dr===7){const co=document.createElement('span');co.className='coord file';co.textContent=anaFlipped?String.fromCharCode(104-dc):String.fromCharCode(97+dc);d.appendChild(co);}
+    }
+    if(anaMoves.length>0){const lm=anaMoves[anaMoves.length-1];if(s===lm.from||s===lm.to)d.classList.add('last-move');}
+    if(anaSelected===s)d.classList.add('selected');
+    if(settings.legal&&anaLegal.includes(s)){const dot=document.createElement('div');dot.className=`move-dot${pc?' capture':''}`;d.appendChild(dot);}
+    if(pc&&pc.type==='k'&&anaChess.inCheck()&&pc.color===anaChess.turn())d.classList.add('in-check');
+    if(pc){const sp=document.createElement('div');sp.className='piece';sp.style.backgroundImage=`url('${PI[pieceKey(pc.color,pc.type)]}')`;d.appendChild(sp);}
+    d.addEventListener('click',()=>onAnaSq(s));el.appendChild(d);
+  }}
+  // Update move list
+  const ml=document.getElementById('analysis-move-list');ml.innerHTML='';
+  for(let i=0;i<anaMoves.length;i+=2){
+    const r=document.createElement('div');r.className='move-row';
+    const n=document.createElement('span');n.className='move-num';n.textContent=Math.floor(i/2)+1+'.';r.appendChild(n);
+    const w=document.createElement('span');w.className='move-san';w.textContent=anaMoves[i].san;r.appendChild(w);
+    if(anaMoves[i+1]){const b=document.createElement('span');b.className='move-san';b.textContent=anaMoves[i+1].san;r.appendChild(b);}
+    ml.appendChild(r);
+  }
+  ml.scrollTop=ml.scrollHeight;
+}
+
+function onAnaSq(s){
+  if(dragState.justDragged)return;
+  if(anaChess.isCheckmate()||anaChess.isDraw()||anaChess.isStalemate())return;
+  if(anaSelected){
+    if(anaLegal.includes(s)){
+      const pc=anaChess.get(anaSelected),rk=s[1];
+      const promo=(pc&&pc.type==='p'&&(rk==='8'||rk==='1'))?'q':undefined;
+      const boardEl=document.getElementById('analysis-board');
+      const pieceImg=PI[pieceKey(pc.color,pc.type)];
+      const targetPc=anaChess.get(s);
+      const capturedImg=targetPc?PI[pieceKey(targetPc.color,targetPc.type)]:null;
+      const fromSq=anaSelected;
+
+      const mv=anaChess.move({from:fromSq,to:s,promotion:promo});
+      if(mv){
+        anaMoves.push(mv);anaSelected=null;anaLegal=[];
+        const fromEl=boardEl.querySelector(`.square[data-square="${fromSq}"] .piece`);
+        if(fromEl)fromEl.style.opacity='0';
+        if(mv.captured&&capturedImg){animateCapture(boardEl,mv.to,capturedImg);}
+        animatePieceGlide(boardEl,fromSq,mv.to,pieceImg,()=>{
+          renderAnalysisBoard();
+          playMoveSound(!!mv.captured);
+        });
+      }
+    } else {selAnaSq(s);}
+  } else {selAnaSq(s);}
+}
+
+function selAnaSq(s){
+  const pc=anaChess.get(s);
+  if(pc&&pc.color===anaChess.turn()){anaSelected=s;anaLegal=anaChess.moves({square:s,verbose:true}).map(m=>m.to);}
+  else{anaSelected=null;anaLegal=[];}
+  renderAnalysisBoard();
+}
+
+document.getElementById('analysis-undo').addEventListener('click',()=>{
+  if(!anaMoves.length)return;anaChess.undo();anaMoves.pop();anaSelected=null;anaLegal=[];renderAnalysisBoard();
+});
+document.getElementById('analysis-reset').addEventListener('click',startAnalysis);
+document.getElementById('analysis-flip').addEventListener('click',()=>{anaFlipped=!anaFlipped;renderAnalysisBoard();});
+document.getElementById('analysis-quit').addEventListener('click',()=>showPage('home-page'));
+
+// ===== LEADERBOARD =====
+function openLeaderboard(){
+  showPage('leaderboard-page');
+  document.getElementById('lb-online').textContent=document.getElementById('online-count').textContent;
+  document.getElementById('lb-games').textContent=stats.games;
+  document.getElementById('lb-winrate').textContent=stats.games>0?Math.round((stats.wins/stats.games)*100)+'%':'0%';
+  document.getElementById('lb-rank').textContent=getRank();
+  const tb=document.getElementById('lb-table');
+  tb.innerHTML='<tr><th>#</th><th>Player</th><th>W</th><th>L</th><th>D</th><th>Win%</th></tr>';
+  const wr=stats.games>0?Math.round((stats.wins/stats.games)*100)+'%':'0%';
+  tb.innerHTML+=`<tr><td style="font-weight:800">1</td><td style="font-weight:800">${esc(playerName)}</td><td style="color:#2ecc71;font-weight:800">${stats.wins}</td><td style="color:#e74c3c;font-weight:800">${stats.losses}</td><td>${stats.draws}</td><td style="font-weight:800">${wr}</td></tr>`;
+}
+
+// ===== PUZZLES =====
+const PUZZLES=[
+  {fen:'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4',solution:'Qxf7',hint:'White to move. Scholar\'s Mate!',name:'Scholar\'s Mate'},
+  {fen:'r1bqkbnr/pppppppp/2n5/8/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 2 2',solution:'e5',hint:'Black to move. What\'s the most popular response?',name:'Open Game'},
+  {fen:'r2qk2r/ppp2ppp/2n1bn2/2bpp3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 4 6',solution:'Bg5',hint:'White to move. Pin the knight!',name:'Pin the Knight'},
+  {fen:'rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2',solution:'Qh4',hint:'Black to move. Punish the weak king!',name:'Fool\'s Mate'},
+  {fen:'r1b1k2r/ppppqppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 6 5',solution:'O-O',hint:'White to move. Safety first!',name:'Castle for Safety'},
+  {fen:'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',solution:'Bb5',hint:'White to move. Attack the knight defender!',name:'Ruy Lopez'},
+];
+
+let puzzleIdx=0,puzzleChess=null,puzzleSel=null,puzzleLegal=[];
+
+function loadPuzzle(){
+  const p=PUZZLES[puzzleIdx];
+  puzzleChess=new Chess(p.fen);puzzleSel=null;puzzleLegal=[];
+  document.getElementById('puzzle-label').textContent=`Puzzle ${puzzleIdx+1} of ${PUZZLES.length} — ${p.name}`;
+  document.getElementById('puzzle-hint').textContent=p.hint;
+  document.getElementById('puzzle-result').textContent='';
+  renderPuzzleBoard();
+}
+
+function renderPuzzleBoard(){
+  const fen=puzzleChess.fen();const board=parseFen(fen);
+  const el=document.getElementById('puzzle-board');
+  el.className='chess-board';
+  if(settings.theme!=='classic')el.classList.add('theme-'+settings.theme);
+  el.innerHTML='';
+  const isBlack=puzzleChess.turn()==='b';
+  for(let dr=0;dr<8;dr++){for(let dc=0;dc<8;dc++){
+    const r=isBlack?7-dr:dr,c=isBlack?7-dc:dc;
+    const s=sq(r,c),light=(r+c)%2===0,pc=board[r][c];
+    const d=document.createElement('div');d.className=`square ${light?'light':'dark'}`;d.dataset.square=s;
+    if(puzzleSel===s)d.classList.add('selected');
+    if(settings.legal&&puzzleLegal.includes(s)){const dot=document.createElement('div');dot.className=`move-dot${pc?' capture':''}`;d.appendChild(dot);}
+    if(pc){const sp=document.createElement('div');sp.className='piece';sp.style.backgroundImage=`url('${PI[pieceKey(pc.color,pc.type)]}')`;d.appendChild(sp);}
+    d.addEventListener('click',()=>onPuzzleSq(s));el.appendChild(d);
+  }}
+}
+
+function onPuzzleSq(s){
+  if(dragState.justDragged)return;
+  if(puzzleSel){
+    if(puzzleLegal.includes(s)){
+      const pc=puzzleChess.get(puzzleSel),rk=s[1];
+      const promo=(pc&&pc.type==='p'&&(rk==='8'||rk==='1'))?'q':undefined;
+      const boardEl=document.getElementById('puzzle-board');
+      const pieceImg=PI[pieceKey(pc.color,pc.type)];
+      const targetPc=puzzleChess.get(s);
+      const capturedImg=targetPc?PI[pieceKey(targetPc.color,targetPc.type)]:null;
+      const fromSq=puzzleSel;
+
+      const mv=puzzleChess.move({from:fromSq,to:s,promotion:promo});
+      if(mv){
+        puzzleSel=null;puzzleLegal=[];
+        const fromEl=boardEl.querySelector(`.square[data-square="${fromSq}"] .piece`);
+        if(fromEl)fromEl.style.opacity='0';
+        if(mv.captured&&capturedImg){animateCapture(boardEl,mv.to,capturedImg);}
+        animatePieceGlide(boardEl,fromSq,mv.to,pieceImg,()=>{
+          renderPuzzleBoard();
+          playMoveSound(!!mv.captured);
+          const sol=PUZZLES[puzzleIdx].solution;
+          if(mv.san===sol){
+            document.getElementById('puzzle-result').innerHTML='<span style="color:#2ecc71">Correct! Well done!</span>';
+            localStorage.setItem('xs-chess-puzzle-solved','true');
+            updateAchievements();
+          } else {
+            puzzleChess.undo();renderPuzzleBoard();
+            document.getElementById('puzzle-result').innerHTML='<span style="color:#e74c3c">Not quite. Try again! (Hint: '+sol+')</span>';
+          }
+        });
+      }
+    } else {selPuzzleSq(s);}
+  } else {selPuzzleSq(s);}
+}
+
+function selPuzzleSq(s){
+  const pc=puzzleChess.get(s);
+  if(pc&&pc.color===puzzleChess.turn()){puzzleSel=s;puzzleLegal=puzzleChess.moves({square:s,verbose:true}).map(m=>m.to);}
+  else{puzzleSel=null;puzzleLegal=[];}
+  renderPuzzleBoard();
+}
+
+document.getElementById('puzzle-prev').addEventListener('click',()=>{puzzleIdx=(puzzleIdx-1+PUZZLES.length)%PUZZLES.length;loadPuzzle();});
+document.getElementById('puzzle-next').addEventListener('click',()=>{puzzleIdx=(puzzleIdx+1)%PUZZLES.length;loadPuzzle();});
+
+// ===== DRAG AND DROP =====
+const dragState = {
+  isDragging: false,
+  dragPiece: null,
+  dragFrom: null,
+  boardId: null,
+  startX: 0,
+  startY: 0,
+  dragStarted: false,
+  origParent: null,
+  pieceSize: 0,
+  justDragged: false
+};
+
+function getClientPos(e) {
+  if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.changedTouches && e.changedTouches.length > 0) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
+function startDrag(e, squareName, boardId) {
+  const pos = getClientPos(e);
+  const squareEl = e.target.closest('.square');
+  const pieceEl = squareEl ? squareEl.querySelector('.piece') : null;
+  if (!pieceEl) return;
+
+  // Check if this piece belongs to the current player
+  if (boardId === 'chess-board') {
+    if (gameOver || !localChess || localChess.turn() !== myColor[0]) return;
+    const pc = localChess.get(squareName);
+    if (!pc || pc.color !== myColor[0]) return;
+  } else if (boardId === 'bot-board') {
+    if (botOver || botChess.turn() !== 'w') return;
+    const pc = botChess.get(squareName);
+    if (!pc || pc.color !== 'w') return;
+  } else if (boardId === 'analysis-board') {
+    const pc = anaChess.get(squareName);
+    if (!pc || pc.color !== anaChess.turn()) return;
+  } else if (boardId === 'puzzle-board') {
+    const pc = puzzleChess.get(squareName);
+    if (!pc || pc.color !== puzzleChess.turn()) return;
+  } else return;
+
+  dragState.startX = pos.x;
+  dragState.startY = pos.y;
+  dragState.dragFrom = squareName;
+  dragState.boardId = boardId;
+  dragState.isDragging = true;
+  dragState.dragStarted = false;
+  dragState.dragPiece = pieceEl;
+  dragState.origParent = squareEl;
+
+  // Compute piece size from the square
+  const sqRect = squareEl.getBoundingClientRect();
+  dragState.pieceSize = sqRect.width * 0.85;
+
+  // Only prevent default for touch events (to avoid scroll), not mouse (to keep click working)
+  if (e.type === 'touchstart' && e.cancelable) e.preventDefault();
+}
+
+function moveDrag(e) {
+  if (!dragState.isDragging) return;
+  const pos = getClientPos(e);
+  const dx = pos.x - dragState.startX;
+  const dy = pos.y - dragState.startY;
+
+  if (!dragState.dragStarted) {
+    if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return;
+    dragState.dragStarted = true;
+
+    // Select the square and show legal moves
+    if (dragState.boardId === 'chess-board') {
+      selSq(dragState.dragFrom);
+    } else if (dragState.boardId === 'bot-board') {
+      selBotSq(dragState.dragFrom);
+    } else if (dragState.boardId === 'analysis-board') {
+      selAnaSq(dragState.dragFrom);
+    } else if (dragState.boardId === 'puzzle-board') {
+      selPuzzleSq(dragState.dragFrom);
+    }
+
+    // Re-grab the piece element after re-render
+    const boardEl = document.getElementById(dragState.boardId);
+    const sqEl = boardEl.querySelector(`.square[data-square="${dragState.dragFrom}"]`);
+    const pieceEl = sqEl ? sqEl.querySelector('.piece') : null;
+    if (!pieceEl) { dragState.isDragging = false; return; }
+    dragState.dragPiece = pieceEl;
+    dragState.origParent = sqEl;
+
+    // Make the piece follow the cursor
+    const bgImage = pieceEl.style.backgroundImage;
+    pieceEl.classList.add('dragging');
+    pieceEl.style.backgroundImage = bgImage;
+    pieceEl.style.width = dragState.pieceSize + 'px';
+    pieceEl.style.height = dragState.pieceSize + 'px';
+  }
+
+  if (dragState.dragStarted && dragState.dragPiece) {
+    dragState.dragPiece.style.left = (pos.x - dragState.pieceSize / 2) + 'px';
+    dragState.dragPiece.style.top = (pos.y - dragState.pieceSize / 2) + 'px';
+    if (e.cancelable) e.preventDefault();
+  }
+}
+
+function endDrag(e) {
+  if (!dragState.isDragging) return;
+  const wasDragging = dragState.dragStarted;
+  if (wasDragging) {
+    dragState.justDragged = true;
+    setTimeout(() => { dragState.justDragged = false; }, 50);
+  }
+  const pos = getClientPos(e);
+
+  if (wasDragging && dragState.dragPiece) {
+    dragState.dragPiece.classList.remove('dragging');
+    dragState.dragPiece.style.left = '';
+    dragState.dragPiece.style.top = '';
+    dragState.dragPiece.style.width = '';
+    dragState.dragPiece.style.height = '';
+
+    // Determine which square the piece was dropped on
+    const boardEl = document.getElementById(dragState.boardId);
+    const boardRect = boardEl.getBoundingClientRect();
+    const sqSize = boardRect.width / 8;
+    const relX = pos.x - boardRect.left;
+    const relY = pos.y - boardRect.top;
+
+    if (relX >= 0 && relX < boardRect.width && relY >= 0 && relY < boardRect.height) {
+      let col = Math.floor(relX / sqSize);
+      let row = Math.floor(relY / sqSize);
+
+      // Account for board flipping
+      let targetSq;
+      if (dragState.boardId === 'chess-board') {
+        const r = boardFlipped ? 7 - row : row;
+        const c = boardFlipped ? 7 - col : col;
+        targetSq = sq(r, c);
+      } else if (dragState.boardId === 'bot-board') {
+        targetSq = sq(row, col);
+      } else if (dragState.boardId === 'analysis-board') {
+        const r = anaFlipped ? 7 - row : row;
+        const c = anaFlipped ? 7 - col : col;
+        targetSq = sq(r, c);
+      } else if (dragState.boardId === 'puzzle-board') {
+        const isBlack = puzzleChess.turn() === 'b';
+        const r = isBlack ? 7 - row : row;
+        const c = isBlack ? 7 - col : col;
+        targetSq = sq(r, c);
+      }
+
+      if (targetSq) {
+        // Check if it's a legal move
+        if (dragState.boardId === 'chess-board') {
+          if (legalMoves.includes(targetSq)) {
+            const pc = localChess.get(dragState.dragFrom), rk = targetSq[1];
+            if (pc && pc.type === 'p' && (rk === '8' || rk === '1')) {
+              if (settings.autoqueen) { doMove(dragState.dragFrom, targetSq, 'q'); }
+              else { showPromo(dragState.dragFrom, targetSq); }
+            } else { doMove(dragState.dragFrom, targetSq); }
+            resetDragState(); return;
+          }
+        } else if (dragState.boardId === 'bot-board') {
+          if (botLegal.includes(targetSq)) {
+            botSelected = dragState.dragFrom;
+            dragState.justDragged = false; // allow onBotSq to run
+            onBotSq(targetSq);
+            resetDragState(); return;
+          }
+        } else if (dragState.boardId === 'analysis-board') {
+          if (anaLegal.includes(targetSq)) {
+            anaSelected = dragState.dragFrom;
+            dragState.justDragged = false; // allow onAnaSq to run
+            onAnaSq(targetSq);
+            resetDragState(); return;
+          }
+        } else if (dragState.boardId === 'puzzle-board') {
+          if (puzzleLegal.includes(targetSq)) {
+            puzzleSel = dragState.dragFrom;
+            dragState.justDragged = false; // allow onPuzzleSq to run
+            onPuzzleSq(targetSq);
+            resetDragState(); return;
+          }
+        }
+      }
+    }
+
+    // Snap back - re-render
+    if (dragState.boardId === 'chess-board') { selectedSquare = null; legalMoves = []; renderBoard(gameState); }
+    else if (dragState.boardId === 'bot-board') { botSelected = null; botLegal = []; renderBotBoard(); }
+    else if (dragState.boardId === 'analysis-board') { anaSelected = null; anaLegal = []; renderAnalysisBoard(); }
+    else if (dragState.boardId === 'puzzle-board') { puzzleSel = null; puzzleLegal = []; renderPuzzleBoard(); }
+  }
+
+  resetDragState();
+}
+
+function resetDragState() {
+  dragState.isDragging = false;
+  dragState.dragStarted = false;
+  dragState.dragPiece = null;
+  dragState.dragFrom = null;
+  dragState.boardId = null;
+  dragState.origParent = null;
+  // justDragged stays true briefly to block click
+}
+
+// Attach drag listeners to boards
+function attachDragListeners(boardId) {
+  const boardEl = document.getElementById(boardId);
+  if (!boardEl) return;
+
+  boardEl.addEventListener('mousedown', function(e) {
+    const squareEl = e.target.closest('.square');
+    if (!squareEl || !squareEl.querySelector('.piece')) return;
+    if (!e.target.closest('.piece') && e.target !== squareEl.querySelector('.piece')) return;
+    startDrag(e, squareEl.dataset.square, boardId);
+  });
+
+  boardEl.addEventListener('touchstart', function(e) {
+    const squareEl = e.target.closest('.square');
+    if (!squareEl || !squareEl.querySelector('.piece')) return;
+    if (!e.target.closest('.piece') && e.target !== squareEl.querySelector('.piece')) return;
+    startDrag(e, squareEl.dataset.square, boardId);
+  }, { passive: false });
+}
+
+document.addEventListener('mousemove', moveDrag);
+document.addEventListener('touchmove', moveDrag, { passive: false });
+document.addEventListener('mouseup', endDrag);
+document.addEventListener('touchend', endDrag);
+
+// Attach to all board elements
+attachDragListeners('chess-board');
+attachDragListeners('bot-board');
+attachDragListeners('analysis-board');
+attachDragListeners('puzzle-board');
+</script>
+</body>
+</html>
