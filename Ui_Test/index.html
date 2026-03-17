@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UI Style Showcase</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@300;400;500;600;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Press+Start+2P&family=Caveat:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;800;900&family=Righteous&family=Fredoka:wght@300;400;500;600;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --wrapper-bg: #f4f1ec;
+    --wrapper-text: #2a2520;
+    --wrapper-muted: #8a8580;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--wrapper-bg);
+    color: var(--wrapper-text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .wrapper-header {
+    text-align: center;
+    padding: 60px 24px 20px;
+  }
+  .wrapper-header h1 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .wrapper-header p {
+    margin-top: 12px;
+    font-size: 1.05rem;
+    color: var(--wrapper-muted);
+  }
+  .wrapper-header .count {
+    display: inline-block;
+    margin-top: 16px;
+    background: #2a2520;
+    color: #f4f1ec;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 28px;
+    max-width: 1320px;
+    margin: 36px auto 60px;
+    padding: 0 28px;
+  }
+
+  .style-card {
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.35s cubic-bezier(.22,1,.36,1), box-shadow 0.35s ease;
+    position: relative;
+    background: #fff;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    animation: fadeSlideUp 0.6s cubic-bezier(.22,1,.36,1) both;
+  }
+  .style-card:hover {
+    transform: translateY(-6px) scale(1.015);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  }
+  .style-card:nth-child(1)  { animation-delay: 0.03s; }
+  .style-card:nth-child(2)  { animation-delay: 0.08s; }
+  .style-card:nth-child(3)  { animation-delay: 0.13s; }
+  .style-card:nth-child(4)  { animation-delay: 0.18s; }
+  .style-card:nth-child(5)  { animation-delay: 0.23s; }
+  .style-card:nth-child(6)  { animation-delay: 0.28s; }
+  .style-card:nth-child(7)  { animation-delay: 0.33s; }
+  .style-card:nth-child(8)  { animation-delay: 0.38s; }
+  .style-card:nth-child(9)  { animation-delay: 0.43s; }
+  .style-card:nth-child(10) { animation-delay: 0.48s; }
+  .style-card:nth-child(11) { animation-delay: 0.53s; }
+  .style-card:nth-child(12) { animation-delay: 0.58s; }
+
+  .style-card .preview-window { height: 260px; overflow: hidden; position: relative; }
+  .style-card .card-label { padding: 18px 22px; border-top: 1px solid #eae6e0; }
+  .style-card .card-label h3 { font-family: 'Sora', sans-serif; font-weight: 600; font-size: 1.05rem; margin-bottom: 4px; }
+  .style-card .card-label span { font-size: 0.85rem; color: var(--wrapper-muted); }
+
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── EXPANDED OVERLAY ── */
+  .expanded-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    display: none; opacity: 0; transition: opacity 0.4s ease;
+  }
+  .expanded-overlay.active { display: block; opacity: 1; }
+  .expanded-overlay .back-btn {
+    position: fixed; top: 20px; left: 20px; z-index: 1100;
+    padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem;
+    transition: transform 0.2s ease; display: flex; align-items: center; gap: 8px;
+  }
+  .expanded-overlay .back-btn:hover { transform: scale(1.05); }
+
+  .dashboard {
+    width: 100%; height: 100vh;
+    display: grid; grid-template-columns: 240px 1fr; overflow: hidden;
+  }
+  .dash-sidebar {
+    padding: 28px 20px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .dash-sidebar .logo { font-weight: 700; font-size: 1.2rem; margin-bottom: 24px; padding: 0 8px; }
+  .dash-sidebar a {
+    text-decoration: none; padding: 10px 12px; border-radius: 8px;
+    font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 10px;
+    transition: background 0.2s;
+  }
+  .dash-main { padding: 32px 36px; overflow-y: auto; }
+  .dash-main h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 24px; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 18px; margin-bottom: 28px; }
+  .stat-card { padding: 20px; border-radius: 10px; }
+  .stat-card .stat-label { font-size: 0.8rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .stat-card .stat-value { font-size: 1.7rem; font-weight: 700; }
+  .stat-card .stat-change { font-size: 0.78rem; margin-top: 4px; }
+  .chart-area { border-radius: 12px; padding: 24px; margin-bottom: 28px; min-height: 200px; }
+  .chart-area h3 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; }
+  .chart-bars { display: flex; align-items: flex-end; gap: 12px; height: 140px; padding-top: 10px; }
+  .chart-bars .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+  .chart-bars .bar { width: 100%; max-width: 40px; border-radius: 4px 4px 0 0; }
+  .chart-bars .bar-label { font-size: 0.7rem; font-weight: 500; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  .data-table th, .data-table td { padding: 12px 16px; text-align: left; }
+  .data-table th { font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .action-row { display: flex; gap: 12px; margin-top: 24px; }
+  .action-row button {
+    padding: 10px 22px; border-radius: 8px; border: none; font-family: inherit;
+    font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: transform 0.15s ease;
+  }
+  .action-row button:hover { transform: scale(1.04); }
+
+  @media (max-width: 840px) {
+    .grid { grid-template-columns: 1fr; max-width: 500px; }
+    .dashboard { grid-template-columns: 1fr; }
+    .dash-sidebar { display: none; }
+  }
+
+
+  /* ═══════════════════════════════════════
+     1: CORPORATE CLEAN
+     ═══════════════════════════════════════ */
+  .preview-corporate { background: #f7f8fb; padding: 16px; font-family: 'DM Sans', sans-serif; }
+  .preview-corporate .p-nav { display: flex; gap: 18px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #e2e5ec; }
+  .preview-corporate .p-nav span { font-size: 0.7rem; color: #5a6a80; font-weight: 500; }
+  .preview-corporate .p-nav span:first-child { color: #2563eb; font-weight: 600; }
+  .preview-corporate .p-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .preview-corporate .p-stat { background: #fff; border: 1px solid #e2e5ec; padding: 12px; border-radius: 4px; }
+  .preview-corporate .p-stat .num { font-size: 1.1rem; font-weight: 700; color: #1e293b; }
+  .preview-corporate .p-stat .lbl { font-size: 0.6rem; color: #8896a8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .preview-corporate .p-btn { background: #2563eb; color: #fff; border: none; padding: 6px 14px; font-size: 0.68rem; font-weight: 600; border-radius: 3px; }
+  .preview-corporate .p-input { border: 1px solid #d1d7e0; padding: 6px 10px; font-size: 0.68rem; border-radius: 3px; color: #8896a8; background: #fff; margin-left: 8px; width: 120px; }
+
+  .corp-expanded { background: #f7f8fb; font-family: 'DM Sans', sans-serif; }
+  .corp-expanded .back-btn { background: #2563eb; color: #fff; box-shadow: 0 2px 10px rgba(37,99,235,0.3); }
+  .corp-expanded .dash-sidebar { background: #fff; border-right: 1px solid #e2e5ec; }
+  .corp-expanded .dash-sidebar .logo { color: #2563eb; }
+  .corp-expanded .dash-sidebar a { color: #5a6a80; }
+  .corp-expanded .dash-sidebar a:first-of-type { background: #eff4ff; color: #2563eb; }
+  .corp-expanded .stat-card { background: #fff; border: 1px solid #e2e5ec; border-radius: 6px; }
+  .corp-expanded .stat-card .stat-label { color: #8896a8; }
+  .corp-expanded .stat-card .stat-value { color: #1e293b; }
+  .corp-expanded .stat-card .stat-change { color: #16a34a; }
+  .corp-expanded .chart-area { background: #fff; border: 1px solid #e2e5ec; border-radius: 6px; }
+  .corp-expanded .chart-area h3 { color: #1e293b; }
+  .corp-expanded .chart-bars .bar { background: #2563eb; }
+  .corp-expanded .chart-bars .bar-label { color: #8896a8; }
+  .corp-expanded .data-table th { color: #8896a8; border-bottom: 2px solid #e2e5ec; }
+  .corp-expanded .data-table td { color: #3b4a60; border-bottom: 1px solid #eef1f5; }
+  .corp-expanded .action-row .btn-primary { background: #2563eb; color: #fff; }
+  .corp-expanded .action-row .btn-secondary { background: #fff; color: #2563eb; border: 1px solid #d1d7e0; }
+
+
+  /* ═══════════════════════════════════════
+     2: GLASSMORPHISM
+     ═══════════════════════════════════════ */
+  .preview-glass { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); padding: 16px; position: relative; font-family: 'Sora', sans-serif; }
+  .preview-glass::before { content: ''; position: absolute; width: 100px; height: 100px; background: rgba(255,255,255,0.2); border-radius: 50%; top: -20px; right: 30px; filter: blur(20px); }
+  .preview-glass .g-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .preview-glass .g-stat { background: rgba(255,255,255,0.12); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; padding: 12px; }
+  .preview-glass .g-stat .num { font-size: 1.1rem; font-weight: 700; color: #fff; }
+  .preview-glass .g-stat .lbl { font-size: 0.6rem; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .preview-glass .g-nav { display: flex; gap: 8px; }
+  .preview-glass .g-nav span { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); font-size: 0.6rem; padding: 5px 10px; border-radius: 6px; font-weight: 500; }
+  .preview-glass .g-nav span:first-child { background: rgba(255,255,255,0.3); color: #fff; }
+  .preview-glass .g-card { background: rgba(255,255,255,0.15); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.25); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+
+  .glass-expanded { background: linear-gradient(135deg, #667eea 0%, #764ba2 40%, #f093fb 100%); font-family: 'Sora', sans-serif; }
+  .glass-expanded .back-btn { background: rgba(255,255,255,0.2); backdrop-filter: blur(12px); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+  .glass-expanded .dash-sidebar { background: rgba(255,255,255,0.08); backdrop-filter: blur(16px); border-right: 1px solid rgba(255,255,255,0.12); }
+  .glass-expanded .dash-sidebar .logo { color: #fff; }
+  .glass-expanded .dash-sidebar a { color: rgba(255,255,255,0.7); }
+  .glass-expanded .dash-sidebar a:first-of-type { background: rgba(255,255,255,0.15); color: #fff; }
+  .glass-expanded .dash-main h2 { color: #fff; }
+  .glass-expanded .stat-card { background: rgba(255,255,255,0.12); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }
+  .glass-expanded .stat-card .stat-label { color: rgba(255,255,255,0.65); }
+  .glass-expanded .stat-card .stat-value { color: #fff; }
+  .glass-expanded .stat-card .stat-change { color: #86efac; }
+  .glass-expanded .chart-area { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.18); }
+  .glass-expanded .chart-area h3 { color: #fff; }
+  .glass-expanded .chart-bars .bar { background: rgba(255,255,255,0.5); }
+  .glass-expanded .chart-bars .bar-label { color: rgba(255,255,255,0.6); }
+  .glass-expanded .data-table th { color: rgba(255,255,255,0.6); border-bottom: 1px solid rgba(255,255,255,0.15); }
+  .glass-expanded .data-table td { color: rgba(255,255,255,0.85); border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .glass-expanded .action-row .btn-primary { background: rgba(255,255,255,0.25); color: #fff; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.3); }
+  .glass-expanded .action-row .btn-secondary { background: transparent; color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.25); }
+
+
+  /* ═══════════════════════════════════════
+     3: NEOBRUTALISM
+     ═══════════════════════════════════════ */
+  .preview-neo { background: #fef08a; padding: 16px; font-family: 'Sora', sans-serif; }
+  .preview-neo .n-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .preview-neo .n-stat { border: 3px solid #000; box-shadow: 4px 4px 0 #000; padding: 10px; border-radius: 4px; }
+  .preview-neo .n-stat:nth-child(1) { background: #a5f3fc; }
+  .preview-neo .n-stat:nth-child(2) { background: #fbcfe8; }
+  .preview-neo .n-stat:nth-child(3) { background: #bef264; }
+  .preview-neo .n-stat .num { font-size: 1rem; font-weight: 700; }
+  .preview-neo .n-stat .lbl { font-size: 0.58rem; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+  .preview-neo .n-card { background: #fff; border: 3px solid #000; box-shadow: 5px 5px 0 #000; padding: 12px; margin-bottom: 10px; border-radius: 4px; }
+  .preview-neo .n-btn { background: #000; color: #fef08a; border: 3px solid #000; padding: 6px 14px; font-size: 0.7rem; font-weight: 700; font-family: 'Sora', sans-serif; border-radius: 4px; }
+  .preview-neo .n-btn-outline { background: #fff; color: #000; border: 3px solid #000; padding: 6px 14px; font-size: 0.7rem; font-weight: 700; font-family: 'Sora', sans-serif; margin-left: 6px; border-radius: 4px; }
+
+  .neo-expanded { background: #fef08a; font-family: 'Sora', sans-serif; }
+  .neo-expanded .back-btn { background: #000; color: #fef08a; border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.5); font-weight: 700; }
+  .neo-expanded .dash-sidebar { background: #fff; border-right: 3px solid #000; }
+  .neo-expanded .dash-sidebar .logo { color: #000; font-size: 1.3rem; }
+  .neo-expanded .dash-sidebar a { color: #000; font-weight: 600; border: 2px solid transparent; }
+  .neo-expanded .dash-sidebar a:first-of-type { background: #a5f3fc; border: 2px solid #000; box-shadow: 3px 3px 0 #000; }
+  .neo-expanded .stat-card { border: 3px solid #000; box-shadow: 5px 5px 0 #000; border-radius: 4px; }
+  .neo-expanded .stat-card:nth-child(1) { background: #a5f3fc; }
+  .neo-expanded .stat-card:nth-child(2) { background: #fbcfe8; }
+  .neo-expanded .stat-card:nth-child(3) { background: #bef264; }
+  .neo-expanded .stat-card:nth-child(4) { background: #fde68a; }
+  .neo-expanded .stat-card .stat-label { color: #000; font-weight: 700; }
+  .neo-expanded .stat-card .stat-value { color: #000; }
+  .neo-expanded .stat-card .stat-change { color: #000; font-weight: 600; }
+  .neo-expanded .chart-area { background: #fff; border: 3px solid #000; box-shadow: 5px 5px 0 #000; border-radius: 4px; }
+  .neo-expanded .chart-area h3 { color: #000; font-weight: 700; }
+  .neo-expanded .chart-bars .bar { background: #000; }
+  .neo-expanded .chart-bars .bar-label { color: #000; font-weight: 600; }
+  .neo-expanded .data-table th { color: #000; border-bottom: 3px solid #000; font-weight: 700; }
+  .neo-expanded .data-table td { color: #000; border-bottom: 2px solid #000; font-weight: 500; }
+  .neo-expanded .action-row .btn-primary { background: #000; color: #fef08a; border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); font-weight: 700; }
+  .neo-expanded .action-row .btn-secondary { background: #fff; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 rgba(0,0,0,0.4); font-weight: 700; }
+
+
+  /* ═══════════════════════════════════════
+     4: DARK LUXE
+     ═══════════════════════════════════════ */
+  .preview-luxe { background: #111; padding: 16px; font-family: 'Libre Baskerville', serif; }
+  .preview-luxe .l-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #2a2520; }
+  .preview-luxe .l-header > span { font-size: 0.8rem; color: #c9a96e; font-weight: 700; letter-spacing: 0.08em; }
+  .preview-luxe .l-dots { display: flex; gap: 4px; }
+  .preview-luxe .l-dots span { width: 6px; height: 6px; border-radius: 50%; background: #c9a96e; display: block; }
+  .preview-luxe .l-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .preview-luxe .l-stat { background: #1a1815; border: 1px solid #2a2520; border-radius: 8px; padding: 12px; }
+  .preview-luxe .l-stat .num { font-size: 1.1rem; font-weight: 700; color: #c9a96e; font-family: 'Playfair Display', serif; }
+  .preview-luxe .l-stat .lbl { font-size: 0.58rem; color: #6b6560; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; font-family: 'DM Sans', sans-serif; }
+  .preview-luxe .l-btn { background: linear-gradient(135deg, #c9a96e, #a8843d); color: #111; border: none; padding: 6px 16px; font-size: 0.68rem; font-weight: 700; border-radius: 4px; font-family: 'DM Sans', sans-serif; }
+
+  .luxe-expanded { background: #111; font-family: 'Libre Baskerville', serif; }
+  .luxe-expanded .back-btn { background: linear-gradient(135deg, #c9a96e, #a8843d); color: #111; font-weight: 700; }
+  .luxe-expanded .dash-sidebar { background: #0d0d0d; border-right: 1px solid #2a2520; }
+  .luxe-expanded .dash-sidebar .logo { color: #c9a96e; font-family: 'Playfair Display', serif; }
+  .luxe-expanded .dash-sidebar a { color: #6b6560; font-family: 'DM Sans', sans-serif; }
+  .luxe-expanded .dash-sidebar a:first-of-type { background: rgba(201,169,110,0.1); color: #c9a96e; border-left: 2px solid #c9a96e; border-radius: 0 8px 8px 0; }
+  .luxe-expanded .dash-main h2 { color: #f0e6d3; font-family: 'Playfair Display', serif; }
+  .luxe-expanded .stat-card { background: #1a1815; border: 1px solid #2a2520; }
+  .luxe-expanded .stat-card .stat-label { color: #6b6560; font-family: 'DM Sans', sans-serif; }
+  .luxe-expanded .stat-card .stat-value { color: #c9a96e; font-family: 'Playfair Display', serif; }
+  .luxe-expanded .stat-card .stat-change { color: #86efac; font-family: 'DM Sans', sans-serif; }
+  .luxe-expanded .chart-area { background: #1a1815; border: 1px solid #2a2520; }
+  .luxe-expanded .chart-area h3 { color: #f0e6d3; font-family: 'Playfair Display', serif; }
+  .luxe-expanded .chart-bars .bar { background: linear-gradient(to top, #a8843d, #c9a96e); }
+  .luxe-expanded .chart-bars .bar-label { color: #6b6560; font-family: 'DM Sans', sans-serif; }
+  .luxe-expanded .data-table th { color: #6b6560; border-bottom: 1px solid #2a2520; font-family: 'DM Sans', sans-serif; }
+  .luxe-expanded .data-table td { color: #b0a898; border-bottom: 1px solid #1f1c18; }
+  .luxe-expanded .action-row .btn-primary { background: linear-gradient(135deg, #c9a96e, #a8843d); color: #111; font-weight: 700; }
+  .luxe-expanded .action-row .btn-secondary { background: transparent; color: #c9a96e; border: 1px solid #c9a96e; }
+
+
+  /* ═══════════════════════════════════════
+     5: SOFT MINIMAL
+     ═══════════════════════════════════════ */
+  .preview-soft { background: #fafafa; padding: 16px; font-family: 'Sora', sans-serif; }
+  .preview-soft .s-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .preview-soft .s-stat { background: #fff; border-radius: 14px; padding: 12px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); }
+  .preview-soft .s-stat .num { font-size: 1rem; font-weight: 700; color: #334155; }
+  .preview-soft .s-stat .lbl { font-size: 0.58rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+  .preview-soft .s-card { background: #fff; border-radius: 14px; padding: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.04); margin-bottom: 10px; }
+  .preview-soft .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .preview-soft .bar-track { flex: 1; height: 6px; background: #f1f5f9; border-radius: 3px; overflow: hidden; }
+  .preview-soft .bar-fill { height: 100%; border-radius: 3px; }
+  .preview-soft .bar-row span { font-size: 0.6rem; color: #94a3b8; min-width: 50px; }
+  .preview-soft .s-btn { background: #818cf8; color: #fff; border: none; padding: 7px 16px; font-size: 0.68rem; font-weight: 600; border-radius: 10px; font-family: 'Sora', sans-serif; }
+
+  .soft-expanded { background: #fafafa; font-family: 'Sora', sans-serif; }
+  .soft-expanded .back-btn { background: #818cf8; color: #fff; box-shadow: 0 2px 12px rgba(129,140,248,0.3); border-radius: 12px; }
+  .soft-expanded .dash-sidebar { background: #fff; box-shadow: 1px 0 8px rgba(0,0,0,0.03); }
+  .soft-expanded .dash-sidebar .logo { color: #818cf8; }
+  .soft-expanded .dash-sidebar a { color: #94a3b8; border-radius: 12px; }
+  .soft-expanded .dash-sidebar a:first-of-type { background: #f0f0ff; color: #818cf8; }
+  .soft-expanded .stat-card { background: #fff; box-shadow: 0 1px 8px rgba(0,0,0,0.04); border-radius: 16px; }
+  .soft-expanded .stat-card .stat-label { color: #94a3b8; }
+  .soft-expanded .stat-card .stat-value { color: #334155; }
+  .soft-expanded .stat-card .stat-change { color: #34d399; }
+  .soft-expanded .chart-area { background: #fff; box-shadow: 0 1px 8px rgba(0,0,0,0.04); border-radius: 16px; }
+  .soft-expanded .chart-area h3 { color: #334155; }
+  .soft-expanded .chart-bars .bar { background: linear-gradient(to top, #c7d2fe, #818cf8); border-radius: 6px 6px 0 0; }
+  .soft-expanded .chart-bars .bar-label { color: #94a3b8; }
+  .soft-expanded .data-table th { color: #94a3b8; border-bottom: 1px solid #f1f5f9; }
+  .soft-expanded .data-table td { color: #475569; border-bottom: 1px solid #f8fafc; }
+  .soft-expanded .action-row .btn-primary { background: #818cf8; color: #fff; border-radius: 12px; }
+  .soft-expanded .action-row .btn-secondary { background: #fff; color: #818cf8; border: 1px solid #e2e8f0; border-radius: 12px; }
+
+
+  /* ═══════════════════════════════════════
+     6: RETRO TERMINAL
+     ═══════════════════════════════════════ */
+  .preview-term { background: #0a0a0a; padding: 16px; font-family: 'JetBrains Mono', monospace; position: relative; overflow: hidden; }
+  .preview-term::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.03) 2px, rgba(0,255,65,0.03) 4px); pointer-events: none; }
+  .preview-term .t-line { font-size: 0.65rem; color: #00ff41; margin-bottom: 3px; opacity: 0.9; }
+  .preview-term .t-dim { color: #006b1a; }
+  .preview-term .t-bright { color: #00ff41; text-shadow: 0 0 6px rgba(0,255,65,0.5); }
+  .preview-term .t-box { border: 1px solid #003d10; padding: 8px; margin: 8px 0; }
+  .preview-term .t-box .num { font-size: 0.9rem; font-weight: 700; color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.4); }
+  .preview-term .t-box .lbl { font-size: 0.55rem; color: #006b1a; text-transform: uppercase; margin-bottom: 2px; }
+  .preview-term .t-prompt { color: #00ff41; font-size: 0.65rem; margin-top: 10px; }
+  .preview-term .cursor { display: inline-block; width: 7px; height: 12px; background: #00ff41; animation: blink 1s step-end infinite; vertical-align: middle; margin-left: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .term-expanded { background: #0a0a0a; font-family: 'JetBrains Mono', monospace; }
+  .term-expanded::after { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.025) 2px, rgba(0,255,65,0.025) 4px); pointer-events: none; z-index: 1; }
+  .term-expanded .back-btn { background: #003d10; color: #00ff41; border: 1px solid #00ff41; z-index: 1100; }
+  .term-expanded .dash-sidebar { background: #0d0d0d; border-right: 1px solid #003d10; }
+  .term-expanded .dash-sidebar .logo { color: #00ff41; text-shadow: 0 0 10px rgba(0,255,65,0.4); font-family: 'JetBrains Mono', monospace; }
+  .term-expanded .dash-sidebar a { color: #006b1a; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  .term-expanded .dash-sidebar a:first-of-type { background: rgba(0,255,65,0.08); color: #00ff41; border-left: 2px solid #00ff41; border-radius: 0; }
+  .term-expanded .dash-main { position: relative; z-index: 2; }
+  .term-expanded .dash-main h2 { color: #00ff41; text-shadow: 0 0 10px rgba(0,255,65,0.3); font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; }
+  .term-expanded .stat-card { background: #0d0d0d; border: 1px solid #003d10; border-radius: 0; }
+  .term-expanded .stat-card .stat-label { color: #006b1a; font-family: 'JetBrains Mono', monospace; }
+  .term-expanded .stat-card .stat-value { color: #00ff41; text-shadow: 0 0 8px rgba(0,255,65,0.4); font-family: 'JetBrains Mono', monospace; }
+  .term-expanded .stat-card .stat-change { color: #00ff41; font-family: 'JetBrains Mono', monospace; }
+  .term-expanded .chart-area { background: #0d0d0d; border: 1px solid #003d10; border-radius: 0; }
+  .term-expanded .chart-area h3 { color: #00ff41; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; }
+  .term-expanded .chart-bars .bar { background: #00ff41; box-shadow: 0 0 6px rgba(0,255,65,0.3); border-radius: 0; }
+  .term-expanded .chart-bars .bar-label { color: #006b1a; font-family: 'JetBrains Mono', monospace; }
+  .term-expanded .data-table { font-family: 'JetBrains Mono', monospace; }
+  .term-expanded .data-table th { color: #006b1a; border-bottom: 1px solid #003d10; }
+  .term-expanded .data-table td { color: #00cc33; border-bottom: 1px solid #0a1f0d; }
+  .term-expanded .action-row .btn-primary { background: #003d10; color: #00ff41; border: 1px solid #00ff41; border-radius: 0; font-family: 'JetBrains Mono', monospace; }
+  .term-expanded .action-row .btn-secondary { background: transparent; color: #00ff41; border: 1px solid #003d10; border-radius: 0; font-family: 'JetBrains Mono', monospace; }
+
+
+  /* ═══════════════════════════════════════
+     7: VAPORWAVE
+     ═══════════════════════════════════════ */
+  .preview-vapor {
+    background: linear-gradient(180deg, #1a0030 0%, #2d0060 40%, #ff6ec7 80%, #00ffff 100%);
+    padding: 16px; font-family: 'Righteous', cursive; position: relative; overflow: hidden;
+  }
+  .preview-vapor::before {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent, transparent 8px,
+      rgba(0,255,255,0.08) 8px, rgba(0,255,255,0.08) 9px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent, transparent 30px,
+      rgba(0,255,255,0.08) 30px, rgba(0,255,255,0.08) 31px
+    );
+    transform: perspective(200px) rotateX(40deg);
+    transform-origin: bottom;
+  }
+  .preview-vapor .v-title { font-size: 0.9rem; color: #ff6ec7; text-shadow: 0 0 12px #ff6ec7, 0 0 30px rgba(255,110,199,0.3); margin-bottom: 12px; letter-spacing: 0.15em; text-transform: uppercase; }
+  .preview-vapor .v-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; position: relative; z-index: 1; }
+  .preview-vapor .v-stat { background: rgba(0,0,0,0.4); border: 1px solid rgba(0,255,255,0.3); padding: 10px; border-radius: 2px; }
+  .preview-vapor .v-stat .num { font-size: 1rem; color: #00ffff; text-shadow: 0 0 10px rgba(0,255,255,0.5); font-family: 'Orbitron', sans-serif; }
+  .preview-vapor .v-stat .lbl { font-size: 0.55rem; color: #ff6ec7; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; font-family: 'DM Sans', sans-serif; }
+  .preview-vapor .v-btn { background: linear-gradient(90deg, #ff6ec7, #00ffff); color: #1a0030; border: none; padding: 6px 16px; font-size: 0.65rem; font-weight: 700; font-family: 'Righteous', cursive; letter-spacing: 0.1em; position: relative; z-index: 1; }
+
+  .vapor-expanded { background: linear-gradient(180deg, #1a0030 0%, #2d0060 60%, #0a0020 100%); font-family: 'Righteous', cursive; }
+  .vapor-expanded::before { content: ''; position: fixed; bottom: 0; left: 0; right: 0; height: 40%; background: repeating-linear-gradient(0deg, transparent, transparent 12px, rgba(0,255,255,0.04) 12px, rgba(0,255,255,0.04) 13px), repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0,255,255,0.04) 50px, rgba(0,255,255,0.04) 51px); transform: perspective(300px) rotateX(50deg); transform-origin: bottom; pointer-events: none; }
+  .vapor-expanded .back-btn { background: linear-gradient(90deg, #ff6ec7, #00ffff); color: #1a0030; font-weight: 700; }
+  .vapor-expanded .dash-sidebar { background: rgba(0,0,0,0.5); border-right: 1px solid rgba(0,255,255,0.2); }
+  .vapor-expanded .dash-sidebar .logo { color: #ff6ec7; text-shadow: 0 0 15px #ff6ec7; font-family: 'Righteous', cursive; letter-spacing: 0.1em; }
+  .vapor-expanded .dash-sidebar a { color: rgba(0,255,255,0.6); font-family: 'DM Sans', sans-serif; }
+  .vapor-expanded .dash-sidebar a:first-of-type { background: rgba(255,110,199,0.15); color: #ff6ec7; }
+  .vapor-expanded .dash-main h2 { color: #ff6ec7; text-shadow: 0 0 15px rgba(255,110,199,0.5); font-family: 'Righteous', cursive; letter-spacing: 0.05em; }
+  .vapor-expanded .stat-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(0,255,255,0.2); border-radius: 2px; }
+  .vapor-expanded .stat-card .stat-label { color: #ff6ec7; font-family: 'DM Sans', sans-serif; }
+  .vapor-expanded .stat-card .stat-value { color: #00ffff; text-shadow: 0 0 10px rgba(0,255,255,0.5); font-family: 'Orbitron', sans-serif; }
+  .vapor-expanded .stat-card .stat-change { color: #ff6ec7; font-family: 'DM Sans', sans-serif; }
+  .vapor-expanded .chart-area { background: rgba(0,0,0,0.4); border: 1px solid rgba(0,255,255,0.2); border-radius: 2px; }
+  .vapor-expanded .chart-area h3 { color: #00ffff; font-family: 'Righteous', cursive; }
+  .vapor-expanded .chart-bars .bar { background: linear-gradient(to top, #ff6ec7, #00ffff); border-radius: 0; }
+  .vapor-expanded .chart-bars .bar-label { color: rgba(0,255,255,0.5); font-family: 'DM Sans', sans-serif; }
+  .vapor-expanded .data-table th { color: #ff6ec7; border-bottom: 1px solid rgba(0,255,255,0.15); font-family: 'DM Sans', sans-serif; }
+  .vapor-expanded .data-table td { color: rgba(0,255,255,0.8); border-bottom: 1px solid rgba(0,255,255,0.06); }
+  .vapor-expanded .action-row .btn-primary { background: linear-gradient(90deg, #ff6ec7, #00ffff); color: #1a0030; font-weight: 700; border-radius: 0; }
+  .vapor-expanded .action-row .btn-secondary { background: transparent; color: #00ffff; border: 1px solid rgba(0,255,255,0.4); border-radius: 0; }
+
+
+  /* ═══════════════════════════════════════
+     8: CANDY POP
+     ═══════════════════════════════════════ */
+  .preview-candy { background: #fff5f9; padding: 16px; font-family: 'Fredoka', sans-serif; }
+  .preview-candy .c-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .preview-candy .c-stat { border-radius: 20px; padding: 12px; text-align: center; }
+  .preview-candy .c-stat:nth-child(1) { background: #fce7f3; }
+  .preview-candy .c-stat:nth-child(2) { background: #e0f2fe; }
+  .preview-candy .c-stat:nth-child(3) { background: #dcfce7; }
+  .preview-candy .c-stat .num { font-size: 1.1rem; font-weight: 700; color: #1e1e1e; }
+  .preview-candy .c-stat .lbl { font-size: 0.58rem; color: #888; font-weight: 500; margin-bottom: 4px; }
+  .preview-candy .c-card { background: #fff; border-radius: 20px; padding: 14px; box-shadow: 0 4px 20px rgba(236,72,153,0.1); margin-bottom: 10px; }
+  .preview-candy .c-pill { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.6rem; font-weight: 600; margin-right: 4px; }
+  .preview-candy .c-btn { background: linear-gradient(135deg, #ec4899, #f472b6); color: #fff; border: none; padding: 8px 18px; font-size: 0.7rem; font-weight: 600; border-radius: 20px; font-family: 'Fredoka', sans-serif; box-shadow: 0 4px 12px rgba(236,72,153,0.3); }
+
+  .candy-expanded { background: #fff5f9; font-family: 'Fredoka', sans-serif; }
+  .candy-expanded .back-btn { background: linear-gradient(135deg, #ec4899, #f472b6); color: #fff; border-radius: 20px; box-shadow: 0 4px 12px rgba(236,72,153,0.3); }
+  .candy-expanded .dash-sidebar { background: #fff; box-shadow: 2px 0 20px rgba(236,72,153,0.06); }
+  .candy-expanded .dash-sidebar .logo { color: #ec4899; font-family: 'Fredoka', sans-serif; }
+  .candy-expanded .dash-sidebar a { color: #999; border-radius: 16px; font-family: 'Fredoka', sans-serif; }
+  .candy-expanded .dash-sidebar a:first-of-type { background: #fce7f3; color: #ec4899; }
+  .candy-expanded .dash-main h2 { color: #1e1e1e; }
+  .candy-expanded .stat-card { border-radius: 20px; }
+  .candy-expanded .stat-card:nth-child(1) { background: #fce7f3; }
+  .candy-expanded .stat-card:nth-child(2) { background: #e0f2fe; }
+  .candy-expanded .stat-card:nth-child(3) { background: #dcfce7; }
+  .candy-expanded .stat-card:nth-child(4) { background: #fef3c7; }
+  .candy-expanded .stat-card .stat-label { color: #888; }
+  .candy-expanded .stat-card .stat-value { color: #1e1e1e; }
+  .candy-expanded .stat-card .stat-change { color: #ec4899; }
+  .candy-expanded .chart-area { background: #fff; border-radius: 20px; box-shadow: 0 4px 20px rgba(236,72,153,0.06); }
+  .candy-expanded .chart-area h3 { color: #1e1e1e; }
+  .candy-expanded .chart-bars .bar { background: linear-gradient(to top, #fce7f3, #ec4899); border-radius: 10px 10px 0 0; }
+  .candy-expanded .chart-bars .bar-label { color: #999; }
+  .candy-expanded .data-table th { color: #999; border-bottom: 2px solid #fce7f3; }
+  .candy-expanded .data-table td { color: #555; border-bottom: 1px solid #fff0f6; }
+  .candy-expanded .action-row .btn-primary { background: linear-gradient(135deg, #ec4899, #f472b6); color: #fff; border-radius: 20px; box-shadow: 0 4px 12px rgba(236,72,153,0.3); }
+  .candy-expanded .action-row .btn-secondary { background: #fff; color: #ec4899; border: 2px solid #fce7f3; border-radius: 20px; }
+
+
+  /* ═══════════════════════════════════════
+     9: RETRO ARCADE
+     ═══════════════════════════════════════ */
+  .preview-arcade { background: #1a1a2e; padding: 16px; font-family: 'Press Start 2P', monospace; position: relative; overflow: hidden; image-rendering: pixelated; }
+  .preview-arcade::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15) 0px, rgba(0,0,0,0.15) 1px, transparent 1px, transparent 3px); pointer-events: none; }
+  .preview-arcade .a-title { font-size: 0.6rem; color: #ffde00; text-shadow: 2px 2px 0 #ff6600; margin-bottom: 12px; letter-spacing: 0.05em; }
+  .preview-arcade .a-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; position: relative; z-index: 1; }
+  .preview-arcade .a-stat { background: #16213e; border: 2px solid #0f3460; padding: 10px; }
+  .preview-arcade .a-stat .num { font-size: 0.7rem; color: #00ff41; text-shadow: 0 0 4px #00ff41; font-family: 'Press Start 2P', monospace; }
+  .preview-arcade .a-stat .lbl { font-size: 0.4rem; color: #e94560; margin-bottom: 4px; font-family: 'Press Start 2P', monospace; }
+  .preview-arcade .a-bar { height: 8px; background: #16213e; border: 1px solid #0f3460; margin-bottom: 4px; position: relative; z-index: 1; }
+  .preview-arcade .a-bar-fill { height: 100%; }
+  .preview-arcade .a-label { font-size: 0.35rem; color: #e94560; margin-bottom: 2px; position: relative; z-index: 1; }
+  .preview-arcade .a-btn { background: #e94560; color: #fff; border: none; padding: 6px 12px; font-size: 0.45rem; font-family: 'Press Start 2P', monospace; position: relative; z-index: 1; box-shadow: 3px 3px 0 #0f3460; }
+
+  .arcade-expanded { background: #1a1a2e; font-family: 'Press Start 2P', monospace; }
+  .arcade-expanded::after { content: ''; position: fixed; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 3px); pointer-events: none; z-index: 1; }
+  .arcade-expanded .back-btn { background: #e94560; color: #fff; box-shadow: 3px 3px 0 #0f3460; border-radius: 0; z-index: 1100; font-family: 'Press Start 2P', monospace; font-size: 0.6rem; }
+  .arcade-expanded .dash-sidebar { background: #16213e; border-right: 2px solid #0f3460; }
+  .arcade-expanded .dash-sidebar .logo { color: #ffde00; text-shadow: 2px 2px 0 #ff6600; font-family: 'Press Start 2P', monospace; font-size: 0.8rem; }
+  .arcade-expanded .dash-sidebar a { color: #e94560; font-family: 'Press Start 2P', monospace; font-size: 0.55rem; border-radius: 0; }
+  .arcade-expanded .dash-sidebar a:first-of-type { background: #1a1a2e; color: #ffde00; border-left: 3px solid #ffde00; }
+  .arcade-expanded .dash-main { position: relative; z-index: 2; }
+  .arcade-expanded .dash-main h2 { color: #ffde00; text-shadow: 2px 2px 0 #ff6600; font-family: 'Press Start 2P', monospace; font-size: 0.9rem; }
+  .arcade-expanded .stat-card { background: #16213e; border: 2px solid #0f3460; border-radius: 0; }
+  .arcade-expanded .stat-card .stat-label { color: #e94560; font-family: 'Press Start 2P', monospace; font-size: 0.5rem; }
+  .arcade-expanded .stat-card .stat-value { color: #00ff41; text-shadow: 0 0 6px rgba(0,255,65,0.4); font-family: 'Press Start 2P', monospace; font-size: 1rem; }
+  .arcade-expanded .stat-card .stat-change { color: #ffde00; font-family: 'Press Start 2P', monospace; font-size: 0.45rem; }
+  .arcade-expanded .chart-area { background: #16213e; border: 2px solid #0f3460; border-radius: 0; }
+  .arcade-expanded .chart-area h3 { color: #e94560; font-family: 'Press Start 2P', monospace; font-size: 0.6rem; }
+  .arcade-expanded .chart-bars .bar { background: #00ff41; box-shadow: 0 0 4px rgba(0,255,65,0.3); border-radius: 0; }
+  .arcade-expanded .chart-bars .bar-label { color: #e94560; font-family: 'Press Start 2P', monospace; font-size: 0.4rem; }
+  .arcade-expanded .data-table { font-family: 'Press Start 2P', monospace; font-size: 0.5rem; }
+  .arcade-expanded .data-table th { color: #e94560; border-bottom: 2px solid #0f3460; font-size: 0.4rem; }
+  .arcade-expanded .data-table td { color: #00ff41; border-bottom: 1px solid #0f3460; }
+  .arcade-expanded .action-row .btn-primary { background: #e94560; color: #fff; border-radius: 0; box-shadow: 3px 3px 0 #0f3460; font-family: 'Press Start 2P', monospace; font-size: 0.55rem; }
+  .arcade-expanded .action-row .btn-secondary { background: #16213e; color: #ffde00; border: 2px solid #ffde00; border-radius: 0; font-family: 'Press Start 2P', monospace; font-size: 0.55rem; }
+
+
+  /* ═══════════════════════════════════════
+     10: SKETCH / NOTEBOOK
+     ═══════════════════════════════════════ */
+  .preview-sketch {
+    background: #fefcf3;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 27px, #e8dcc8 27px, #e8dcc8 28px);
+    padding: 16px; font-family: 'Caveat', cursive; position: relative;
+  }
+  .preview-sketch::before { content: ''; position: absolute; left: 50px; top: 0; bottom: 0; width: 2px; background: #f0b8b8; opacity: 0.5; }
+  .preview-sketch .sk-title { font-size: 1.4rem; font-weight: 700; color: #2a2a2a; margin-bottom: 8px; margin-left: 40px; }
+  .preview-sketch .sk-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; margin-left: 40px; }
+  .preview-sketch .sk-stat { border: 2px dashed #c4b8a0; border-radius: 6px; padding: 10px; background: rgba(255,255,255,0.5); transform: rotate(-0.5deg); }
+  .preview-sketch .sk-stat:nth-child(2) { transform: rotate(0.5deg); }
+  .preview-sketch .sk-stat .num { font-size: 1.3rem; font-weight: 700; color: #2a2a2a; }
+  .preview-sketch .sk-stat .lbl { font-size: 0.85rem; color: #8a7a6a; }
+  .preview-sketch .sk-note { margin-left: 40px; font-size: 1.1rem; color: #555; line-height: 1.6; }
+  .preview-sketch .sk-check { margin-left: 40px; font-size: 1rem; color: #2a2a2a; margin-bottom: 2px; }
+  .preview-sketch .sk-check .done { text-decoration: line-through; color: #aaa; }
+
+  .sketch-expanded { background: #fefcf3; background-image: repeating-linear-gradient(0deg, transparent, transparent 31px, #e8dcc8 31px, #e8dcc8 32px); font-family: 'Caveat', cursive; }
+  .sketch-expanded .back-btn { background: #2a2a2a; color: #fefcf3; font-family: 'Caveat', cursive; font-size: 1.1rem; border-radius: 6px; }
+  .sketch-expanded .dash-sidebar { background: rgba(254,252,243,0.95); border-right: 2px dashed #c4b8a0; }
+  .sketch-expanded .dash-sidebar .logo { color: #2a2a2a; font-family: 'Caveat', cursive; font-size: 1.6rem; }
+  .sketch-expanded .dash-sidebar a { color: #8a7a6a; font-family: 'Caveat', cursive; font-size: 1.1rem; }
+  .sketch-expanded .dash-sidebar a:first-of-type { background: rgba(42,42,42,0.08); color: #2a2a2a; font-weight: 700; border-bottom: 2px solid #2a2a2a; border-radius: 0; }
+  .sketch-expanded .dash-main h2 { color: #2a2a2a; font-family: 'Caveat', cursive; font-size: 2rem; }
+  .sketch-expanded .stat-card { background: rgba(255,255,255,0.5); border: 2px dashed #c4b8a0; }
+  .sketch-expanded .stat-card:nth-child(odd) { transform: rotate(-0.5deg); }
+  .sketch-expanded .stat-card:nth-child(even) { transform: rotate(0.5deg); }
+  .sketch-expanded .stat-card .stat-label { color: #8a7a6a; font-family: 'Caveat', cursive; font-size: 1rem; }
+  .sketch-expanded .stat-card .stat-value { color: #2a2a2a; font-family: 'Caveat', cursive; font-size: 2rem; }
+  .sketch-expanded .stat-card .stat-change { color: #5a8a5a; font-family: 'Caveat', cursive; font-size: 0.95rem; }
+  .sketch-expanded .chart-area { background: rgba(255,255,255,0.4); border: 2px dashed #c4b8a0; }
+  .sketch-expanded .chart-area h3 { color: #2a2a2a; font-family: 'Caveat', cursive; font-size: 1.3rem; }
+  .sketch-expanded .chart-bars .bar { background: #2a2a2a; border-radius: 2px; opacity: 0.7; }
+  .sketch-expanded .chart-bars .bar-label { color: #8a7a6a; font-family: 'Caveat', cursive; font-size: 0.9rem; }
+  .sketch-expanded .data-table { font-family: 'Caveat', cursive; font-size: 1.1rem; }
+  .sketch-expanded .data-table th { color: #8a7a6a; border-bottom: 2px dashed #c4b8a0; }
+  .sketch-expanded .data-table td { color: #2a2a2a; border-bottom: 1px dashed #ddd4c4; }
+  .sketch-expanded .action-row .btn-primary { background: #2a2a2a; color: #fefcf3; font-family: 'Caveat', cursive; font-size: 1.1rem; border-radius: 6px; }
+  .sketch-expanded .action-row .btn-secondary { background: transparent; color: #2a2a2a; border: 2px dashed #c4b8a0; font-family: 'Caveat', cursive; font-size: 1.1rem; border-radius: 6px; }
+
+
+  /* ═══════════════════════════════════════
+     11: CYBERPUNK
+     ═══════════════════════════════════════ */
+  .preview-cyber {
+    background: #0d0d0d; padding: 16px; font-family: 'Orbitron', sans-serif; position: relative; overflow: hidden;
+  }
+  .preview-cyber::before { content: ''; position: absolute; top: -2px; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ff003c, #fffc00, #ff003c); animation: cyberScan 2s linear infinite; }
+  @keyframes cyberScan { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+  .preview-cyber .cy-title { font-size: 0.65rem; color: #fffc00; text-transform: uppercase; letter-spacing: 0.2em; margin-bottom: 10px; text-shadow: 0 0 8px rgba(255,252,0,0.5); }
+  .preview-cyber .cy-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .preview-cyber .cy-stat { background: rgba(255,0,60,0.08); border-left: 3px solid #ff003c; padding: 10px; position: relative; }
+  .preview-cyber .cy-stat::after { content: ''; position: absolute; top: 0; right: 0; width: 20px; height: 20px; border-top: 2px solid #fffc00; border-right: 2px solid #fffc00; }
+  .preview-cyber .cy-stat .num { font-size: 0.85rem; color: #ff003c; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 6px rgba(255,0,60,0.4); }
+  .preview-cyber .cy-stat .lbl { font-size: 0.45rem; color: #fffc00; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 4px; }
+  .preview-cyber .cy-line { height: 1px; background: linear-gradient(90deg, transparent, #ff003c, transparent); margin: 8px 0; }
+  .preview-cyber .cy-text { font-size: 0.5rem; color: rgba(255,252,0,0.6); letter-spacing: 0.1em; }
+  .preview-cyber .cy-btn { background: #ff003c; color: #fff; border: none; padding: 6px 14px; font-size: 0.5rem; font-family: 'Orbitron', sans-serif; letter-spacing: 0.1em; clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px)); }
+
+  .cyber-expanded { background: #0d0d0d; font-family: 'Orbitron', sans-serif; }
+  .cyber-expanded::before { content: ''; position: fixed; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, #ff003c, #fffc00, transparent); animation: cyberScan 3s linear infinite; z-index: 1100; }
+  .cyber-expanded .back-btn { background: #ff003c; color: #fff; border-radius: 0; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); z-index: 1200; font-family: 'Orbitron', sans-serif; font-size: 0.7rem; letter-spacing: 0.1em; }
+  .cyber-expanded .dash-sidebar { background: #0a0a0a; border-right: 1px solid rgba(255,0,60,0.3); }
+  .cyber-expanded .dash-sidebar .logo { color: #fffc00; text-shadow: 0 0 12px rgba(255,252,0,0.5); font-family: 'Orbitron', sans-serif; font-size: 1rem; letter-spacing: 0.15em; }
+  .cyber-expanded .dash-sidebar a { color: rgba(255,252,0,0.5); font-family: 'Orbitron', sans-serif; font-size: 0.65rem; letter-spacing: 0.08em; border-radius: 0; }
+  .cyber-expanded .dash-sidebar a:first-of-type { background: rgba(255,0,60,0.15); color: #ff003c; border-left: 3px solid #ff003c; }
+  .cyber-expanded .dash-main { position: relative; z-index: 2; }
+  .cyber-expanded .dash-main h2 { color: #fffc00; text-shadow: 0 0 15px rgba(255,252,0,0.4); font-family: 'Orbitron', sans-serif; font-size: 1.1rem; letter-spacing: 0.1em; }
+  .cyber-expanded .stat-card { background: rgba(255,0,60,0.06); border-left: 3px solid #ff003c; border-radius: 0; position: relative; }
+  .cyber-expanded .stat-card::after { content: ''; position: absolute; top: 0; right: 0; width: 16px; height: 16px; border-top: 2px solid #fffc00; border-right: 2px solid #fffc00; }
+  .cyber-expanded .stat-card .stat-label { color: #fffc00; font-family: 'Orbitron', sans-serif; font-size: 0.6rem; }
+  .cyber-expanded .stat-card .stat-value { color: #ff003c; text-shadow: 0 0 8px rgba(255,0,60,0.4); font-family: 'Orbitron', sans-serif; }
+  .cyber-expanded .stat-card .stat-change { color: rgba(255,252,0,0.7); font-family: 'Orbitron', sans-serif; font-size: 0.6rem; }
+  .cyber-expanded .chart-area { background: rgba(255,0,60,0.04); border: 1px solid rgba(255,0,60,0.2); border-radius: 0; }
+  .cyber-expanded .chart-area h3 { color: #ff003c; font-family: 'Orbitron', sans-serif; font-size: 0.75rem; letter-spacing: 0.1em; }
+  .cyber-expanded .chart-bars .bar { background: linear-gradient(to top, #ff003c, #fffc00); border-radius: 0; }
+  .cyber-expanded .chart-bars .bar-label { color: rgba(255,252,0,0.5); font-family: 'Orbitron', sans-serif; font-size: 0.5rem; }
+  .cyber-expanded .data-table { font-family: 'Orbitron', sans-serif; font-size: 0.65rem; }
+  .cyber-expanded .data-table th { color: #fffc00; border-bottom: 1px solid rgba(255,0,60,0.3); font-size: 0.55rem; letter-spacing: 0.1em; }
+  .cyber-expanded .data-table td { color: rgba(255,252,0,0.7); border-bottom: 1px solid rgba(255,0,60,0.1); }
+  .cyber-expanded .action-row .btn-primary { background: #ff003c; color: #fff; border-radius: 0; font-family: 'Orbitron', sans-serif; font-size: 0.65rem; letter-spacing: 0.08em; clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px)); }
+  .cyber-expanded .action-row .btn-secondary { background: transparent; color: #fffc00; border: 1px solid #fffc00; border-radius: 0; font-family: 'Orbitron', sans-serif; font-size: 0.65rem; }
+
+
+  /* ═══════════════════════════════════════
+     12: NATURE / EARTH
+     ═══════════════════════════════════════ */
+  .preview-nature {
+    background: linear-gradient(180deg, #f0f7e6 0%, #e2eed4 100%);
+    padding: 16px; font-family: 'DM Sans', sans-serif; position: relative; overflow: hidden;
+  }
+  .preview-nature::before { content: ''; position: absolute; right: -10px; top: -10px; width: 80px; height: 80px; background: radial-gradient(circle, rgba(76,140,47,0.15) 0%, transparent 70%); border-radius: 50%; }
+  .preview-nature .na-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .preview-nature .na-stat { background: rgba(255,255,255,0.7); border-radius: 12px; padding: 12px; border-left: 3px solid #4c8c2f; }
+  .preview-nature .na-stat .num { font-size: 1rem; font-weight: 700; color: #2d5016; }
+  .preview-nature .na-stat .lbl { font-size: 0.58rem; color: #6b8f56; text-transform: uppercase; margin-bottom: 4px; }
+  .preview-nature .na-card { background: rgba(255,255,255,0.6); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+  .preview-nature .na-badge { display: inline-block; background: #4c8c2f; color: #fff; font-size: 0.58rem; padding: 3px 8px; border-radius: 8px; font-weight: 600; }
+  .preview-nature .na-btn { background: #4c8c2f; color: #fff; border: none; padding: 7px 16px; font-size: 0.68rem; font-weight: 600; border-radius: 10px; font-family: 'DM Sans', sans-serif; }
+
+  .nature-expanded { background: linear-gradient(180deg, #f0f7e6 0%, #e2eed4 100%); font-family: 'DM Sans', sans-serif; }
+  .nature-expanded .back-btn { background: #4c8c2f; color: #fff; border-radius: 10px; }
+  .nature-expanded .dash-sidebar { background: rgba(255,255,255,0.6); border-right: 1px solid #c8ddb8; }
+  .nature-expanded .dash-sidebar .logo { color: #2d5016; }
+  .nature-expanded .dash-sidebar a { color: #6b8f56; }
+  .nature-expanded .dash-sidebar a:first-of-type { background: rgba(76,140,47,0.12); color: #2d5016; border-left: 3px solid #4c8c2f; border-radius: 0 8px 8px 0; }
+  .nature-expanded .dash-main h2 { color: #2d5016; }
+  .nature-expanded .stat-card { background: rgba(255,255,255,0.7); border-left: 3px solid #4c8c2f; }
+  .nature-expanded .stat-card .stat-label { color: #6b8f56; }
+  .nature-expanded .stat-card .stat-value { color: #2d5016; }
+  .nature-expanded .stat-card .stat-change { color: #4c8c2f; }
+  .nature-expanded .chart-area { background: rgba(255,255,255,0.6); border: 1px solid #c8ddb8; }
+  .nature-expanded .chart-area h3 { color: #2d5016; }
+  .nature-expanded .chart-bars .bar { background: linear-gradient(to top, #90c96e, #4c8c2f); border-radius: 4px 4px 0 0; }
+  .nature-expanded .chart-bars .bar-label { color: #6b8f56; }
+  .nature-expanded .data-table th { color: #6b8f56; border-bottom: 2px solid #c8ddb8; }
+  .nature-expanded .data-table td { color: #3a5a28; border-bottom: 1px solid #e2eed4; }
+  .nature-expanded .action-row .btn-primary { background: #4c8c2f; color: #fff; border-radius: 10px; }
+  .nature-expanded .action-row .btn-secondary { background: rgba(255,255,255,0.7); color: #4c8c2f; border: 1px solid #c8ddb8; border-radius: 10px; }
+</style>
+</head>
+<body>
+
+<div class="wrapper-header">
+  <h1>UI Style Showcase</h1>
+  <p>Select a style to preview it full-screen</p>
+  <div class="count">12 styles</div>
+</div>
+
+<div class="grid">
+
+  <!-- 1 ── Corporate Clean ── -->
+  <div class="style-card" onclick="expand('corporate')">
+    <div class="preview-window preview-corporate">
+      <div class="p-nav"><span>Dashboard</span><span>Analytics</span><span>Reports</span><span>Settings</span></div>
+      <div class="p-stats">
+        <div class="p-stat"><div class="lbl">Revenue</div><div class="num">$84,230</div></div>
+        <div class="p-stat"><div class="lbl">Users</div><div class="num">12,842</div></div>
+        <div class="p-stat"><div class="lbl">Growth</div><div class="num">+23.5%</div></div>
+      </div>
+      <div class="p-stat" style="margin-bottom:10px;padding:10px 12px;">
+        <div class="lbl" style="margin-bottom:6px">Quick Actions</div>
+        <span class="p-btn">Export Report</span>
+        <input class="p-input" value="Search..." readonly>
+      </div>
+    </div>
+    <div class="card-label"><h3>Corporate Clean</h3><span>Professional, muted blues &amp; grays &mdash; enterprise SaaS feel</span></div>
+  </div>
+
+  <!-- 2 ── Glassmorphism ── -->
+  <div class="style-card" onclick="expand('glass')">
+    <div class="preview-window preview-glass">
+      <div class="g-nav"><span>Overview</span><span>Analytics</span><span>Team</span><span>Billing</span></div>
+      <div class="g-row" style="margin-top:10px">
+        <div class="g-stat"><div class="lbl">Monthly</div><div class="num">$42.8k</div></div>
+        <div class="g-stat"><div class="lbl">Active</div><div class="num">3,291</div></div>
+      </div>
+      <div class="g-card" style="font-size:0.65rem;color:rgba(255,255,255,0.7);font-family:'Sora',sans-serif;">
+        <div style="margin-bottom:6px;color:#fff;font-weight:600;font-size:0.72rem;">Performance</div>
+        <div style="display:flex;gap:4px;height:40px;align-items:flex-end;">
+          <div style="flex:1;background:rgba(255,255,255,0.3);height:60%;border-radius:3px 3px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,255,255,0.3);height:80%;border-radius:3px 3px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,255,255,0.5);height:45%;border-radius:3px 3px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,255,255,0.3);height:90%;border-radius:3px 3px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,255,255,0.3);height:70%;border-radius:3px 3px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,255,255,0.4);height:55%;border-radius:3px 3px 0 0;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-label"><h3>Glassmorphism</h3><span>Frosted glass panels on vibrant gradient backdrops</span></div>
+  </div>
+
+  <!-- 3 ── Neobrutalism ── -->
+  <div class="style-card" onclick="expand('neo')">
+    <div class="preview-window preview-neo">
+      <div class="n-row">
+        <div class="n-stat"><div class="lbl">Sales</div><div class="num">$9,420</div></div>
+        <div class="n-stat"><div class="lbl">Orders</div><div class="num">842</div></div>
+        <div class="n-stat"><div class="lbl">Rate</div><div class="num">94.2%</div></div>
+      </div>
+      <div class="n-card">
+        <div style="font-size:0.72rem;font-weight:700;margin-bottom:8px;">Recent Activity</div>
+        <div style="font-size:0.62rem;margin-bottom:4px;"><strong>Order #1042</strong> &mdash; Shipped</div>
+        <div style="font-size:0.62rem;margin-bottom:4px;"><strong>Order #1041</strong> &mdash; Processing</div>
+        <div style="font-size:0.62rem;"><strong>Order #1040</strong> &mdash; Delivered</div>
+      </div>
+      <span class="n-btn">New Order</span><span class="n-btn-outline">View All</span>
+    </div>
+    <div class="card-label"><h3>Neobrutalism</h3><span>Bold borders, bright colors, chunky shadows &mdash; raw &amp; playful</span></div>
+  </div>
+
+  <!-- 4 ── Dark Luxe ── -->
+  <div class="style-card" onclick="expand('luxe')">
+    <div class="preview-window preview-luxe">
+      <div class="l-header"><span>PORTFOLIO</span><div class="l-dots"><span></span><span></span><span></span></div></div>
+      <div class="l-row">
+        <div class="l-stat"><div class="lbl">Total Value</div><div class="num">$2.4M</div></div>
+        <div class="l-stat"><div class="lbl">Returns</div><div class="num">+18.3%</div></div>
+      </div>
+      <div class="l-stat" style="margin-bottom:12px;"><div class="lbl">Assets Under Management</div><div class="num" style="font-size:0.9rem;">$12,847,320</div></div>
+      <span class="l-btn">View Holdings</span>
+    </div>
+    <div class="card-label"><h3>Dark Luxe</h3><span>Dark backgrounds with gold accents &mdash; elegant &amp; premium</span></div>
+  </div>
+
+  <!-- 5 ── Soft Minimal ── -->
+  <div class="style-card" onclick="expand('soft')">
+    <div class="preview-window preview-soft">
+      <div class="s-row">
+        <div class="s-stat"><div class="lbl">Tasks</div><div class="num">24</div></div>
+        <div class="s-stat"><div class="lbl">Done</div><div class="num">18</div></div>
+        <div class="s-stat"><div class="lbl">Team</div><div class="num">6</div></div>
+      </div>
+      <div class="s-card">
+        <div style="font-size:0.72rem;font-weight:600;color:#334155;margin-bottom:10px;">Progress</div>
+        <div class="bar-row"><span>Design</span><div class="bar-track"><div class="bar-fill" style="width:85%;background:#818cf8;"></div></div></div>
+        <div class="bar-row"><span>Dev</span><div class="bar-track"><div class="bar-fill" style="width:62%;background:#34d399;"></div></div></div>
+        <div class="bar-row"><span>QA</span><div class="bar-track"><div class="bar-fill" style="width:40%;background:#fb923c;"></div></div></div>
+      </div>
+      <span class="s-btn">Add Task</span>
+    </div>
+    <div class="card-label"><h3>Soft Minimal</h3><span>Whitespace, rounded corners, pastel accents &mdash; calm &amp; clean</span></div>
+  </div>
+
+  <!-- 6 ── Retro Terminal ── -->
+  <div class="style-card" onclick="expand('term')">
+    <div class="preview-window preview-term">
+      <div class="t-line"><span class="t-dim">root@server:~$</span> <span class="t-bright">sys --status</span></div>
+      <div class="t-box" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div><div class="lbl">CPU</div><div class="num">23%</div></div>
+        <div><div class="lbl">MEM</div><div class="num">4.2G</div></div>
+      </div>
+      <div class="t-line"><span class="t-dim">[INFO]</span> <span class="t-bright">All systems nominal</span></div>
+      <div class="t-line"><span class="t-dim">[INFO]</span> Uptime: 42d 7h 13m</div>
+      <div class="t-line"><span class="t-dim">[INFO]</span> Active connections: 1,247</div>
+      <div class="t-line"><span class="t-dim">[WARN]</span> <span style="color:#cccc00;">Disk usage at 78%</span></div>
+      <div class="t-prompt"><span class="t-dim">root@server:~$</span> <span class="cursor"></span></div>
+    </div>
+    <div class="card-label"><h3>Retro Terminal</h3><span>Green-on-black, monospace, CRT scanlines &mdash; hacker aesthetic</span></div>
+  </div>
+
+  <!-- 7 ── Vaporwave ── -->
+  <div class="style-card" onclick="expand('vapor')">
+    <div class="preview-window preview-vapor">
+      <div class="v-title">D A S H B O A R D</div>
+      <div class="v-row">
+        <div class="v-stat"><div class="lbl">Streams</div><div class="num">48.2K</div></div>
+        <div class="v-stat"><div class="lbl">Revenue</div><div class="num">$12.4K</div></div>
+      </div>
+      <div class="v-row">
+        <div class="v-stat"><div class="lbl">Followers</div><div class="num">9,841</div></div>
+        <div class="v-stat"><div class="lbl">Growth</div><div class="num">+22%</div></div>
+      </div>
+      <span class="v-btn">E N T E R</span>
+    </div>
+    <div class="card-label"><h3>Vaporwave</h3><span>Retro 80s gradients, neon pink &amp; cyan, perspective grids</span></div>
+  </div>
+
+  <!-- 8 ── Candy Pop ── -->
+  <div class="style-card" onclick="expand('candy')">
+    <div class="preview-window preview-candy">
+      <div class="c-row">
+        <div class="c-stat"><div class="lbl">Likes</div><div class="num">4.2K</div></div>
+        <div class="c-stat"><div class="lbl">Posts</div><div class="num">128</div></div>
+        <div class="c-stat"><div class="lbl">Friends</div><div class="num">84</div></div>
+      </div>
+      <div class="c-card">
+        <div style="font-size:0.78rem;font-weight:600;color:#1e1e1e;margin-bottom:8px;">Tags</div>
+        <span class="c-pill" style="background:#fce7f3;color:#ec4899;">Design</span>
+        <span class="c-pill" style="background:#e0f2fe;color:#0ea5e9;">Frontend</span>
+        <span class="c-pill" style="background:#dcfce7;color:#22c55e;">Shipped</span>
+        <span class="c-pill" style="background:#fef3c7;color:#f59e0b;">New</span>
+      </div>
+      <div class="c-card">
+        <div style="font-size:0.72rem;font-weight:600;color:#1e1e1e;margin-bottom:6px;">Activity</div>
+        <div style="font-size:0.62rem;color:#888;margin-bottom:3px;">New comment on your post</div>
+        <div style="font-size:0.62rem;color:#888;">3 new followers today!</div>
+      </div>
+      <span class="c-btn">Create Post</span>
+    </div>
+    <div class="card-label"><h3>Candy Pop</h3><span>Bubbly pastels, round everything, playful &amp; friendly vibes</span></div>
+  </div>
+
+  <!-- 9 ── Retro Arcade ── -->
+  <div class="style-card" onclick="expand('arcade')">
+    <div class="preview-window preview-arcade">
+      <div class="a-title">HIGH SCORES</div>
+      <div class="a-row">
+        <div class="a-stat"><div class="lbl">SCORE</div><div class="num">84,200</div></div>
+        <div class="a-stat"><div class="lbl">LEVEL</div><div class="num">42</div></div>
+      </div>
+      <div class="a-label">HP</div>
+      <div class="a-bar"><div class="a-bar-fill" style="width:72%;background:linear-gradient(90deg,#e94560,#ffde00);"></div></div>
+      <div class="a-label">XP</div>
+      <div class="a-bar"><div class="a-bar-fill" style="width:45%;background:linear-gradient(90deg,#00ff41,#0ea5e9);"></div></div>
+      <div class="a-label">MANA</div>
+      <div class="a-bar"><div class="a-bar-fill" style="width:88%;background:linear-gradient(90deg,#764ba2,#667eea);"></div></div>
+      <div style="margin-top:10px"><span class="a-btn">INSERT COIN</span></div>
+    </div>
+    <div class="card-label"><h3>Retro Arcade</h3><span>Pixel fonts, 8-bit colors, CRT scanlines &mdash; arcade cabinet feel</span></div>
+  </div>
+
+  <!-- 10 ── Sketch / Notebook ── -->
+  <div class="style-card" onclick="expand('sketch')">
+    <div class="preview-window preview-sketch">
+      <div class="sk-title">My Dashboard</div>
+      <div class="sk-row">
+        <div class="sk-stat"><div class="lbl">Tasks</div><div class="num">12</div></div>
+        <div class="sk-stat"><div class="lbl">Done</div><div class="num">8</div></div>
+        <div class="sk-stat"><div class="lbl">Ideas</div><div class="num">24</div></div>
+      </div>
+      <div class="sk-check">&#9745; <span class="done">Finish the wireframes</span></div>
+      <div class="sk-check">&#9745; <span class="done">Send to client</span></div>
+      <div class="sk-check">&#9744; Review feedback</div>
+      <div class="sk-check">&#9744; Final revisions</div>
+    </div>
+    <div class="card-label"><h3>Sketch / Notebook</h3><span>Hand-drawn feel, lined paper, dashed borders &mdash; organic &amp; personal</span></div>
+  </div>
+
+  <!-- 11 ── Cyberpunk ── -->
+  <div class="style-card" onclick="expand('cyber')">
+    <div class="preview-window preview-cyber">
+      <div class="cy-title">NEURAL LINK</div>
+      <div class="cy-row">
+        <div class="cy-stat"><div class="lbl">BANDWIDTH</div><div class="num">842TB</div></div>
+        <div class="cy-stat"><div class="lbl">THREAT LVL</div><div class="num">LOW</div></div>
+      </div>
+      <div class="cy-line"></div>
+      <div class="cy-row">
+        <div class="cy-stat"><div class="lbl">NODES</div><div class="num">1,247</div></div>
+        <div class="cy-stat"><div class="lbl">LATENCY</div><div class="num">0.3ms</div></div>
+      </div>
+      <div class="cy-line"></div>
+      <div class="cy-text">// SYS: all neural pathways nominal</div>
+      <div style="margin-top:8px"><span class="cy-btn">JACK IN</span></div>
+    </div>
+    <div class="card-label"><h3>Cyberpunk</h3><span>Neon red &amp; yellow on black, angular cuts &mdash; dystopian tech</span></div>
+  </div>
+
+  <!-- 12 ── Nature / Earth ── -->
+  <div class="style-card" onclick="expand('nature')">
+    <div class="preview-window preview-nature">
+      <div class="na-row">
+        <div class="na-stat"><div class="lbl">Trees</div><div class="num">2,481</div></div>
+        <div class="na-stat"><div class="lbl">CO2 Saved</div><div class="num">48.2T</div></div>
+        <div class="na-stat"><div class="lbl">Impact</div><div class="num">+94%</div></div>
+      </div>
+      <div class="na-card">
+        <div style="font-size:0.72rem;font-weight:600;color:#2d5016;margin-bottom:8px;">Recent Plantings</div>
+        <div style="font-size:0.62rem;color:#6b8f56;margin-bottom:4px;">Oak Grove &mdash; 120 trees <span class="na-badge">Complete</span></div>
+        <div style="font-size:0.62rem;color:#6b8f56;margin-bottom:4px;">River Bank &mdash; 85 trees <span class="na-badge">In Progress</span></div>
+        <div style="font-size:0.62rem;color:#6b8f56;">Hilltop Meadow &mdash; 200 trees</div>
+      </div>
+      <span class="na-btn">Plant More</span>
+    </div>
+    <div class="card-label"><h3>Nature / Earth</h3><span>Earthy greens, organic shapes, leafy accents &mdash; eco-friendly feel</span></div>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════════════════
+     EXPANDED DASHBOARDS
+     ════════════════════════════════════════════ -->
+
+<!-- CORPORATE -->
+<div class="expanded-overlay corp-expanded" id="expanded-corporate">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to Styles</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">Apex Corp</div><a href="#">&#9632; Dashboard</a><a href="#">&#9670; Analytics</a><a href="#">&#9830; Reports</a><a href="#">&#9881; Settings</a><a href="#">&#9787; Users</a></div>
+  <div class="dash-main"><h2>Dashboard Overview</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value">$84,230</div><div class="stat-change">+12.4% vs last month</div></div>
+      <div class="stat-card"><div class="stat-label">Active Users</div><div class="stat-value">12,842</div><div class="stat-change">+8.1% vs last month</div></div>
+      <div class="stat-card"><div class="stat-label">Conversion</div><div class="stat-value">3.24%</div><div class="stat-change">+0.8% vs last month</div></div>
+      <div class="stat-card"><div class="stat-label">Avg. Order</div><div class="stat-value">$156</div><div class="stat-change">+4.2% vs last month</div></div>
+    </div>
+    <div class="chart-area"><h3>Monthly Revenue</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-label">Jan</div></div><div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-label">Feb</div></div><div class="bar-col"><div class="bar" style="height:52%"></div><div class="bar-label">Mar</div></div><div class="bar-col"><div class="bar" style="height:75%"></div><div class="bar-label">Apr</div></div><div class="bar-col"><div class="bar" style="height:68%"></div><div class="bar-label">May</div></div><div class="bar-col"><div class="bar" style="height:85%"></div><div class="bar-label">Jun</div></div><div class="bar-col"><div class="bar" style="height:92%"></div><div class="bar-label">Jul</div></div><div class="bar-col"><div class="bar" style="height:78%"></div><div class="bar-label">Aug</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Customer</th><th>Status</th><th>Amount</th><th>Date</th></tr></thead><tbody><tr><td>Acme Corp</td><td>Completed</td><td>$12,400</td><td>Mar 15</td></tr><tr><td>Globex Inc</td><td>Pending</td><td>$8,200</td><td>Mar 14</td></tr><tr><td>Initech LLC</td><td>Completed</td><td>$5,800</td><td>Mar 13</td></tr><tr><td>Umbrella Co</td><td>Processing</td><td>$3,100</td><td>Mar 12</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">Export Report</button><button class="btn-secondary">View Details</button></div>
+  </div></div>
+</div>
+
+<!-- GLASS -->
+<div class="expanded-overlay glass-expanded" id="expanded-glass">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to Styles</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">Prism</div><a href="#">&#9673; Overview</a><a href="#">&#9672; Analytics</a><a href="#">&#9671; Team</a><a href="#">&#9670; Billing</a><a href="#">&#9669; Settings</a></div>
+  <div class="dash-main"><h2>Analytics Overview</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Monthly Revenue</div><div class="stat-value">$42.8K</div><div class="stat-change">+15.3% growth</div></div>
+      <div class="stat-card"><div class="stat-label">Active Users</div><div class="stat-value">3,291</div><div class="stat-change">+220 this week</div></div>
+      <div class="stat-card"><div class="stat-label">Engagement</div><div class="stat-value">78.4%</div><div class="stat-change">+5.2% increase</div></div>
+      <div class="stat-card"><div class="stat-label">NPS Score</div><div class="stat-value">72</div><div class="stat-change">+8 points</div></div>
+    </div>
+    <div class="chart-area"><h3>Weekly Performance</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">Mon</div></div><div class="bar-col"><div class="bar" style="height:72%"></div><div class="bar-label">Tue</div></div><div class="bar-col"><div class="bar" style="height:48%"></div><div class="bar-label">Wed</div></div><div class="bar-col"><div class="bar" style="height:88%"></div><div class="bar-label">Thu</div></div><div class="bar-col"><div class="bar" style="height:64%"></div><div class="bar-label">Fri</div></div><div class="bar-col"><div class="bar" style="height:42%"></div><div class="bar-label">Sat</div></div><div class="bar-col"><div class="bar" style="height:35%"></div><div class="bar-label">Sun</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Campaign</th><th>Reach</th><th>Clicks</th><th>Conv.</th></tr></thead><tbody><tr><td>Spring Launch</td><td>48.2K</td><td>3,820</td><td>7.9%</td></tr><tr><td>Product Update</td><td>32.1K</td><td>2,140</td><td>6.7%</td></tr><tr><td>Newsletter</td><td>28.8K</td><td>1,960</td><td>6.8%</td></tr><tr><td>Social Push</td><td>19.4K</td><td>1,280</td><td>6.6%</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">Create Campaign</button><button class="btn-secondary">Download CSV</button></div>
+  </div></div>
+</div>
+
+<!-- NEO -->
+<div class="expanded-overlay neo-expanded" id="expanded-neo">
+  <button class="back-btn" onclick="collapse()">&#8592; BACK</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">BRUTL.</div><a href="#">&#9654; Dashboard</a><a href="#">&#9654; Orders</a><a href="#">&#9654; Products</a><a href="#">&#9654; Customers</a><a href="#">&#9654; Settings</a></div>
+  <div class="dash-main"><h2>Dashboard</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">SALES</div><div class="stat-value">$9,420</div><div class="stat-change">+22% WOW!</div></div>
+      <div class="stat-card"><div class="stat-label">ORDERS</div><div class="stat-value">842</div><div class="stat-change">+15% NICE</div></div>
+      <div class="stat-card"><div class="stat-label">RATING</div><div class="stat-value">4.8/5</div><div class="stat-change">AMAZING</div></div>
+      <div class="stat-card"><div class="stat-label">VISITORS</div><div class="stat-value">28.4K</div><div class="stat-change">+31% BOOM</div></div>
+    </div>
+    <div class="chart-area"><h3>SALES THIS WEEK</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:65%"></div><div class="bar-label">MON</div></div><div class="bar-col"><div class="bar" style="height:80%"></div><div class="bar-label">TUE</div></div><div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">WED</div></div><div class="bar-col"><div class="bar" style="height:95%"></div><div class="bar-label">THU</div></div><div class="bar-col"><div class="bar" style="height:70%"></div><div class="bar-label">FRI</div></div><div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-label">SAT</div></div><div class="bar-col"><div class="bar" style="height:30%"></div><div class="bar-label">SUN</div></div></div></div>
+    <table class="data-table"><thead><tr><th>ORDER</th><th>CUSTOMER</th><th>TOTAL</th><th>STATUS</th></tr></thead><tbody><tr><td>#1042</td><td>Jake M.</td><td>$284</td><td>SHIPPED</td></tr><tr><td>#1041</td><td>Sarah K.</td><td>$156</td><td>PROCESSING</td></tr><tr><td>#1040</td><td>Mike D.</td><td>$92</td><td>DELIVERED</td></tr><tr><td>#1039</td><td>Amy L.</td><td>$340</td><td>SHIPPED</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">NEW ORDER</button><button class="btn-secondary">VIEW ALL</button></div>
+  </div></div>
+</div>
+
+<!-- LUXE -->
+<div class="expanded-overlay luxe-expanded" id="expanded-luxe">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to Styles</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">Aurum</div><a href="#">&#9830; Portfolio</a><a href="#">&#9830; Markets</a><a href="#">&#9830; Trading</a><a href="#">&#9830; Research</a><a href="#">&#9830; Account</a></div>
+  <div class="dash-main"><h2>Portfolio Overview</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Total Value</div><div class="stat-value">$2.4M</div><div class="stat-change">+18.3% YTD</div></div>
+      <div class="stat-card"><div class="stat-label">Today's P/L</div><div class="stat-value">+$12.8K</div><div class="stat-change">+0.54% today</div></div>
+      <div class="stat-card"><div class="stat-label">Positions</div><div class="stat-value">24</div><div class="stat-change">3 new this week</div></div>
+      <div class="stat-card"><div class="stat-label">Yield</div><div class="stat-value">6.2%</div><div class="stat-change">Above benchmark</div></div>
+    </div>
+    <div class="chart-area"><h3>Quarterly Returns</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:52%"></div><div class="bar-label">Q1</div></div><div class="bar-col"><div class="bar" style="height:68%"></div><div class="bar-label">Q2</div></div><div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-label">Q3</div></div><div class="bar-col"><div class="bar" style="height:82%"></div><div class="bar-label">Q4</div></div><div class="bar-col"><div class="bar" style="height:74%"></div><div class="bar-label">Q1</div></div><div class="bar-col"><div class="bar" style="height:90%"></div><div class="bar-label">Q2</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Asset</th><th>Allocation</th><th>Return</th><th>Value</th></tr></thead><tbody><tr><td>US Equities</td><td>42%</td><td>+22.4%</td><td>$1.01M</td></tr><tr><td>Fixed Income</td><td>28%</td><td>+5.8%</td><td>$672K</td></tr><tr><td>Intl Markets</td><td>18%</td><td>+14.1%</td><td>$432K</td></tr><tr><td>Alternatives</td><td>12%</td><td>+31.2%</td><td>$288K</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">Place Trade</button><button class="btn-secondary">View Research</button></div>
+  </div></div>
+</div>
+
+<!-- SOFT -->
+<div class="expanded-overlay soft-expanded" id="expanded-soft">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to Styles</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">flow.</div><a href="#">&#9679; Home</a><a href="#">&#9675; Tasks</a><a href="#">&#9675; Team</a><a href="#">&#9675; Calendar</a><a href="#">&#9675; Settings</a></div>
+  <div class="dash-main"><h2>Good morning</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Open Tasks</div><div class="stat-value">24</div><div class="stat-change">6 due today</div></div>
+      <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value">18</div><div class="stat-change">75% done</div></div>
+      <div class="stat-card"><div class="stat-label">Team Size</div><div class="stat-value">6</div><div class="stat-change">All active</div></div>
+      <div class="stat-card"><div class="stat-label">Sprint</div><div class="stat-value">Day 8</div><div class="stat-change">4 days left</div></div>
+    </div>
+    <div class="chart-area"><h3>Team Velocity</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:50%"></div><div class="bar-label">Wk1</div></div><div class="bar-col"><div class="bar" style="height:65%"></div><div class="bar-label">Wk2</div></div><div class="bar-col"><div class="bar" style="height:58%"></div><div class="bar-label">Wk3</div></div><div class="bar-col"><div class="bar" style="height:80%"></div><div class="bar-label">Wk4</div></div><div class="bar-col"><div class="bar" style="height:72%"></div><div class="bar-label">Wk5</div></div><div class="bar-col"><div class="bar" style="height:88%"></div><div class="bar-label">Wk6</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Task</th><th>Assignee</th><th>Priority</th><th>Due</th></tr></thead><tbody><tr><td>Design review</td><td>Emma</td><td>High</td><td>Today</td></tr><tr><td>API endpoints</td><td>Liam</td><td>Medium</td><td>Mar 18</td></tr><tr><td>Unit tests</td><td>Sofia</td><td>Medium</td><td>Mar 19</td></tr><tr><td>Deploy staging</td><td>Noah</td><td>Low</td><td>Mar 20</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">Add Task</button><button class="btn-secondary">View Board</button></div>
+  </div></div>
+</div>
+
+<!-- TERMINAL -->
+<div class="expanded-overlay term-expanded" id="expanded-term">
+  <button class="back-btn" onclick="collapse()">&#8592; EXIT</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">&gt;_ SYS</div><a href="#">[0] status</a><a href="#">[1] logs</a><a href="#">[2] deploy</a><a href="#">[3] network</a><a href="#">[4] config</a></div>
+  <div class="dash-main"><h2>&gt; SYSTEM STATUS</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">CPU_LOAD</div><div class="stat-value">23%</div><div class="stat-change">[OK] nominal</div></div>
+      <div class="stat-card"><div class="stat-label">MEM_USAGE</div><div class="stat-value">4.2G</div><div class="stat-change">[OK] 52% used</div></div>
+      <div class="stat-card"><div class="stat-label">DISK_IO</div><div class="stat-value">128MB/s</div><div class="stat-change">[OK] healthy</div></div>
+      <div class="stat-card"><div class="stat-label">UPTIME</div><div class="stat-value">42d 7h</div><div class="stat-change">[OK] stable</div></div>
+    </div>
+    <div class="chart-area"><h3>&gt; REQUEST_THROUGHPUT (req/s)</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:62%"></div><div class="bar-label">00:00</div></div><div class="bar-col"><div class="bar" style="height:35%"></div><div class="bar-label">04:00</div></div><div class="bar-col"><div class="bar" style="height:48%"></div><div class="bar-label">08:00</div></div><div class="bar-col"><div class="bar" style="height:85%"></div><div class="bar-label">12:00</div></div><div class="bar-col"><div class="bar" style="height:92%"></div><div class="bar-label">16:00</div></div><div class="bar-col"><div class="bar" style="height:70%"></div><div class="bar-label">20:00</div></div></div></div>
+    <table class="data-table"><thead><tr><th>SERVICE</th><th>STATUS</th><th>LATENCY</th><th>ERRORS</th></tr></thead><tbody><tr><td>api-gateway</td><td style="color:#00ff41;">[RUNNING]</td><td>12ms</td><td>0</td></tr><tr><td>auth-service</td><td style="color:#00ff41;">[RUNNING]</td><td>8ms</td><td>0</td></tr><tr><td>db-primary</td><td style="color:#00ff41;">[RUNNING]</td><td>3ms</td><td>0</td></tr><tr><td>cache-redis</td><td style="color:#cccc00;">[WARN]</td><td>45ms</td><td>12</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">&gt; DEPLOY</button><button class="btn-secondary">&gt; VIEW LOGS</button></div>
+  </div></div>
+</div>
+
+<!-- VAPORWAVE -->
+<div class="expanded-overlay vapor-expanded" id="expanded-vapor">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to Styles</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">V W A V E</div><a href="#">&#9670; Home</a><a href="#">&#9670; Streams</a><a href="#">&#9670; Library</a><a href="#">&#9670; Social</a><a href="#">&#9670; Settings</a></div>
+  <div class="dash-main"><h2>D A S H B O A R D</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">STREAMS</div><div class="stat-value">48.2K</div><div class="stat-change">+18% this wave</div></div>
+      <div class="stat-card"><div class="stat-label">REVENUE</div><div class="stat-value">$12.4K</div><div class="stat-change">+22% vibes up</div></div>
+      <div class="stat-card"><div class="stat-label">FOLLOWERS</div><div class="stat-value">9,841</div><div class="stat-change">+340 new</div></div>
+      <div class="stat-card"><div class="stat-label">AESTHETIC</div><div class="stat-value">100%</div><div class="stat-change">Maximum chill</div></div>
+    </div>
+    <div class="chart-area"><h3>W E E K L Y&nbsp;&nbsp;V I B E S</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">Mon</div></div><div class="bar-col"><div class="bar" style="height:70%"></div><div class="bar-label">Tue</div></div><div class="bar-col"><div class="bar" style="height:48%"></div><div class="bar-label">Wed</div></div><div class="bar-col"><div class="bar" style="height:85%"></div><div class="bar-label">Thu</div></div><div class="bar-col"><div class="bar" style="height:62%"></div><div class="bar-label">Fri</div></div><div class="bar-col"><div class="bar" style="height:90%"></div><div class="bar-label">Sat</div></div><div class="bar-col"><div class="bar" style="height:40%"></div><div class="bar-label">Sun</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Track</th><th>Plays</th><th>Likes</th><th>Mood</th></tr></thead><tbody><tr><td>Sunset Drive</td><td>12.4K</td><td>2,840</td><td>Dreamy</td></tr><tr><td>Palm Mall</td><td>9.8K</td><td>1,920</td><td>Nostalgic</td></tr><tr><td>Neon Nights</td><td>8.2K</td><td>1,680</td><td>Euphoric</td></tr><tr><td>Digital Love</td><td>6.1K</td><td>1,240</td><td>Chill</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">UPLOAD TRACK</button><button class="btn-secondary">VIEW LIBRARY</button></div>
+  </div></div>
+</div>
+
+<!-- CANDY -->
+<div class="expanded-overlay candy-expanded" id="expanded-candy">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to Styles</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">poppi</div><a href="#">&#9829; Feed</a><a href="#">&#9733; Explore</a><a href="#">&#9834; Create</a><a href="#">&#9786; Friends</a><a href="#">&#9881; Settings</a></div>
+  <div class="dash-main"><h2>Welcome back!</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">LIKES</div><div class="stat-value">4.2K</div><div class="stat-change">+128 today</div></div>
+      <div class="stat-card"><div class="stat-label">POSTS</div><div class="stat-value">128</div><div class="stat-change">3 new drafts</div></div>
+      <div class="stat-card"><div class="stat-label">FRIENDS</div><div class="stat-value">84</div><div class="stat-change">+5 this week</div></div>
+      <div class="stat-card"><div class="stat-label">STREAK</div><div class="stat-value">14d</div><div class="stat-change">Keep it up!</div></div>
+    </div>
+    <div class="chart-area"><h3>Engagement This Week</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-label">Mon</div></div><div class="bar-col"><div class="bar" style="height:75%"></div><div class="bar-label">Tue</div></div><div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-label">Wed</div></div><div class="bar-col"><div class="bar" style="height:90%"></div><div class="bar-label">Thu</div></div><div class="bar-col"><div class="bar" style="height:68%"></div><div class="bar-label">Fri</div></div><div class="bar-col"><div class="bar" style="height:82%"></div><div class="bar-label">Sat</div></div><div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">Sun</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Post</th><th>Likes</th><th>Comments</th><th>Shares</th></tr></thead><tbody><tr><td>Weekend vibes</td><td>342</td><td>28</td><td>14</td></tr><tr><td>New recipe!</td><td>281</td><td>45</td><td>22</td></tr><tr><td>Travel diary</td><td>198</td><td>16</td><td>8</td></tr><tr><td>DIY project</td><td>156</td><td>34</td><td>19</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">Create Post</button><button class="btn-secondary">View Drafts</button></div>
+  </div></div>
+</div>
+
+<!-- ARCADE -->
+<div class="expanded-overlay arcade-expanded" id="expanded-arcade">
+  <button class="back-btn" onclick="collapse()">&#8592; EXIT</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">ARCAD3</div><a href="#">&#9654; SCORES</a><a href="#">&#9654; PLAYERS</a><a href="#">&#9654; LEVELS</a><a href="#">&#9654; SHOP</a><a href="#">&#9654; CONFIG</a></div>
+  <div class="dash-main"><h2>HIGH SCORES</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">SCORE</div><div class="stat-value">84,200</div><div class="stat-change">NEW RECORD!</div></div>
+      <div class="stat-card"><div class="stat-label">LEVEL</div><div class="stat-value">42</div><div class="stat-change">BOSS STAGE</div></div>
+      <div class="stat-card"><div class="stat-label">LIVES</div><div class="stat-value">3</div><div class="stat-change">BE CAREFUL</div></div>
+      <div class="stat-card"><div class="stat-label">COINS</div><div class="stat-value">9,420</div><div class="stat-change">+500 BONUS</div></div>
+    </div>
+    <div class="chart-area"><h3>DAILY XP GAINED</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-label">MON</div></div><div class="bar-col"><div class="bar" style="height:72%"></div><div class="bar-label">TUE</div></div><div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-label">WED</div></div><div class="bar-col"><div class="bar" style="height:95%"></div><div class="bar-label">THU</div></div><div class="bar-col"><div class="bar" style="height:80%"></div><div class="bar-label">FRI</div></div><div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">SAT</div></div><div class="bar-col"><div class="bar" style="height:38%"></div><div class="bar-label">SUN</div></div></div></div>
+    <table class="data-table"><thead><tr><th>RANK</th><th>PLAYER</th><th>SCORE</th><th>LEVEL</th></tr></thead><tbody><tr><td>1ST</td><td>ACE</td><td>84,200</td><td>42</td></tr><tr><td>2ND</td><td>ZAP</td><td>72,100</td><td>38</td></tr><tr><td>3RD</td><td>NEO</td><td>68,400</td><td>35</td></tr><tr><td>4TH</td><td>MAX</td><td>54,800</td><td>30</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">PLAY AGAIN</button><button class="btn-secondary">LEADERBOARD</button></div>
+  </div></div>
+</div>
+
+<!-- SKETCH -->
+<div class="expanded-overlay sketch-expanded" id="expanded-sketch">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to all</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">Notes</div><a href="#">~ Dashboard</a><a href="#">~ Tasks</a><a href="#">~ Ideas</a><a href="#">~ Calendar</a><a href="#">~ Archive</a></div>
+  <div class="dash-main"><h2>My Dashboard</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Tasks</div><div class="stat-value">12</div><div class="stat-change">4 due this week</div></div>
+      <div class="stat-card"><div class="stat-label">Done</div><div class="stat-value">8</div><div class="stat-change">67% complete</div></div>
+      <div class="stat-card"><div class="stat-label">Ideas</div><div class="stat-value">24</div><div class="stat-change">3 new today</div></div>
+      <div class="stat-card"><div class="stat-label">Notes</div><div class="stat-value">156</div><div class="stat-change">Growing fast!</div></div>
+    </div>
+    <div class="chart-area"><h3>Weekly Progress</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:40%"></div><div class="bar-label">Mon</div></div><div class="bar-col"><div class="bar" style="height:65%"></div><div class="bar-label">Tue</div></div><div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">Wed</div></div><div class="bar-col"><div class="bar" style="height:80%"></div><div class="bar-label">Thu</div></div><div class="bar-col"><div class="bar" style="height:70%"></div><div class="bar-label">Fri</div></div><div class="bar-col"><div class="bar" style="height:30%"></div><div class="bar-label">Sat</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Task</th><th>Status</th><th>Priority</th><th>Due</th></tr></thead><tbody><tr><td>Finish wireframes</td><td>Done!</td><td>High</td><td>Mar 15</td></tr><tr><td>Send to client</td><td>Done!</td><td>High</td><td>Mar 16</td></tr><tr><td>Review feedback</td><td>In progress</td><td>Medium</td><td>Mar 18</td></tr><tr><td>Final revisions</td><td>Todo</td><td>Low</td><td>Mar 20</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">Add Task</button><button class="btn-secondary">View All Notes</button></div>
+  </div></div>
+</div>
+
+<!-- CYBERPUNK -->
+<div class="expanded-overlay cyber-expanded" id="expanded-cyber">
+  <button class="back-btn" onclick="collapse()">&#8592; DISCONNECT</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">NXUS</div><a href="#">&#9654; NEURAL</a><a href="#">&#9654; NETWORK</a><a href="#">&#9654; IMPLANTS</a><a href="#">&#9654; MISSIONS</a><a href="#">&#9654; CONFIG</a></div>
+  <div class="dash-main"><h2>NEURAL INTERFACE</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">BANDWIDTH</div><div class="stat-value">842TB</div><div class="stat-change">// nominal</div></div>
+      <div class="stat-card"><div class="stat-label">THREAT LVL</div><div class="stat-value">LOW</div><div class="stat-change">// perimeter clear</div></div>
+      <div class="stat-card"><div class="stat-label">NODES</div><div class="stat-value">1,247</div><div class="stat-change">// 12 new linked</div></div>
+      <div class="stat-card"><div class="stat-label">LATENCY</div><div class="stat-value">0.3ms</div><div class="stat-change">// ultra-fast</div></div>
+    </div>
+    <div class="chart-area"><h3>NETWORK TRAFFIC (TB/s)</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:72%"></div><div class="bar-label">00</div></div><div class="bar-col"><div class="bar" style="height:45%"></div><div class="bar-label">04</div></div><div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-label">08</div></div><div class="bar-col"><div class="bar" style="height:92%"></div><div class="bar-label">12</div></div><div class="bar-col"><div class="bar" style="height:85%"></div><div class="bar-label">16</div></div><div class="bar-col"><div class="bar" style="height:68%"></div><div class="bar-label">20</div></div></div></div>
+    <table class="data-table"><thead><tr><th>NODE</th><th>STATUS</th><th>PING</th><th>LOAD</th></tr></thead><tbody><tr><td>CORE-01</td><td style="color:#ff003c;">[ACTIVE]</td><td>0.1ms</td><td>34%</td></tr><tr><td>RELAY-07</td><td style="color:#ff003c;">[ACTIVE]</td><td>0.3ms</td><td>67%</td></tr><tr><td>PROXY-12</td><td style="color:#fffc00;">[IDLE]</td><td>1.2ms</td><td>12%</td></tr><tr><td>VAULT-03</td><td style="color:#ff003c;">[ACTIVE]</td><td>0.2ms</td><td>89%</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">JACK IN</button><button class="btn-secondary">SCAN NETWORK</button></div>
+  </div></div>
+</div>
+
+<!-- NATURE -->
+<div class="expanded-overlay nature-expanded" id="expanded-nature">
+  <button class="back-btn" onclick="collapse()">&#8592; Back to Styles</button>
+  <div class="dashboard"><div class="dash-sidebar"><div class="logo">Verdant</div><a href="#">&#9752; Dashboard</a><a href="#">&#9752; Projects</a><a href="#">&#9752; Impact</a><a href="#">&#9752; Community</a><a href="#">&#9752; Settings</a></div>
+  <div class="dash-main"><h2>Sustainability Dashboard</h2>
+    <div class="stat-row">
+      <div class="stat-card"><div class="stat-label">Trees Planted</div><div class="stat-value">2,481</div><div class="stat-change">+120 this month</div></div>
+      <div class="stat-card"><div class="stat-label">CO2 Offset</div><div class="stat-value">48.2T</div><div class="stat-change">+3.8T this quarter</div></div>
+      <div class="stat-card"><div class="stat-label">Impact Score</div><div class="stat-value">94%</div><div class="stat-change">+6% improvement</div></div>
+      <div class="stat-card"><div class="stat-label">Volunteers</div><div class="stat-value">342</div><div class="stat-change">28 new sign-ups</div></div>
+    </div>
+    <div class="chart-area"><h3>Monthly Plantings</h3><div class="chart-bars"><div class="bar-col"><div class="bar" style="height:40%"></div><div class="bar-label">Jan</div></div><div class="bar-col"><div class="bar" style="height:55%"></div><div class="bar-label">Feb</div></div><div class="bar-col"><div class="bar" style="height:72%"></div><div class="bar-label">Mar</div></div><div class="bar-col"><div class="bar" style="height:60%"></div><div class="bar-label">Apr</div></div><div class="bar-col"><div class="bar" style="height:88%"></div><div class="bar-label">May</div></div><div class="bar-col"><div class="bar" style="height:78%"></div><div class="bar-label">Jun</div></div></div></div>
+    <table class="data-table"><thead><tr><th>Project</th><th>Trees</th><th>Status</th><th>Impact</th></tr></thead><tbody><tr><td>Oak Grove</td><td>120</td><td>Complete</td><td>High</td></tr><tr><td>River Bank</td><td>85</td><td>In Progress</td><td>Medium</td></tr><tr><td>Hilltop Meadow</td><td>200</td><td>Planning</td><td>High</td></tr><tr><td>Urban Garden</td><td>45</td><td>Complete</td><td>Medium</td></tr></tbody></table>
+    <div class="action-row"><button class="btn-primary">Start Project</button><button class="btn-secondary">View Impact Report</button></div>
+  </div></div>
+</div>
+
+
+<script>
+  let currentExpanded = null;
+  function expand(style) {
+    const el = document.getElementById('expanded-' + style);
+    if (!el) return;
+    el.style.display = 'block';
+    requestAnimationFrame(() => el.classList.add('active'));
+    document.body.style.overflow = 'hidden';
+    currentExpanded = el;
+  }
+  function collapse() {
+    if (!currentExpanded) return;
+    currentExpanded.classList.remove('active');
+    const el = currentExpanded;
+    setTimeout(() => { el.style.display = 'none'; document.body.style.overflow = ''; currentExpanded = null; }, 350);
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') collapse(); });
+</script>
+
+</body>
+</html>
