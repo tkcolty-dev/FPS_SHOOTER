@@ -1,0 +1,8 @@
+applications:
+- name: sensory-world
+  memory: 256M
+  instances: 1
+  buildpacks:
+    - nodejs_buildpack
+  services:
+    - sensory-world-db
