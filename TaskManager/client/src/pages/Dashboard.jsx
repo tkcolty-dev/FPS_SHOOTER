@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { API, useAuth } from '../App';
-import { IconPlus, IconCalendar, IconChat, IconSettings, IconCheck, IconTarget, IconClock, IconAlertCircle } from '../icons';
+import { IconPlus, IconCalendar, IconChat, IconSettings, IconCheck, IconTarget, IconClock, IconAlertCircle, IconChevronRight } from '../icons';
+
+const toDateStr = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -9,19 +16,45 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ pending: 0, completedToday: 0, overdue: 0, today: 0 });
   const [todayTasks, setTodayTasks] = useState([]);
   const [todayEvents, setTodayEvents] = useState([]);
+  const [weekData, setWeekData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date();
+  const todayStr = toDateStr(today);
 
   useEffect(() => {
-    Promise.all([
-      API('/tasks/stats'),
-      API(`/tasks?date=${today}`),
-      API(`/events?date=${today}`)
-    ]).then(([s, t, e]) => {
-      setStats(s);
-      setTodayTasks(t);
-      setTodayEvents(e);
-    }).catch(() => {}).finally(() => setLoading(false));
+    const loadAll = async () => {
+      try {
+        const [s, t, e, allTasks] = await Promise.all([
+          API('/tasks/stats'),
+          API(`/tasks?date=${todayStr}`),
+          API(`/events?date=${todayStr}`),
+          API('/tasks?status=pending')
+        ]);
+        setStats(s);
+        setTodayTasks(t);
+        setTodayEvents(e);
+
+        // Build week data
+        const week = [];
+        for (let i = 0; i < 7; i++) {
+          const d = new Date(today);
+          d.setDate(today.getDate() + i);
+          const ds = toDateStr(d);
+          const dayTasks = allTasks.filter(tk => tk.due_date && tk.due_date.slice(0, 10) === ds);
+          week.push({
+            date: d,
+            dateStr: ds,
+            label: i === 0 ? 'Today' : i === 1 ? 'Tmrw' : d.toLocaleDateString('en-US', { weekday: 'short' }),
+            day: d.getDate(),
+            taskCount: dayTasks.length,
+            completedCount: dayTasks.filter(tk => tk.status === 'completed').length,
+            isToday: i === 0
+          });
+        }
+        setWeekData(week);
+      } catch {} finally { setLoading(false); }
+    };
+    loadAll();
   }, []);
 
   const toggleTask = async (task) => {
@@ -47,6 +80,10 @@ export default function Dashboard() {
     return 'Good evening';
   };
 
+  const completedToday = todayTasks.filter(t => t.status === 'completed').length;
+  const totalToday = todayTasks.length;
+  const progressPercent = totalToday > 0 ? Math.round((completedToday / totalToday) * 100) : 0;
+
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
 
   return (
@@ -56,9 +93,31 @@ export default function Dashboard() {
         <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
 
+      {/* Today's Progress */}
+      {totalToday > 0 && (
+        <div className="card progress-card">
+          <div className="progress-header">
+            <div>
+              <div className="progress-label">Today's Progress</div>
+              <div className="progress-detail">{completedToday} of {totalToday} tasks done</div>
+            </div>
+            <div className="progress-ring">
+              <svg width="52" height="52" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="22" fill="none" stroke="var(--color-border)" strokeWidth="4" />
+                <circle cx="26" cy="26" r="22" fill="none" stroke="var(--color-primary)" strokeWidth="4"
+                  strokeDasharray={`${2 * Math.PI * 22}`}
+                  strokeDashoffset={`${2 * Math.PI * 22 * (1 - progressPercent / 100)}`}
+                  strokeLinecap="round" transform="rotate(-90 26 26)" style={{ transition: 'stroke-dashoffset 0.6s ease' }} />
+              </svg>
+              <span className="progress-ring-text">{progressPercent}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="stats-row">
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate(`/calendar?date=${todayStr}`)}>
           <div className="stat-icon" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
             <IconTarget size={18} />
           </div>
@@ -67,7 +126,7 @@ export default function Dashboard() {
             <div className="stat-label">Today</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate('/tasks?filter=completed')}>
           <div className="stat-icon" style={{ background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
             <IconCheck size={18} />
           </div>
@@ -76,7 +135,7 @@ export default function Dashboard() {
             <div className="stat-label">Done</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate('/tasks?filter=pending')}>
           <div className="stat-icon" style={{ background: 'var(--color-warning-light)', color: 'var(--color-warning)' }}>
             <IconClock size={18} />
           </div>
@@ -85,7 +144,7 @@ export default function Dashboard() {
             <div className="stat-label">Pending</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate('/tasks?filter=pending')}>
           <div className="stat-icon" style={{ background: 'var(--color-danger-light)', color: 'var(--color-danger)' }}>
             <IconAlertCircle size={18} />
           </div>
@@ -93,6 +152,35 @@ export default function Dashboard() {
             <div className="stat-value">{stats.overdue}</div>
             <div className="stat-label">Overdue</div>
           </div>
+        </div>
+      </div>
+
+      {/* Week Ahead */}
+      <div className="card">
+        <div className="card-title">
+          <span>Week Ahead</span>
+          <Link to="/calendar" className="btn btn-sm btn-secondary">Calendar <IconChevronRight size={12} /></Link>
+        </div>
+        <div className="week-ahead">
+          {weekData.map((wd, i) => {
+            const hasTasks = wd.taskCount > 0;
+            const allDone = hasTasks && wd.completedCount === wd.taskCount;
+            return (
+              <div key={i}
+                className={`week-ahead-day ${wd.isToday ? 'today' : ''} ${hasTasks ? 'has-tasks' : ''} ${allDone ? 'all-done' : ''}`}
+                onClick={() => navigate(`/calendar?date=${wd.dateStr}`)}>
+                <div className="week-ahead-label">{wd.label}</div>
+                <div className="week-ahead-num">{wd.day}</div>
+                {hasTasks ? (
+                  <div className="week-ahead-badge">
+                    {allDone ? <IconCheck size={10} /> : wd.taskCount}
+                  </div>
+                ) : (
+                  <div className="week-ahead-no-badge" />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -116,59 +204,64 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Today's Events */}
-      {todayEvents.length > 0 && (
+      {/* Today's Timeline */}
+      {(todayEvents.length > 0 || todayTasks.length > 0) && (
         <div className="card">
           <div className="card-title">
-            <span>Today's Schedule</span>
-            <Link to="/calendar" className="btn btn-sm btn-secondary">View All</Link>
+            <span>Today's Timeline</span>
           </div>
-          {todayEvents.map(e => (
-            <div key={e.id} className="event-item">
-              <div className="event-color-bar" style={{ background: e.color || '#2563eb' }} />
-              <div className="event-body">
-                <div className="event-title">{e.title}</div>
-                <div className="event-time">
-                  <IconClock size={12} />
-                  <span>{formatTime(e.start_time)}{e.end_time ? ` - ${formatTime(e.end_time)}` : ''}</span>
+          <div className="timeline">
+            {/* Merge events and tasks, sorted by time */}
+            {[
+              ...todayEvents.map(e => ({ type: 'event', time: e.start_time, data: e })),
+              ...todayTasks.filter(t => t.due_time).map(t => ({ type: 'task', time: `${todayStr}T${t.due_time}`, data: t })),
+            ].sort((a, b) => new Date(a.time) - new Date(b.time)).map((item, i) => (
+              <div key={`${item.type}-${item.data.id}`} className="timeline-item">
+                <div className="timeline-time">{formatTime(item.time)}</div>
+                <div className={`timeline-dot ${item.type}`} />
+                <div className="timeline-content">
+                  {item.type === 'event' ? (
+                    <>
+                      <div className="timeline-title">{item.data.title}</div>
+                      {item.data.location && <div className="timeline-sub">{item.data.location}</div>}
+                      {item.data.end_time && <div className="timeline-sub">Until {formatTime(item.data.end_time)}</div>}
+                    </>
+                  ) : (
+                    <>
+                      <div className="timeline-title">{item.data.title}</div>
+                      <div className="task-meta" style={{ marginTop: '0.15rem' }}>
+                        <span className={`task-tag tag-${item.data.priority}`}>{item.data.priority}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-                {e.location && <div className="event-location">{e.location}</div>}
               </div>
-            </div>
-          ))}
+            ))}
+
+            {/* Tasks without time */}
+            {todayTasks.filter(t => !t.due_time).length > 0 && (
+              <>
+                <div className="timeline-separator">Anytime</div>
+                {todayTasks.filter(t => !t.due_time).map(task => (
+                  <div key={task.id} className="task-item compact">
+                    <button className={`task-checkbox ${task.status === 'completed' ? 'checked' : ''}`} onClick={() => toggleTask(task)}>
+                      {task.status === 'completed' && <IconCheck size={14} />}
+                    </button>
+                    <div className="task-body">
+                      <div className={`task-title ${task.status === 'completed' ? 'completed' : ''}`}>{task.title}</div>
+                      <div className="task-meta">
+                        <span className={`task-tag tag-${task.priority}`}>{task.priority}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Today's Tasks */}
-      <div className="card">
-        <div className="card-title">
-          <span>Today's Tasks</span>
-          <Link to="/tasks" className="btn btn-sm btn-secondary">View All</Link>
-        </div>
-        {todayTasks.length === 0 ? (
-          <div className="empty-state-inline">
-            <p>No tasks due today</p>
-          </div>
-        ) : todayTasks.slice(0, 6).map(task => (
-          <div key={task.id} className="task-item compact">
-            <button
-              className={`task-checkbox ${task.status === 'completed' ? 'checked' : ''}`}
-              onClick={() => toggleTask(task)}
-            >
-              {task.status === 'completed' && <IconCheck size={14} />}
-            </button>
-            <div className="task-body">
-              <div className={`task-title ${task.status === 'completed' ? 'completed' : ''}`}>{task.title}</div>
-              <div className="task-meta">
-                <span className={`task-tag tag-${task.priority}`}>{task.priority}</span>
-                {task.due_time && <span className="task-due"><IconClock size={10} /> {task.due_time}</span>}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Empty state when nothing today */}
+      {/* Empty state */}
       {todayTasks.length === 0 && todayEvents.length === 0 && (
         <div className="card">
           <div className="empty-state">

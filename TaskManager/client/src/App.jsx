@@ -223,6 +223,8 @@ export default function App() {
   useEffect(() => {
     const theme = localStorage.getItem('theme') || 'light';
     document.documentElement.setAttribute('data-theme', theme);
+    const compact = localStorage.getItem('compact') === 'true';
+    document.documentElement.setAttribute('data-compact', compact ? 'true' : 'false');
   }, []);
 
   const login = (tok, u) => {

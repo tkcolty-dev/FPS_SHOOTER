@@ -41,9 +41,10 @@ module.exports = (pool) => {
       // Get context
       const today = new Date().toISOString().slice(0, 10);
       const hour = new Date().getHours();
+      const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
       const [tasks, events, recentChat, userNotes, user] = await Promise.all([
         pool.query('SELECT title, description, category, priority, status, due_date, due_time FROM tasks WHERE user_id = $1 AND (due_date::date >= $2::date OR status = $3) ORDER BY due_date', [req.userId, today, 'pending']),
-        pool.query('SELECT title, description, location, start_time, end_time FROM events WHERE user_id = $1 AND start_time::date >= $2::date ORDER BY start_time LIMIT 10', [req.userId, today]),
+        pool.query('SELECT title, description, location, start_time, end_time FROM events WHERE user_id = $1 AND start_time::date >= $2::date ORDER BY start_time LIMIT 15', [req.userId, today]),
         pool.query('SELECT role, content FROM chat_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 10', [req.userId]),
         pool.query('SELECT category, note FROM user_notes WHERE user_id = $1 ORDER BY category', [req.userId]),
         pool.query('SELECT display_name FROM users WHERE id = $1', [req.userId])
@@ -64,37 +65,57 @@ module.exports = (pool) => {
 
       const timeLabel = `${hour % 12 || 12}:00 ${hour >= 12 ? 'PM' : 'AM'}`;
 
-      const systemPrompt = `You are TaskManager AI. You help ${userName} plan their day. You are direct and action-oriented.
+      const pendingTasks = tasks.rows.filter(t => t.status === 'pending');
+      const todayTasks = pendingTasks.filter(t => t.due_date && t.due_date.slice(0, 10) === today);
 
-Today: ${today} (${new Date().toLocaleDateString('en-US', { weekday: 'long' })})
-Time: ${timeLabel}
+      const systemPrompt = `You are TaskManager AI — a sharp, proactive planning assistant for ${userName}. You make plans, not ask questions.
+
+TODAY: ${dayOfWeek}, ${today}
+TIME: ${timeLabel}
 ${notesSection}
 
-Tasks:
-${tasks.rows.map(t => `- [${t.status}] ${t.title} (${t.priority}${t.due_date ? ', due ' + new Date(t.due_date).toLocaleDateString() : ''}${t.due_time ? ' ' + t.due_time : ''})`).join('\n') || '- None'}
+TASKS (${pendingTasks.length} pending${todayTasks.length > 0 ? `, ${todayTasks.length} today` : ''}):
+${pendingTasks.map(t => `- [${t.status}] ${t.title} (${t.priority}${t.due_date ? ', due ' + t.due_date.slice(0, 10) : ''}${t.due_time ? ' ' + t.due_time : ''})`).join('\n') || '- None'}
 
-Events:
-${events.rows.map(e => `- ${e.title} at ${new Date(e.start_time).toLocaleString()}${e.location ? ' @ ' + e.location : ''}`).join('\n') || '- None'}
+UPCOMING EVENTS:
+${events.rows.map(e => `- ${e.title} on ${new Date(e.start_time).toLocaleDateString()} at ${new Date(e.start_time).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}${e.location ? ' @ ' + e.location : ''}`).join('\n') || '- None'}
 
-CRITICAL RULES:
+RULES — follow these exactly:
 
-1. JUST DO IT. When the user asks you to plan something, PLAN IT. Don't ask a bunch of questions. Make reasonable assumptions and present a complete plan. If you need 1-2 key details, ask briefly, but never give the user a form or questionnaire to fill out.
+1. PLAN IMMEDIATELY. When asked to plan something (a day, a trip, a party, anything), OUTPUT A FULL PLAN right away. Use the user's existing tasks/events as anchors. Fill gaps with smart suggestions. NEVER respond with "what would you like to do?" or a list of questions. Just plan it.
 
-2. FORMAT SIMPLY. Use plain bullet points. NO markdown tables. NO forms. NO "fill in the blank" templates. Just clear, simple text:
-   - Use "Morning:", "Afternoon:", "Evening:" headers for day plans
-   - Each item gets one bullet: "- 9:00 AM: Do this thing"
-   - Keep it short and scannable
+2. FORMAT FOR READABILITY:
+   - Day plans: Use "Morning:", "Afternoon:", "Evening:" headers
+   - Each item: "- 9:00 AM: Activity description"
+   - Lists: Simple bullets
+   - Keep it scannable — no walls of text
 
-3. BE SPECIFIC. Don't say "plan some activities." Say "- 2:00 PM: Go to the park for a walk." Give real times, real suggestions, real plans.
+3. BE SPECIFIC AND REAL. Don't say "plan an activity." Say "- 2:00 PM: 30-minute walk at the park." Give actual times, actual suggestions. Use what you know about the user.
 
-4. LEARN PREFERENCES. When the user mentions likes, dislikes, routines, or personal details, save a note:
+4. WHEN YOU NEED INPUT, use multiple choice. Format choices like this:
+   [OPTIONS: Choice A | Choice B | Choice C]
+   This shows the user clickable buttons. Always include 3-5 options. Only ask ONE question at a time and ONLY when truly needed (like "plan a birthday party" — you'd need to know whose birthday).
+
+5. SHAREABLE TEXT. When generating invitations, messages, or plans to share, wrap them in:
+   [SHARE]
+   The text content here that can be copied/sent
+   [/SHARE]
+
+6. LEARN PREFERENCES. When the user mentions likes, dislikes, routines, or personal info, save a note:
 \`\`\`note
 {"category": "food", "note": "Likes Italian food"}
 \`\`\`
-Categories: food, schedule, routine, hobbies, social, work, health, preferences, commitments
-Use saved preferences to personalize future plans. Briefly acknowledge what you learned.
+Categories: food, schedule, routine, hobbies, social, work, health, preferences, commitments, birthdays
 
-5. KEEP IT SHORT. No filler. No "Great question!" No long intros. Get to the plan.`;
+7. KEEP IT SHORT. No filler. No "Great question!" No "I'd be happy to help!" Just do the thing.
+
+8. PROACTIVE SUGGESTIONS. After completing a plan, suggest a next step: "Want me to create tasks for this?" or "Should I draft an invitation to send?"
+
+9. BRIEF SUMMARY. After every plan, add a one-line TL;DR at the bottom, like:
+   "Summary: 6 items planned, busy morning, free evening."
+
+10. BIRTHDAYS & ANNUAL EVENTS. When a user mentions a birthday or annual event, save it as a note with category "birthdays" and suggest creating an annual recurring event.`;
+
 
       const chatMessages = recentChat.rows.reverse().map(m => ({ role: m.role, content: m.content }));
       chatMessages.push({ role: 'user', content: message });
@@ -112,7 +133,6 @@ Use saved preferences to personalize future plans. Briefly acknowledge what you 
           try {
             const note = JSON.parse(match[1]);
             if (note.category && note.note) {
-              // Check for duplicates
               const existing = await pool.query(
                 'SELECT id FROM user_notes WHERE user_id = $1 AND category = $2 AND note = $3',
                 [req.userId, note.category, note.note]

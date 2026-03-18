@@ -25,13 +25,13 @@ module.exports = (pool) => {
   // Create event
   router.post('/', async (req, res) => {
     try {
-      const { title, description, location, startTime, endTime, color, attendees } = req.body;
+      const { title, description, location, startTime, endTime, color, attendees, recurrence } = req.body;
       if (!title || !startTime) return res.status(400).json({ error: 'Title and start time required' });
 
       const result = await pool.query(
-        `INSERT INTO events (user_id, title, description, location, start_time, end_time, color, attendees)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [req.userId, title, description || null, location || null, startTime, endTime || null, color || '#2563eb', attendees || null]
+        `INSERT INTO events (user_id, title, description, location, start_time, end_time, color, attendees, recurrence)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [req.userId, title, description || null, location || null, startTime, endTime || null, color || '#2563eb', attendees || null, recurrence || 'none']
       );
       res.json(result.rows[0]);
     } catch (err) {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API, useAuth, useToast } from '../App';
-import { IconEdit, IconLock, IconBell, IconSun, IconMoon, IconLogOut, IconChevronRight, IconStar, IconTrash, IconX } from '../icons';
+import { IconEdit, IconLock, IconBell, IconSun, IconMoon, IconLogOut, IconChevronRight, IconStar, IconTrash, IconX, IconProfile } from '../icons';
 
 export default function Profile() {
   const { user, logout, login } = useAuth();
@@ -64,8 +64,17 @@ export default function Profile() {
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
 
+  const toggleCompact = () => {
+    const current = localStorage.getItem('compact') === 'true';
+    const next = !current;
+    localStorage.setItem('compact', next ? 'true' : 'false');
+    document.documentElement.setAttribute('data-compact', next ? 'true' : 'false');
+    showToast('Display', next ? 'Compact mode on' : 'Compact mode off');
+  };
+
   const initial = (profile?.displayName || profile?.username || '?')[0].toUpperCase();
   const isDark = (localStorage.getItem('theme') || 'light') === 'dark';
+  const isCompact = localStorage.getItem('compact') === 'true';
 
   return (
     <div>
@@ -158,6 +167,14 @@ export default function Profile() {
           bg="var(--color-success-light)" color="var(--color-success)"
           label={isDark ? 'Dark Mode' : 'Light Mode'}
           onClick={toggleTheme}
+          chevron={false}
+        />
+
+        <MenuItem
+          icon={<IconProfile size={18} />}
+          bg="color-mix(in srgb, #0891b2 10%, transparent)" color="#0891b2"
+          label={isCompact ? 'Compact Mode: On' : 'Compact Mode: Off'}
+          onClick={toggleCompact}
           chevron={false}
         />
 

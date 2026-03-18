@@ -50,7 +50,7 @@ cron.schedule('*/15 * * * *', async () => {
       JOIN users u ON u.id = t.user_id AND u.notify_overdue = true
       WHERE t.status != 'completed'
         AND t.due_date IS NOT NULL
-        AND t.due_date < NOW()
+        AND t.due_date::date < CURRENT_DATE
         AND NOT EXISTS (
           SELECT 1 FROM notifications n
           WHERE n.task_id = t.id AND n.type = 'overdue'

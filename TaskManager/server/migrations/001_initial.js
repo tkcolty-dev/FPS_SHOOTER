@@ -93,6 +93,9 @@ async function migrate() {
       );
 
       CREATE INDEX IF NOT EXISTS idx_user_notes ON user_notes(user_id, category);
+
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS link TEXT;
+      ALTER TABLE events ADD COLUMN IF NOT EXISTS recurrence VARCHAR(20) DEFAULT 'none';
     `);
     console.log('Migration complete');
   } catch (err) {

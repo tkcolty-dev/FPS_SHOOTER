@@ -121,3 +121,36 @@ export const IconAlertCircle = ({ size = 20 }) => (
 export const IconZap = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
 );
+
+// Time-of-day icons
+export const IconSunrise = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s}><path d="M17 18a5 5 0 00-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="8 6 12 2 16 6"/></svg>
+);
+
+export const IconSunHigh = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="4"/><path d="M12 3v2"/><path d="M12 19v2"/><path d="M5.64 5.64l1.41 1.41"/><path d="M16.95 16.95l1.41 1.41"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="M5.64 18.36l1.41-1.41"/><path d="M16.95 7.05l1.41-1.41"/></svg>
+);
+
+export const IconSunset = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s}><path d="M17 18a5 5 0 00-10 0"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/><line x1="23" y1="22" x2="1" y2="22"/><polyline points="16 5 12 9 8 5"/></svg>
+);
+
+export const IconMoonStars = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s}><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/><path d="M17 4l0 4"/><path d="M15 6l4 0"/></svg>
+);
+
+export const IconMoonFull = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="10"/><path d="M12 2a7 7 0 000 20"/></svg>
+);
+
+export const IconChevronUp = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s} strokeWidth={2.5}><polyline points="18 15 12 9 6 15"/></svg>
+);
+
+export const IconLink = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s}><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+);
+
+export const IconExternalLink = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...s}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+);

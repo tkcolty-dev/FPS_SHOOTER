@@ -1,13 +1,115 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API } from '../App';
-import { IconSend, IconChat, IconZap, IconStar } from '../icons';
+import { IconSend, IconChat, IconZap, IconStar, IconCopy, IconCheck } from '../icons';
 
-// Strip note blocks from display and detect if notes were saved
+// Strip note blocks and parse special blocks
 function processContent(text) {
   const noteRegex = /```note\s*\n?\s*\{[\s\S]*?\}\s*\n?\s*```/g;
   const hasNotes = noteRegex.test(text);
-  const cleaned = text.replace(/```note\s*\n?\s*\{[\s\S]*?\}\s*\n?\s*```\s*/g, '').trim();
+  let cleaned = text.replace(/```note\s*\n?\s*\{[\s\S]*?\}\s*\n?\s*```\s*/g, '').trim();
   return { cleaned, hasNotes };
+}
+
+// Parse [OPTIONS: A | B | C] from text
+function parseOptions(text) {
+  const match = text.match(/\[OPTIONS:\s*(.*?)\]/);
+  if (!match) return null;
+  return match[1].split('|').map(o => o.trim()).filter(Boolean);
+}
+
+// Parse [SHARE]...[/SHARE] blocks
+function parseShareBlocks(text) {
+  const parts = [];
+  let remaining = text;
+  const regex = /\[SHARE\]\s*\n?([\s\S]*?)\n?\s*\[\/SHARE\]/g;
+  let match;
+  let lastIndex = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', content: text.slice(lastIndex, match.index) });
+    }
+    parts.push({ type: 'share', content: match[1].trim() });
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', content: text.slice(lastIndex) });
+  }
+
+  return parts.length > 0 ? parts : [{ type: 'text', content: text }];
+}
+
+// Remove [OPTIONS:...] from display text
+function stripOptions(text) {
+  return text.replace(/\[OPTIONS:\s*.*?\]/g, '').trim();
+}
+
+function ShareBlock({ content }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = () => {
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const share = async () => {
+    if (navigator.share) {
+      try { await navigator.share({ text: content }); } catch {}
+    } else {
+      copy();
+    }
+  };
+
+  return (
+    <div className="share-block">
+      <div className="share-block-content">{content}</div>
+      <div className="share-block-actions">
+        <button onClick={copy} className="share-btn">
+          {copied ? <><IconCheck size={12} /> Copied</> : <><IconCopy size={12} /> Copy</>}
+        </button>
+        {navigator.share && (
+          <button onClick={share} className="share-btn primary">
+            <IconSend size={12} /> Share
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ content, role, onOptionClick }) {
+  if (role === 'user') return <div className="chat-bubble user">{content}</div>;
+
+  const { cleaned } = processContent(content);
+  const options = parseOptions(cleaned);
+  const displayText = stripOptions(cleaned);
+  const parts = parseShareBlocks(displayText);
+
+  return (
+    <div className="chat-bubble assistant">
+      {parts.map((part, i) =>
+        part.type === 'share' ? (
+          <ShareBlock key={i} content={part.content} />
+        ) : (
+          <span key={i}>{part.content}</span>
+        )
+      )}
+      {options && (
+        <div className="chat-options">
+          {options.map((opt, i) => (
+            <button key={i} className="chat-option-btn" onClick={() => onOptionClick(opt)}>
+              {opt}
+            </button>
+          ))}
+          <button className="chat-option-btn other" onClick={() => onOptionClick(null)}>
+            Other...
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Chat() {
@@ -141,18 +243,23 @@ export default function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  // Render message content, stripping note blocks
-  const renderContent = (content) => {
-    const { cleaned } = processContent(content);
-    return cleaned;
+  const handleOptionClick = (option) => {
+    if (option) {
+      sendMessage(option);
+    } else {
+      inputRef.current?.focus();
+    }
   };
 
   const suggestions = [
-    "Plan my day for me",
-    "What should I prioritize?",
-    "Create a meeting invitation",
+    "Plan my day",
+    "What should I do next?",
+    "Plan a birthday party",
+    "Draft a meeting invite",
     "Break down a big project",
-    "Suggest a schedule for today"
+    "Plan my week",
+    "Help me meal prep",
+    "Schedule my morning routine"
   ];
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
@@ -165,7 +272,7 @@ export default function Chat() {
             <IconZap size={16} />
             <span>TaskManager AI</span>
           </div>
-          <div className="text-sm text-secondary">Your planning assistant</div>
+          <div className="text-sm text-secondary">Plans, schedules, shares — just ask</div>
         </div>
         {messages.length > 0 && (
           <button className="btn btn-sm btn-ghost" onClick={clearHistory}>Clear</button>
@@ -177,7 +284,7 @@ export default function Chat() {
           <>
             <div className="chat-bubble system">
               <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>AI Planner</div>
-              I can help you plan your day, prioritize tasks, create event invitations, and more. I learn your preferences over time to give better suggestions.
+              I plan your day, draft messages, schedule events, and remember your preferences. Just tell me what you need.
             </div>
             <div className="chat-quick-actions">
               {suggestions.map((s, i) => (
@@ -190,13 +297,11 @@ export default function Chat() {
         )}
 
         {messages.map((m, i) => (
-          <div key={i} className={`chat-bubble ${m.role}`}>
-            {m.role === 'assistant' ? renderContent(m.content) : m.content}
-          </div>
+          <MessageBubble key={i} content={m.content} role={m.role} onOptionClick={handleOptionClick} />
         ))}
 
         {streaming && streamingText && (
-          <div className="chat-bubble assistant">{renderContent(streamingText)}</div>
+          <MessageBubble content={streamingText} role="assistant" onOptionClick={handleOptionClick} />
         )}
 
         {streaming && !streamingText && (
@@ -220,7 +325,7 @@ export default function Chat() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask me to plan your day..."
+          placeholder="Ask me to plan something..."
           disabled={streaming}
         />
         <button className="chat-send-btn" onClick={() => sendMessage()} disabled={!input.trim() || streaming}>

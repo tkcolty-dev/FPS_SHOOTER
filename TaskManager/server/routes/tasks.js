@@ -26,13 +26,13 @@ module.exports = (pool) => {
   // Create task
   router.post('/', async (req, res) => {
     try {
-      const { title, description, category, priority, dueDate, dueTime } = req.body;
+      const { title, description, category, priority, dueDate, dueTime, link } = req.body;
       if (!title) return res.status(400).json({ error: 'Title required' });
 
       const result = await pool.query(
-        `INSERT INTO tasks (user_id, title, description, category, priority, due_date, due_time)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [req.userId, title, description || null, category || 'general', priority || 'medium', dueDate || null, dueTime || null]
+        `INSERT INTO tasks (user_id, title, description, category, priority, due_date, due_time, link)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [req.userId, title, description || null, category || 'general', priority || 'medium', dueDate || null, dueTime || null, link || null]
       );
       res.json(result.rows[0]);
     } catch (err) {
@@ -44,15 +44,15 @@ module.exports = (pool) => {
   // Update task
   router.put('/:id', async (req, res) => {
     try {
-      const { title, description, category, priority, status, dueDate, dueTime } = req.body;
+      const { title, description, category, priority, status, dueDate, dueTime, link } = req.body;
       const completedAt = status === 'completed' ? 'NOW()' : 'NULL';
       const result = await pool.query(
         `UPDATE tasks SET title = COALESCE($1, title), description = COALESCE($2, description),
          category = COALESCE($3, category), priority = COALESCE($4, priority),
          status = COALESCE($5, status), due_date = COALESCE($6, due_date), due_time = COALESCE($7, due_time),
-         completed_at = ${completedAt}, updated_at = NOW()
-         WHERE id = $8 AND user_id = $9 RETURNING *`,
-        [title, description, category, priority, status, dueDate, dueTime, req.params.id, req.userId]
+         link = $8, completed_at = ${completedAt}, updated_at = NOW()
+         WHERE id = $9 AND user_id = $10 RETURNING *`,
+        [title, description, category, priority, status, dueDate, dueTime, link || null, req.params.id, req.userId]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'Task not found' });
       res.json(result.rows[0]);
@@ -80,7 +80,7 @@ module.exports = (pool) => {
       const [total, completed, overdue, todayTasks] = await Promise.all([
         pool.query('SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND status != $2', [req.userId, 'completed']),
         pool.query('SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND status = $2 AND completed_at::date = $3::date', [req.userId, 'completed', today]),
-        pool.query('SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND status != $2 AND due_date < NOW()', [req.userId, 'completed']),
+        pool.query('SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND status != $2 AND due_date::date < CURRENT_DATE', [req.userId, 'completed']),
         pool.query('SELECT COUNT(*) FROM tasks WHERE user_id = $1 AND due_date::date = $2::date', [req.userId, today])
       ]);
       res.json({
