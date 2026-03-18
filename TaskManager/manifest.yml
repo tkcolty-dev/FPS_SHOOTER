@@ -1,0 +1,14 @@
+applications:
+  - name: taskmanager
+    memory: 512M
+    disk_quota: 512M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node server/index.js
+    services:
+      - taskmanager-db
+      - taskmanager-ai
+    env:
+      JWT_SECRET: tm-secret-key-2026
+      NODE_ENV: production
