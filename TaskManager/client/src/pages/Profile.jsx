@@ -62,11 +62,13 @@ export default function Profile() {
     } catch (err) { showToast('Error', err.message, 'error'); }
   };
 
+  const [compactMode, setCompactMode] = useState(() => localStorage.getItem('compact') === 'true');
+
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
 
   const toggleCompact = () => {
-    const current = localStorage.getItem('compact') === 'true';
-    const next = !current;
+    const next = !compactMode;
+    setCompactMode(next);
     localStorage.setItem('compact', next ? 'true' : 'false');
     document.documentElement.setAttribute('data-compact', next ? 'true' : 'false');
     showToast('Display', next ? 'Compact mode on' : 'Compact mode off');
@@ -74,7 +76,7 @@ export default function Profile() {
 
   const initial = (profile?.displayName || profile?.username || '?')[0].toUpperCase();
   const isDark = (localStorage.getItem('theme') || 'light') === 'dark';
-  const isCompact = localStorage.getItem('compact') === 'true';
+  const isCompact = compactMode;
 
   return (
     <div>

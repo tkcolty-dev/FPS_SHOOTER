@@ -41,18 +41,41 @@ module.exports = (pool) => {
     }
   });
 
+  // Bulk create tasks (from AI plans/checklists)
+  router.post('/bulk', async (req, res) => {
+    try {
+      const { tasks } = req.body;
+      if (!tasks || !tasks.length) return res.status(400).json({ error: 'Tasks required' });
+
+      const created = [];
+      for (const t of tasks) {
+        if (!t.title) continue;
+        const result = await pool.query(
+          `INSERT INTO tasks (user_id, title, description, category, priority, due_date, due_time)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+          [req.userId, t.title, t.description || null, t.category || 'general', t.priority || 'medium', t.dueDate || null, t.dueTime || null]
+        );
+        created.push(result.rows[0]);
+      }
+      res.json({ created: created.length, tasks: created });
+    } catch (err) {
+      console.error('Bulk create error:', err);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // Update task
   router.put('/:id', async (req, res) => {
     try {
       const { title, description, category, priority, status, dueDate, dueTime, link } = req.body;
-      const completedAt = status === 'completed' ? 'NOW()' : 'NULL';
+      const completedAtClause = status === 'completed' ? ', completed_at = NOW()' : status === 'pending' ? ', completed_at = NULL' : '';
       const result = await pool.query(
         `UPDATE tasks SET title = COALESCE($1, title), description = COALESCE($2, description),
          category = COALESCE($3, category), priority = COALESCE($4, priority),
          status = COALESCE($5, status), due_date = COALESCE($6, due_date), due_time = COALESCE($7, due_time),
-         link = $8, completed_at = ${completedAt}, updated_at = NOW()
+         link = COALESCE($8, link)${completedAtClause}, updated_at = NOW()
          WHERE id = $9 AND user_id = $10 RETURNING *`,
-        [title, description, category, priority, status, dueDate, dueTime, link || null, req.params.id, req.userId]
+        [title, description, category, priority, status, dueDate, dueTime, link, req.params.id, req.userId]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'Task not found' });
       res.json(result.rows[0]);

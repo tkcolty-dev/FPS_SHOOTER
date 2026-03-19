@@ -68,53 +68,65 @@ module.exports = (pool) => {
       const pendingTasks = tasks.rows.filter(t => t.status === 'pending');
       const todayTasks = pendingTasks.filter(t => t.due_date && t.due_date.slice(0, 10) === today);
 
-      const systemPrompt = `You are TaskManager AI — a sharp, proactive planning assistant for ${userName}. You make plans, not ask questions.
-
-TODAY: ${dayOfWeek}, ${today}
-TIME: ${timeLabel}
+      const systemPrompt = `You are a planning assistant for ${userName}. Today is ${dayOfWeek}, ${today}, ${timeLabel}.
 ${notesSection}
 
-TASKS (${pendingTasks.length} pending${todayTasks.length > 0 ? `, ${todayTasks.length} today` : ''}):
-${pendingTasks.map(t => `- [${t.status}] ${t.title} (${t.priority}${t.due_date ? ', due ' + t.due_date.slice(0, 10) : ''}${t.due_time ? ' ' + t.due_time : ''})`).join('\n') || '- None'}
+Their tasks: ${pendingTasks.map(t => `${t.title} (${t.priority}${t.due_date ? ', due ' + t.due_date.slice(0, 10) : ''}${t.due_time ? ' at ' + t.due_time : ''})`).join('; ') || 'None'}
 
-UPCOMING EVENTS:
-${events.rows.map(e => `- ${e.title} on ${new Date(e.start_time).toLocaleDateString()} at ${new Date(e.start_time).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}${e.location ? ' @ ' + e.location : ''}`).join('\n') || '- None'}
+Their events: ${events.rows.map(e => `${e.title} on ${new Date(e.start_time).toLocaleDateString()} ${new Date(e.start_time).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'})}${e.location ? ' @ ' + e.location : ''}`).join('; ') || 'None'}
 
-RULES — follow these exactly:
+RULES:
+1. ASK BEFORE CREATING. When the user asks you to plan something, first show a quick summary of what you'd plan and ask "Want me to add this to your calendar?" or give options. Only output [PLAN], [CHECKLIST], or [EVENT] tags AFTER the user confirms (says "yes", "do it", "go ahead", "plan it", "add it", "sure", "ok", etc). If the user's message is a confirmation like those, THEN output the tags to create everything.
 
-1. PLAN IMMEDIATELY. When asked to plan something (a day, a trip, a party, anything), OUTPUT A FULL PLAN right away. Use the user's existing tasks/events as anchors. Fill gaps with smart suggestions. NEVER respond with "what would you like to do?" or a list of questions. Just plan it.
+2. PLAN = FULL SCHEDULE. When confirmed, build a COMPLETE hour-by-hour plan that includes their EXISTING tasks and events at their scheduled times PLUS new activities filling the gaps. Output inside [PLAN] tags:
 
-2. FORMAT FOR READABILITY:
-   - Day plans: Use "Morning:", "Afternoon:", "Evening:" headers
-   - Each item: "- 9:00 AM: Activity description"
-   - Lists: Simple bullets
-   - Keep it scannable — no walls of text
+[PLAN: March 19]
+- 8:00 AM: Wake up, breakfast
+- 9:00 AM: Existing task - Project review (high priority)
+- 10:30 AM: Break + coffee
+- 11:00 AM: Work on presentation
+- 12:00 PM: Lunch
+- 1:00 PM: Existing event - Team meeting @ Office
+- 2:30 PM: Follow up on meeting action items
+- 5:00 PM: Gym - 30 min cardio
+- 6:30 PM: Dinner
+- 8:00 PM: Free time / relax
+[/PLAN]
 
-3. BE SPECIFIC AND REAL. Don't say "plan an activity." Say "- 2:00 PM: 30-minute walk at the park." Give actual times, actual suggestions. Use what you know about the user.
+IMPORTANT: [PLAN], [CHECKLIST], and [EVENT] blocks are AUTO-SAVED. Only use them after the user approves.
 
-4. WHEN YOU NEED INPUT, use multiple choice. Format choices like this:
-   [OPTIONS: Choice A | Choice B | Choice C]
-   This shows the user clickable buttons. Always include 3-5 options. Only ask ONE question at a time and ONLY when truly needed (like "plan a birthday party" — you'd need to know whose birthday).
+3. CHECKLISTS. For project breakdowns or step-by-step lists (after user confirms):
 
-5. SHAREABLE TEXT. When generating invitations, messages, or plans to share, wrap them in:
-   [SHARE]
-   The text content here that can be copied/sent
-   [/SHARE]
+[CHECKLIST: Project name]
+- First step
+- Second step
+- Third step
+[/CHECKLIST]
 
-6. LEARN PREFERENCES. When the user mentions likes, dislikes, routines, or personal info, save a note:
-\`\`\`note
-{"category": "food", "note": "Likes Italian food"}
-\`\`\`
-Categories: food, schedule, routine, hobbies, social, work, health, preferences, commitments, birthdays
+AUTO-SAVED as tasks after user confirms.
 
-7. KEEP IT SHORT. No filler. No "Great question!" No "I'd be happy to help!" Just do the thing.
+4. EVENTS. When confirmed, create events (party, meeting, appointment, dinner):
 
-8. PROACTIVE SUGGESTIONS. After completing a plan, suggest a next step: "Want me to create tasks for this?" or "Should I draft an invitation to send?"
+[EVENT: Party name]
+title: Birthday Party for Sarah
+start: 2026-03-22T18:00
+end: 2026-03-22T21:00
+location: Pizza Palace
+description: Surprise party
+[/EVENT]
 
-9. BRIEF SUMMARY. After every plan, add a one-line TL;DR at the bottom, like:
-   "Summary: 6 items planned, busy morning, free evening."
+AUTO-SAVED as a calendar event after user confirms.
 
-10. BIRTHDAYS & ANNUAL EVENTS. When a user mentions a birthday or annual event, save it as a note with category "birthdays" and suggest creating an annual recurring event.`;
+5. ASK GOOD QUESTIONS. Use [OPTIONS:] to gather what you need. Example:
+   "What kind of party are you thinking?"
+   [OPTIONS: Birthday | Dinner party | Game night | Holiday | Other]
+
+6. Be specific with times. "2:00 PM: Walk at the park" not "plan some exercise."
+7. Keep responses SHORT. Brief and conversational.
+8. Shareable text: [SHARE]text[/SHARE]
+9. Save preferences: \`\`\`note\n{"category": "birthdays", "note": "Mom's bday March 5"}\n\`\`\`
+10. When the user says "yes", "do it", "plan it", "go ahead", "sure", "add it", "create it" — THAT is when you output [PLAN]/[EVENT]/[CHECKLIST] tags. Not before.
+11. Use common sense: birthday party = [EVENT], daily schedule = [PLAN], project steps = [CHECKLIST].`;
 
 
       const chatMessages = recentChat.rows.reverse().map(m => ({ role: m.role, content: m.content }));
@@ -122,7 +134,7 @@ Categories: food, schedule, routine, hobbies, social, work, health, preferences,
 
       const fullContent = await streamChat(systemPrompt, chatMessages, res);
 
-      // Save assistant response
+      // Save assistant response and auto-create tasks/events
       if (fullContent) {
         await pool.query('INSERT INTO chat_history (user_id, role, content) VALUES ($1, $2, $3)', [req.userId, 'assistant', fullContent]);
 
@@ -145,6 +157,87 @@ Categories: food, schedule, routine, hobbies, social, work, health, preferences,
               }
             }
           } catch {}
+        }
+
+        // Auto-create tasks from [PLAN] blocks
+        const planRegex = /\[PLAN:?\s*([^\]]*)\]([\s\S]*?)\[\/PLAN\]/g;
+        let planMatch;
+        while ((planMatch = planRegex.exec(fullContent)) !== null) {
+          try {
+            const planTitle = planMatch[1].trim();
+            const items = planMatch[2].trim().split('\n').map(l => l.replace(/^[-*]\s*/, '').trim()).filter(Boolean);
+
+            // Parse date from title
+            let dueDate = today;
+            if (/tomorrow/i.test(planTitle)) {
+              const t = new Date(); t.setDate(t.getDate() + 1);
+              dueDate = t.toISOString().slice(0, 10);
+            } else {
+              const dm = planTitle.match(/(\w+)\s+(\d{1,2})/);
+              if (dm) {
+                const parsed = new Date(`${dm[1]} ${dm[2]}, ${new Date().getFullYear()}`);
+                if (!isNaN(parsed)) dueDate = parsed.toISOString().slice(0, 10);
+              }
+            }
+
+            for (const item of items) {
+              const timeMatch = item.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM|am|pm)\s*[-:]\s*(.*)/);
+              let title = item, dueTime = null;
+              if (timeMatch) {
+                let h = parseInt(timeMatch[1]);
+                const m = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+                const p = timeMatch[3].toUpperCase();
+                if (p === 'PM' && h !== 12) h += 12;
+                if (p === 'AM' && h === 12) h = 0;
+                dueTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                title = timeMatch[4].trim();
+              }
+              if (title) {
+                await pool.query(
+                  'INSERT INTO tasks (user_id, title, priority, due_date, due_time) VALUES ($1, $2, $3, $4, $5)',
+                  [req.userId, title, 'medium', dueDate, dueTime]
+                );
+              }
+            }
+          } catch (e) { console.error('Auto-create plan tasks error:', e); }
+        }
+
+        // Auto-create tasks from [CHECKLIST] blocks
+        const checkRegex = /\[CHECKLIST:?\s*([^\]]*)\]([\s\S]*?)\[\/CHECKLIST\]/g;
+        let checkMatch;
+        while ((checkMatch = checkRegex.exec(fullContent)) !== null) {
+          try {
+            const listTitle = checkMatch[1].trim();
+            const items = checkMatch[2].trim().split('\n').map(l => l.replace(/^[-*]\s*/, '').trim()).filter(Boolean);
+            for (const item of items) {
+              if (item) {
+                await pool.query(
+                  'INSERT INTO tasks (user_id, title, description, priority) VALUES ($1, $2, $3, $4)',
+                  [req.userId, item, listTitle ? `Checklist: ${listTitle}` : null, 'medium']
+                );
+              }
+            }
+          } catch (e) { console.error('Auto-create checklist tasks error:', e); }
+        }
+
+        // Auto-create events from [EVENT] blocks
+        const eventRegex = /\[EVENT:?\s*([^\]]*)\]([\s\S]*?)\[\/EVENT\]/g;
+        let eventMatch;
+        while ((eventMatch = eventRegex.exec(fullContent)) !== null) {
+          try {
+            const evData = {};
+            eventMatch[2].trim().split('\n').forEach(line => {
+              const [key, ...rest] = line.split(':');
+              if (key && rest.length) evData[key.trim().toLowerCase()] = rest.join(':').trim();
+            });
+            if (evData.title || eventMatch[1].trim()) {
+              await pool.query(
+                'INSERT INTO events (user_id, title, description, location, start_time, end_time, color) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+                [req.userId, evData.title || eventMatch[1].trim(), evData.description || null,
+                 evData.location || null, evData.start || evData.when || null, evData.end || null, '#2563eb']
+              );
+            }
+          } catch (e) { console.error('Auto-create event error:', e); }
         }
       }
     } catch (err) {

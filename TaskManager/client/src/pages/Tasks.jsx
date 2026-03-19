@@ -52,10 +52,17 @@ const quickTimes = [
 
 const formatTime12h = (t) => {
   if (!t) return '';
-  const [h, m] = t.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  try {
+    // Handle "HH:MM" format
+    const parts = t.match(/^(\d{1,2}):(\d{2})/);
+    if (!parts) return t; // Return as-is if can't parse
+    const h = parseInt(parts[1]);
+    const m = parseInt(parts[2]);
+    if (isNaN(h) || isNaN(m)) return t;
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return m === 0 ? `${h12} ${period}` : `${h12}:${String(m).padStart(2, '0')} ${period}`;
+  } catch { return t; }
 };
 
 function AmPmPicker({ value, onChange }) {
@@ -128,7 +135,8 @@ function groupTasks(tasks) {
 
   tasks.forEach(task => {
     if (!task.due_date) { groups.noDate.push(task); return; }
-    const ds = task.due_date.slice(0, 10);
+    const ds = (task.due_date || '').slice(0, 10);
+    if (!ds || ds.length !== 10) { groups.noDate.push(task); return; }
 
     if (task.status !== 'completed' && ds < todayStr) groups.overdue.push(task);
     else if (ds === todayStr) groups.today.push(task);
@@ -217,17 +225,21 @@ export default function Tasks() {
 
   const formatDue = (task) => {
     if (!task.due_date) return null;
-    return formatDateLabel(task.due_date.slice(0, 10)) + (task.due_time ? ' ' + formatTime12h(task.due_time) : '');
+    return formatDateLabel(task.due_date.slice(0, 10));
   };
 
   const formatDateLabel = (dateStr) => {
-    const d = new Date(dateStr + 'T12:00:00');
-    const today = new Date();
-    const todayStr = toDateStr(today);
-    const tomorrowStr = toDateStr(addDays(today, 1));
-    if (dateStr === todayStr) return 'Today';
-    if (dateStr === tomorrowStr) return 'Tomorrow';
-    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr + 'T12:00:00');
+      if (isNaN(d)) return dateStr;
+      const today = new Date();
+      const todayStr = toDateStr(today);
+      const tomorrowStr = toDateStr(addDays(today, 1));
+      if (dateStr === todayStr) return 'Today';
+      if (dateStr === tomorrowStr) return 'Tomorrow';
+      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    } catch { return dateStr; }
   };
 
   const setQuickDate = (val) => {
@@ -420,7 +432,14 @@ function TaskRow({ task, toggleTask, deleteTask, editTask, formatDue, isOverdue,
         {task.status === 'completed' && <IconCheck size={14} />}
       </button>
       <div className="task-body">
-        <div className={`task-title ${task.status === 'completed' ? 'completed' : ''}`}>{task.title}</div>
+        <div className="task-title-row">
+          <div className={`task-title ${task.status === 'completed' ? 'completed' : ''}`}>{task.title}</div>
+          {task.due_time && (
+            <span className="task-time-badge">
+              <IconClock size={10} /> {formatTime12h(task.due_time)}
+            </span>
+          )}
+        </div>
         {task.description && <div className="task-desc">{task.description}</div>}
         {task.link && (
           <a href={task.link} target="_blank" rel="noopener noreferrer" className="task-link" onClick={e => e.stopPropagation()}>
@@ -433,7 +452,7 @@ function TaskRow({ task, toggleTask, deleteTask, editTask, formatDue, isOverdue,
           <span className="task-tag tag-category">{task.category}</span>
           {formatDue(task) && (
             <span className={`task-due ${isOverdue(task) ? 'overdue' : ''}`}>
-              <IconClock size={10} /> {formatDue(task)}
+              {formatDue(task)}
             </span>
           )}
         </div>
