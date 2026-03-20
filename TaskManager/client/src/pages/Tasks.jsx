@@ -415,17 +415,11 @@ export default function Tasks() {
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
 
-  // Poll shared tasks every 5s for real-time sync
+  // Poll every 5s for real-time sync on all tabs
   useEffect(() => {
-    if (filter !== 'shared') return;
-    const iv = setInterval(() => {
-      API('/sharing/with-me').then(data => {
-        setSharedWithMe(data.tasks || []);
-        setSharedPermissions(data.permissions || {});
-      }).catch(() => {});
-    }, 5000);
+    const iv = setInterval(() => { loadTasks(); }, 5000);
     return () => clearInterval(iv);
-  }, [filter]);
+  }, [loadTasks]);
 
   const resetForm = () => {
     setForm({ title: '', description: '', category: 'general', priority: 'medium', dueDate: '', dueTime: '', link: '', recurrence: 'none' });
