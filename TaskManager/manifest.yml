@@ -12,3 +12,6 @@ applications:
     env:
       JWT_SECRET: tm-secret-key-2026
       NODE_ENV: production
+      VAPID_PUBLIC_KEY: BO2p0lsbhCjipAkuKFCAzauu_wP5-9wRjQBg-fAN5pXwKr3nxb3FJJW1MXbTfiEDYp00buPCrc6mO2N91JRQpm4
+      VAPID_PRIVATE_KEY: vhNw2P5eANpbFV0zsqX5eaPiBvdC_Tr5K8cnXBEyxfs
+      VAPID_EMAIL: mailto:admin@taskmanager.app

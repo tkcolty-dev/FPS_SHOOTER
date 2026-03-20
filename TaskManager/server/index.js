@@ -33,6 +33,8 @@ app.use('/api/tasks', auth, require('./routes/tasks')(pool));
 app.use('/api/events', auth, require('./routes/events')(pool));
 app.use('/api/chat', auth, require('./routes/chat')(pool));
 app.use('/api/notifications', auth, require('./routes/notifications')(pool));
+app.use('/api/sharing', auth, require('./routes/sharing')(pool));
+app.use('/api/push', auth, require('./routes/push')(pool));
 
 // Serve React build
 app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
@@ -40,6 +42,8 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
   res.sendFile(path.join(__dirname, '..', 'client', 'dist', 'index.html'));
 });
+
+const { sendPushToUser } = require('./routes/push');
 
 // Notification cron - check overdue tasks every 15 minutes
 cron.schedule('*/15 * * * *', async () => {
@@ -64,6 +68,7 @@ cron.schedule('*/15 * * * *', async () => {
          VALUES ($1, $2, $3, $4, $5)`,
         [task.user_id, task.id, 'overdue', 'Task Overdue', `"${task.title}" is past its due date!`]
       );
+      sendPushToUser(pool, task.user_id, 'Task Overdue', `"${task.title}" is past its due date!`, { url: '/tasks' });
     }
 
     const upcoming = await pool.query(`
@@ -87,6 +92,7 @@ cron.schedule('*/15 * * * *', async () => {
          VALUES ($1, $2, $3, $4, $5)`,
         [task.user_id, task.id, 'upcoming', 'Task Coming Up', `"${task.title}" is due soon!`]
       );
+      sendPushToUser(pool, task.user_id, 'Task Coming Up', `"${task.title}" is due soon!`, { url: '/tasks' });
     }
   } catch (err) {
     console.error('Notification cron error:', err);

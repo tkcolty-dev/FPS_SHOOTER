@@ -25,9 +25,11 @@ export default function Profile() {
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+
   const toggleTheme = () => {
-    const current = localStorage.getItem('theme') || 'light';
-    const next = current === 'light' ? 'dark' : 'light';
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
     localStorage.setItem('theme', next);
     document.documentElement.setAttribute('data-theme', next);
     API('/auth/me', { method: 'PUT', body: { theme: next } }).catch(() => {});
@@ -40,6 +42,7 @@ export default function Profile() {
       const u = { ...user, displayName };
       localStorage.setItem('user', JSON.stringify(u));
       login(localStorage.getItem('token'), u);
+      setProfile(p => ({ ...p, displayName }));
       showToast('Saved', 'Profile updated');
       setSection(null);
     } catch (err) { showToast('Error', err.message, 'error'); }
@@ -57,6 +60,7 @@ export default function Profile() {
   const saveNotifications = async () => {
     try {
       await API('/auth/me', { method: 'PUT', body: { notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore } });
+      setProfile(p => ({ ...p, notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore }));
       showToast('Saved', 'Notification settings updated');
       setSection(null);
     } catch (err) { showToast('Error', err.message, 'error'); }
@@ -75,7 +79,7 @@ export default function Profile() {
   };
 
   const initial = (profile?.displayName || profile?.username || '?')[0].toUpperCase();
-  const isDark = (localStorage.getItem('theme') || 'light') === 'dark';
+  const isDark = theme === 'dark';
   const isCompact = compactMode;
 
   return (
@@ -187,6 +191,14 @@ export default function Profile() {
           onClick={() => setSection(section === 'notes' ? null : 'notes')}
         />
         {section === 'notes' && <NotesSection />}
+
+        <MenuItem
+          icon={<IconBell size={18} />}
+          bg="color-mix(in srgb, #16a34a 10%, transparent)" color="#16a34a"
+          label="Push Notifications"
+          onClick={() => setSection(section === 'push' ? null : 'push')}
+        />
+        {section === 'push' && <PushSection showToast={showToast} />}
       </div>
 
       <div className="card" style={{ padding: '0.25rem' }}>
@@ -236,6 +248,62 @@ function NotesSection() {
           <button className="note-delete" onClick={() => deleteNote(n.id)}><IconX size={14} /></button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function PushSection({ showToast }) {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) { setLoading(false); return; }
+        const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        setEnabled(!!sub);
+      } catch {} finally { setLoading(false); }
+    })();
+  }, []);
+
+  const toggle = async () => {
+    try {
+      if (enabled) {
+        const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+        const sub = reg ? await reg.pushManager.getSubscription() : null;
+        if (sub) await sub.unsubscribe();
+        await API('/push/unsubscribe', { method: 'DELETE' });
+        setEnabled(false);
+        showToast('Disabled', 'Push notifications turned off');
+      } else {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') { showToast('Blocked', 'Allow notifications in browser settings', 'error'); return; }
+        const reg = await navigator.serviceWorker.register('/sw.js');
+        const { key } = await API('/push/vapid-key');
+        if (!key) { showToast('Error', 'Push not configured on server', 'error'); return; }
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+        await API('/push/subscribe', { method: 'POST', body: sub.toJSON() });
+        setEnabled(true);
+        showToast('Enabled', 'You\'ll get push notifications for due tasks');
+      }
+    } catch (err) { showToast('Error', err.message, 'error'); }
+  };
+
+  if (loading) return <div className="menu-expand"><div className="loading-center"><div className="spinner" /></div></div>;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return <div className="menu-expand"><div className="text-sm text-secondary">Push notifications are not supported in this browser.</div></div>;
+  }
+
+  return (
+    <div className="menu-expand">
+      <div className="text-sm text-secondary" style={{ marginBottom: '0.5rem' }}>
+        Get browser push notifications when tasks are overdue or coming up.
+      </div>
+      <div className="toggle-wrap">
+        <div><div className="toggle-label">Push Notifications</div><div className="toggle-desc">Alerts even when the app is closed</div></div>
+        <button className={`toggle ${enabled ? 'on' : ''}`} onClick={toggle} />
+      </div>
     </div>
   );
 }

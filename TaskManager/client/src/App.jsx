@@ -225,6 +225,7 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
     const compact = localStorage.getItem('compact') === 'true';
     document.documentElement.setAttribute('data-compact', compact ? 'true' : 'false');
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
   }, []);
 
   const login = (tok, u) => {

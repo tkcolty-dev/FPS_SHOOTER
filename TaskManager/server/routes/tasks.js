@@ -13,8 +13,9 @@ module.exports = (pool) => {
       if (status) { q += ` AND status = $${idx++}`; params.push(status); }
       if (category) { q += ` AND category = $${idx++}`; params.push(category); }
       if (date) { q += ` AND due_date::date = $${idx++}::date`; params.push(date); }
+      if (req.query.search) { q += ` AND (title ILIKE $${idx} OR description ILIKE $${idx})`; params.push(`%${req.query.search}%`); idx++; }
 
-      q += ' ORDER BY CASE priority WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 ELSE 3 END, due_date ASC NULLS LAST';
+      q += ' ORDER BY pinned DESC NULLS LAST, sort_order ASC, CASE priority WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 ELSE 3 END, due_date ASC NULLS LAST';
       const result = await pool.query(q, params);
       res.json(result.rows);
     } catch (err) {
@@ -26,13 +27,13 @@ module.exports = (pool) => {
   // Create task
   router.post('/', async (req, res) => {
     try {
-      const { title, description, category, priority, dueDate, dueTime, link } = req.body;
+      const { title, description, category, priority, dueDate, dueTime, link, recurrence } = req.body;
       if (!title) return res.status(400).json({ error: 'Title required' });
 
       const result = await pool.query(
-        `INSERT INTO tasks (user_id, title, description, category, priority, due_date, due_time, link)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [req.userId, title, description || null, category || 'general', priority || 'medium', dueDate || null, dueTime || null, link || null]
+        `INSERT INTO tasks (user_id, title, description, category, priority, due_date, due_time, link, recurrence)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [req.userId, title, description || null, category || 'general', priority || 'medium', dueDate || null, dueTime || null, link || null, recurrence || 'none']
       );
       res.json(result.rows[0]);
     } catch (err) {
@@ -64,23 +65,131 @@ module.exports = (pool) => {
     }
   });
 
+  // AI: convert script/text into checklist tasks
+  router.post('/ai-checklist', async (req, res) => {
+    try {
+      const { script } = req.body;
+      if (!script || !script.trim()) return res.status(400).json({ error: 'Script text required' });
+
+      const { chatCompletion } = require('../services/ai');
+      const raw = await chatCompletion([
+        { role: 'system', content: `You break down scripts, instructions, recipes, processes, or any text into a clear checklist of actionable tasks. Return ONLY valid JSON — no markdown, no backticks, no explanation.
+
+Format: { "tasks": [{ "title": "...", "priority": "high|medium|low", "category": "general|work|personal|health|shopping|errands" }] }
+
+Rules:
+- Each task title should be concise and actionable (start with a verb)
+- Order tasks logically (sequential steps)
+- Set priority based on importance/urgency within the script
+- Pick the best category based on context
+- Break complex steps into smaller sub-tasks when helpful
+- Typically produce 3-15 tasks depending on script length` },
+        { role: 'user', content: script }
+      ], 2000);
+
+      console.log('AI checklist raw:', raw?.slice(0, 200));
+      if (!raw) return res.status(500).json({ error: 'AI returned empty response' });
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return res.status(500).json({ error: 'AI returned invalid format: ' + raw.slice(0, 100) });
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (!parsed.tasks || !Array.isArray(parsed.tasks)) return res.status(500).json({ error: 'AI did not return tasks array' });
+      res.json(parsed);
+    } catch (err) {
+      console.error('AI checklist error:', err);
+      res.status(500).json({ error: err.message || 'Failed to generate checklist' });
+    }
+  });
+
+  // Reorder tasks (must be before /:id)
+  router.put('/reorder', async (req, res) => {
+    try {
+      const { orderedIds } = req.body;
+      if (!orderedIds?.length) return res.status(400).json({ error: 'orderedIds required' });
+      for (let i = 0; i < orderedIds.length; i++) {
+        await pool.query('UPDATE tasks SET sort_order = $1 WHERE id = $2 AND user_id = $3', [i, orderedIds[i], req.userId]);
+      }
+      res.json({ ok: true });
+    } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  });
+
   // Update task
   router.put('/:id', async (req, res) => {
     try {
-      const { title, description, category, priority, status, dueDate, dueTime, link } = req.body;
-      const completedAtClause = status === 'completed' ? ', completed_at = NOW()' : status === 'pending' ? ', completed_at = NULL' : '';
+      const fields = [];
+      const params = [];
+      let idx = 1;
+      const add = (col, val) => { fields.push(`${col} = $${idx++}`); params.push(val); };
+
+      if (req.body.title !== undefined) add('title', req.body.title);
+      if (req.body.description !== undefined) add('description', req.body.description || null);
+      if (req.body.category !== undefined) add('category', req.body.category);
+      if (req.body.priority !== undefined) add('priority', req.body.priority);
+      if (req.body.status !== undefined) {
+        add('status', req.body.status);
+        if (req.body.status === 'completed') add('completed_at', new Date());
+        else if (req.body.status === 'pending') add('completed_at', null);
+      }
+      if (req.body.dueDate !== undefined) add('due_date', req.body.dueDate || null);
+      if (req.body.dueTime !== undefined) add('due_time', req.body.dueTime || null);
+      if (req.body.link !== undefined) add('link', req.body.link || null);
+      if (req.body.recurrence !== undefined) add('recurrence', req.body.recurrence || 'none');
+      if (req.body.pinned !== undefined) add('pinned', req.body.pinned);
+      if (req.body.sortOrder !== undefined) add('sort_order', req.body.sortOrder);
+      if (req.body.timeSpent !== undefined) add('time_spent', req.body.timeSpent);
+      add('updated_at', new Date());
+
+      if (fields.length === 1) return res.status(400).json({ error: 'No fields to update' });
+
+      params.push(req.params.id, req.userId);
       const result = await pool.query(
-        `UPDATE tasks SET title = COALESCE($1, title), description = COALESCE($2, description),
-         category = COALESCE($3, category), priority = COALESCE($4, priority),
-         status = COALESCE($5, status), due_date = COALESCE($6, due_date), due_time = COALESCE($7, due_time),
-         link = COALESCE($8, link)${completedAtClause}, updated_at = NOW()
-         WHERE id = $9 AND user_id = $10 RETURNING *`,
-        [title, description, category, priority, status, dueDate, dueTime, link, req.params.id, req.userId]
+        `UPDATE tasks SET ${fields.join(', ')} WHERE id = $${idx++} AND user_id = $${idx} RETURNING *`,
+        params
+      );
+      if (!result.rows.length) return res.status(404).json({ error: 'Task not found' });
+      const task = result.rows[0];
+
+      // Notify collaborators when shared task is completed
+      if (req.body.status === 'completed') {
+        try {
+          const shared = await pool.query('SELECT shared_with_id, owner_id FROM shared_tasks WHERE task_id = $1', [req.params.id]);
+          for (const row of shared.rows) {
+            const notifyUserId = row.owner_id === req.userId ? row.shared_with_id : row.owner_id;
+            if (notifyUserId !== req.userId) {
+              await pool.query(
+                'INSERT INTO notifications (user_id, task_id, type, title, message) VALUES ($1, $2, $3, $4, $5)',
+                [notifyUserId, task.id, 'shared_completed', 'Shared Task Done', `"${task.title}" was completed!`]
+              );
+            }
+          }
+        } catch {}
+      }
+
+      res.json(task);
+    } catch (err) {
+      console.error('Update task error:', err);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // Add time to task (atomic increment)
+  router.post('/:id/timer', async (req, res) => {
+    try {
+      const { seconds } = req.body;
+      const result = await pool.query(
+        'UPDATE tasks SET time_spent = COALESCE(time_spent, 0) + $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+        [seconds, req.params.id, req.userId]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'Task not found' });
       res.json(result.rows[0]);
+    } catch (err) { res.status(500).json({ error: 'Server error' }); }
+  });
+
+  // Delete all completed tasks
+  router.delete('/completed', async (req, res) => {
+    try {
+      const result = await pool.query('DELETE FROM tasks WHERE user_id = $1 AND status = $2 RETURNING id', [req.userId, 'completed']);
+      res.json({ deleted: result.rowCount });
     } catch (err) {
-      console.error('Update task error:', err);
       res.status(500).json({ error: 'Server error' });
     }
   });

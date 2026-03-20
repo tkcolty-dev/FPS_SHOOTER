@@ -10,9 +10,9 @@ function processContent(text) {
 }
 
 function parseOptions(text) {
-  const match = text.match(/\[OPTIONS:\s*(.*?)\]/);
+  const match = text.match(/\[OPTIONS:\s*([\s\S]*?)\]/);
   if (!match) return null;
-  return match[1].split('|').map(o => o.trim()).filter(Boolean);
+  return match[1].split('|').map(o => o.trim().replace(/\n/g, ' ')).filter(Boolean);
 }
 
 function stripSpecialTags(text) {

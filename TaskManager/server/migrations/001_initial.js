@@ -95,7 +95,35 @@ async function migrate() {
       CREATE INDEX IF NOT EXISTS idx_user_notes ON user_notes(user_id, category);
 
       ALTER TABLE tasks ADD COLUMN IF NOT EXISTS link TEXT;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(20) DEFAULT 'none';
       ALTER TABLE events ADD COLUMN IF NOT EXISTS recurrence VARCHAR(20) DEFAULT 'none';
+
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS pinned BOOLEAN DEFAULT false;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS time_spent INTEGER DEFAULT 0;
+
+      CREATE TABLE IF NOT EXISTS shared_tasks (
+        id SERIAL PRIMARY KEY,
+        task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+        owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        shared_with_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        permission VARCHAR(10) DEFAULT 'edit',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(task_id, shared_with_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_shared_owner ON shared_tasks(owner_id);
+      CREATE INDEX IF NOT EXISTS idx_shared_with ON shared_tasks(shared_with_id);
+
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, endpoint)
+      );
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN DEFAULT false;
     `);
     console.log('Migration complete');
   } catch (err) {

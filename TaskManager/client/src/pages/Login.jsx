@@ -45,12 +45,6 @@ export default function Login() {
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          {isRegister && (
-            <div className="form-group">
-              <label>Display Name</label>
-              <input type="text" placeholder="Your name" value={displayName} onChange={e => setDisplayName(e.target.value)} />
-            </div>
-          )}
           <div className="form-group">
             <label>Username</label>
             <input type="text" placeholder="Enter username" value={username} onChange={e => setUsername(e.target.value)} required autoComplete="username" />
@@ -59,6 +53,12 @@ export default function Login() {
             <label>Password</label>
             <input type="password" placeholder="Enter password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete={isRegister ? 'new-password' : 'current-password'} />
           </div>
+          {isRegister && (
+            <div className="form-group">
+              <label>Your Name</label>
+              <input type="text" placeholder="How should we greet you?" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+            </div>
+          )}
           <button className="btn btn-primary btn-block" type="submit" disabled={loading}>
             {loading ? 'Please wait...' : isRegister ? 'Create Account' : 'Sign In'}
           </button>
