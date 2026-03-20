@@ -114,6 +114,8 @@ function groupTasks(tasks) {
     else if (ds <= endOfWeekStr) groups.thisWeek.push(task);
     else groups.later.push(task);
   });
+  // Sort pinned to top within each group
+  Object.values(groups).forEach(g => g.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)));
   return groups;
 }
 
@@ -160,7 +162,15 @@ function FocusTimer({ task, onClose, onTimeLogged }) {
   const [running, setRunning] = useState(false);
   const [sessions, setSessions] = useState(0);
   const intervalRef = useRef(null);
+  const alarmRef = useRef(null);
   const workDuration = workMins * 60;
+
+  // Pre-load alarm audio on mount so it's ready to play
+  useEffect(() => {
+    const audio = new Audio('/alarm.wav');
+    audio.load();
+    alarmRef.current = audio;
+  }, []);
 
   const total = mode === 'work' ? workDuration : sessions > 0 && sessions % 4 === 0 ? LONG_BREAK : SHORT_BREAK;
   const progress = started ? 1 - timeLeft / total : 0;
@@ -174,7 +184,7 @@ function FocusTimer({ task, onClose, onTimeLogged }) {
         if (t <= 1) {
           clearInterval(intervalRef.current);
           setRunning(false);
-          try { const ctx = new AudioContext(); const o = ctx.createOscillator(); o.connect(ctx.destination); o.frequency.value = 800; o.start(); setTimeout(() => o.stop(), 200); } catch {}
+          try { if (alarmRef.current) { alarmRef.current.currentTime = 0; alarmRef.current.play(); } } catch {}
           if (mode === 'work') { setSessions(s => s + 1); onTimeLogged(workDuration); }
           return 0;
         }
@@ -184,7 +194,11 @@ function FocusTimer({ task, onClose, onTimeLogged }) {
     return () => clearInterval(intervalRef.current);
   }, [running, mode]);
 
-  const begin = () => { setStarted(true); setTimeLeft(workDuration); setRunning(true); };
+  const begin = () => {
+    // Unlock audio on user gesture so alarm can play later
+    if (alarmRef.current) { alarmRef.current.play().then(() => { alarmRef.current.pause(); alarmRef.current.currentTime = 0; }).catch(() => {}); }
+    setStarted(true); setTimeLeft(workDuration); setRunning(true);
+  };
   const startBreak = () => { const dur = sessions > 0 && sessions % 4 === 0 ? LONG_BREAK : SHORT_BREAK; setMode('break'); setTimeLeft(dur); setRunning(true); };
   const startWork = () => { setMode('work'); setTimeLeft(workDuration); setRunning(true); };
   const reset = () => { setRunning(false); setTimeLeft(mode === 'work' ? workDuration : SHORT_BREAK); };
@@ -263,6 +277,8 @@ function ShareModal({ onClose, showToast }) {
   const [username, setUsername] = useState('');
   const [partners, setPartners] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [operatorMode, setOperatorMode] = useState(false);
+  const [shareBack, setShareBack] = useState(true);
 
   useEffect(() => {
     API('/sharing/partners').then(setPartners).catch(() => {}).finally(() => setLoading(false));
@@ -271,10 +287,23 @@ function ShareModal({ onClose, showToast }) {
   const link = async () => {
     if (!username.trim()) return;
     try {
-      const result = await API('/sharing/link', { method: 'POST', body: { username: username.trim() } });
+      const result = await API('/sharing/link', { method: 'POST', body: {
+        username: username.trim(),
+        permission: operatorMode ? 'operator' : 'view',
+        shareBack
+      }});
       showToast('Linked', `Now sharing tasks with @${username.trim()}`);
       setUsername('');
-      setPartners(ps => [...ps, result.partner]);
+      setPartners(ps => [...ps, { ...result.partner, permission: operatorMode ? 'operator' : 'view' }]);
+    } catch (err) { showToast('Error', err.message, 'error'); }
+  };
+
+  const togglePermission = async (partner) => {
+    const newPerm = partner.permission === 'operator' ? 'view' : 'operator';
+    try {
+      await API(`/sharing/${partner.id}/permission`, { method: 'PUT', body: { permission: newPerm } });
+      setPartners(ps => ps.map(p => p.id === partner.id ? { ...p, permission: newPerm } : p));
+      showToast('Updated', `${partner.display_name || partner.username} is now ${newPerm === 'operator' ? 'an operator' : 'view-only'}`);
     } catch (err) { showToast('Error', err.message, 'error'); }
   };
 
@@ -286,14 +315,14 @@ function ShareModal({ onClose, showToast }) {
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 380 }}>
+      <div className="modal" style={{ maxWidth: 400 }}>
         <div className="modal-header">
           <h3>Share Tasks</h3>
           <button className="modal-close" onClick={onClose}><IconX size={20} /></button>
         </div>
         <div className="modal-body">
           <div className="text-sm text-secondary" style={{ marginBottom: '0.75rem' }}>
-            Link with someone to share all your tasks. They'll see everything in their Shared tab. They get notified when you complete tasks.
+            Link with someone to share all tasks. You'll get notified when they complete, edit, or delete tasks.
           </div>
           <div className="form-group">
             <label>Link with user</label>
@@ -302,6 +331,22 @@ function ShareModal({ onClose, showToast }) {
                 placeholder="Enter their username" onKeyDown={e => e.key === 'Enter' && link()} />
               <button className="btn btn-primary btn-sm" onClick={link} disabled={!username.trim()}>Link</button>
             </div>
+          </div>
+          <div className="share-options">
+            <label className="share-option" onClick={() => setOperatorMode(!operatorMode)}>
+              <button className={`toggle small ${operatorMode ? 'on' : ''}`} />
+              <div>
+                <span className="share-option-label">Operator Mode</span>
+                <span className="share-option-desc">They can edit, complete & delete your tasks</span>
+              </div>
+            </label>
+            <label className="share-option" onClick={() => setShareBack(!shareBack)}>
+              <button className={`toggle small ${shareBack ? 'on' : ''}`} />
+              <div>
+                <span className="share-option-label">Share Back</span>
+                <span className="share-option-desc">Also let you see their tasks</span>
+              </div>
+            </label>
           </div>
           {loading ? <div className="loading-center"><div className="spinner" /></div> : (
             partners.length > 0 && (
@@ -314,6 +359,10 @@ function ShareModal({ onClose, showToast }) {
                       <span className="collaborator-name">{p.display_name || p.username}</span>
                       <span className="collaborator-user">@{p.username}</span>
                     </div>
+                    <button className={`share-perm-btn ${p.permission === 'operator' ? 'operator' : ''}`}
+                      onClick={() => togglePermission(p)} title="Toggle operator mode">
+                      {p.permission === 'operator' ? 'Operator' : 'View'}
+                    </button>
                     <button className="btn btn-ghost btn-sm" onClick={() => unlink(p.id)}><IconX size={14} /></button>
                   </div>
                 ))}
@@ -347,14 +396,16 @@ export default function Tasks() {
   const [timerTask, setTimerTask] = useState(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharedWithMe, setSharedWithMe] = useState([]);
+  const [sharedPermissions, setSharedPermissions] = useState({});
 
   const loadTasks = useCallback(async () => {
     try {
       let params = filter === 'all' ? '' : filter === 'shared' ? '' : `?status=${filter}`;
       if (search.trim()) params += `${params ? '&' : '?'}search=${encodeURIComponent(search.trim())}`;
       if (filter === 'shared') {
-        const shared = await API('/sharing/with-me');
-        setSharedWithMe(shared);
+        const data = await API('/sharing/with-me');
+        setSharedWithMe(data.tasks || []);
+        setSharedPermissions(data.permissions || {});
         setTasks([]);
       } else {
         setTasks(await API(`/tasks${params}`));
@@ -363,6 +414,18 @@ export default function Tasks() {
   }, [filter, search]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
+
+  // Poll shared tasks every 5s for real-time sync
+  useEffect(() => {
+    if (filter !== 'shared') return;
+    const iv = setInterval(() => {
+      API('/sharing/with-me').then(data => {
+        setSharedWithMe(data.tasks || []);
+        setSharedPermissions(data.permissions || {});
+      }).catch(() => {});
+    }, 5000);
+    return () => clearInterval(iv);
+  }, [filter]);
 
   const resetForm = () => {
     setForm({ title: '', description: '', category: 'general', priority: 'medium', dueDate: '', dueTime: '', link: '', recurrence: 'none' });
@@ -470,6 +533,23 @@ export default function Tasks() {
       setTimerTask(t => ({ ...t, time_spent: updated.time_spent }));
       setTasks(ts => ts.map(t => t.id === timerTask.id ? { ...t, time_spent: updated.time_spent } : t));
     } catch {}
+  };
+
+  // Shared task actions (operator mode)
+  const toggleSharedTask = async (task) => {
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    try {
+      await API(`/sharing/task/${task.id}`, { method: 'PUT', body: { status: newStatus } });
+      setSharedWithMe(ts => ts.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
+    } catch (err) { showToast('Error', err.message, 'error'); }
+  };
+
+  const deleteSharedTask = async (id) => {
+    try {
+      await API(`/sharing/task/${id}`, { method: 'DELETE' });
+      setSharedWithMe(ts => ts.filter(t => t.id !== id));
+      showToast('Deleted', 'Shared task removed');
+    } catch (err) { showToast('Error', err.message, 'error'); }
   };
 
   const isOverdue = (task) => task.due_date && task.status !== 'completed' && task.due_date.slice(0, 10) < toDateStr(new Date());
@@ -623,10 +703,18 @@ export default function Tasks() {
       {/* Task List */}
       {filter === 'shared' ? (
         sharedWithMe.length === 0 ? (
-          <div className="card"><div className="empty-state"><IconUsers size={40} /><h3>No shared tasks</h3><p>Tasks shared with you will appear here</p></div></div>
-        ) : sharedWithMe.map(task => (
-          <TaskRow key={task.id} task={task} {...taskRowProps} sharedBy={task.owner_name || task.owner_username} />
-        ))
+          <div className="card"><div className="empty-state"><IconUsers size={40} /><h3>No shared tasks</h3><p>Link with someone using the people icon above</p></div></div>
+        ) : sharedWithMe.map(task => {
+          const perm = sharedPermissions[task.user_id];
+          const isOp = perm === 'operator';
+          return <TaskRow key={task.id} task={task}
+            toggleTask={isOp ? toggleSharedTask : toggleTask}
+            deleteTask={isOp ? deleteSharedTask : null}
+            editTask={null} formatDue={formatDue} isOverdue={isOverdue}
+            togglePin={null} setTimerTask={setTimerTask}
+            sharedBy={task.owner_name || task.owner_username}
+            isOperator={isOp} />;
+        })
       ) : tasks.length === 0 ? (
         <div className="card"><div className="empty-state"><IconTasks size={40} /><h3>{filter === 'completed' ? 'No completed tasks' : 'No tasks yet'}</h3><p>Tap the + button to add your first task</p></div></div>
       ) : filter === 'completed' ? (
@@ -662,7 +750,7 @@ export default function Tasks() {
 }
 
 function TaskRow({ task, toggleTask, deleteTask, editTask, formatDue, isOverdue, togglePin, setTimerTask,
-  showReschedule, reschedule, todayStr, tomorrowStr, sharedBy }) {
+  showReschedule, reschedule, todayStr, tomorrowStr, sharedBy, isOperator }) {
   const [showRescheduleMenu, setShowRescheduleMenu] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
   const touchStartX = useRef(0);
@@ -712,10 +800,10 @@ function TaskRow({ task, toggleTask, deleteTask, editTask, formatDue, isOverdue,
           )}
         </div>
         <div className="task-actions">
-          <button className={`task-action-btn ${task.pinned ? 'pinned' : ''}`} onClick={() => togglePin(task)} title="Pin"><IconPin size={14} /></button>
+          {togglePin && <button className={`task-action-btn ${task.pinned ? 'pinned' : ''}`} onClick={() => togglePin(task)} title="Pin"><IconPin size={14} /></button>}
           <button className="task-action-btn" onClick={() => setTimerTask(task)} title="Focus Timer"><IconClock size={14} /></button>
-          <button className="task-action-btn" onClick={() => editTask(task)} title="Edit"><IconEdit size={16} /></button>
-          <button className="task-action-btn" onClick={() => deleteTask(task.id)} title="Delete"><IconTrash size={16} /></button>
+          {editTask && <button className="task-action-btn" onClick={() => editTask(task)} title="Edit"><IconEdit size={16} /></button>}
+          {deleteTask && <button className="task-action-btn" onClick={() => deleteTask(task.id)} title="Delete"><IconTrash size={16} /></button>}
         </div>
       </div>
     </div>
