@@ -24,6 +24,11 @@ const API = (path, opts = {}) => {
   if (opts.body) fetchOpts.body = JSON.stringify(opts.body);
   return fetch(`/api${path}`, fetchOpts).then(async r => {
     if (r.status === 401) {
+      // For auth endpoints (login/register), show the actual error
+      if (path.startsWith('/auth/login') || path.startsWith('/auth/register')) {
+        const data = await r.json();
+        throw new Error(data.error || 'Invalid credentials');
+      }
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
@@ -85,6 +90,16 @@ function NotificationPanel({ open, onClose }) {
     setNotifications(ns => ns.map(n => ({ ...n, read: true })));
   };
 
+  const deleteNotif = async (id) => {
+    await API(`/notifications/${id}`, { method: 'DELETE' });
+    setNotifications(ns => ns.filter(n => n.id !== id));
+  };
+
+  const clearAll = async () => {
+    await API('/notifications', { method: 'DELETE' });
+    setNotifications([]);
+  };
+
   const timeAgo = (date) => {
     const mins = Math.floor((Date.now() - new Date(date)) / 60000);
     if (mins < 1) return 'Just now';
@@ -102,6 +117,9 @@ function NotificationPanel({ open, onClose }) {
           <div className="flex gap-sm">
             {notifications.some(n => !n.read) && (
               <button className="btn btn-sm btn-secondary" onClick={markAllRead}>Mark all read</button>
+            )}
+            {notifications.length > 0 && (
+              <button className="btn btn-sm btn-danger" onClick={clearAll}>Clear all</button>
             )}
             <button className="btn btn-ghost" onClick={onClose}><IconX size={18} /></button>
           </div>
@@ -124,6 +142,9 @@ function NotificationPanel({ open, onClose }) {
                 <div className="notification-message">{n.message}</div>
                 <div className="notification-time">{timeAgo(n.created_at)}</div>
               </div>
+              <button className="notification-delete" onClick={(e) => { e.stopPropagation(); deleteNotif(n.id); }} title="Delete">
+                <IconX size={14} />
+              </button>
             </div>
           ))}
         </div>
@@ -142,7 +163,7 @@ function AppShell() {
       API('/notifications/unread').then(d => setUnreadCount(d.count)).catch(() => {});
     };
     fetchUnread();
-    const iv = setInterval(fetchUnread, 30000);
+    const iv = setInterval(fetchUnread, 10000);
     return () => clearInterval(iv);
   }, []);
 

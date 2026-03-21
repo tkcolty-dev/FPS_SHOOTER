@@ -58,5 +58,15 @@ module.exports = (pool) => {
     }
   });
 
+  // Clear all notifications
+  router.delete('/', async (req, res) => {
+    try {
+      const result = await pool.query('DELETE FROM notifications WHERE user_id = $1', [req.userId]);
+      res.json({ ok: true, deleted: result.rowCount });
+    } catch (err) {
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   return router;
 };

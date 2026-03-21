@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { API, useAuth, useToast } from '../App';
-import { IconEdit, IconLock, IconBell, IconSun, IconMoon, IconLogOut, IconChevronRight, IconStar, IconTrash, IconX, IconProfile } from '../icons';
+import { IconEdit, IconLock, IconBell, IconSun, IconMoon, IconLogOut, IconChevronRight, IconStar, IconTrash, IconX, IconProfile, IconSettings, IconClock } from '../icons';
 
 export default function Profile() {
   const { user, logout, login } = useAuth();
@@ -15,6 +15,12 @@ export default function Profile() {
   const [notifyUpcoming, setNotifyUpcoming] = useState(true);
   const [notifyBefore, setNotifyBefore] = useState(30);
   const [notifyShared, setNotifyShared] = useState(true);
+  // New settings
+  const [showTimeCompleted, setShowTimeCompleted] = useState(false);
+  const [confirmBeforeDelete, setConfirmBeforeDelete] = useState(true);
+  const [defaultView, setDefaultView] = useState('all');
+  const [showTaskCount, setShowTaskCount] = useState(true);
+  const [autoClearCompleted, setAutoClearCompleted] = useState(false);
 
   useEffect(() => {
     API('/auth/me').then(p => {
@@ -24,6 +30,11 @@ export default function Profile() {
       setNotifyUpcoming(p.notifyUpcoming);
       setNotifyBefore(p.notifyBeforeMinutes);
       setNotifyShared(p.notifyShared !== false);
+      setShowTimeCompleted(p.showTimeCompleted || false);
+      setConfirmBeforeDelete(p.confirmBeforeDelete !== false);
+      setDefaultView(p.defaultView || 'all');
+      setShowTaskCount(p.showTaskCount !== false);
+      setAutoClearCompleted(p.autoClearCompleted || false);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -64,6 +75,21 @@ export default function Profile() {
       await API('/auth/me', { method: 'PUT', body: { notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore, notifyShared } });
       setProfile(p => ({ ...p, notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore, notifyShared }));
       showToast('Saved', 'Notification settings updated');
+      setSection(null);
+    } catch (err) { showToast('Error', err.message, 'error'); }
+  };
+
+  const saveTaskSettings = async () => {
+    try {
+      await API('/auth/me', { method: 'PUT', body: { showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted } });
+      setProfile(p => ({ ...p, showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted }));
+      // Also save to localStorage for instant client access
+      localStorage.setItem('showTimeCompleted', showTimeCompleted ? 'true' : 'false');
+      localStorage.setItem('confirmBeforeDelete', confirmBeforeDelete ? 'true' : 'false');
+      localStorage.setItem('defaultView', defaultView);
+      localStorage.setItem('showTaskCount', showTaskCount ? 'true' : 'false');
+      localStorage.setItem('autoClearCompleted', autoClearCompleted ? 'true' : 'false');
+      showToast('Saved', 'Task settings updated');
       setSection(null);
     } catch (err) { showToast('Error', err.message, 'error'); }
   };
@@ -166,6 +192,8 @@ export default function Profile() {
             <div className="form-group" style={{ marginTop: '0.5rem' }}>
               <label>Remind me (minutes before)</label>
               <select value={notifyBefore} onChange={e => setNotifyBefore(parseInt(e.target.value))}>
+                <option value="5">5 minutes</option>
+                <option value="10">10 minutes</option>
                 <option value="15">15 minutes</option>
                 <option value="30">30 minutes</option>
                 <option value="60">1 hour</option>
@@ -174,6 +202,55 @@ export default function Profile() {
               </select>
             </div>
             <button className="btn btn-primary btn-sm" onClick={saveNotifications}>Save</button>
+          </div>
+        )}
+
+        <MenuItem
+          icon={<IconSettings size={18} />}
+          bg="color-mix(in srgb, #6366f1 10%, transparent)" color="#6366f1"
+          label="Task Settings"
+          onClick={() => setSection(section === 'tasks' ? null : 'tasks')}
+        />
+        {section === 'tasks' && (
+          <div className="menu-expand">
+            <div className="toggle-wrap">
+              <div>
+                <div className="toggle-label">Show Time Completed</div>
+                <div className="toggle-desc">Display when each task was completed</div>
+              </div>
+              <button className={`toggle ${showTimeCompleted ? 'on' : ''}`} onClick={() => setShowTimeCompleted(!showTimeCompleted)} />
+            </div>
+            <div className="toggle-wrap">
+              <div>
+                <div className="toggle-label">Confirm Before Delete</div>
+                <div className="toggle-desc">Ask for confirmation before deleting a task</div>
+              </div>
+              <button className={`toggle ${confirmBeforeDelete ? 'on' : ''}`} onClick={() => setConfirmBeforeDelete(!confirmBeforeDelete)} />
+            </div>
+            <div className="toggle-wrap">
+              <div>
+                <div className="toggle-label">Show Task Counts</div>
+                <div className="toggle-desc">Show number of tasks in each section header</div>
+              </div>
+              <button className={`toggle ${showTaskCount ? 'on' : ''}`} onClick={() => setShowTaskCount(!showTaskCount)} />
+            </div>
+            <div className="toggle-wrap">
+              <div>
+                <div className="toggle-label">Auto-Clear Completed</div>
+                <div className="toggle-desc">Automatically remove completed tasks after 24 hours</div>
+              </div>
+              <button className={`toggle ${autoClearCompleted ? 'on' : ''}`} onClick={() => setAutoClearCompleted(!autoClearCompleted)} />
+            </div>
+            <div className="form-group" style={{ marginTop: '0.5rem' }}>
+              <label>Default Task View</label>
+              <select value={defaultView} onChange={e => setDefaultView(e.target.value)}>
+                <option value="all">All Tasks</option>
+                <option value="pending">Pending Only</option>
+                <option value="completed">Completed Only</option>
+                <option value="shared">Shared Tasks</option>
+              </select>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={saveTaskSettings}>Save</button>
           </div>
         )}
 
@@ -244,7 +321,7 @@ function NotesSection() {
   return (
     <div className="menu-expand">
       <div className="text-sm text-secondary" style={{ marginBottom: '0.5rem' }}>
-        Things the AI has learned about you from conversations. These help personalize your plans.
+        Things the AI has learned about you from conversations. These help personalize your plans. Clearing chat history does not remove these.
       </div>
       {notes.length === 0 ? (
         <div className="text-sm text-secondary text-center" style={{ padding: '1rem 0' }}>

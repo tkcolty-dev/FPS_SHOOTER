@@ -45,8 +45,8 @@ app.get('*', (req, res) => {
 
 const { sendPushToUser } = require('./routes/push');
 
-// Notification cron - check overdue tasks every 15 minutes
-cron.schedule('*/15 * * * *', async () => {
+// Notification cron - check overdue tasks every 2 minutes
+cron.schedule('*/2 * * * *', async () => {
   try {
     const overdue = await pool.query(`
       SELECT t.id, t.title, t.user_id
@@ -58,7 +58,7 @@ cron.schedule('*/15 * * * *', async () => {
         AND NOT EXISTS (
           SELECT 1 FROM notifications n
           WHERE n.task_id = t.id AND n.type = 'overdue'
-          AND n.created_at > NOW() - INTERVAL '1 hour'
+          AND n.created_at > NOW() - INTERVAL '10 minutes'
         )
     `);
 
@@ -82,7 +82,7 @@ cron.schedule('*/15 * * * *', async () => {
         AND NOT EXISTS (
           SELECT 1 FROM notifications n
           WHERE n.task_id = t.id AND n.type = 'upcoming'
-          AND n.created_at > NOW() - INTERVAL '1 hour'
+          AND n.created_at > NOW() - INTERVAL '10 minutes'
         )
     `);
 

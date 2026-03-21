@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const { checkContent } = require('../services/moderation');
 
 module.exports = (pool, auth) => {
   // Register (public)
@@ -13,6 +14,13 @@ module.exports = (pool, auth) => {
       if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
       if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters' });
       if (password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+
+      const usernameCheck = checkContent(username);
+      if (!usernameCheck.clean) return res.status(400).json({ error: 'Username contains inappropriate language. Please choose a different one.' });
+      if (displayName) {
+        const nameCheck = checkContent(displayName);
+        if (!nameCheck.clean) return res.status(400).json({ error: 'Display name contains inappropriate language. Please choose a different one.' });
+      }
 
       const exists = await pool.query('SELECT id FROM users WHERE username = $1', [username.toLowerCase()]);
       if (exists.rows.length) return res.status(409).json({ error: 'Username taken' });
@@ -63,7 +71,7 @@ module.exports = (pool, auth) => {
   router.get('/me', auth, async (req, res) => {
     try {
       const result = await pool.query(
-        'SELECT id, username, display_name, theme, notify_overdue, notify_upcoming, notify_before_minutes, notify_shared, created_at FROM users WHERE id = $1',
+        'SELECT id, username, display_name, theme, notify_overdue, notify_upcoming, notify_before_minutes, notify_shared, show_time_completed, confirm_before_delete, default_view, show_task_count, auto_clear_completed, created_at FROM users WHERE id = $1',
         [req.userId]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
@@ -71,7 +79,10 @@ module.exports = (pool, auth) => {
       res.json({
         id: u.id, username: u.username, displayName: u.display_name,
         theme: u.theme, notifyOverdue: u.notify_overdue, notifyUpcoming: u.notify_upcoming,
-        notifyBeforeMinutes: u.notify_before_minutes, notifyShared: u.notify_shared, createdAt: u.created_at
+        notifyBeforeMinutes: u.notify_before_minutes, notifyShared: u.notify_shared,
+        showTimeCompleted: u.show_time_completed, confirmBeforeDelete: u.confirm_before_delete,
+        defaultView: u.default_view, showTaskCount: u.show_task_count,
+        autoClearCompleted: u.auto_clear_completed, createdAt: u.created_at
       });
     } catch (err) {
       res.status(500).json({ error: 'Server error' });
@@ -81,12 +92,19 @@ module.exports = (pool, auth) => {
   // Update profile (protected)
   router.put('/me', auth, async (req, res) => {
     try {
-      const { displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes, notifyShared } = req.body;
+      const { displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes, notifyShared, showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted } = req.body;
+      if (displayName) {
+        const nameCheck = checkContent(displayName);
+        if (!nameCheck.clean) return res.status(400).json({ error: 'Display name contains inappropriate language.' });
+      }
       await pool.query(
         `UPDATE users SET display_name = COALESCE($1, display_name), theme = COALESCE($2, theme),
          notify_overdue = COALESCE($3, notify_overdue), notify_upcoming = COALESCE($4, notify_upcoming),
-         notify_before_minutes = COALESCE($5, notify_before_minutes), notify_shared = COALESCE($6, notify_shared) WHERE id = $7`,
-        [displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes, notifyShared, req.userId]
+         notify_before_minutes = COALESCE($5, notify_before_minutes), notify_shared = COALESCE($6, notify_shared),
+         show_time_completed = COALESCE($7, show_time_completed), confirm_before_delete = COALESCE($8, confirm_before_delete),
+         default_view = COALESCE($9, default_view), show_task_count = COALESCE($10, show_task_count),
+         auto_clear_completed = COALESCE($11, auto_clear_completed) WHERE id = $12`,
+        [displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes, notifyShared, showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted, req.userId]
       );
       res.json({ ok: true });
     } catch (err) {

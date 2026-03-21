@@ -380,8 +380,11 @@ export default function Tasks() {
   const [searchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const initialFilter = searchParams.get('filter') || localStorage.getItem('taskFilter') || 'all';
+  const savedDefault = localStorage.getItem('defaultView') || 'all';
+  const initialFilter = searchParams.get('filter') || localStorage.getItem('taskFilter') || savedDefault;
   const [filter, setFilter] = useState(initialFilter);
+  const confirmDelete = localStorage.getItem('confirmBeforeDelete') !== 'false';
+  const showCompleted = localStorage.getItem('showTimeCompleted') === 'true';
   const updateFilter = (f) => { setFilter(f); localStorage.setItem('taskFilter', f); };
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -457,6 +460,7 @@ export default function Tasks() {
   };
 
   const deleteTask = async (id) => {
+    if (confirmDelete && !window.confirm('Delete this task?')) return;
     await API(`/tasks/${id}`, { method: 'DELETE' });
     setTasks(ts => ts.filter(t => t.id !== id));
     showToast('Deleted', 'Task removed');
@@ -581,7 +585,7 @@ export default function Tasks() {
 
   const todayStr = toDateStr(new Date());
   const tomorrowStr = toDateStr(addDays(new Date(), 1));
-  const taskRowProps = { toggleTask, deleteTask, editTask, formatDue, isOverdue, togglePin, setTimerTask };
+  const taskRowProps = { toggleTask, deleteTask, editTask, formatDue, isOverdue, togglePin, setTimerTask, showCompleted };
 
   return (
     <div>
@@ -766,7 +770,7 @@ export default function Tasks() {
 }
 
 function TaskRow({ task, toggleTask, deleteTask, editTask, formatDue, isOverdue, togglePin, setTimerTask,
-  showReschedule, reschedule, todayStr, tomorrowStr, sharedBy, isOperator }) {
+  showReschedule, reschedule, todayStr, tomorrowStr, sharedBy, isOperator, showCompleted }) {
   const [showRescheduleMenu, setShowRescheduleMenu] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
   const touchStartX = useRef(0);
@@ -804,6 +808,9 @@ function TaskRow({ task, toggleTask, deleteTask, editTask, formatDue, isOverdue,
             <span className="task-tag tag-category">{task.category}</span>
             {formatDue(task) && <span className={`task-due ${isOverdue(task) ? 'overdue' : ''}`}>{formatDue(task)}</span>}
             {task.time_spent > 0 && <span className="task-time-tracked"><IconClock size={10} /> {formatTimeSpent(task.time_spent)}</span>}
+            {showCompleted && task.status === 'completed' && task.completed_at && (
+              <span className="task-completed-time"><IconCheck size={10} /> {new Date(task.completed_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+            )}
             {sharedBy && <span className="task-shared-badge"><IconUsers size={10} /> {sharedBy}</span>}
           </div>
           {showReschedule && (

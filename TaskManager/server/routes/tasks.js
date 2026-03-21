@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 
 module.exports = (pool) => {
+  const { checkContent } = require('../services/moderation');
+
   // Get all tasks
   router.get('/', async (req, res) => {
     try {
@@ -30,6 +32,13 @@ module.exports = (pool) => {
       const { title, description, category, priority, dueDate, dueTime, link, recurrence } = req.body;
       if (!title) return res.status(400).json({ error: 'Title required' });
 
+      const titleCheck = checkContent(title);
+      if (!titleCheck.clean) return res.status(400).json({ error: 'Task title contains inappropriate language. Please keep it clean.' });
+      if (description) {
+        const descCheck = checkContent(description);
+        if (!descCheck.clean) return res.status(400).json({ error: 'Task description contains inappropriate language. Please keep it clean.' });
+      }
+
       const result = await pool.query(
         `INSERT INTO tasks (user_id, title, description, category, priority, due_date, due_time, link, recurrence)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
@@ -51,6 +60,7 @@ module.exports = (pool) => {
       const created = [];
       for (const t of tasks) {
         if (!t.title) continue;
+        if (!checkContent(t.title).clean) continue;
         const result = await pool.query(
           `INSERT INTO tasks (user_id, title, description, category, priority, due_date, due_time)
            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
@@ -120,7 +130,11 @@ Rules:
       let idx = 1;
       const add = (col, val) => { fields.push(`${col} = $${idx++}`); params.push(val); };
 
-      if (req.body.title !== undefined) add('title', req.body.title);
+      if (req.body.title !== undefined) {
+        const titleCheck = checkContent(req.body.title);
+        if (!titleCheck.clean) return res.status(400).json({ error: 'Task title contains inappropriate language. Please keep it clean.' });
+        add('title', req.body.title);
+      }
       if (req.body.description !== undefined) add('description', req.body.description || null);
       if (req.body.category !== undefined) add('category', req.body.category);
       if (req.body.priority !== undefined) add('priority', req.body.priority);

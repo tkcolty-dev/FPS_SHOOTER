@@ -125,6 +125,11 @@ async function migrate() {
       );
       ALTER TABLE users ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_shared BOOLEAN DEFAULT true;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS show_time_completed BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS confirm_before_delete BOOLEAN DEFAULT true;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS default_view VARCHAR(20) DEFAULT 'all';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS show_task_count BOOLEAN DEFAULT true;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_clear_completed BOOLEAN DEFAULT false;
     `);
     console.log('Migration complete');
   } catch (err) {
