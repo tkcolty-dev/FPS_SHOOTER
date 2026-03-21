@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </linearGradient>
+    <linearGradient id="check1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#34d399"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Clipboard body - slightly rounded -->
+  <rect x="128" y="136" width="256" height="288" rx="24" fill="white"/>
+  <!-- Clipboard clip -->
+  <path d="M208 104 h96 a16 16 0 0 1 16 16 v32 a0 0 0 0 1 0 0 H192 a0 0 0 0 1 0 0 v-32 a16 16 0 0 1 16-16z" fill="white"/>
+  <rect x="220" y="116" width="72" height="24" rx="12" fill="#3b82f6"/>
+  <!-- Check 1 - completed -->
+  <polyline points="168,228 192,252 228,212" fill="none" stroke="url(#check1)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="248" y="222" width="112" height="12" rx="6" fill="#e2e8f0"/>
+  <!-- Check 2 - completed -->
+  <polyline points="168,296 192,320 228,280" fill="none" stroke="url(#check1)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="248" y="292" width="88" height="12" rx="6" fill="#e2e8f0"/>
+  <!-- Circle 3 - pending -->
+  <circle cx="198" cy="372" r="16" fill="none" stroke="#cbd5e1" stroke-width="6"/>
+  <rect x="248" y="364" width="72" height="12" rx="6" fill="#e2e8f0"/>
+</svg>
