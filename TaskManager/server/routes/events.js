@@ -6,36 +6,45 @@ module.exports = (pool) => {
   // Generate recurring instances of an event within a date range
   function expandRecurring(events, rangeStart, rangeEnd) {
     const result = [];
+    const rStart = new Date(rangeStart);
+    const rEnd = new Date(rangeEnd);
+
     for (const ev of events) {
-      result.push(ev);
-      if (!ev.recurrence || ev.recurrence === 'none') continue;
+      try {
+        // Convert start_time to ISO string if it's a Date object
+        const stStr = ev.start_time instanceof Date ? ev.start_time.toISOString() : String(ev.start_time);
+        const etStr = ev.end_time ? (ev.end_time instanceof Date ? ev.end_time.toISOString() : String(ev.end_time)) : null;
+        const normalized = { ...ev, start_time: stStr, end_time: etStr };
 
-      const evStart = new Date(ev.start_time);
-      const evEnd = ev.end_time ? new Date(ev.end_time) : null;
-      const duration = evEnd ? evEnd - evStart : 0;
-      const rStart = new Date(rangeStart);
-      const rEnd = new Date(rangeEnd);
+        result.push(normalized);
+        if (!ev.recurrence || ev.recurrence === 'none') continue;
 
-      // Generate up to 60 occurrences within the range
-      for (let i = 1; i <= 60; i++) {
-        const next = new Date(evStart);
-        if (ev.recurrence === 'daily') next.setDate(next.getDate() + i);
-        else if (ev.recurrence === 'weekly') next.setDate(next.getDate() + i * 7);
-        else if (ev.recurrence === 'monthly') next.setMonth(next.getMonth() + i);
-        else if (ev.recurrence === 'annual') next.setFullYear(next.getFullYear() + i);
-        else break;
+        const evStart = new Date(stStr);
+        if (isNaN(evStart)) continue;
+        const duration = etStr ? new Date(etStr) - evStart : 0;
 
-        if (next > rEnd) break;
-        if (next < rStart) continue;
+        for (let i = 1; i <= 60; i++) {
+          const next = new Date(evStart);
+          if (ev.recurrence === 'daily') next.setDate(next.getDate() + i);
+          else if (ev.recurrence === 'weekly') next.setDate(next.getDate() + i * 7);
+          else if (ev.recurrence === 'monthly') next.setMonth(next.getMonth() + i);
+          else if (ev.recurrence === 'annual') next.setFullYear(next.getFullYear() + i);
+          else break;
 
-        const nextEnd = evEnd ? new Date(next.getTime() + duration) : null;
-        result.push({
-          ...ev,
-          id: `${ev.id}_r${i}`,
-          start_time: next.toISOString(),
-          end_time: nextEnd ? nextEnd.toISOString() : null,
-          _recurring: true
-        });
+          if (next > rEnd) break;
+          if (next < rStart) continue;
+
+          result.push({
+            ...normalized,
+            id: `${ev.id}_r${i}`,
+            start_time: next.toISOString(),
+            end_time: duration ? new Date(next.getTime() + duration).toISOString() : null,
+            _recurring: true
+          });
+        }
+      } catch (e) {
+        // Skip bad events, still include the original
+        result.push(ev);
       }
     }
     return result;
@@ -45,34 +54,31 @@ module.exports = (pool) => {
   router.get('/', async (req, res) => {
     try {
       const { date, start, end } = req.query;
+      let q = 'SELECT * FROM events WHERE user_id = $1';
+      const params = [req.userId];
+      let idx = 2;
 
       if (date) {
-        // Single date query - also check recurring events
-        const result = await pool.query('SELECT * FROM events WHERE user_id = $1 ORDER BY start_time ASC', [req.userId]);
+        // Get all events for recurring expansion
+        const result = await pool.query(q + ' ORDER BY start_time ASC', params);
         const dayStart = new Date(date + 'T00:00:00');
         const dayEnd = new Date(date + 'T23:59:59');
         const expanded = expandRecurring(result.rows, dayStart, dayEnd);
         const filtered = expanded.filter(e => {
-          const eDate = new Date(e.start_time);
-          const eDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth()+1).padStart(2,'0')}-${String(eDate.getDate()).padStart(2,'0')}`;
-          return eDateStr === date.slice(0, 10);
+          const d = new Date(e.start_time);
+          return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` === date.slice(0, 10);
         });
         return res.json(filtered);
       }
 
       if (start && end) {
-        // Range query - get all events and expand recurring ones
-        const result = await pool.query('SELECT * FROM events WHERE user_id = $1 ORDER BY start_time ASC', [req.userId]);
+        const result = await pool.query(q + ' ORDER BY start_time ASC', params);
         const expanded = expandRecurring(result.rows, start, end);
-        const filtered = expanded.filter(e => {
-          const eTime = new Date(e.start_time);
-          return eTime >= new Date(start) && eTime <= new Date(end);
-        });
-        return res.json(filtered);
+        return res.json(expanded);
       }
 
-      // No filter - return all
-      const result = await pool.query('SELECT * FROM events WHERE user_id = $1 ORDER BY start_time ASC', [req.userId]);
+      // No filter
+      const result = await pool.query(q + ' ORDER BY start_time ASC', params);
       res.json(result.rows);
     } catch (err) {
       console.error('Get events error:', err);
