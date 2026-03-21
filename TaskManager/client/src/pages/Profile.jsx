@@ -81,11 +81,18 @@ export default function Profile() {
     } catch (err) { showToast('Error', err.message, 'error'); }
   };
 
+  // Auto-save any setting immediately when changed
+  const saveSetting = async (key, value) => {
+    try {
+      await API('/auth/me', { method: 'PUT', body: { [key]: value } });
+      localStorage.setItem(key, typeof value === 'boolean' ? (value ? 'true' : 'false') : String(value));
+    } catch {}
+  };
+
   const saveTaskSettings = async () => {
     try {
       await API('/auth/me', { method: 'PUT', body: { showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted, autoClearHours } });
       setProfile(p => ({ ...p, showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted, autoClearHours }));
-      // Also save to localStorage for instant client access
       localStorage.setItem('showTimeCompleted', showTimeCompleted ? 'true' : 'false');
       localStorage.setItem('confirmBeforeDelete', confirmBeforeDelete ? 'true' : 'false');
       localStorage.setItem('defaultView', defaultView);
@@ -178,21 +185,21 @@ export default function Profile() {
                 <div className="toggle-label">Overdue Alerts</div>
                 <div className="toggle-desc">Get notified when tasks are past due</div>
               </div>
-              <button className={`toggle ${notifyOverdue ? 'on' : ''}`} onClick={() => setNotifyOverdue(!notifyOverdue)} />
+              <button className={`toggle ${notifyOverdue ? 'on' : ''}`} onClick={() => { const v = !notifyOverdue; setNotifyOverdue(v); saveSetting('notifyOverdue', v); }} />
             </div>
             <div className="toggle-wrap">
               <div>
                 <div className="toggle-label">Upcoming Reminders</div>
                 <div className="toggle-desc">Get reminded before tasks are due</div>
               </div>
-              <button className={`toggle ${notifyUpcoming ? 'on' : ''}`} onClick={() => setNotifyUpcoming(!notifyUpcoming)} />
+              <button className={`toggle ${notifyUpcoming ? 'on' : ''}`} onClick={() => { const v = !notifyUpcoming; setNotifyUpcoming(v); saveSetting('notifyUpcoming', v); }} />
             </div>
             <div className="toggle-wrap">
               <div>
                 <div className="toggle-label">Shared Task Notifications</div>
                 <div className="toggle-desc">Get notified when shared tasks are completed or unchecked</div>
               </div>
-              <button className={`toggle ${notifyShared ? 'on' : ''}`} onClick={() => setNotifyShared(!notifyShared)} />
+              <button className={`toggle ${notifyShared ? 'on' : ''}`} onClick={() => { const v = !notifyShared; setNotifyShared(v); saveSetting('notifyShared', v); }} />
             </div>
             <div className="form-group" style={{ marginTop: '0.5rem' }}>
               <label>Remind me (minutes before)</label>
@@ -224,28 +231,28 @@ export default function Profile() {
                 <div className="toggle-label">Show Time Completed</div>
                 <div className="toggle-desc">Display when each task was completed</div>
               </div>
-              <button className={`toggle ${showTimeCompleted ? 'on' : ''}`} onClick={() => setShowTimeCompleted(!showTimeCompleted)} />
+              <button className={`toggle ${showTimeCompleted ? 'on' : ''}`} onClick={() => { const v = !showTimeCompleted; setShowTimeCompleted(v); saveSetting('showTimeCompleted', v); }} />
             </div>
             <div className="toggle-wrap">
               <div>
                 <div className="toggle-label">Confirm Before Delete</div>
                 <div className="toggle-desc">Ask for confirmation before deleting a task</div>
               </div>
-              <button className={`toggle ${confirmBeforeDelete ? 'on' : ''}`} onClick={() => setConfirmBeforeDelete(!confirmBeforeDelete)} />
+              <button className={`toggle ${confirmBeforeDelete ? 'on' : ''}`} onClick={() => { const v = !confirmBeforeDelete; setConfirmBeforeDelete(v); saveSetting('confirmBeforeDelete', v); }} />
             </div>
             <div className="toggle-wrap">
               <div>
                 <div className="toggle-label">Show Task Counts</div>
                 <div className="toggle-desc">Show number of tasks in each section header</div>
               </div>
-              <button className={`toggle ${showTaskCount ? 'on' : ''}`} onClick={() => setShowTaskCount(!showTaskCount)} />
+              <button className={`toggle ${showTaskCount ? 'on' : ''}`} onClick={() => { const v = !showTaskCount; setShowTaskCount(v); saveSetting('showTaskCount', v); }} />
             </div>
             <div className="toggle-wrap">
               <div>
                 <div className="toggle-label">Auto-Clear Completed</div>
                 <div className="toggle-desc">Automatically remove completed tasks after a set time</div>
               </div>
-              <button className={`toggle ${autoClearCompleted ? 'on' : ''}`} onClick={() => setAutoClearCompleted(!autoClearCompleted)} />
+              <button className={`toggle ${autoClearCompleted ? 'on' : ''}`} onClick={() => { const v = !autoClearCompleted; setAutoClearCompleted(v); saveSetting('autoClearCompleted', v); }} />
             </div>
             {autoClearCompleted && (
               <div style={{ marginTop: '0.25rem', marginBottom: '0.5rem', paddingLeft: '0.25rem' }}>

@@ -449,7 +449,7 @@ export default function Chat() {
       <div className="chat-input-bar">
         {hasSpeech && (
           <button className={`chat-mic-btn${listening ? ' active' : ''}`} onClick={toggleListening} disabled={streaming} title={listening ? 'Stop listening' : 'Voice input'}>
-            {listening ? <IconMicOff size={18} /> : <IconMic size={18} />}
+            <IconMic size={18} />
           </button>
         )}
         <input ref={inputRef} type="text" value={input} onChange={e => setInput(e.target.value)}
