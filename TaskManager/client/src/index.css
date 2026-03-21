@@ -1080,3 +1080,30 @@ body {
   cursor: pointer; font-family: inherit; transition: all 0.2s;
 }
 .share-perm-btn.operator { background: color-mix(in srgb, #7c3aed 10%, transparent); color: #7c3aed; border-color: #7c3aed; }
+
+/* Offline banner */
+.offline-banner {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.5rem 1rem; margin-bottom: 0.75rem; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-warning) 15%, transparent);
+  border: 1px solid var(--color-warning);
+  color: var(--color-warning); font-size: 0.8rem; font-weight: 600;
+  animation: pulse-border 2s ease-in-out infinite;
+}
+@keyframes pulse-border {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Shared sub-filter pills */
+.shared-sub-filter {
+  display: flex; gap: 0.35rem; margin-bottom: 0.75rem;
+}
+.shared-sub-filter button {
+  font-size: 0.72rem; font-weight: 600; padding: 0.25rem 0.7rem; border-radius: 999px;
+  border: 1px solid var(--color-border); background: var(--color-bg); color: var(--color-text-secondary);
+  cursor: pointer; font-family: inherit; transition: all 0.2s;
+}
+.shared-sub-filter button.active {
+  background: var(--color-primary); color: #fff; border-color: var(--color-primary);
+}

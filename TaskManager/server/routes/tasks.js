@@ -15,7 +15,7 @@ module.exports = (pool) => {
       if (date) { q += ` AND due_date::date = $${idx++}::date`; params.push(date); }
       if (req.query.search) { q += ` AND (title ILIKE $${idx} OR description ILIKE $${idx})`; params.push(`%${req.query.search}%`); idx++; }
 
-      q += ' ORDER BY pinned DESC NULLS LAST, sort_order ASC, CASE priority WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 ELSE 3 END, due_date ASC NULLS LAST';
+      q += ' ORDER BY pinned DESC NULLS LAST, sort_order ASC, CASE priority WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 ELSE 3 END, due_date ASC NULLS LAST, id ASC';
       const result = await pool.query(q, params);
       res.json(result.rows);
     } catch (err) {

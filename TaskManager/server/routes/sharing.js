@@ -97,7 +97,7 @@ module.exports = (pool) => {
         `SELECT t.*, u.display_name as owner_name, u.username as owner_username
          FROM tasks t JOIN users u ON u.id = t.user_id
          WHERE t.user_id = ANY($1)
-         ORDER BY t.pinned DESC NULLS LAST, t.due_date ASC NULLS LAST`,
+         ORDER BY t.pinned DESC NULLS LAST, t.due_date ASC NULLS LAST, t.id ASC`,
         [ownerIds]
       );
       res.json({ tasks: result.rows, permissions });

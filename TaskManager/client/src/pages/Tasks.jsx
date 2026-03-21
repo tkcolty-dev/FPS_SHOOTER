@@ -114,8 +114,8 @@ function groupTasks(tasks) {
     else if (ds <= endOfWeekStr) groups.thisWeek.push(task);
     else groups.later.push(task);
   });
-  // Sort pinned to top within each group
-  Object.values(groups).forEach(g => g.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)));
+  // Sort pinned to top within each group, stable by id
+  Object.values(groups).forEach(g => g.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || a.id - b.id));
   return groups;
 }
 
@@ -397,6 +397,9 @@ export default function Tasks() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharedWithMe, setSharedWithMe] = useState([]);
   const [sharedPermissions, setSharedPermissions] = useState({});
+  const [offline, setOffline] = useState(false);
+  const [sharedFilter, setSharedFilter] = useState(() => localStorage.getItem('sharedFilter') || 'all');
+  const updateSharedFilter = (f) => { setSharedFilter(f); localStorage.setItem('sharedFilter', f); };
 
   const loadTasks = useCallback(async () => {
     try {
@@ -410,7 +413,8 @@ export default function Tasks() {
       } else {
         setTasks(await API(`/tasks${params}`));
       }
-    } catch {} finally { setLoading(false); }
+      setOffline(false);
+    } catch { setOffline(true); } finally { setLoading(false); }
   }, [filter, search]);
 
   useEffect(() => { loadTasks(); }, [loadTasks]);
@@ -582,6 +586,12 @@ export default function Tasks() {
     <div>
       <div className="page-header"><h1>Tasks</h1><p>Manage your to-dos and track progress</p></div>
 
+      {offline && (
+        <div className="offline-banner">
+          <span>Connection lost — retrying...</span>
+        </div>
+      )}
+
       <div className="search-bar">
         <IconSearch size={16} />
         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." />
@@ -698,7 +708,17 @@ export default function Tasks() {
       {filter === 'shared' ? (
         sharedWithMe.length === 0 ? (
           <div className="card"><div className="empty-state"><IconUsers size={40} /><h3>No shared tasks</h3><p>Link with someone using the people icon above</p></div></div>
-        ) : sharedWithMe.map(task => {
+        ) : (<>
+          <div className="shared-sub-filter">
+            {['all', 'current', 'completed'].map(f => (
+              <button key={f} className={sharedFilter === f ? 'active' : ''} onClick={() => updateSharedFilter(f)}>
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+          {sharedWithMe
+            .filter(t => sharedFilter === 'all' ? true : sharedFilter === 'current' ? t.status !== 'completed' : t.status === 'completed')
+            .map(task => {
           const perm = sharedPermissions[task.user_id];
           const isOp = perm === 'operator';
           return <TaskRow key={task.id} task={task}
@@ -708,7 +728,8 @@ export default function Tasks() {
             togglePin={null} setTimerTask={setTimerTask}
             sharedBy={task.owner_name || task.owner_username}
             isOperator={isOp} />;
-        })
+        })}
+        </>)
       ) : tasks.length === 0 ? (
         <div className="card"><div className="empty-state"><IconTasks size={40} /><h3>{filter === 'completed' ? 'No completed tasks' : 'No tasks yet'}</h3><p>Tap the + button to add your first task</p></div></div>
       ) : filter === 'completed' ? (
