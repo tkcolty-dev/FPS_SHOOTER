@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { API, useToast } from '../App';
-import { IconSend, IconZap, IconStar, IconCopy, IconCheck, IconPlus, IconClock, IconTasks, IconCalendar } from '../icons';
+import { IconSend, IconZap, IconStar, IconCopy, IconCheck, IconPlus, IconClock, IconTasks, IconCalendar, IconMic, IconMicOff } from '../icons';
 
 function processContent(text) {
   const noteRegex = /```note\s*\n?\s*\{[\s\S]*?\}\s*\n?\s*```/g;
@@ -212,10 +212,45 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const [learnedNote, setLearnedNote] = useState('');
   const [quickReplies, setQuickReplies] = useState(null);
+  const [listening, setListening] = useState(false);
   const messagesEnd = useRef(null);
   const inputRef = useRef(null);
   const streamRef = useRef('');
   const rafRef = useRef(null);
+  const recognitionRef = useRef(null);
+
+  const hasSpeech = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  const toggleListening = useCallback(() => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    let finalTranscript = '';
+    recognition.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      setInput(finalTranscript + interim);
+    };
+    recognition.onend = () => { setListening(false); };
+    recognition.onerror = () => { setListening(false); };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  }, [listening]);
 
   useEffect(() => {
     API('/chat/history').then(data => {
@@ -412,8 +447,13 @@ export default function Chat() {
       )}
 
       <div className="chat-input-bar">
+        {hasSpeech && (
+          <button className={`chat-mic-btn${listening ? ' active' : ''}`} onClick={toggleListening} disabled={streaming} title={listening ? 'Stop listening' : 'Voice input'}>
+            {listening ? <IconMicOff size={18} /> : <IconMic size={18} />}
+          </button>
+        )}
         <input ref={inputRef} type="text" value={input} onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown} placeholder="Ask me to plan something..." disabled={streaming} />
+          onKeyDown={handleKeyDown} placeholder={listening ? 'Listening...' : 'Ask me to plan something...'} disabled={streaming} />
         <button className="chat-send-btn" onClick={() => sendMessage()} disabled={!input.trim() || streaming}>
           <IconSend size={18} />
         </button>

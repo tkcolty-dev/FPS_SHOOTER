@@ -103,6 +103,13 @@ export default function Calendar() {
            allTasks.filter(t => t.due_date && t.due_date.slice(0, 10) === ds).length;
   };
 
+  const getDateItems = (date) => {
+    const ds = toDateStr(date);
+    const evts = allEvents.filter(e => e.start_time.slice(0, 10) === ds);
+    const tsks = allTasks.filter(t => t.due_date && t.due_date.slice(0, 10) === ds);
+    return { events: evts, tasks: tsks };
+  };
+
   const isToday = (d) => d.toDateString() === new Date().toDateString();
   const isSelected = (d) => d.toDateString() === selectedDate.toDateString();
 
@@ -235,19 +242,31 @@ export default function Calendar() {
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
               <div key={i} className="calendar-day-header">{d}</div>
             ))}
-            {getDaysInMonth().map((d, i) => (
-              <div key={i}
-                className={`calendar-day ${d.other ? 'other-month' : ''} ${isToday(d.date) ? 'today' : ''} ${isSelected(d.date) ? 'selected' : ''}`}
-                onClick={() => { if (!d.other) { setSelectedDate(d.date); } }}>
-                {d.date.getDate()}
-                {!isSelected(d.date) && (hasEvent(d.date) || hasTask(d.date)) && (
-                  <div className="calendar-day-dots">
-                    {hasEvent(d.date) && <span className="dot" style={{ background: 'var(--color-primary)' }} />}
-                    {hasTask(d.date) && <span className="dot" style={{ background: 'var(--color-success)' }} />}
+            {getDaysInMonth().map((d, i) => {
+              const items = getDateItems(d.date);
+              return (
+                <div key={i}
+                  className={`calendar-day ${d.other ? 'other-month' : ''} ${isToday(d.date) ? 'today' : ''} ${isSelected(d.date) ? 'selected' : ''}`}
+                  onClick={() => { if (!d.other) { setSelectedDate(d.date); } }}>
+                  <span className="calendar-day-num">{d.date.getDate()}</span>
+                  <div className="calendar-day-items">
+                    {items.events.slice(0, 2).map(e => (
+                      <div key={e.id} className="calendar-day-event" style={{ background: e.color || '#2563eb' }}>
+                        {ft(e.start_time).replace(':00', '')} {e.title}
+                      </div>
+                    ))}
+                    {items.tasks.slice(0, 2 - items.events.length).map(t => (
+                      <div key={t.id} className="calendar-day-task">
+                        {t.title}
+                      </div>
+                    ))}
+                    {(items.events.length + items.tasks.length) > 2 && (
+                      <div className="calendar-day-more">+{items.events.length + items.tasks.length - 2} more</div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -386,55 +405,14 @@ export default function Calendar() {
                       <label>Location</label>
                       <input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Where?" />
                     </div>
-                    <div className="form-group">
-                      <label>Start Time</label>
-                      <div className="time-chip-row" style={{ marginBottom: '0.4rem' }}>
-                        {[
-                          { l: '9 AM', v: '09:00' }, { l: '10 AM', v: '10:00' }, { l: '12 PM', v: '12:00' },
-                          { l: '2 PM', v: '14:00' }, { l: '5 PM', v: '17:00' }, { l: '7 PM', v: '19:00' }
-                        ].map(t => {
-                          const ds = toDateStr(selectedDate);
-                          const val = `${ds}T${t.v}`;
-                          return (
-                            <button key={t.l} type="button" className={`time-chip ${form.startTime === val ? 'active' : ''}`}
-                              onClick={() => {
-                                const [h] = t.v.split(':').map(Number);
-                                setForm({ ...form, startTime: val, endTime: `${ds}T${String(h + 1).padStart(2, '0')}:00` });
-                              }}>
-                              {t.l}
-                            </button>
-                          );
-                        })}
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Start</label>
+                        <input type="datetime-local" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} required style={{ fontSize: '0.82rem' }} />
                       </div>
-                      <input type="datetime-local" value={form.startTime} onChange={e => setForm({ ...form, startTime: e.target.value })} required style={{ fontSize: '0.82rem' }} />
-                    </div>
-                    <div className="form-group">
-                      <label>Duration</label>
-                      <div className="time-chip-row">
-                        {[
-                          { l: '30m', mins: 30 }, { l: '1h', mins: 60 }, { l: '1.5h', mins: 90 },
-                          { l: '2h', mins: 120 }, { l: '3h', mins: 180 }, { l: 'All day', mins: 0 }
-                        ].map(d => (
-                          <button key={d.l} type="button" className={`time-chip ${(() => {
-                            if (!form.startTime || !form.endTime) return false;
-                            const diff = (new Date(form.endTime) - new Date(form.startTime)) / 60000;
-                            return d.mins > 0 && Math.abs(diff - d.mins) < 1;
-                          })() ? 'active' : ''}`}
-                            onClick={() => {
-                              if (!form.startTime) return;
-                              if (d.mins === 0) {
-                                const ds = form.startTime.slice(0, 10);
-                                setForm({ ...form, startTime: `${ds}T00:00`, endTime: `${ds}T23:59` });
-                              } else {
-                                const start = new Date(form.startTime);
-                                const end = new Date(start.getTime() + d.mins * 60000);
-                                const pad = n => String(n).padStart(2, '0');
-                                setForm({ ...form, endTime: `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}` });
-                              }
-                            }}>
-                            {d.l}
-                          </button>
-                        ))}
+                      <div className="form-group">
+                        <label>End</label>
+                        <input type="datetime-local" value={form.endTime} onChange={e => setForm({ ...form, endTime: e.target.value })} style={{ fontSize: '0.82rem' }} />
                       </div>
                     </div>
                     <div className="form-row">

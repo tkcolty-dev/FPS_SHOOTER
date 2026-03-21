@@ -4,7 +4,7 @@ import { API, useToast } from '../App';
 import { IconPlus, IconCheck, IconEdit, IconTrash, IconClock, IconX, IconCalendar, IconChevronRight,
   IconSunrise, IconSunHigh, IconSunset, IconMoonStars, IconMoonFull, IconChevronUp, IconChevronDown,
   IconLink, IconExternalLink, IconSearch, IconRepeat, IconTemplate, IconZap, IconTarget, IconClipboard,
-  IconTasks, IconPin, IconPlay, IconPause, IconSkipForward, IconRotateCcw, IconUsers } from '../icons';
+  IconTasks, IconPin, IconPlay, IconPause, IconSkipForward, IconRotateCcw, IconUsers, IconMic, IconMicOff } from '../icons';
 
 const CATEGORIES = ['general', 'work', 'personal', 'health', 'shopping', 'errands'];
 
@@ -404,6 +404,29 @@ export default function Tasks() {
   const [offline, setOffline] = useState(false);
   const [sharedFilter, setSharedFilter] = useState(() => localStorage.getItem('sharedFilter') || 'all');
   const updateSharedFilter = (f) => { setSharedFilter(f); localStorage.setItem('sharedFilter', f); };
+  const [voiceListening, setVoiceListening] = useState(false);
+  const voiceRef = useRef(null);
+  const hasSpeech = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  const toggleVoice = useCallback((field) => {
+    if (voiceListening) { voiceRef.current?.stop(); setVoiceListening(false); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
+    let final = form[field] || '';
+    rec.onresult = (e) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      setForm(f => ({ ...f, [field]: final + interim }));
+    };
+    rec.onend = () => setVoiceListening(false);
+    rec.onerror = () => setVoiceListening(false);
+    voiceRef.current = rec; rec.start(); setVoiceListening(true);
+  }, [voiceListening, form]);
 
   const loadTasks = useCallback(async () => {
     try {
@@ -678,7 +701,7 @@ export default function Tasks() {
             <div className="modal-header"><h3>{editingTask ? 'Edit Task' : 'New Task'}</h3><button className="modal-close" onClick={resetForm}><IconX size={20} /></button></div>
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
-                <div className="form-group"><label>Title</label><input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="What needs to be done?" required autoFocus /></div>
+                <div className="form-group"><label>Title</label><div className="voice-input-wrap"><input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder={voiceListening ? 'Listening...' : 'What needs to be done?'} required autoFocus />{hasSpeech && <button type="button" className={`voice-btn${voiceListening ? ' active' : ''}`} onClick={() => toggleVoice('title')}>{voiceListening ? <IconMicOff size={16} /> : <IconMic size={16} />}</button>}</div></div>
                 <div className="form-group"><label>Description</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Add details (optional)" rows="2" /></div>
                 <div className="form-row">
                   <div className="form-group"><label>Link</label><div className="link-input-wrap"><IconLink size={14} /><input type="url" value={form.link} onChange={e => setForm({ ...form, link: e.target.value })} placeholder="https://..." /></div></div>
@@ -698,7 +721,6 @@ export default function Tasks() {
                 </div>
                 {form.dueDate && (
                   <div className="form-group"><label>Time (optional)</label>
-                    <div className="time-chip-row">{quickTimes.map(qt => { const Icon = quickTimeIcons[qt.value]; return (<button key={qt.label} type="button" className={`time-chip ${form.dueTime === qt.value ? 'active' : ''}`} onClick={() => setForm(f => ({ ...f, dueTime: f.dueTime === qt.value ? '' : qt.value }))}><Icon size={14} /><span>{qt.label}</span></button>); })}</div>
                     <AmPmPicker value={form.dueTime} onChange={v => setForm({ ...form, dueTime: v })} />
                   </div>
                 )}
