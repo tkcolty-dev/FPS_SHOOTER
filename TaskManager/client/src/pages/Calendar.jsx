@@ -57,8 +57,16 @@ export default function Calendar() {
 
   useEffect(() => {
     const ds = toDateStr(selectedDate);
-    setEvents(allEvents.filter(e => e.start_time.slice(0, 10) === ds));
-    setTasks(allTasks.filter(t => t.due_date && t.due_date.slice(0, 10) === ds));
+    setEvents(allEvents.filter(e => {
+      // Compare using local date to handle timezone offsets
+      const eDate = new Date(e.start_time);
+      return toDateStr(eDate) === ds;
+    }));
+    setTasks(allTasks.filter(t => {
+      if (!t.due_date) return false;
+      const tDate = new Date(t.due_date);
+      return toDateStr(tDate) === ds;
+    }));
   }, [selectedDate, allEvents, allTasks]);
 
   // Week strip data
@@ -89,24 +97,24 @@ export default function Calendar() {
 
   const hasEvent = (date) => {
     const ds = toDateStr(date);
-    return allEvents.some(e => e.start_time.slice(0, 10) === ds);
+    return allEvents.some(e => toDateStr(new Date(e.start_time)) === ds);
   };
 
   const hasTask = (date) => {
     const ds = toDateStr(date);
-    return allTasks.some(t => t.due_date && t.due_date.slice(0, 10) === ds);
+    return allTasks.some(t => t.due_date && toDateStr(new Date(t.due_date)) === ds);
   };
 
   const getDateCount = (date) => {
     const ds = toDateStr(date);
-    return allEvents.filter(e => e.start_time.slice(0, 10) === ds).length +
-           allTasks.filter(t => t.due_date && t.due_date.slice(0, 10) === ds).length;
+    return allEvents.filter(e => toDateStr(new Date(e.start_time)) === ds).length +
+           allTasks.filter(t => t.due_date && toDateStr(new Date(t.due_date)) === ds).length;
   };
 
   const getDateItems = (date) => {
     const ds = toDateStr(date);
-    const evts = allEvents.filter(e => e.start_time.slice(0, 10) === ds);
-    const tsks = allTasks.filter(t => t.due_date && t.due_date.slice(0, 10) === ds);
+    const evts = allEvents.filter(e => toDateStr(new Date(e.start_time)) === ds);
+    const tsks = allTasks.filter(t => t.due_date && toDateStr(new Date(t.due_date)) === ds);
     return { events: evts, tasks: tsks };
   };
 
@@ -114,7 +122,7 @@ export default function Calendar() {
   const isSelected = (d) => d.toDateString() === selectedDate.toDateString();
 
   const resetForm = () => {
-    setForm({ title: '', description: '', location: '', startTime: '', endTime: '', color: '#2563eb', attendees: '' });
+    setForm({ title: '', description: '', location: '', startTime: '', endTime: '', color: '#2563eb', attendees: '', recurrence: 'none' });
     setTaskForm({ title: '', description: '', category: 'general', priority: 'medium', dueTime: '' });
     setEditingEvent(null);
     setShowForm(false);
@@ -123,7 +131,7 @@ export default function Calendar() {
 
   const openNewEvent = () => {
     const ds = toDateStr(selectedDate);
-    setForm({ ...form, startTime: `${ds}T09:00`, endTime: `${ds}T10:00`, title: '', description: '', location: '', color: '#2563eb', attendees: '' });
+    setForm({ title: '', description: '', location: '', startTime: `${ds}T09:00`, endTime: `${ds}T10:00`, color: '#2563eb', attendees: '', recurrence: 'none' });
     setFormType('event');
     setShowForm(true);
   };
@@ -167,7 +175,7 @@ export default function Calendar() {
     setForm({
       title: ev.title, description: ev.description || '', location: ev.location || '',
       startTime: ev.start_time.slice(0, 16), endTime: ev.end_time ? ev.end_time.slice(0, 16) : '',
-      color: ev.color || '#2563eb', attendees: ev.attendees || ''
+      color: ev.color || '#2563eb', attendees: ev.attendees || '', recurrence: ev.recurrence || 'none'
     });
     setEditingEvent(ev);
     setFormType('event');

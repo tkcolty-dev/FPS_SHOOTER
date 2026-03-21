@@ -53,8 +53,9 @@ module.exports = (pool) => {
         const dayEnd = new Date(date + 'T23:59:59');
         const expanded = expandRecurring(result.rows, dayStart, dayEnd);
         const filtered = expanded.filter(e => {
-          const eDate = new Date(e.start_time).toISOString().slice(0, 10);
-          return eDate === date.slice(0, 10);
+          const eDate = new Date(e.start_time);
+          const eDateStr = `${eDate.getFullYear()}-${String(eDate.getMonth()+1).padStart(2,'0')}-${String(eDate.getDate()).padStart(2,'0')}`;
+          return eDateStr === date.slice(0, 10);
         });
         return res.json(filtered);
       }
