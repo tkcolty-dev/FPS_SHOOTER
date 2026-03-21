@@ -99,6 +99,27 @@ cron.schedule('*/2 * * * *', async () => {
   }
 });
 
+// Auto-clear completed tasks - runs every 10 minutes
+cron.schedule('*/10 * * * *', async () => {
+  try {
+    const result = await pool.query(
+      `DELETE FROM tasks
+       WHERE status = 'completed'
+         AND completed_at IS NOT NULL
+         AND user_id IN (SELECT id FROM users WHERE auto_clear_completed = true)
+         AND completed_at < NOW() - (
+           (SELECT auto_clear_hours FROM users WHERE users.id = tasks.user_id) || ' hours'
+         )::INTERVAL
+       RETURNING id, user_id`
+    );
+    if (result.rowCount > 0) {
+      console.log(`Auto-cleared ${result.rowCount} completed tasks`);
+    }
+  } catch (err) {
+    console.error('Auto-clear cron error:', err);
+  }
+});
+
 async function start() {
   try {
     await migrate();

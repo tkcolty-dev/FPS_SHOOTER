@@ -21,6 +21,7 @@ export default function Profile() {
   const [defaultView, setDefaultView] = useState('all');
   const [showTaskCount, setShowTaskCount] = useState(true);
   const [autoClearCompleted, setAutoClearCompleted] = useState(false);
+  const [autoClearHours, setAutoClearHours] = useState(24);
 
   useEffect(() => {
     API('/auth/me').then(p => {
@@ -35,6 +36,7 @@ export default function Profile() {
       setDefaultView(p.defaultView || 'all');
       setShowTaskCount(p.showTaskCount !== false);
       setAutoClearCompleted(p.autoClearCompleted || false);
+      setAutoClearHours(p.autoClearHours || 24);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -81,8 +83,8 @@ export default function Profile() {
 
   const saveTaskSettings = async () => {
     try {
-      await API('/auth/me', { method: 'PUT', body: { showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted } });
-      setProfile(p => ({ ...p, showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted }));
+      await API('/auth/me', { method: 'PUT', body: { showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted, autoClearHours } });
+      setProfile(p => ({ ...p, showTimeCompleted, confirmBeforeDelete, defaultView, showTaskCount, autoClearCompleted, autoClearHours }));
       // Also save to localStorage for instant client access
       localStorage.setItem('showTimeCompleted', showTimeCompleted ? 'true' : 'false');
       localStorage.setItem('confirmBeforeDelete', confirmBeforeDelete ? 'true' : 'false');
@@ -129,6 +131,7 @@ export default function Profile() {
           bg="var(--color-primary-light)" color="var(--color-primary)"
           label="Edit Profile"
           onClick={() => setSection(section === 'edit' ? null : 'edit')}
+          open={section === 'edit'}
         />
         {section === 'edit' && (
           <div className="menu-expand">
@@ -145,6 +148,7 @@ export default function Profile() {
           bg="var(--color-warning-light)" color="var(--color-warning)"
           label="Change Password"
           onClick={() => setSection(section === 'password' ? null : 'password')}
+          open={section === 'password'}
         />
         {section === 'password' && (
           <div className="menu-expand">
@@ -165,6 +169,7 @@ export default function Profile() {
           bg="var(--color-danger-light)" color="var(--color-danger)"
           label="Notifications"
           onClick={() => setSection(section === 'notif' ? null : 'notif')}
+          open={section === 'notif'}
         />
         {section === 'notif' && (
           <div className="menu-expand">
@@ -210,6 +215,7 @@ export default function Profile() {
           bg="color-mix(in srgb, #6366f1 10%, transparent)" color="#6366f1"
           label="Task Settings"
           onClick={() => setSection(section === 'tasks' ? null : 'tasks')}
+          open={section === 'tasks'}
         />
         {section === 'tasks' && (
           <div className="menu-expand">
@@ -237,10 +243,22 @@ export default function Profile() {
             <div className="toggle-wrap">
               <div>
                 <div className="toggle-label">Auto-Clear Completed</div>
-                <div className="toggle-desc">Automatically remove completed tasks after 24 hours</div>
+                <div className="toggle-desc">Automatically remove completed tasks after a set time</div>
               </div>
               <button className={`toggle ${autoClearCompleted ? 'on' : ''}`} onClick={() => setAutoClearCompleted(!autoClearCompleted)} />
             </div>
+            {autoClearCompleted && (
+              <div style={{ marginTop: '0.25rem', marginBottom: '0.5rem', paddingLeft: '0.25rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', display: 'block' }}>Delete completed tasks after</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input type="number" min="1" max="999" value={autoClearHours} onChange={e => setAutoClearHours(Math.max(1, parseInt(e.target.value) || 1))} style={{ width: '70px', textAlign: 'center' }} />
+                  <span style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>hours</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', marginLeft: 'auto' }}>
+                    {autoClearHours < 24 ? `${autoClearHours}h` : autoClearHours < 168 ? `${Math.round(autoClearHours / 24)}d` : `${Math.round(autoClearHours / 168)}w`}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="form-group" style={{ marginTop: '0.5rem' }}>
               <label>Default Task View</label>
               <select value={defaultView} onChange={e => setDefaultView(e.target.value)}>
@@ -275,6 +293,7 @@ export default function Profile() {
           bg="color-mix(in srgb, #7c3aed 10%, transparent)" color="#7c3aed"
           label="AI Preferences"
           onClick={() => setSection(section === 'notes' ? null : 'notes')}
+          open={section === 'notes'}
         />
         {section === 'notes' && <NotesSection />}
 
@@ -283,6 +302,7 @@ export default function Profile() {
           bg="color-mix(in srgb, #16a34a 10%, transparent)" color="#16a34a"
           label="Push Notifications"
           onClick={() => setSection(section === 'push' ? null : 'push')}
+          open={section === 'push'}
         />
         {section === 'push' && <PushSection showToast={showToast} />}
       </div>
@@ -394,9 +414,9 @@ function PushSection({ showToast }) {
   );
 }
 
-function MenuItem({ icon, bg, color, label, onClick, chevron = true, danger }) {
+function MenuItem({ icon, bg, color, label, onClick, chevron = true, danger, open }) {
   return (
-    <button className="profile-menu-item" onClick={onClick} style={danger ? { color: 'var(--color-danger)' } : {}}>
+    <button className={`profile-menu-item${open ? ' open' : ''}`} onClick={onClick} style={danger ? { color: 'var(--color-danger)' } : {}}>
       <div className="profile-menu-icon" style={{ background: bg, color }}>{icon}</div>
       <div className="profile-menu-label">{label}</div>
       {chevron && <span className="profile-menu-chevron"><IconChevronRight size={16} /></span>}
