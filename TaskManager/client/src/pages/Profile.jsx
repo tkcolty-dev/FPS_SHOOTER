@@ -14,6 +14,7 @@ export default function Profile() {
   const [notifyOverdue, setNotifyOverdue] = useState(true);
   const [notifyUpcoming, setNotifyUpcoming] = useState(true);
   const [notifyBefore, setNotifyBefore] = useState(30);
+  const [notifyShared, setNotifyShared] = useState(true);
 
   useEffect(() => {
     API('/auth/me').then(p => {
@@ -22,6 +23,7 @@ export default function Profile() {
       setNotifyOverdue(p.notifyOverdue);
       setNotifyUpcoming(p.notifyUpcoming);
       setNotifyBefore(p.notifyBeforeMinutes);
+      setNotifyShared(p.notifyShared !== false);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -59,8 +61,8 @@ export default function Profile() {
 
   const saveNotifications = async () => {
     try {
-      await API('/auth/me', { method: 'PUT', body: { notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore } });
-      setProfile(p => ({ ...p, notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore }));
+      await API('/auth/me', { method: 'PUT', body: { notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore, notifyShared } });
+      setProfile(p => ({ ...p, notifyOverdue, notifyUpcoming, notifyBeforeMinutes: notifyBefore, notifyShared }));
       showToast('Saved', 'Notification settings updated');
       setSection(null);
     } catch (err) { showToast('Error', err.message, 'error'); }
@@ -153,6 +155,13 @@ export default function Profile() {
                 <div className="toggle-desc">Get reminded before tasks are due</div>
               </div>
               <button className={`toggle ${notifyUpcoming ? 'on' : ''}`} onClick={() => setNotifyUpcoming(!notifyUpcoming)} />
+            </div>
+            <div className="toggle-wrap">
+              <div>
+                <div className="toggle-label">Shared Task Notifications</div>
+                <div className="toggle-desc">Get notified when shared tasks are completed or unchecked</div>
+              </div>
+              <button className={`toggle ${notifyShared ? 'on' : ''}`} onClick={() => setNotifyShared(!notifyShared)} />
             </div>
             <div className="form-group" style={{ marginTop: '0.5rem' }}>
               <label>Remind me (minutes before)</label>

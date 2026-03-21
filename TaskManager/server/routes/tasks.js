@@ -148,20 +148,45 @@ Rules:
       if (!result.rows.length) return res.status(404).json({ error: 'Task not found' });
       const task = result.rows[0];
 
-      // Notify collaborators when shared task is completed
-      if (req.body.status === 'completed') {
+      // Notify shared users when task status changes (completed or unchecked)
+      if (req.body.status === 'completed' || req.body.status === 'pending') {
         try {
-          const shared = await pool.query('SELECT shared_with_id, owner_id FROM shared_tasks WHERE task_id = $1', [req.params.id]);
-          for (const row of shared.rows) {
-            const notifyUserId = row.owner_id === req.userId ? row.shared_with_id : row.owner_id;
-            if (notifyUserId !== req.userId) {
-              await pool.query(
-                'INSERT INTO notifications (user_id, task_id, type, title, message) VALUES ($1, $2, $3, $4, $5)',
-                [notifyUserId, task.id, 'shared_completed', 'Shared Task Done', `"${task.title}" was completed!`]
-              );
-            }
+          const action = req.body.status === 'completed' ? 'completed' : 'unchecked';
+          const me = await pool.query('SELECT display_name FROM users WHERE id = $1', [req.userId]);
+          const myName = me.rows[0]?.display_name || 'Someone';
+
+          // Find all users who have all-tasks sharing links from this owner
+          const sharedLinks = await pool.query(
+            'SELECT shared_with_id FROM shared_tasks WHERE owner_id = $1 AND task_id IS NULL',
+            [req.userId]
+          );
+          // Also check per-task sharing
+          const perTask = await pool.query('SELECT shared_with_id, owner_id FROM shared_tasks WHERE task_id = $1', [req.params.id]);
+
+          const notifySet = new Set();
+          for (const row of sharedLinks.rows) notifySet.add(row.shared_with_id);
+          for (const row of perTask.rows) {
+            const uid = row.owner_id === req.userId ? row.shared_with_id : row.owner_id;
+            if (uid !== req.userId) notifySet.add(uid);
           }
-        } catch {}
+
+          for (const uid of notifySet) {
+            // Check if user has notify_shared enabled
+            const pref = await pool.query('SELECT notify_shared FROM users WHERE id = $1', [uid]);
+            if (pref.rows[0]?.notify_shared === false) continue;
+
+            const title = action === 'completed' ? 'Shared Task Completed' : 'Shared Task Unchecked';
+            const message = `${myName} ${action} "${task.title}"`;
+            await pool.query(
+              'INSERT INTO notifications (user_id, task_id, type, title, message) VALUES ($1, $2, $3, $4, $5)',
+              [uid, task.id, 'shared_completed', title, message]
+            );
+            try {
+              const { sendPushToUser } = require('./push');
+              sendPushToUser(pool, uid, title, message, { url: '/tasks' });
+            } catch {}
+          }
+        } catch (err) { console.error('Shared notification error:', err); }
       }
 
       res.json(task);

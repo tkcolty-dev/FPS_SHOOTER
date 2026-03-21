@@ -380,8 +380,9 @@ export default function Tasks() {
   const [searchParams] = useSearchParams();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const initialFilter = searchParams.get('filter') || 'all';
+  const initialFilter = searchParams.get('filter') || localStorage.getItem('taskFilter') || 'all';
   const [filter, setFilter] = useState(initialFilter);
+  const updateFilter = (f) => { setFilter(f); localStorage.setItem('taskFilter', f); };
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [form, setForm] = useState({ title: '', description: '', category: 'general', priority: 'medium', dueDate: '', dueTime: '', link: '', recurrence: 'none' });
@@ -601,7 +602,7 @@ export default function Tasks() {
       <div className="flex-center" style={{ justifyContent: 'space-between', marginBottom: '0.75rem' }}>
         <div className="tab-strip" style={{ marginBottom: 0, flex: 1 }}>
           {['all', 'pending', 'completed', 'shared'].map(f => (
-            <button key={f} className={filter === f ? 'active' : ''} onClick={() => setFilter(f)}>
+            <button key={f} className={filter === f ? 'active' : ''} onClick={() => updateFilter(f)}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}

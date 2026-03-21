@@ -63,7 +63,7 @@ module.exports = (pool, auth) => {
   router.get('/me', auth, async (req, res) => {
     try {
       const result = await pool.query(
-        'SELECT id, username, display_name, theme, notify_overdue, notify_upcoming, notify_before_minutes, created_at FROM users WHERE id = $1',
+        'SELECT id, username, display_name, theme, notify_overdue, notify_upcoming, notify_before_minutes, notify_shared, created_at FROM users WHERE id = $1',
         [req.userId]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
@@ -71,7 +71,7 @@ module.exports = (pool, auth) => {
       res.json({
         id: u.id, username: u.username, displayName: u.display_name,
         theme: u.theme, notifyOverdue: u.notify_overdue, notifyUpcoming: u.notify_upcoming,
-        notifyBeforeMinutes: u.notify_before_minutes, createdAt: u.created_at
+        notifyBeforeMinutes: u.notify_before_minutes, notifyShared: u.notify_shared, createdAt: u.created_at
       });
     } catch (err) {
       res.status(500).json({ error: 'Server error' });
@@ -81,12 +81,12 @@ module.exports = (pool, auth) => {
   // Update profile (protected)
   router.put('/me', auth, async (req, res) => {
     try {
-      const { displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes } = req.body;
+      const { displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes, notifyShared } = req.body;
       await pool.query(
         `UPDATE users SET display_name = COALESCE($1, display_name), theme = COALESCE($2, theme),
          notify_overdue = COALESCE($3, notify_overdue), notify_upcoming = COALESCE($4, notify_upcoming),
-         notify_before_minutes = COALESCE($5, notify_before_minutes) WHERE id = $6`,
-        [displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes, req.userId]
+         notify_before_minutes = COALESCE($5, notify_before_minutes), notify_shared = COALESCE($6, notify_shared) WHERE id = $7`,
+        [displayName, theme, notifyOverdue, notifyUpcoming, notifyBeforeMinutes, notifyShared, req.userId]
       );
       res.json({ ok: true });
     } catch (err) {

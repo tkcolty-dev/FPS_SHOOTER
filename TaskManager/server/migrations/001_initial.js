@@ -124,6 +124,7 @@ async function migrate() {
         UNIQUE(user_id, endpoint)
       );
       ALTER TABLE users ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN DEFAULT false;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_shared BOOLEAN DEFAULT true;
     `);
     console.log('Migration complete');
   } catch (err) {

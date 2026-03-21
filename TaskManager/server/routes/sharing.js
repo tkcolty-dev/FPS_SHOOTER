@@ -142,22 +142,36 @@ module.exports = (pool) => {
         `UPDATE tasks SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`, params
       );
 
-      // Notify the owner
+      // Notify the owner + other shared users
       const me = await pool.query('SELECT display_name FROM users WHERE id = $1', [req.userId]);
       const myName = me.rows[0]?.display_name || 'Someone';
       const action = req.body.status === 'completed' ? 'completed' : req.body.status === 'pending' ? 'unchecked' : 'updated';
-      await pool.query(
-        'INSERT INTO notifications (user_id, task_id, type, title, message) VALUES ($1, $2, $3, $4, $5)',
-        [ownerId, parseInt(req.params.taskId), 'shared_completed', 'Shared Task ' + action.charAt(0).toUpperCase() + action.slice(1),
-         `${myName} ${action} "${task.rows[0].title}"`]
-      );
+      const notifTitle = 'Shared Task ' + action.charAt(0).toUpperCase() + action.slice(1);
+      const notifMsg = `${myName} ${action} "${task.rows[0].title}"`;
 
-      // Push notification
-      try {
-        const { sendPushToUser } = require('./push');
-        sendPushToUser(pool, ownerId, 'Shared Task ' + action.charAt(0).toUpperCase() + action.slice(1),
-          `${myName} ${action} "${task.rows[0].title}"`, { url: '/tasks' });
-      } catch {}
+      // Collect all users to notify: the owner + anyone else with all-tasks links from the owner
+      const notifySet = new Set([ownerId]);
+      const sharedLinks = await pool.query(
+        'SELECT shared_with_id FROM shared_tasks WHERE owner_id = $1 AND task_id IS NULL',
+        [ownerId]
+      );
+      for (const row of sharedLinks.rows) notifySet.add(row.shared_with_id);
+      notifySet.delete(req.userId); // Don't notify self
+
+      for (const uid of notifySet) {
+        // Respect notify_shared preference
+        const pref = await pool.query('SELECT notify_shared FROM users WHERE id = $1', [uid]);
+        if (pref.rows[0]?.notify_shared === false) continue;
+
+        await pool.query(
+          'INSERT INTO notifications (user_id, task_id, type, title, message) VALUES ($1, $2, $3, $4, $5)',
+          [uid, parseInt(req.params.taskId), 'shared_completed', notifTitle, notifMsg]
+        );
+        try {
+          const { sendPushToUser } = require('./push');
+          sendPushToUser(pool, uid, notifTitle, notifMsg, { url: '/tasks' });
+        } catch {}
+      }
 
       res.json(result.rows[0]);
     } catch (err) {
