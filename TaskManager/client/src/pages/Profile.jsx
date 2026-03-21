@@ -112,6 +112,7 @@ export default function Profile() {
     setCompactMode(next);
     localStorage.setItem('compact', next ? 'true' : 'false');
     document.documentElement.setAttribute('data-compact', next ? 'true' : 'false');
+    saveSetting('compactMode', next);
     showToast('Display', next ? 'Compact mode on' : 'Compact mode off');
   };
 

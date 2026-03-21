@@ -131,6 +131,7 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS show_task_count BOOLEAN DEFAULT true;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_clear_completed BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_clear_hours INTEGER DEFAULT 24;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS compact_mode BOOLEAN DEFAULT false;
     `);
     console.log('Migration complete');
   } catch (err) {

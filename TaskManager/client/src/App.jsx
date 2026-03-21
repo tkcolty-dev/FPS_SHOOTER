@@ -247,6 +247,19 @@ export default function App() {
     const compact = localStorage.getItem('compact') === 'true';
     document.documentElement.setAttribute('data-compact', compact ? 'true' : 'false');
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+    // Sync settings from account on load
+    if (token) {
+      API('/auth/me').then(p => {
+        if (p.theme) { localStorage.setItem('theme', p.theme); document.documentElement.setAttribute('data-theme', p.theme); }
+        if (p.compactMode !== undefined) { localStorage.setItem('compact', p.compactMode ? 'true' : 'false'); document.documentElement.setAttribute('data-compact', p.compactMode ? 'true' : 'false'); }
+        if (p.showTimeCompleted !== undefined) localStorage.setItem('showTimeCompleted', p.showTimeCompleted ? 'true' : 'false');
+        if (p.confirmBeforeDelete !== undefined) localStorage.setItem('confirmBeforeDelete', p.confirmBeforeDelete !== false ? 'true' : 'false');
+        if (p.defaultView) localStorage.setItem('defaultView', p.defaultView);
+        if (p.showTaskCount !== undefined) localStorage.setItem('showTaskCount', p.showTaskCount !== false ? 'true' : 'false');
+        if (p.autoClearCompleted !== undefined) localStorage.setItem('autoClearCompleted', p.autoClearCompleted ? 'true' : 'false');
+      }).catch(() => {});
+    }
   }, []);
 
   const login = (tok, u) => {
