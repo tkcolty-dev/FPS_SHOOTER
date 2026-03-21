@@ -120,7 +120,7 @@ function censorText(text) {
       if (idx !== -1 && isWhitelisted(lower, idx, idx + match.length)) {
         return match; // Don't censor whitelisted words
       }
-      return match[0] + '*'.repeat(match.length - 1);
+      return '****';
     });
   }
   return result;
