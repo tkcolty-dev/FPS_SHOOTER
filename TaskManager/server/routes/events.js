@@ -3,21 +3,78 @@ const router = express.Router();
 const { generateInvitation } = require('../services/ai');
 
 module.exports = (pool) => {
+  // Generate recurring instances of an event within a date range
+  function expandRecurring(events, rangeStart, rangeEnd) {
+    const result = [];
+    for (const ev of events) {
+      result.push(ev);
+      if (!ev.recurrence || ev.recurrence === 'none') continue;
+
+      const evStart = new Date(ev.start_time);
+      const evEnd = ev.end_time ? new Date(ev.end_time) : null;
+      const duration = evEnd ? evEnd - evStart : 0;
+      const rStart = new Date(rangeStart);
+      const rEnd = new Date(rangeEnd);
+
+      // Generate up to 60 occurrences within the range
+      for (let i = 1; i <= 60; i++) {
+        const next = new Date(evStart);
+        if (ev.recurrence === 'daily') next.setDate(next.getDate() + i);
+        else if (ev.recurrence === 'weekly') next.setDate(next.getDate() + i * 7);
+        else if (ev.recurrence === 'monthly') next.setMonth(next.getMonth() + i);
+        else if (ev.recurrence === 'annual') next.setFullYear(next.getFullYear() + i);
+        else break;
+
+        if (next > rEnd) break;
+        if (next < rStart) continue;
+
+        const nextEnd = evEnd ? new Date(next.getTime() + duration) : null;
+        result.push({
+          ...ev,
+          id: `${ev.id}_r${i}`,
+          start_time: next.toISOString(),
+          end_time: nextEnd ? nextEnd.toISOString() : null,
+          _recurring: true
+        });
+      }
+    }
+    return result;
+  }
+
   // Get events
   router.get('/', async (req, res) => {
     try {
       const { date, start, end } = req.query;
-      let q = 'SELECT * FROM events WHERE user_id = $1';
-      const params = [req.userId];
-      let idx = 2;
 
-      if (date) { q += ` AND start_time::date = $${idx++}::date`; params.push(date); }
-      if (start && end) { q += ` AND start_time >= $${idx++} AND start_time <= $${idx++}`; params.push(start, end); }
+      if (date) {
+        // Single date query - also check recurring events
+        const result = await pool.query('SELECT * FROM events WHERE user_id = $1 ORDER BY start_time ASC', [req.userId]);
+        const dayStart = new Date(date + 'T00:00:00');
+        const dayEnd = new Date(date + 'T23:59:59');
+        const expanded = expandRecurring(result.rows, dayStart, dayEnd);
+        const filtered = expanded.filter(e => {
+          const eDate = new Date(e.start_time).toISOString().slice(0, 10);
+          return eDate === date.slice(0, 10);
+        });
+        return res.json(filtered);
+      }
 
-      q += ' ORDER BY start_time ASC';
-      const result = await pool.query(q, params);
+      if (start && end) {
+        // Range query - get all events and expand recurring ones
+        const result = await pool.query('SELECT * FROM events WHERE user_id = $1 ORDER BY start_time ASC', [req.userId]);
+        const expanded = expandRecurring(result.rows, start, end);
+        const filtered = expanded.filter(e => {
+          const eTime = new Date(e.start_time);
+          return eTime >= new Date(start) && eTime <= new Date(end);
+        });
+        return res.json(filtered);
+      }
+
+      // No filter - return all
+      const result = await pool.query('SELECT * FROM events WHERE user_id = $1 ORDER BY start_time ASC', [req.userId]);
       res.json(result.rows);
     } catch (err) {
+      console.error('Get events error:', err);
       res.status(500).json({ error: 'Server error' });
     }
   });

@@ -191,7 +191,9 @@ export default function Calendar() {
   };
 
   const ft = (dt) => new Date(dt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  const monthName = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const monthName = currentDate.toLocaleDateString('en-US', { month: 'long' });
+  const showYear = year !== new Date().getFullYear();
+  const headerLabel = showYear ? `${monthName} ${year}` : monthName;
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>;
 
@@ -235,7 +237,12 @@ export default function Calendar() {
         <div className="card calendar-card">
           <div className="calendar-header">
             <button className="btn btn-ghost btn-sm" onClick={() => setCurrentDate(new Date(year, month - 1, 1))}><IconChevronLeft size={18} /></button>
-            <h3 style={{ fontSize: '0.95rem' }}>{monthName}</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h3 style={{ fontSize: '0.95rem' }}>{headerLabel}</h3>
+              {(year !== new Date().getFullYear() || month !== new Date().getMonth()) && (
+                <button className="btn btn-sm btn-secondary" onClick={() => { setCurrentDate(new Date()); setSelectedDate(new Date()); }} style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem' }}>Today</button>
+              )}
+            </div>
             <button className="btn btn-ghost btn-sm" onClick={() => setCurrentDate(new Date(year, month + 1, 1))}><IconChevronRight size={18} /></button>
           </div>
           <div className="calendar-grid">
