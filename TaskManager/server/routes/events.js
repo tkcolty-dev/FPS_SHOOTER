@@ -86,14 +86,13 @@ module.exports = (pool) => {
     }
   });
 
-  // Ensure datetime-local values are stored without timezone shift
+  // Force datetime-local values to be stored as-is without timezone conversion
+  // We store as a TIMESTAMP string that postgres won't shift
   function fixLocalTime(dt) {
     if (!dt) return null;
-    // If it's already a full ISO string or has timezone, return as-is
-    if (dt.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dt)) return dt;
-    // datetime-local format: 2026-11-05T09:00 — treat as local, store with explicit +00:00 offset
-    // so postgres doesn't shift it
-    return dt + ':00+00:00';
+    // Strip any timezone info so postgres stores the literal datetime
+    const clean = String(dt).replace(/Z$/, '').replace(/[+-]\d{2}:\d{2}$/, '');
+    return clean;
   }
 
   // Create event

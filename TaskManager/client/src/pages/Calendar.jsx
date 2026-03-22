@@ -57,16 +57,8 @@ export default function Calendar() {
 
   useEffect(() => {
     const ds = toDateStr(selectedDate);
-    setEvents(allEvents.filter(e => {
-      // Compare using local date to handle timezone offsets
-      const eDate = new Date(e.start_time);
-      return toDateStr(eDate) === ds;
-    }));
-    setTasks(allTasks.filter(t => {
-      if (!t.due_date) return false;
-      const tDate = new Date(t.due_date);
-      return toDateStr(tDate) === ds;
-    }));
+    setEvents(allEvents.filter(e => getDateFromTimestamp(e.start_time) === ds));
+    setTasks(allTasks.filter(t => t.due_date && getDateFromTimestamp(t.due_date) === ds));
   }, [selectedDate, allEvents, allTasks]);
 
   // Week strip data
@@ -95,26 +87,32 @@ export default function Calendar() {
     return days;
   };
 
+  // Extract date string from event/task timestamps without timezone conversion
+  const getDateFromTimestamp = (ts) => {
+    if (!ts) return '';
+    return String(ts).slice(0, 10);
+  };
+
   const hasEvent = (date) => {
     const ds = toDateStr(date);
-    return allEvents.some(e => toDateStr(new Date(e.start_time)) === ds);
+    return allEvents.some(e => getDateFromTimestamp(e.start_time) === ds);
   };
 
   const hasTask = (date) => {
     const ds = toDateStr(date);
-    return allTasks.some(t => t.due_date && toDateStr(new Date(t.due_date)) === ds);
+    return allTasks.some(t => t.due_date && getDateFromTimestamp(t.due_date) === ds);
   };
 
   const getDateCount = (date) => {
     const ds = toDateStr(date);
-    return allEvents.filter(e => toDateStr(new Date(e.start_time)) === ds).length +
-           allTasks.filter(t => t.due_date && toDateStr(new Date(t.due_date)) === ds).length;
+    return allEvents.filter(e => getDateFromTimestamp(e.start_time) === ds).length +
+           allTasks.filter(t => t.due_date && getDateFromTimestamp(t.due_date) === ds).length;
   };
 
   const getDateItems = (date) => {
     const ds = toDateStr(date);
-    const evts = allEvents.filter(e => toDateStr(new Date(e.start_time)) === ds);
-    const tsks = allTasks.filter(t => t.due_date && toDateStr(new Date(t.due_date)) === ds);
+    const evts = allEvents.filter(e => getDateFromTimestamp(e.start_time) === ds);
+    const tsks = allTasks.filter(t => t.due_date && getDateFromTimestamp(t.due_date) === ds);
     return { events: evts, tasks: tsks };
   };
 
@@ -171,10 +169,19 @@ export default function Calendar() {
     showToast('Deleted', 'Event removed');
   };
 
+  // Convert a date value to datetime-local format (YYYY-MM-DDTHH:MM)
+  // Timestamps are stored without timezone, so just slice the string
+  const toLocalDatetime = (val) => {
+    if (!val) return '';
+    const s = typeof val === 'string' ? val : val.toISOString ? val.toISOString() : String(val);
+    // Handle "2026-11-05T09:00:00.000Z" or "2026-11-05T09:00:00" or Date objects
+    return s.slice(0, 16);
+  };
+
   const editEvent = (ev) => {
     setForm({
       title: ev.title, description: ev.description || '', location: ev.location || '',
-      startTime: ev.start_time.slice(0, 16), endTime: ev.end_time ? ev.end_time.slice(0, 16) : '',
+      startTime: toLocalDatetime(ev.start_time), endTime: toLocalDatetime(ev.end_time),
       color: ev.color || '#2563eb', attendees: ev.attendees || '', recurrence: ev.recurrence || 'none'
     });
     setEditingEvent(ev);
@@ -198,7 +205,17 @@ export default function Calendar() {
     finally { setGeneratingInvite(false); }
   };
 
-  const ft = (dt) => new Date(dt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const ft = (dt) => {
+    if (!dt) return '';
+    // Parse time directly from string to avoid timezone shift
+    const s = String(dt);
+    const m = s.match(/T(\d{2}):(\d{2})/);
+    if (!m) return new Date(dt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    let h = parseInt(m[1]), min = m[2];
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return min === '00' ? `${h} ${ampm}` : `${h}:${min} ${ampm}`;
+  };
   const monthName = currentDate.toLocaleDateString('en-US', { month: 'long' });
   const showYear = year !== new Date().getFullYear();
   const headerLabel = showYear ? `${monthName} ${year}` : monthName;

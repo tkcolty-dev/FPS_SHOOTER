@@ -132,6 +132,10 @@ async function migrate() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_clear_completed BOOLEAN DEFAULT false;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_clear_hours INTEGER DEFAULT 24;
       ALTER TABLE users ADD COLUMN IF NOT EXISTS compact_mode BOOLEAN DEFAULT false;
+
+      -- Fix event timezone issues: change to TIMESTAMP WITHOUT TIME ZONE
+      ALTER TABLE events ALTER COLUMN start_time TYPE TIMESTAMP USING start_time AT TIME ZONE 'UTC';
+      ALTER TABLE events ALTER COLUMN end_time TYPE TIMESTAMP USING end_time AT TIME ZONE 'UTC';
     `);
     console.log('Migration complete');
   } catch (err) {
