@@ -86,6 +86,16 @@ module.exports = (pool) => {
     }
   });
 
+  // Ensure datetime-local values are stored without timezone shift
+  function fixLocalTime(dt) {
+    if (!dt) return null;
+    // If it's already a full ISO string or has timezone, return as-is
+    if (dt.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(dt)) return dt;
+    // datetime-local format: 2026-11-05T09:00 — treat as local, store with explicit +00:00 offset
+    // so postgres doesn't shift it
+    return dt + ':00+00:00';
+  }
+
   // Create event
   router.post('/', async (req, res) => {
     try {
@@ -95,7 +105,7 @@ module.exports = (pool) => {
       const result = await pool.query(
         `INSERT INTO events (user_id, title, description, location, start_time, end_time, color, attendees, recurrence)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-        [req.userId, title, description || null, location || null, startTime, endTime || null, color || '#2563eb', attendees || null, recurrence || 'none']
+        [req.userId, title, description || null, location || null, fixLocalTime(startTime), fixLocalTime(endTime), color || '#2563eb', attendees || null, recurrence || 'none']
       );
       res.json(result.rows[0]);
     } catch (err) {
@@ -114,7 +124,7 @@ module.exports = (pool) => {
          end_time = COALESCE($5, end_time), color = COALESCE($6, color),
          attendees = COALESCE($7, attendees), invitation_text = COALESCE($8, invitation_text)
          WHERE id = $9 AND user_id = $10 RETURNING *`,
-        [title, description, location, startTime, endTime, color, attendees, invitationText, req.params.id, req.userId]
+        [title, description, location, fixLocalTime(startTime), fixLocalTime(endTime), color, attendees, invitationText, req.params.id, req.userId]
       );
       if (!result.rows.length) return res.status(404).json({ error: 'Event not found' });
       res.json(result.rows[0]);
