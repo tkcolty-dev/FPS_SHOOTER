@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Whodunit - Murder Mystery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&family=Special+Elite&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ===== TITLE SCREEN ===== -->
+  <div id="screen-title" class="screen active">
+    <div class="title-bg">
+      <div class="fog fog-1"></div>
+      <div class="fog fog-2"></div>
+      <div class="blood-drip"></div>
+      <div class="title-content">
+        <div class="title-badge">ONLINE MULTIPLAYER</div>
+        <h1 class="game-title">
+          <span class="title-who">WHO</span><span class="title-dunit">DUNIT</span>
+          <span class="title-qmark">?</span>
+        </h1>
+        <p class="subtitle">A Murder Mystery Investigation</p>
+        <div class="title-form">
+          <div class="input-group">
+            <label for="player-name">Detective Name</label>
+            <input type="text" id="player-name" placeholder="Enter your name..." maxlength="20" autocomplete="off">
+          </div>
+          <div class="btn-row">
+            <button id="btn-create-public" class="btn btn-primary">
+              <span class="btn-icon">+</span> Create Room
+            </button>
+            <button id="btn-create-private" class="btn btn-outline">
+              <span class="btn-icon">&#128274;</span> Private Room
+            </button>
+          </div>
+          <div class="divider"><span>or join existing</span></div>
+          <div class="join-row">
+            <input type="text" id="room-code-input" placeholder="CODE" maxlength="4" autocomplete="off" class="code-input">
+            <button id="btn-join-code" class="btn btn-gold">Join</button>
+          </div>
+          <button id="btn-browse" class="btn btn-ghost">Browse Public Rooms</button>
+        </div>
+        <button id="btn-how-to-play" class="btn btn-link">How does this work?</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== HOW TO PLAY ===== -->
+  <div id="screen-howto" class="screen">
+    <div class="panel howto-panel">
+      <button class="back-btn" id="btn-howto-back">&larr; Back</button>
+      <h2 class="serif">The Rules of Investigation</h2>
+      <div class="howto-content">
+        <div class="howto-card">
+          <div class="howto-num">1</div>
+          <div>
+            <h3>The Setup</h3>
+            <p>3-8 players join. One is secretly assigned as the <strong class="red">Murderer</strong>. Everyone else is a <strong class="teal">Detective</strong>. Only the Murderer knows who they are.</p>
+          </div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-num">2</div>
+          <div>
+            <h3>Investigation Rounds</h3>
+            <p>Each round, every player receives <strong>personal clues</strong> — evidence only they can see. Clues gradually point toward the Murderer. The Murderer gets misleading clues they can use to deflect.</p>
+          </div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-num">3</div>
+          <div>
+            <h3>Share & Discuss</h3>
+            <p>Share clues with the group, discuss in chat, and take notes. But beware — <strong class="red">the Murderer can lie</strong> and fabricate fake evidence!</p>
+          </div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-num">4</div>
+          <div>
+            <h3>Call a Meeting</h3>
+            <p>Any player can call an emergency meeting to discuss suspicions. During the meeting, someone can call a vote to accuse a player.</p>
+          </div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-num">5</div>
+          <div>
+            <h3>Vote & Guess</h3>
+            <p>If the majority votes guilty and they're right — <strong class="teal">Detectives win!</strong> But you only get <strong>3 wrong guesses</strong> total. Use them wisely.</p>
+          </div>
+        </div>
+        <div class="howto-card">
+          <div class="howto-num">6</div>
+          <div>
+            <h3>Winning</h3>
+            <p><strong class="teal">Detectives win</strong> by correctly identifying the Murderer. <strong class="red">Murderer wins</strong> if all 3 guesses are used up or the investigation runs out of rounds.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== BROWSE ROOMS ===== -->
+  <div id="screen-browse" class="screen">
+    <div class="panel">
+      <button class="back-btn" id="btn-browse-back">&larr; Back</button>
+      <h2 class="serif">Open Cases</h2>
+      <div id="rooms-list" class="rooms-list">
+        <p class="empty-msg">No open cases. Create a new one.</p>
+      </div>
+      <button id="btn-refresh-rooms" class="btn btn-ghost" style="margin-top:1rem">Refresh</button>
+    </div>
+  </div>
+
+  <!-- ===== LOBBY ===== -->
+  <div id="screen-lobby" class="screen">
+    <div class="panel lobby-panel">
+      <div class="lobby-header">
+        <div class="case-file-badge">CASE FILE</div>
+        <h2 class="serif">Room <span id="lobby-code" class="gold">----</span></h2>
+        <button id="btn-copy-code" class="btn btn-sm btn-outline" title="Copy invite link">Copy Invite</button>
+      </div>
+      <div class="lobby-divider"></div>
+      <h3 class="lobby-section-title">Detectives Present</h3>
+      <div id="player-list" class="player-list"></div>
+      <div class="lobby-footer">
+        <p id="lobby-status" class="lobby-status">Waiting for detectives... (min 3)</p>
+        <button id="btn-start-game" class="btn btn-primary btn-large" style="display:none">Begin Investigation</button>
+        <button id="btn-leave-room" class="btn btn-ghost">Leave</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CASE INTRO ===== -->
+  <div id="screen-intro" class="screen">
+    <div class="intro-overlay">
+      <div class="intro-content">
+        <div class="case-stamp">CLASSIFIED</div>
+        <h1 id="intro-case-name" class="serif"></h1>
+        <div class="intro-divider"></div>
+        <p id="intro-case-text" class="intro-text"></p>
+        <div class="intro-role-reveal">
+          <p class="intro-role-label">Your Role:</p>
+          <div id="intro-role" class="intro-role"></div>
+        </div>
+        <p id="intro-role-desc" class="intro-role-desc"></p>
+        <div class="intro-timer">Investigation begins shortly...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAME SCREEN ===== -->
+  <div id="screen-game" class="screen">
+    <!-- Top bar -->
+    <div class="game-topbar">
+      <div class="topbar-left">
+        <span class="topbar-case serif" id="topbar-case-name"></span>
+      </div>
+      <div class="topbar-center">
+        <div class="topbar-stat">
+          <span class="stat-label">Round</span>
+          <span class="stat-val" id="stat-round">1/8</span>
+        </div>
+        <div class="topbar-stat">
+          <span class="stat-label">Guesses</span>
+          <span class="stat-val" id="stat-guesses">
+            <span class="guess-dot active"></span>
+            <span class="guess-dot active"></span>
+            <span class="guess-dot active"></span>
+          </span>
+        </div>
+        <div class="topbar-stat">
+          <span class="stat-label">Role</span>
+          <span class="stat-val" id="stat-role">???</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div id="round-timer" class="round-timer"></div>
+      </div>
+    </div>
+
+    <!-- Players strip -->
+    <div class="players-strip">
+      <div id="players-bar" class="players-bar"></div>
+    </div>
+
+    <!-- Main game area - tabs -->
+    <div class="game-tabs">
+      <button class="tab active" data-tab="evidence">
+        <span class="tab-icon">&#128196;</span> My Evidence
+        <span id="evidence-badge" class="tab-badge hidden">0</span>
+      </button>
+      <button class="tab" data-tab="shared">
+        <span class="tab-icon">&#128203;</span> Shared Board
+      </button>
+      <button class="tab" data-tab="notes">
+        <span class="tab-icon">&#128221;</span> Notes
+      </button>
+      <button class="tab" data-tab="chat">
+        <span class="tab-icon">&#128172;</span> Chat
+        <span id="chat-badge" class="tab-badge hidden">0</span>
+      </button>
+    </div>
+
+    <!-- Tab content -->
+    <div class="game-content">
+      <!-- Evidence tab -->
+      <div id="tab-evidence" class="tab-panel active">
+        <div id="clue-list" class="clue-list">
+          <div class="empty-state">
+            <div class="empty-icon">&#128270;</div>
+            <p>No evidence collected yet.</p>
+            <p class="dim">New clues will arrive each round.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Shared board tab -->
+      <div id="tab-shared" class="tab-panel">
+        <div id="shared-list" class="clue-list">
+          <div class="empty-state">
+            <div class="empty-icon">&#128203;</div>
+            <p>No evidence shared yet.</p>
+            <p class="dim">Players can share their clues here for everyone to see.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes tab -->
+      <div id="tab-notes" class="tab-panel">
+        <div class="notes-area">
+          <textarea id="notes-input" placeholder="Write your personal notes here... Track suspicions, piece together clues, plan your strategy...
+
+These notes are private — only you can see them."></textarea>
+          <button id="btn-save-notes" class="btn btn-sm btn-outline">Save Notes</button>
+        </div>
+      </div>
+
+      <!-- Chat tab -->
+      <div id="tab-chat" class="tab-panel">
+        <div id="chat-messages" class="chat-messages"></div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Type message..." maxlength="300">
+          <button id="btn-chat-send" class="btn btn-sm btn-gold">Send</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom action bar -->
+    <div class="action-bar">
+      <button id="btn-call-meeting" class="btn btn-meeting">
+        <span class="btn-icon">&#128680;</span> Call Meeting
+      </button>
+      <div id="game-status" class="game-status">Investigating...</div>
+      <!-- Murderer-only: fabricate evidence -->
+      <button id="btn-fabricate" class="btn btn-fabricate hidden">
+        <span class="btn-icon">&#128065;</span> Fabricate Evidence
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== MODALS ===== -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+
+    <!-- Meeting modal -->
+    <div id="modal-meeting" class="modal hidden">
+      <div class="modal-header">
+        <div class="meeting-icon">&#128680;</div>
+        <h2 class="serif">Emergency Meeting</h2>
+      </div>
+      <p id="meeting-text" class="modal-desc"></p>
+      <div class="meeting-timer-bar">
+        <div id="meeting-timer-fill" class="timer-fill"></div>
+      </div>
+      <p id="meeting-timer-text" class="timer-text"></p>
+      <div class="meeting-actions">
+        <h3>Accuse a Player</h3>
+        <div id="meeting-targets" class="target-list"></div>
+        <p class="modal-hint">Select a player to call a vote against them, or wait for discussion to end.</p>
+      </div>
+    </div>
+
+    <!-- Vote modal -->
+    <div id="modal-vote" class="modal hidden">
+      <div class="modal-header">
+        <div class="vote-icon">&#9878;&#65039;</div>
+        <h2 class="serif">The Accusation</h2>
+      </div>
+      <p id="vote-text" class="modal-desc"></p>
+      <div class="vote-guess-warning" id="vote-guess-warning"></div>
+      <div class="vote-buttons">
+        <button id="btn-vote-guilty" class="btn btn-danger btn-large">
+          <span class="btn-icon">&#128308;</span> Guilty
+        </button>
+        <button id="btn-vote-innocent" class="btn btn-safe btn-large">
+          <span class="btn-icon">&#128994;</span> Innocent
+        </button>
+      </div>
+      <p id="vote-status" class="vote-status"></p>
+    </div>
+
+    <!-- Vote result modal -->
+    <div id="modal-vote-result" class="modal hidden">
+      <div id="vote-result-content"></div>
+      <button class="btn btn-primary modal-close">Continue</button>
+    </div>
+
+    <!-- Fabricate evidence modal (murderer only) -->
+    <div id="modal-fabricate" class="modal hidden">
+      <div class="modal-header">
+        <h2 class="serif">Fabricate Evidence</h2>
+      </div>
+      <p class="modal-desc">Create a fake clue to mislead the detectives. Choose a type and write convincing evidence.</p>
+      <select id="fake-type" class="select-input">
+        <option value="witness_statement">Witness Statement</option>
+        <option value="forensic_report">Forensic Report</option>
+        <option value="phone_record">Phone Record</option>
+        <option value="crime_scene_note">Crime Scene Note</option>
+      </select>
+      <textarea id="fake-text" class="fabricate-input" placeholder="Write your fabricated evidence..." maxlength="300"></textarea>
+      <div class="modal-actions">
+        <button id="btn-submit-fake" class="btn btn-primary">Share as Evidence</button>
+        <button class="btn btn-ghost modal-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Share clue confirm -->
+    <div id="modal-share" class="modal hidden">
+      <div class="modal-header">
+        <h2 class="serif">Share Evidence</h2>
+      </div>
+      <p class="modal-desc">Share this clue with all players?</p>
+      <div id="share-clue-preview" class="clue-preview"></div>
+      <div class="modal-actions">
+        <button id="btn-confirm-share" class="btn btn-primary">Share with Group</button>
+        <button class="btn btn-ghost modal-cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== GAME OVER ===== -->
+  <div id="screen-gameover" class="screen">
+    <div class="gameover-bg">
+      <div id="gameover-particles"></div>
+      <div class="gameover-content">
+        <div id="gameover-stamp" class="gameover-stamp"></div>
+        <h1 id="gameover-title" class="serif"></h1>
+        <p id="gameover-subtitle" class="gameover-subtitle"></p>
+        <div class="gameover-case-name" id="gameover-case"></div>
+        <div class="gameover-divider"></div>
+        <h3 class="gameover-reveal-title">Case File — Role Reveal</h3>
+        <div id="gameover-roles" class="gameover-roles"></div>
+        <button id="btn-play-again" class="btn btn-primary btn-large">New Case</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

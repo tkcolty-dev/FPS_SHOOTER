@@ -1,0 +1,13 @@
+---
+applications:
+  - name: whodunit
+    memory: 256M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node server/index.js
+    services:
+      - whodunit-redis
+      - whodunit-ai
+    env:
+      NODE_ENV: production
