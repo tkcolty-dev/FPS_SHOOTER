@@ -1,46 +1,40 @@
 /* ============================================
-   WHODUNIT CLIENT
+   WHODUNIT - COOPERATIVE MYSTERY CLIENT
    ============================================ */
 const App = (() => {
   let socket = null;
   let sessionToken = localStorage.getItem('whodunit-session');
   let roomCode = null;
   let isHost = false;
-  let myRole = null;
   let gameState = null;
-  let roundTimer = null;
-  let meetingTimer = null;
+  let elapsedInterval = null;
   let unreadChat = 0;
-  let pendingShareClueId = null;
-
-  const colors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e67e22','#e84393'];
+  let currentDocFilter = 'all';
+  let openPuzzleId = null;
+  let notesDebounce = null;
 
   function init() {
     socket = io({ transports: ['polling', 'websocket'], upgrade: true });
     bindSocket();
     bindUI();
-
     const saved = localStorage.getItem('whodunit-name');
-    if (saved) document.getElementById('player-name').value = saved;
-
+    if (saved) $('player-name').value = saved;
     const params = new URLSearchParams(window.location.search);
-    if (params.get('room')) document.getElementById('room-code-input').value = params.get('room');
+    if (params.get('room')) $('room-code-input').value = params.get('room');
   }
 
-  // ── Socket Events ──
-
+  // ---- Socket Events ----
   function bindSocket() {
     socket.on('connect', () => {
       if (sessionToken) socket.emit('register-session', { sessionToken, playerName: localStorage.getItem('whodunit-name') || '' });
     });
 
-    // Room
     socket.on('room-created', d => { sessionToken = d.sessionToken; localStorage.setItem('whodunit-session', sessionToken); });
     socket.on('room-joined', d => {
       if (d.sessionToken) { sessionToken = d.sessionToken; localStorage.setItem('whodunit-session', sessionToken); }
       roomCode = d.code;
       isHost = d.isHost;
-      document.getElementById('lobby-code').textContent = d.code;
+      $('lobby-code').textContent = d.code;
       renderPlayerList(d.players);
       updateLobbyStatus(d.players.length);
       showScreen('lobby');
@@ -51,36 +45,30 @@ const App = (() => {
       const me = d.players.find(p => p.id === socket.id);
       if (me) isHost = me.isHost;
     });
-    socket.on('room-left', () => { roomCode = null; showScreen('title'); });
+    socket.on('room-left', () => { roomCode = null; gameState = null; showScreen('title'); });
     socket.on('public-rooms', renderPublicRooms);
     socket.on('error-msg', d => toast(d.message, 'red'));
 
-    // Game
-    socket.on('game-starting', d => {
-      document.getElementById('lobby-status').textContent = d.message;
-      document.getElementById('btn-start-game').style.display = 'none';
-    });
+    // Game events
     socket.on('game-started', onGameStarted);
     socket.on('game-reconnect', onGameReconnect);
-    socket.on('round-started', onRoundStarted);
-    socket.on('new-clues', onNewClues);
-    socket.on('clue-shared', onClueShared);
-    socket.on('meeting-called', onMeetingCalled);
-    socket.on('meeting-ended', onMeetingEnded);
-    socket.on('vote-started', onVoteStarted);
-    socket.on('vote-update', onVoteUpdate);
-    socket.on('vote-result', onVoteResult);
-    socket.on('resume-investigation', onResumeInvestigation);
+    socket.on('puzzle-result', onPuzzleResult);
+    socket.on('puzzle-solved', onPuzzleSolved);
+    socket.on('hint-revealed', onHintRevealed);
+    socket.on('document-pinned', onDocumentPinned);
+    socket.on('suspicion-updated', onSuspicionUpdated);
+    socket.on('shared-notes-updated', onSharedNotesUpdated);
+    socket.on('act-complete', onActCompleted);
+    socket.on('act-started', onActStarted);
+    socket.on('accusation-result', onAccusationResult);
     socket.on('game-over', onGameOver);
-    socket.on('game-log', d => { if (gameState) gameState.log = d.log; });
     socket.on('chat-message', onChatMessage);
-    socket.on('player-disconnected', d => addSystemChat(`${d.name} disconnected`));
+    socket.on('player-disconnected', d => addSystemChat(d.name + ' disconnected'));
+    socket.on('player-reconnected', d => addSystemChat(d.name + ' reconnected'));
   }
 
-  // ── UI Bindings ──
-
+  // ---- UI Bindings ----
   function bindUI() {
-    // Title
     $('btn-create-public').addEventListener('click', () => createRoom(true));
     $('btn-create-private').addEventListener('click', () => createRoom(false));
     $('btn-join-code').addEventListener('click', joinByCode);
@@ -88,56 +76,81 @@ const App = (() => {
     $('btn-how-to-play').addEventListener('click', () => showScreen('howto'));
     $('room-code-input').addEventListener('keydown', e => { if (e.key === 'Enter') joinByCode(); });
     $('player-name').addEventListener('keydown', e => { if (e.key === 'Enter') createRoom(true); });
-
-    // How to play / Browse
     $('btn-howto-back').addEventListener('click', () => showScreen('title'));
     $('btn-browse-back').addEventListener('click', () => showScreen('title'));
     $('btn-refresh-rooms').addEventListener('click', () => socket.emit('browse-rooms'));
 
-    // Lobby
     $('btn-start-game').addEventListener('click', () => socket.emit('start-game'));
     $('btn-leave-room').addEventListener('click', () => { socket.emit('leave-room'); clearSession(); });
     $('btn-copy-code').addEventListener('click', copyInvite);
 
-    // Game tabs
+    $('btn-begin-investigation').addEventListener('click', () => { showScreen('game'); startElapsedTimer(); });
+
+    // Tabs
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
 
-    // Game actions
-    $('btn-call-meeting').addEventListener('click', () => socket.emit('call-meeting'));
-    $('btn-fabricate').addEventListener('click', () => showModal('fabricate'));
-    $('btn-save-notes').addEventListener('click', () => {
-      socket.emit('save-notes', { notes: $('notes-input').value });
-      toast('Notes saved', 'teal');
+    // Doc filters
+    document.querySelectorAll('.doc-filter').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.doc-filter').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDocFilter = btn.dataset.filter;
+        renderDocuments();
+      });
     });
+
+    // Document viewer
+    $('btn-close-doc').addEventListener('click', closeDocViewer);
+    $('btn-pin-doc').addEventListener('click', () => {
+      const docId = $('btn-pin-doc').dataset.docId;
+      if (docId) socket.emit('pin-document', { docId });
+    });
+
+    // Puzzle viewer
+    $('btn-close-puzzle').addEventListener('click', closePuzzleViewer);
+    $('btn-submit-answer').addEventListener('click', submitAnswer);
+    $('puzzle-answer-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitAnswer(); });
+    $('btn-request-hint').addEventListener('click', requestHint);
 
     // Chat
     $('btn-chat-send').addEventListener('click', sendChat);
     $('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
 
-    // Modal actions
-    document.querySelectorAll('.modal-cancel').forEach(b => b.addEventListener('click', closeModal));
-    document.querySelectorAll('.modal-close').forEach(b => b.addEventListener('click', closeModal));
+    // Notes
+    $('shared-notes').addEventListener('input', () => {
+      clearTimeout(notesDebounce);
+      notesDebounce = setTimeout(() => {
+        socket.emit('update-shared-notes', { content: $('shared-notes').value });
+      }, 500);
+    });
+    $('private-notes').addEventListener('input', () => {
+      clearTimeout(notesDebounce);
+      notesDebounce = setTimeout(() => {
+        socket.emit('save-private-notes', { content: $('private-notes').value });
+      }, 1000);
+    });
 
-    $('btn-vote-guilty').addEventListener('click', () => { socket.emit('cast-vote', { vote: 'guilty' }); disableVoteButtons(); });
-    $('btn-vote-innocent').addEventListener('click', () => { socket.emit('cast-vote', { vote: 'innocent' }); disableVoteButtons(); });
-    $('btn-submit-fake').addEventListener('click', submitFakeClue);
-    $('btn-confirm-share').addEventListener('click', confirmShareClue);
+    // Accusation
+    $('btn-submit-accusation').addEventListener('click', submitAccusation);
+    $('btn-back-to-game').addEventListener('click', () => showScreen('game'));
 
     // Game over
     $('btn-play-again').addEventListener('click', () => { socket.emit('leave-room'); clearSession(); showScreen('title'); });
   }
 
-  // ── Screens ──
-
+  // ---- Screens ----
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    $(`screen-${name}`).classList.add('active');
+    $('screen-' + name).classList.add('active');
+    // Hide overlays
+    $('doc-viewer').classList.add('hidden');
+    $('puzzle-viewer').classList.add('hidden');
+    $('screen-act-transition').classList.add('hidden');
   }
 
-  // ── Room Logic ──
-
+  // ---- Room Logic ----
   function createRoom(pub) {
     const name = getName();
     if (!name) return toast('Enter your name first!', 'red');
@@ -157,7 +170,7 @@ const App = (() => {
   function getName() { return $('player-name').value.trim(); }
 
   function copyInvite() {
-    navigator.clipboard.writeText(`${location.origin}?room=${roomCode}`).then(() => {
+    navigator.clipboard.writeText(location.origin + '?room=' + roomCode).then(() => {
       const btn = $('btn-copy-code');
       btn.textContent = 'Copied!';
       setTimeout(() => btn.textContent = 'Copy Invite', 2000);
@@ -165,34 +178,32 @@ const App = (() => {
   }
 
   function clearSession() {
-    sessionToken = null;
+    sessionToken = null; roomCode = null; gameState = null;
+    clearInterval(elapsedInterval);
     localStorage.removeItem('whodunit-session');
   }
 
   function renderPlayerList(players) {
-    $('player-list').innerHTML = players.map((p, i) => `
-      <div class="player-item">
-        <div class="player-avatar" style="background:${colors[i % colors.length]}">${esc(p.name[0]).toUpperCase()}</div>
-        <span class="player-name">${esc(p.name)}</span>
-        ${p.isHost ? '<span class="host-badge">HOST</span>' : ''}
-      </div>
-    `).join('');
+    $('player-list').innerHTML = players.map((p, i) =>
+      '<div class="player-item"><div class="player-avatar" style="background:' +
+      ['#c0392b','#2980b9','#27ae60','#d4a040','#8e44ad','#16a085','#d35400','#c0392b'][i % 8] +
+      '">' + esc(p.name[0]).toUpperCase() + '</div><span class="player-name">' + esc(p.name) + '</span>' +
+      (p.isHost ? '<span class="host-badge">HOST</span>' : '') + '</div>'
+    ).join('');
   }
 
   function updateLobbyStatus(count) {
-    $('lobby-status').textContent = count < 3 ? `Waiting for detectives... (${count}/3 minimum)` : `${count} detectives ready`;
-    $('btn-start-game').style.display = isHost && count >= 3 ? '' : 'none';
+    $('lobby-status').textContent = count + ' investigator' + (count !== 1 ? 's' : '') + ' ready';
+    $('btn-start-game').style.display = isHost ? '' : 'none';
   }
 
   function renderPublicRooms(rooms) {
     const list = $('rooms-list');
     if (!rooms.length) { list.innerHTML = '<p class="empty-msg">No open cases. Create a new one.</p>'; return; }
-    list.innerHTML = rooms.map(r => `
-      <div class="room-item">
-        <div><span class="room-host">${esc(r.host)}'s Case</span><br><span class="room-count">${r.count}/8 detectives</span></div>
-        <button class="btn btn-gold btn-sm" onclick="App.joinPublic('${r.code}')">Join</button>
-      </div>
-    `).join('');
+    list.innerHTML = rooms.map(r =>
+      '<div class="room-item"><div><span class="room-host">' + esc(r.host) + '\'s Case</span><br><span class="room-count">' + r.count + '/8 investigators</span></div>' +
+      '<button class="btn btn-gold btn-sm" onclick="App.joinPublic(\'' + r.code + '\')">Join</button></div>'
+    ).join('');
   }
 
   function joinPublic(code) {
@@ -202,268 +213,547 @@ const App = (() => {
     socket.emit('join-room', { code, name });
   }
 
-  // ── Game Handlers ──
-
+  // ---- Game Start ----
   function onGameStarted(data) {
-    myRole = data.role;
-    gameState = {
-      players: {},
-      clues: [],
-      sharedClues: [],
-      round: 0,
-      maxRounds: data.maxRounds,
-      guessesLeft: data.guessesLeft,
-      caseName: data.caseName,
-      log: [],
-      notes: ''
-    };
-    data.playerOrder.forEach((p, i) => {
-      gameState.players[p.id] = { ...p, colorIdx: i };
-    });
+    // Server sends clientCase, documents, puzzles, suspects
+    const caseData = data.clientCase || {};
+    // Merge act 1 documents/puzzles into the case acts structure
+    if (caseData.acts && caseData.acts[0]) {
+      caseData.acts[0].documents = data.documents || caseData.acts[0].documents || [];
+      caseData.acts[0].puzzles = data.puzzles || caseData.acts[0].puzzles || [];
+    }
 
-    // Show intro screen
-    $('intro-case-name').textContent = data.caseName;
-    $('intro-case-text').textContent = data.caseIntro;
-    const roleEl = $('intro-role');
-    roleEl.textContent = data.role === 'murderer' ? 'THE MURDERER' : 'DETECTIVE';
-    roleEl.className = `intro-role ${data.role}`;
-    $('intro-role-desc').textContent = data.role === 'murderer'
-      ? 'You committed the crime. Deflect suspicion, mislead the detectives, and survive the investigation. You can fabricate fake evidence to share.'
-      : 'A crime has been committed. Gather clues, share findings with your team, and identify the killer. You have 3 guesses — use them wisely.';
+    gameState = {
+      caseData: caseData,
+      currentAct: data.currentAct || 1,
+      puzzleState: {},
+      pinnedDocuments: [],
+      suspicionMarkers: {},
+      sharedNotes: '',
+      privateNotes: '',
+      stars: data.stars || 5,
+      startTime: Date.now()
+    };
+
+    // Init puzzle state
+    if (caseData.acts) {
+      caseData.acts.forEach(act => {
+        if (act.puzzles) act.puzzles.forEach(p => {
+          gameState.puzzleState[p.id] = { attempts: 0, hintsUsed: 0, solved: false, solvedBy: null };
+        });
+      });
+    }
+
+    // Show intro
+    const c = caseData;
+    $('intro-case-name').textContent = c.title;
+    $('intro-setting').textContent = c.setting;
+    $('intro-case-text').textContent = c.crimeDescription;
+    $('intro-victim').innerHTML = '<strong>Victim:</strong> ' + esc(c.victim.name) + ' -- ' + esc(c.victim.description);
+
+    $('intro-suspects').innerHTML = c.suspects.map(s =>
+      '<div class="intro-suspect-card">' +
+      '<div class="suspect-initial">' + esc(s.name[0]) + '</div>' +
+      '<div><strong>' + esc(s.name) + '</strong><br><span class="dim">' + esc(s.occupation) + '</span></div></div>'
+    ).join('');
 
     showScreen('intro');
-
-    // Auto-transition to game
-    setTimeout(() => {
-      showScreen('game');
-      setupGameUI();
-    }, 7000);
   }
 
   function onGameReconnect(data) {
     if (!data) return;
-    myRole = data.role;
     gameState = {
-      players: {},
-      clues: data.clues || [],
-      sharedClues: data.sharedClues || [],
-      round: data.round,
-      maxRounds: data.maxRounds,
-      guessesLeft: data.guessesLeft,
-      caseName: data.caseName,
-      log: data.log || [],
-      notes: data.notes || ''
+      caseData: data.caseData,
+      currentAct: data.currentAct,
+      puzzleState: data.puzzleState || {},
+      pinnedDocuments: data.pinnedDocuments || [],
+      suspicionMarkers: data.suspicionMarkers || {},
+      sharedNotes: data.sharedNotes || '',
+      privateNotes: data.privateNotes || '',
+      stars: data.stars || 5,
+      startTime: data.startTime
     };
-    data.playerOrder.forEach((pid, i) => {
-      gameState.players[pid] = { id: pid, name: data.players[pid].name, alive: data.players[pid].alive, colorIdx: i };
-    });
-
     showScreen('game');
     setupGameUI();
-    renderClues();
-    renderShared();
-    $('notes-input').value = gameState.notes;
+    startElapsedTimer();
   }
 
   function setupGameUI() {
-    $('topbar-case-name').textContent = gameState.caseName;
-    renderPlayersBar();
+    if (!gameState || !gameState.caseData) return;
+    $('topbar-case-name').textContent = gameState.caseData.title;
     updateStats();
-    renderClues();
-    renderShared();
-
-    // Show/hide murderer fabricate button
-    $('btn-fabricate').classList.toggle('hidden', myRole !== 'murderer');
-
-    // Role display
-    const roleEl = $('stat-role');
-    roleEl.textContent = myRole === 'murderer' ? 'MURDERER' : 'DETECTIVE';
-    roleEl.style.color = myRole === 'murderer' ? 'var(--crimson)' : 'var(--teal)';
+    renderDocuments();
+    renderPuzzles();
+    renderSuspects();
+    $('shared-notes').value = gameState.sharedNotes;
+    $('private-notes').value = gameState.privateNotes;
   }
 
-  function onRoundStarted(data) {
-    if (gameState) {
-      gameState.round = data.round;
-      gameState.maxRounds = data.maxRounds;
-      gameState.guessesLeft = data.guessesLeft;
-    }
-    updateStats();
-    $('game-status').textContent = `Round ${data.round} — Investigating...`;
-    $('btn-call-meeting').disabled = false;
+  // ---- Documents ----
+  function renderDocuments() {
+    if (!gameState || !gameState.caseData) return;
+    const list = $('document-list');
+    let docs = [];
 
-    // Start round timer
-    startTimer(data.duration);
-    toast(`Round ${data.round} — New evidence available`, 'gold');
-  }
-
-  function onNewClues(data) {
-    if (!gameState) return;
-    gameState.clues = data.clues;
-    renderClues();
-
-    if (data.newCount > 0) {
-      // Show badge on evidence tab
-      const badge = $('evidence-badge');
-      badge.textContent = data.newCount;
-      badge.classList.remove('hidden');
-
-      // Auto-switch to evidence tab if not already there
-      const activeTab = document.querySelector('.tab.active');
-      if (activeTab && activeTab.dataset.tab !== 'evidence') {
-        // Just show badge, don't force switch
+    gameState.caseData.acts.forEach((act, i) => {
+      if (i + 1 <= gameState.currentAct && act.documents) {
+        act.documents.forEach(d => docs.push({ ...d, actNum: i + 1 }));
       }
-    }
-  }
-
-  function onClueShared(data) {
-    if (!gameState) return;
-    gameState.sharedClues = data.allShared;
-    renderShared();
-    addSystemChat(`${data.sharedBy} shared evidence with the group`);
-  }
-
-  function onMeetingCalled(data) {
-    closeModal();
-    $('btn-call-meeting').disabled = true;
-    $('game-status').textContent = 'Emergency Meeting!';
-    clearInterval(roundTimer);
-
-    $('meeting-text').innerHTML = `<strong>${esc(data.callerName)}</strong> called an emergency meeting. Discuss your findings and decide — should you accuse someone?`;
-
-    // Render targets
-    const targets = $('meeting-targets');
-    const myId = socket.id;
-    targets.innerHTML = Object.entries(gameState.players)
-      .filter(([id, p]) => p.alive && id !== myId)
-      .map(([id, p]) => `<button class="target-btn" data-id="${id}">${esc(p.name)}</button>`)
-      .join('');
-
-    targets.querySelectorAll('.target-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        socket.emit('call-vote', { targetId: btn.dataset.id });
-      });
     });
 
-    // Meeting timer
-    startMeetingTimer(data.duration);
-    showModal('meeting');
-    toast('Emergency meeting called!', 'red');
-  }
-
-  function onMeetingEnded(data) {
-    closeModal();
-    $('game-status').textContent = 'Investigating...';
-    $('btn-call-meeting').disabled = false;
-    clearInterval(meetingTimer);
-  }
-
-  function onVoteStarted(data) {
-    closeModal();
-
-    $('vote-text').innerHTML = `<strong>${esc(data.accuserName)}</strong> accuses <strong style="color:var(--crimson)">${esc(data.targetName)}</strong> of being the murderer!`;
-    $('vote-guess-warning').textContent = `${data.guessesLeft} guess${data.guessesLeft !== 1 ? 'es' : ''} remaining. If wrong, this uses one.`;
-    $('vote-status').textContent = 'Cast your vote...';
-
-    $('btn-vote-guilty').disabled = false;
-    $('btn-vote-innocent').disabled = false;
-
-    showModal('vote');
-  }
-
-  function onVoteUpdate(data) {
-    $('vote-status').textContent = `Votes: ${data.votesIn}/${data.votesNeeded}`;
-  }
-
-  function onVoteResult(data) {
-    closeModal();
-    const content = $('vote-result-content');
-
-    if (!data.passed) {
-      content.innerHTML = `
-        <div class="vote-icon">&#9878;&#65039;</div>
-        <h2 class="serif" style="color:var(--text-dim)">Vote Failed</h2>
-        <p>Not enough votes to convict <strong>${esc(data.targetName)}</strong>.</p>
-        <p class="dim" style="margin-top:0.5rem">Guilty: ${data.guilty} | Innocent: ${data.innocent}</p>
-      `;
-    } else if (data.correct) {
-      content.innerHTML = `
-        <div style="font-size:3rem">&#9878;&#65039;</div>
-        <h2 class="serif" style="color:var(--teal)">CASE SOLVED!</h2>
-        <p><strong style="color:var(--crimson)">${esc(data.targetName)}</strong> was the murderer!</p>
-      `;
-    } else {
-      content.innerHTML = `
-        <div style="font-size:3rem">&#10060;</div>
-        <h2 class="serif" style="color:var(--crimson)">Wrong Accusation</h2>
-        <p><strong>${esc(data.targetName)}</strong> was <span class="teal">innocent</span>.</p>
-        <p style="margin-top:0.75rem;font-size:0.95rem"><strong>${data.guessesLeft}</strong> guess${data.guessesLeft !== 1 ? 'es' : ''} remaining.</p>
-      `;
+    // Apply filter
+    if (currentDocFilter === 'pinned') {
+      docs = docs.filter(d => gameState.pinnedDocuments.includes(d.id));
+    } else if (currentDocFilter !== 'all') {
+      docs = docs.filter(d => d.actNum === parseInt(currentDocFilter));
     }
 
-    if (gameState) gameState.guessesLeft = data.guessesLeft;
+    if (!docs.length) {
+      list.innerHTML = '<div class="empty-state"><p class="typewriter">No documents match this filter.</p></div>';
+      return;
+    }
+
+    list.innerHTML = docs.map(d => {
+      const pinned = gameState.pinnedDocuments.includes(d.id);
+      return '<div class="doc-card ' + (pinned ? 'pinned' : '') + '" data-doc-id="' + d.id + '">' +
+        '<div class="doc-card-clip"></div>' +
+        '<div class="doc-card-inner">' +
+        '<div class="doc-card-header">' +
+        '<span class="doc-type-badge">' + esc(formatDocType(d.type)) + '</span>' +
+        '<span class="doc-act-badge">Act ' + d.actNum + '</span>' +
+        '</div>' +
+        '<h4 class="doc-card-title">' + esc(d.title) + '</h4>' +
+        '<p class="doc-card-preview">' + esc(d.content.substring(0, 120)) + '...</p>' +
+        (pinned ? '<span class="pin-indicator">PINNED</span>' : '') +
+        '</div></div>';
+    }).join('');
+
+    list.querySelectorAll('.doc-card').forEach(card => {
+      card.addEventListener('click', () => openDocument(card.dataset.docId));
+    });
+  }
+
+  function openDocument(docId) {
+    if (!gameState) return;
+    let doc = null;
+    gameState.caseData.acts.forEach(act => {
+      if (act.documents) act.documents.forEach(d => { if (d.id === docId) doc = d; });
+    });
+    if (!doc) return;
+
+    $('doc-viewer-type').textContent = formatDocType(doc.type);
+    $('doc-viewer-title').textContent = doc.title;
+    $('doc-viewer-meta').textContent = (doc.author ? 'By ' + doc.author : '') + (doc.date ? ' -- ' + doc.date : '');
+    $('doc-viewer-body').innerHTML = esc(doc.content).replace(/\n/g, '<br>');
+    $('btn-pin-doc').dataset.docId = docId;
+    $('btn-pin-doc').textContent = gameState.pinnedDocuments.includes(docId) ? 'Unpin' : 'Pin to Board';
+    $('doc-viewer').classList.remove('hidden');
+  }
+
+  function closeDocViewer() { $('doc-viewer').classList.add('hidden'); }
+
+  function onDocumentPinned(data) {
+    if (!gameState) return;
+    if (data.pinned) {
+      if (!gameState.pinnedDocuments.includes(data.docId)) gameState.pinnedDocuments.push(data.docId);
+    } else {
+      gameState.pinnedDocuments = gameState.pinnedDocuments.filter(id => id !== data.docId);
+    }
+    renderDocuments();
+    if (!$('doc-viewer').classList.contains('hidden')) {
+      $('btn-pin-doc').textContent = data.pinned ? 'Unpin' : 'Pin to Board';
+    }
+  }
+
+  function formatDocType(type) {
+    const types = {
+      witness_statement: 'Witness Statement', forensic_report: 'Forensic Report',
+      letter: 'Letter', newspaper_clipping: 'Newspaper Clipping',
+      photograph: 'Photograph', map: 'Map', diary_entry: 'Diary Entry',
+      financial_record: 'Financial Record', phone_record: 'Phone Record'
+    };
+    return types[type] || 'Document';
+  }
+
+  // ---- Puzzles ----
+  function renderPuzzles() {
+    if (!gameState || !gameState.caseData) return;
+    const list = $('puzzle-list');
+    let puzzles = [];
+
+    gameState.caseData.acts.forEach((act, i) => {
+      if (i + 1 <= gameState.currentAct && act.puzzles) {
+        puzzles.push({ actTitle: 'Act ' + (i + 1) + ': ' + act.title, items: act.puzzles, actNum: i + 1 });
+      }
+    });
+
+    if (!puzzles.length) {
+      list.innerHTML = '<div class="empty-state"><p class="typewriter">No puzzles available yet.</p></div>';
+      return;
+    }
+
+    list.innerHTML = puzzles.map(group =>
+      '<h3 class="puzzle-group-title">' + esc(group.actTitle) + '</h3>' +
+      group.items.map(p => {
+        const state = gameState.puzzleState[p.id] || {};
+        const solved = state.solved;
+        return '<div class="puzzle-card ' + (solved ? 'solved' : '') + '" data-puzzle-id="' + p.id + '" data-act="' + group.actNum + '">' +
+          '<div class="puzzle-card-inner">' +
+          '<div class="puzzle-card-header">' +
+          '<span class="puzzle-type-badge">' + esc(formatPuzzleType(p.type)) + '</span>' +
+          (solved ? '<span class="puzzle-solved-badge">SOLVED</span>' : '<span class="puzzle-difficulty">' + (p.difficulty || 'medium').toUpperCase() + '</span>') +
+          '</div>' +
+          '<h4 class="puzzle-card-title">' + esc(p.title) + '</h4>' +
+          '<p class="puzzle-card-desc">' + esc(p.description.substring(0, 100)) + (p.description.length > 100 ? '...' : '') + '</p>' +
+          (solved && state.solvedBy ? '<span class="puzzle-solved-by">Solved by ' + esc(state.solvedBy) + '</span>' : '') +
+          '</div></div>';
+      }).join('')
+    ).join('');
+
+    list.querySelectorAll('.puzzle-card:not(.solved)').forEach(card => {
+      card.addEventListener('click', () => openPuzzle(card.dataset.puzzleId, parseInt(card.dataset.act)));
+    });
+
     updateStats();
-    showModal('vote-result');
   }
 
-  function onResumeInvestigation(data) {
-    closeModal();
-    $('game-status').textContent = 'Investigating...';
-    $('btn-call-meeting').disabled = false;
-    startTimer(45000);
+  function openPuzzle(puzzleId, actNum) {
+    if (!gameState) return;
+    let puzzle = null;
+    gameState.caseData.acts.forEach(act => {
+      if (act.puzzles) act.puzzles.forEach(p => { if (p.id === puzzleId) puzzle = p; });
+    });
+    if (!puzzle) return;
+    openPuzzleId = puzzleId;
+
+    $('puzzle-viewer-type').textContent = formatPuzzleType(puzzle.type);
+    $('puzzle-viewer-title').textContent = puzzle.title;
+    $('puzzle-viewer-desc').innerHTML = esc(puzzle.description).replace(/\n/g, '<br>');
+
+    // Render puzzle-specific data
+    const dataEl = $('puzzle-viewer-data');
+    if (puzzle.puzzleData) {
+      if (puzzle.type === 'cipher' && puzzle.puzzleData.cipherText) {
+        dataEl.innerHTML = '<div class="cipher-box"><span class="cipher-label">ENCODED MESSAGE:</span><div class="cipher-text">' + esc(puzzle.puzzleData.cipherText) + '</div></div>';
+      } else if (puzzle.puzzleData.question) {
+        dataEl.innerHTML = '<div class="puzzle-question">' + esc(puzzle.puzzleData.question) + '</div>';
+      } else {
+        dataEl.innerHTML = '';
+      }
+    } else {
+      dataEl.innerHTML = '';
+    }
+
+    // Show hints that have been revealed
+    const state = gameState.puzzleState[puzzleId] || {};
+    renderPuzzleHints(puzzleId);
+
+    $('puzzle-answer-input').value = '';
+    $('puzzle-feedback').innerHTML = '';
+    $('btn-submit-answer').disabled = false;
+    $('puzzle-answer-area').classList.remove('hidden');
+    $('btn-request-hint').classList.remove('hidden');
+    $('puzzle-viewer').classList.remove('hidden');
   }
 
+  function closePuzzleViewer() {
+    $('puzzle-viewer').classList.add('hidden');
+    openPuzzleId = null;
+  }
+
+  function submitAnswer() {
+    if (!openPuzzleId) return;
+    const answer = $('puzzle-answer-input').value.trim();
+    if (!answer) return toast('Enter an answer', 'red');
+    socket.emit('submit-answer', { puzzleId: openPuzzleId, answer });
+  }
+
+  function requestHint() {
+    if (!openPuzzleId) return;
+    socket.emit('request-hint', { puzzleId: openPuzzleId });
+  }
+
+  function onPuzzleResult(data) {
+    if (!gameState) return;
+    if (gameState.puzzleState[data.puzzleId]) {
+      gameState.puzzleState[data.puzzleId].attempts = data.attempts;
+    }
+    if (data.puzzleId === openPuzzleId) {
+      $('puzzle-feedback').innerHTML = '<div class="feedback-wrong">' + esc(data.message || 'Incorrect. Try again.') + ' (Attempt ' + data.attempts + ')</div>';
+    }
+    renderPuzzleHints(data.puzzleId);
+  }
+
+  function onPuzzleSolved(data) {
+    if (!gameState) return;
+    if (gameState.puzzleState[data.puzzleId]) {
+      gameState.puzzleState[data.puzzleId].solved = true;
+      gameState.puzzleState[data.puzzleId].solvedBy = data.solvedBy;
+    }
+
+    // Add unlocked document if any
+    if (data.unlockedDoc) {
+      gameState.caseData.acts.forEach(act => {
+        if (act.documents && !act.documents.find(d => d.id === data.unlockedDoc.id)) {
+          act.documents.push(data.unlockedDoc);
+        }
+      });
+    }
+
+    const solverName = data.solvedByName || data.solvedBy || 'someone';
+
+    if (data.puzzleId === openPuzzleId) {
+      $('puzzle-feedback').innerHTML = '<div class="feedback-correct"><strong>CORRECT!</strong> ' + esc(data.revealText || '') + '</div>';
+      $('puzzle-answer-area').classList.add('hidden');
+      $('btn-request-hint').classList.add('hidden');
+    }
+
+    renderPuzzles();
+    renderDocuments();
+    toast('Puzzle solved by ' + solverName + '!', 'teal');
+    addSystemChat('PUZZLE SOLVED: "' + (data.puzzleTitle || data.puzzleId) + '" solved by ' + solverName);
+  }
+
+  function onHintRevealed(data) {
+    if (!gameState) return;
+    if (gameState.puzzleState[data.puzzleId]) {
+      gameState.puzzleState[data.puzzleId].hintsUsed = data.hintIndex + 1;
+    }
+    gameState.stars = Math.max(1, (gameState.stars || 5) - 1);
+    updateStats();
+    renderPuzzleHints(data.puzzleId);
+    if (data.puzzleId === openPuzzleId) {
+      toast('Hint revealed', 'gold');
+    }
+  }
+
+  function renderPuzzleHints(puzzleId) {
+    if (!gameState) return;
+    const state = gameState.puzzleState[puzzleId] || {};
+    let puzzle = null;
+    gameState.caseData.acts.forEach(act => {
+      if (act.puzzles) act.puzzles.forEach(p => { if (p.id === puzzleId) puzzle = p; });
+    });
+    if (!puzzle || puzzleId !== openPuzzleId) return;
+
+    const hintsEl = $('puzzle-hints');
+    const hintsUsed = state.hintsUsed || 0;
+    if (!puzzle.hints || !puzzle.hints.length || hintsUsed === 0) {
+      hintsEl.innerHTML = '';
+      return;
+    }
+    hintsEl.innerHTML = puzzle.hints.slice(0, hintsUsed).map((h, i) =>
+      '<div class="hint-card"><span class="hint-label">HINT ' + (i + 1) + ':</span> ' + esc(h) + '</div>'
+    ).join('');
+  }
+
+  function formatPuzzleType(type) {
+    const types = {
+      cipher: 'Cipher', contradiction: 'Contradiction',
+      cross_reference: 'Cross-Reference', timeline: 'Timeline',
+      word_search: 'Hidden Message', map_analysis: 'Map Analysis',
+      logic_grid: 'Logic Puzzle'
+    };
+    return types[type] || 'Puzzle';
+  }
+
+  // ---- Suspects ----
+  function renderSuspects() {
+    if (!gameState || !gameState.caseData || !gameState.caseData.suspects) return;
+    const list = $('suspect-list');
+    list.innerHTML = gameState.caseData.suspects.map(s => {
+      const markers = gameState.suspicionMarkers || {};
+      const myMarker = markers[socket.id] && markers[socket.id][s.id];
+      return '<div class="suspect-card">' +
+        '<div class="suspect-card-inner">' +
+        '<div class="suspect-header">' +
+        '<span class="suspect-name">' + esc(s.name) + '</span>' +
+        '<span class="suspect-occupation">' + esc(s.occupation) + '</span>' +
+        '</div>' +
+        '<div class="suspect-details">' +
+        '<div class="suspect-field"><span class="suspect-label">RELATIONSHIP:</span> ' + esc(s.relationship) + '</div>' +
+        '<div class="suspect-field"><span class="suspect-label">ALIBI:</span> ' + esc(s.alibi) + '</div>' +
+        '</div>' +
+        '<div class="suspicion-flags">' +
+        '<button class="flag-btn ' + (myMarker === 'green' ? 'active' : '') + '" data-suspect="' + s.id + '" data-marker="green" title="Cleared">Clear</button>' +
+        '<button class="flag-btn flag-yellow ' + (myMarker === 'yellow' ? 'active' : '') + '" data-suspect="' + s.id + '" data-marker="yellow" title="Suspicious">Maybe</button>' +
+        '<button class="flag-btn flag-red ' + (myMarker === 'red' ? 'active' : '') + '" data-suspect="' + s.id + '" data-marker="red" title="Prime Suspect">Suspect</button>' +
+        '</div>' +
+        '</div></div>';
+    }).join('');
+
+    list.querySelectorAll('.flag-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        socket.emit('update-suspicion', { suspectId: btn.dataset.suspect, marker: btn.dataset.marker });
+      });
+    });
+  }
+
+  function onSuspicionUpdated(data) {
+    if (!gameState) return;
+    if (!gameState.suspicionMarkers) gameState.suspicionMarkers = {};
+    if (!gameState.suspicionMarkers[data.playerId]) gameState.suspicionMarkers[data.playerId] = {};
+    gameState.suspicionMarkers[data.playerId][data.suspectId] = data.marker;
+    renderSuspects();
+  }
+
+  // ---- Notes ----
+  function onSharedNotesUpdated(data) {
+    if (!gameState) return;
+    gameState.sharedNotes = data.content;
+    if (document.activeElement !== $('shared-notes')) {
+      $('shared-notes').value = data.content;
+    }
+  }
+
+  // ---- Acts ----
+  function onActCompleted(data) {
+    if (!gameState) return;
+    $('act-transition-title').textContent = 'Act ' + data.actNumber + ' Complete';
+    $('act-transition-text').textContent = 'New evidence has been uncovered. Continue your investigation.';
+
+    if (data.allActsComplete) {
+      $('btn-next-act').textContent = 'Make Your Accusation';
+      $('btn-next-act').onclick = () => {
+        $('screen-act-transition').classList.add('hidden');
+        showAccusation();
+      };
+    } else {
+      const next = data.nextAct || data.actNumber + 1;
+      $('btn-next-act').textContent = 'Continue to Act ' + next;
+      $('btn-next-act').onclick = () => {
+        $('screen-act-transition').classList.add('hidden');
+        socket.emit('proceed-to-act', { actNumber: next });
+      };
+    }
+    $('screen-act-transition').classList.remove('hidden');
+    toast('Act ' + data.actNumber + ' complete!', 'gold');
+  }
+
+  function onActStarted(data) {
+    if (!gameState) return;
+    gameState.currentAct = data.actNumber;
+
+    // Add new documents and puzzles to case data
+    if (data.documents) {
+      const act = gameState.caseData.acts[data.actNumber - 1];
+      if (act) act.documents = data.documents;
+    }
+    if (data.puzzles) {
+      const act = gameState.caseData.acts[data.actNumber - 1];
+      if (act) {
+        act.puzzles = data.puzzles;
+        data.puzzles.forEach(p => {
+          if (!gameState.puzzleState[p.id]) {
+            gameState.puzzleState[p.id] = { attempts: 0, hintsUsed: 0, solved: false, solvedBy: null };
+          }
+        });
+      }
+    }
+
+    renderDocuments();
+    renderPuzzles();
+    updateStats();
+    switchTab('documents');
+    toast('Act ' + data.actNumber + ' -- New evidence available!', 'gold');
+    addSystemChat('--- ACT ' + data.actNumber + ' UNLOCKED ---');
+  }
+
+  // ---- Accusation ----
+  function showAccusation() {
+    if (!gameState || !gameState.caseData) return;
+    const suspectSelect = $('accuse-suspect');
+    suspectSelect.innerHTML = '<option value="">Select suspect...</option>' +
+      gameState.caseData.suspects.map(s => '<option value="' + s.id + '">' + esc(s.name) + '</option>').join('');
+
+    const motives = ['Inheritance', 'Revenge', 'Blackmail', 'Jealousy', 'Cover-up', 'Financial gain', 'Self-defense', 'Betrayal'];
+    const motiveSelect = $('accuse-motive');
+    motiveSelect.innerHTML = '<option value="">Select motive...</option>' +
+      motives.map(m => '<option value="' + m.toLowerCase() + '">' + m + '</option>').join('');
+
+    showScreen('accusation');
+  }
+
+  function submitAccusation() {
+    const suspectId = $('accuse-suspect').value;
+    const motive = $('accuse-motive').value;
+    if (!suspectId || !motive) return toast('Select both a suspect and a motive', 'red');
+    socket.emit('submit-accusation', { suspectId, motive });
+  }
+
+  function onAccusationResult(data) {
+    // Handled by game-over event
+  }
+
+  // ---- Game Over ----
   function onGameOver(data) {
-    closeModal();
-    clearInterval(roundTimer);
-    clearInterval(meetingTimer);
-
+    clearInterval(elapsedInterval);
     const stamp = $('gameover-stamp');
     const title = $('gameover-title');
 
-    if (data.winner === 'detectives') {
+    if (data.correctSuspect) {
       stamp.textContent = 'CASE CLOSED';
       stamp.className = 'gameover-stamp solved';
-      title.textContent = 'Justice Prevails';
+      title.textContent = 'Case Solved!';
       title.style.color = 'var(--teal)';
       spawnConfetti();
     } else {
-      stamp.textContent = 'COLD CASE';
+      stamp.textContent = 'CASE CLOSED';
       stamp.className = 'gameover-stamp unsolved';
-      title.textContent = 'The Killer Escapes';
+      title.textContent = 'Close, But Not Quite';
       title.style.color = 'var(--crimson)';
     }
 
-    $('gameover-subtitle').textContent = data.reason;
-    $('gameover-case').textContent = data.caseName || '';
+    $('gameover-subtitle').textContent = data.explanation || '';
 
-    $('gameover-roles').innerHTML = Object.entries(data.roles).map(([id, p]) => `
-      <div class="role-reveal">
-        <span class="role-name">${esc(p.name)}</span>
-        <span class="role-tag ${p.role}">${p.role === 'murderer' ? 'MURDERER' : 'DETECTIVE'}</span>
-      </div>
-    `).join('');
+    // Stars
+    const stars = data.stars || 3;
+    $('gameover-stars').innerHTML = '';
+    for (let i = 0; i < 5; i++) {
+      const star = document.createElement('span');
+      star.className = 'star ' + (i < stars ? 'active' : '');
+      star.textContent = '*';
+      $('gameover-stars').appendChild(star);
+    }
+
+    // Find suspect name from ID
+    let killerName = data.actualCulpritId || '';
+    if (gameState && gameState.caseData && gameState.caseData.suspects) {
+      const s = gameState.caseData.suspects.find(s => s.id === data.actualCulpritId);
+      if (s) killerName = s.name;
+    }
+
+    // Solution
+    $('gameover-solution').innerHTML =
+      '<h3 class="solution-title">The Truth</h3>' +
+      '<p><strong>The Killer:</strong> ' + esc(killerName) + '</p>' +
+      '<p><strong>The Motive:</strong> ' + esc(data.actualMotive || '') + '</p>';
+
+    // Stats
+    const elapsed = data.elapsed ? Math.floor(data.elapsed / 60000) : 0;
+    $('gameover-stats').innerHTML =
+      '<div class="stat-row"><span>Time:</span><span>' + elapsed + ' minutes</span></div>' +
+      '<div class="stat-row"><span>Hints Used:</span><span>' + (data.hintsUsed || 0) + '</span></div>' +
+      '<div class="stat-row"><span>Wrong Answers:</span><span>' + (data.wrongAttempts || 0) + '</span></div>';
 
     showScreen('gameover');
   }
 
-  // ── Chat ──
-
+  // ---- Chat ----
   function onChatMessage(data) {
     const msgs = $('chat-messages');
     const el = document.createElement('div');
     el.className = 'chat-msg';
     const time = new Date(data.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    el.innerHTML = `<span class="chat-name">${esc(data.name)}:</span> ${esc(data.message)} <span class="chat-time">${time}</span>`;
+    el.innerHTML = '<span class="chat-name">' + esc(data.name) + ':</span> ' + esc(data.message) + ' <span class="chat-time">' + time + '</span>';
     msgs.appendChild(el);
     msgs.scrollTop = msgs.scrollHeight;
 
-    // Badge if not on chat tab
     const chatTab = document.querySelector('[data-tab="chat"]');
     if (!chatTab.classList.contains('active')) {
       unreadChat++;
-      const badge = $('chat-badge');
-      badge.textContent = unreadChat;
-      badge.classList.remove('hidden');
+      $('chat-badge').textContent = unreadChat;
+      $('chat-badge').classList.remove('hidden');
     }
   }
 
@@ -484,170 +774,59 @@ const App = (() => {
     input.value = '';
   }
 
-  // ── Rendering ──
-
-  function renderPlayersBar() {
-    if (!gameState) return;
-    const bar = $('players-bar');
-    const myId = socket.id;
-    bar.innerHTML = Object.entries(gameState.players).map(([id, p]) => `
-      <div class="player-chip ${id === myId ? 'is-you' : ''}">
-        <div class="chip-dot" style="background:${colors[p.colorIdx % colors.length]}"></div>
-        <span>${esc(p.name)}${id === myId ? ' (you)' : ''}</span>
-      </div>
-    `).join('');
-  }
-
-  function renderClues() {
-    if (!gameState) return;
-    const list = $('clue-list');
-    if (!gameState.clues.length) {
-      list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128270;</div><p>No evidence collected yet.</p><p class="dim">New clues will arrive each round.</p></div>';
-      return;
-    }
-    // Reverse so newest is on top
-    list.innerHTML = [...gameState.clues].reverse().map(c => renderClueCard(c, true)).join('');
-
-    // Bind share buttons
-    list.querySelectorAll('.clue-share-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        pendingShareClueId = btn.dataset.clueId;
-        const clue = gameState.clues.find(c => c.id === pendingShareClueId);
-        if (clue) {
-          $('share-clue-preview').innerHTML = `<strong style="font-size:0.72rem;color:var(--ink-dim)">${esc(clue.title || clue.type)}</strong><br>${esc(clue.text)}`;
-          showModal('share');
-        }
-      });
-    });
-  }
-
-  function renderShared() {
-    if (!gameState) return;
-    const list = $('shared-list');
-    if (!gameState.sharedClues.length) {
-      list.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128203;</div><p>No evidence shared yet.</p><p class="dim">Players can share their clues here for everyone to see.</p></div>';
-      return;
-    }
-    list.innerHTML = [...gameState.sharedClues].reverse().map(c => renderClueCard(c, false, c.sharedBy)).join('');
-  }
-
-  function renderClueCard(clue, showShareBtn, sharedBy) {
-    return `
-      <div class="clue-card ${sharedBy ? 'shared-clue' : ''}">
-        <div class="clue-card-header">
-          <span class="clue-type-badge">${esc(clue.title || clue.type || 'Evidence')}</span>
-          <span class="clue-round-badge">Round ${clue.round || '?'}</span>
-        </div>
-        <div class="clue-text">${esc(clue.text)}</div>
-        ${sharedBy ? `<div class="clue-shared-by">Shared by ${esc(sharedBy)}</div>` : ''}
-        ${showShareBtn ? `<div class="clue-actions"><button class="clue-share-btn" data-clue-id="${clue.id}">Share with Group</button></div>` : ''}
-      </div>
-    `;
-  }
-
+  // ---- Stats ----
   function updateStats() {
     if (!gameState) return;
-    $('stat-round').textContent = `${gameState.round}/${gameState.maxRounds}`;
-
-    const dots = $('stat-guesses');
-    dots.innerHTML = '';
-    for (let i = 0; i < 3; i++) {
-      const dot = document.createElement('span');
-      dot.className = `guess-dot ${i < gameState.guessesLeft ? 'active' : ''}`;
-      dots.appendChild(dot);
+    $('stat-act').textContent = gameState.currentAct + '/3';
+    $('stat-stars').textContent = '';
+    for (let i = 0; i < 5; i++) {
+      const s = document.createElement('span');
+      s.className = 'star-sm ' + (i < (gameState.stars || 5) ? 'active' : '');
+      s.textContent = '*';
+      $('stat-stars').appendChild(s);
     }
+
+    // Progress: puzzles solved in current act
+    let total = 0, solved = 0;
+    if (gameState.caseData && gameState.caseData.acts) {
+      const act = gameState.caseData.acts[gameState.currentAct - 1];
+      if (act && act.puzzles) {
+        total = act.puzzles.length;
+        act.puzzles.forEach(p => { if (gameState.puzzleState[p.id] && gameState.puzzleState[p.id].solved) solved++; });
+      }
+    }
+    $('stat-progress').textContent = solved + '/' + total;
   }
 
-  // ── Tabs ──
-
+  // ---- Tabs ----
   function switchTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
-
-    if (name === 'evidence') $('evidence-badge').classList.add('hidden');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
     if (name === 'chat') { unreadChat = 0; $('chat-badge').classList.add('hidden'); }
   }
 
-  // ── Modals ──
-
-  function showModal(name) {
-    const overlay = $('modal-overlay');
-    overlay.classList.remove('hidden');
-    overlay.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
-    $(`modal-${name}`).classList.remove('hidden');
-  }
-
-  function closeModal() {
-    $('modal-overlay').classList.add('hidden');
-    $('modal-overlay').querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
-  }
-
-  function disableVoteButtons() {
-    $('btn-vote-guilty').disabled = true;
-    $('btn-vote-innocent').disabled = true;
-    $('vote-status').textContent = 'Vote cast — waiting for others...';
-  }
-
-  function submitFakeClue() {
-    const text = $('fake-text').value.trim();
-    const type = $('fake-type').value;
-    if (!text) return toast('Write some fake evidence first', 'red');
-    socket.emit('fake-clue', { text, clueType: type });
-    $('fake-text').value = '';
-    closeModal();
-    toast('Fake evidence planted!', 'gold');
-  }
-
-  function confirmShareClue() {
-    if (pendingShareClueId) {
-      socket.emit('share-clue', { clueId: pendingShareClueId });
-      pendingShareClueId = null;
+  // ---- Timer ----
+  function startElapsedTimer() {
+    clearInterval(elapsedInterval);
+    const start = gameState ? gameState.startTime : Date.now();
+    function update() {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const m = Math.floor(elapsed / 60);
+      const s = elapsed % 60;
+      $('elapsed-timer').textContent = m + ':' + s.toString().padStart(2, '0');
     }
-    closeModal();
+    update();
+    elapsedInterval = setInterval(update, 1000);
   }
 
-  // ── Timers ──
-
-  function startTimer(ms) {
-    clearInterval(roundTimer);
-    let remaining = Math.floor(ms / 1000);
-    const el = $('round-timer');
-    el.textContent = formatTime(remaining);
-    roundTimer = setInterval(() => {
-      remaining--;
-      el.textContent = remaining > 0 ? formatTime(remaining) : '';
-      if (remaining <= 0) clearInterval(roundTimer);
-    }, 1000);
-  }
-
-  function startMeetingTimer(ms) {
-    clearInterval(meetingTimer);
-    let remaining = Math.floor(ms / 1000);
-    const fill = $('meeting-timer-fill');
-    const text = $('meeting-timer-text');
-    fill.style.width = '100%';
-    text.textContent = formatTime(remaining);
-    meetingTimer = setInterval(() => {
-      remaining--;
-      fill.style.width = (remaining / (ms / 1000) * 100) + '%';
-      text.textContent = remaining > 0 ? formatTime(remaining) : 'Time!';
-      if (remaining <= 0) clearInterval(meetingTimer);
-    }, 1000);
-  }
-
-  function formatTime(s) {
-    const m = Math.floor(s / 60);
-    return `${m}:${(s % 60).toString().padStart(2, '0')}`;
-  }
-
-  // ── Helpers ──
-
+  // ---- Helpers ----
   function $(id) { return document.getElementById(id); }
   function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
-  function toast(msg, color = 'gold') {
+  function toast(msg, color) {
+    color = color || 'gold';
     const el = document.createElement('div');
-    el.className = `toast toast-${color}`;
+    el.className = 'toast toast-' + color;
     el.textContent = msg;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3000);
@@ -656,14 +835,14 @@ const App = (() => {
   function spawnConfetti() {
     const c = document.createElement('div');
     c.className = 'confetti-container';
-    const confettiColors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c','#ffc107','#e84393'];
+    const cols = ['#c0392b','#2980b9','#27ae60','#d4a040','#8e44ad','#16a085'];
     for (let i = 0; i < 80; i++) {
       const p = document.createElement('div');
       p.className = 'confetti-piece';
       p.style.left = Math.random() * 100 + '%';
       p.style.animationDelay = Math.random() * 2 + 's';
       p.style.animationDuration = (2.5 + Math.random() * 2) + 's';
-      p.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+      p.style.background = cols[Math.floor(Math.random() * cols.length)];
       p.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
       p.style.width = (6 + Math.random() * 6) + 'px';
       p.style.height = p.style.width;
@@ -674,6 +853,5 @@ const App = (() => {
   }
 
   document.addEventListener('DOMContentLoaded', init);
-
-  return { joinPublic, showError: msg => toast(msg, 'red') };
+  return { joinPublic };
 })();
