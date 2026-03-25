@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sea of Thieves – Board Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #0d1b2a;
+  font-family: 'Cinzel', serif;
+  color: #3b2a1a;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+#setupScreen, #gameScreen, #winOverlay {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+}
+#setupScreen.active, #gameScreen.active { display: flex; }
+#winOverlay.active { display: flex; }
+#setupScreen {
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40px 20px;
+  background: radial-gradient(ellipse at center, #1a3a5c 0%, #0d1b2a 100%);
+}
+.setup-box {
+  background-color: #f5e6c8;
+  border: 3px solid #8b6914;
+  border-radius: 12px;
+  padding: 40px;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), inset 0 0 60px rgba(139,105,20,0.15);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.035' numOctaves='5'/%3E%3CfeColorMatrix values='0 0 0 0 0.96 0 0 0 0 0.90 0 0 0 0 0.78 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.setup-box h1 { text-align:center; font-size:32px; color:#3b2a1a; margin-bottom:6px; text-shadow:1px 1px 0 rgba(139,105,20,0.3); }
+.setup-box .subtitle { text-align:center; font-size:13px; color:#6b5a3a; margin-bottom:28px; letter-spacing:2px; }
+.setup-row { margin-bottom:16px; }
+.setup-row label { display:block; font-size:14px; margin-bottom:6px; color:#5a4a2a; font-weight:700; }
+.setup-row input, .setup-row select { width:100%; padding:8px 12px; font-family:'Cinzel',serif; font-size:14px; border:2px solid #c4a96a; border-radius:6px; background:#fdf6e3; color:#3b2a1a; }
+.player-name-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.player-color-dot { width:18px; height:18px; border-radius:50%; border:2px solid #3b2a1a; flex-shrink:0; }
+.player-name-row input { flex:1; }
+.radio-group { display:flex; gap:12px; flex-wrap:wrap; }
+.radio-group label { display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; font-weight:400; }
+.radio-group input[type="radio"] { width:auto; }
+#startBtn { display:block; width:100%; padding:14px; margin-top:24px; font-family:'Cinzel',serif; font-size:18px; font-weight:700; background:linear-gradient(180deg,#d4a843 0%,#b8912e 100%); color:#3b2a1a; border:2px solid #8b6914; border-radius:8px; cursor:pointer; text-shadow:0 1px 0 rgba(255,255,255,0.3); transition:transform 0.1s; }
+#startBtn:hover { transform:scale(1.02); }
+#gameScreen { padding:16px; gap:12px; background:radial-gradient(ellipse at center,#1a3a5c 0%,#0d1b2a 100%); min-height:100vh; }
+.game-top { display:flex; gap:12px; align-items:flex-start; width:100%; max-width:1140px; justify-content:center; }
+#canvasWrap { position:relative; border:4px solid #8b6914; border-radius:8px; box-shadow:0 4px 24px rgba(0,0,0,0.5); flex-shrink:0; }
+#gameCanvas { display:block; border-radius:4px; }
+#actionLog { width:220px; max-height:620px; overflow-y:auto; background:#f5e6c8; border:3px solid #8b6914; border-radius:8px; padding:10px; box-shadow:0 4px 16px rgba(0,0,0,0.3); flex-shrink:0; }
+#actionLog h3 { text-align:center; font-size:14px; margin-bottom:8px; border-bottom:2px solid #c4a96a; padding-bottom:6px; color:#5a4a2a; }
+.log-entry { font-size:11px; padding:4px 6px; margin-bottom:4px; border-radius:4px; background:rgba(255,255,255,0.3); border-left:3px solid #999; line-height:1.3; }
+#hud { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:1140px; width:100%; }
+.player-panel { flex:1; min-width:200px; max-width:260px; background:#f5e6c8; border:3px solid #8b6914; border-radius:8px; padding:10px 12px; box-shadow:0 4px 16px rgba(0,0,0,0.3); transition:border-color 0.3s; }
+.player-panel.current-turn { border-color:#f1c40f; box-shadow:0 0 16px rgba(241,196,15,0.5); }
+.player-panel.dead { opacity:0.45; }
+.panel-name { font-size:14px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.panel-color { width:12px; height:12px; border-radius:50%; border:1px solid #3b2a1a; }
+.hp-bar-wrap { width:100%; height:10px; border:1px solid #8b6914; border-radius:4px; background:#e0d0b0; margin-bottom:6px; overflow:hidden; }
+.hp-bar-fill { height:100%; background:#27ae60; transition:width 0.3s; border-radius:3px; }
+.panel-stats { font-size:11px; line-height:1.6; color:#5a4a2a; }
+.panel-stats b { color:#3b2a1a; }
+.panel-upgrades { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+.upgrade-badge { font-size:9px; padding:2px 5px; background:#d4a843; border-radius:3px; color:#3b2a1a; border:1px solid #8b6914; }
+.progress-bar-wrap { width:100%; height:6px; border:1px solid #8b6914; border-radius:3px; background:#e0d0b0; margin-top:4px; }
+.progress-bar-fill { height:100%; background:#d4a843; border-radius:2px; transition:width 0.3s; }
+.modal-overlay { display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:10; justify-content:center; align-items:center; }
+.modal-overlay.active { display:flex; }
+.modal { background:#f5e6c8; border:3px solid #8b6914; border-radius:10px; padding:24px; max-width:380px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.5); max-height:90%; overflow-y:auto; }
+.modal h2 { font-size:18px; text-align:center; margin-bottom:12px; color:#3b2a1a; }
+.modal p { font-size:13px; line-height:1.5; color:#5a4a2a; margin-bottom:10px; text-align:center; }
+.modal-btn { display:block; width:100%; padding:10px; margin-top:10px; font-family:'Cinzel',serif; font-size:14px; font-weight:700; background:linear-gradient(180deg,#d4a843 0%,#b8912e 100%); color:#3b2a1a; border:2px solid #8b6914; border-radius:6px; cursor:pointer; }
+.modal-btn:hover { filter:brightness(1.05); }
+.modal-btn:disabled { opacity:0.5; cursor:default; }
+.modal-btn.danger { background:linear-gradient(180deg,#c0392b 0%,#962d22 100%); color:#fff; border-color:#6b1a12; }
+.shop-item { display:flex; justify-content:space-between; align-items:center; padding:8px; margin-bottom:6px; background:rgba(255,255,255,0.3); border-radius:6px; border:1px solid #c4a96a; }
+.shop-item-info { font-size:12px; flex:1; }
+.shop-item-name { font-weight:700; color:#3b2a1a; }
+.shop-item-desc { font-size:10px; color:#6b5a3a; }
+.shop-item-cost { font-size:11px; color:#8b6914; font-weight:700; }
+.shop-btn { padding:4px 10px; font-family:'Cinzel',serif; font-size:11px; font-weight:700; background:linear-gradient(180deg,#d4a843 0%,#b8912e 100%); color:#3b2a1a; border:1px solid #8b6914; border-radius:4px; cursor:pointer; margin-left:8px; }
+.shop-btn:disabled { opacity:0.5; cursor:default; }
+.owned-badge { font-size:11px; color:#27ae60; font-weight:700; margin-left:8px; }
+.dice-display { font-size:48px; text-align:center; padding:16px; color:#3b2a1a; min-height:80px; display:flex; justify-content:center; align-items:center; gap:12px; }
+.dice-val { display:inline-flex; width:56px; height:56px; justify-content:center; align-items:center; border:3px solid #8b6914; border-radius:8px; background:#fdf6e3; font-weight:900; }
+.combat-vs { display:flex; justify-content:space-around; align-items:center; margin:12px 0; font-size:14px; }
+.combat-side { text-align:center; }
+.combat-side .name { font-weight:700; font-size:13px; }
+.combat-side .roll { font-size:28px; font-weight:900; margin:6px 0; }
+.combat-side .bonus { font-size:10px; color:#6b5a3a; }
+#turnIndicator { font-size:16px; font-weight:700; color:#f5e6c8; text-align:center; text-shadow:0 2px 4px rgba(0,0,0,0.5); padding:4px; }
+#winOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; justify-content:center; align-items:center; flex-direction:column; }
+#winOverlay h1 { font-size:42px; color:#f5e6c8; text-shadow:0 0 20px #d4a843; margin-bottom:10px; }
+#winOverlay p { font-size:18px; color:#c4a96a; margin-bottom:24px; }
+#winCanvas { border-radius:8px; }
+#playAgainBtn { font-family:'Cinzel',serif; font-size:18px; font-weight:700; padding:12px 36px; background:linear-gradient(180deg,#d4a843 0%,#b8912e 100%); color:#3b2a1a; border:2px solid #8b6914; border-radius:8px; cursor:pointer; margin-top:16px; }
+</style>
+</head>
+<body>
+
+<div id="setupScreen" class="active">
+  <div class="setup-box">
+    <h1>Sea of Thieves</h1>
+    <div class="subtitle">A PIRATE'S BOARD GAME</div>
+    <div class="setup-row">
+      <label>Number of Players</label>
+      <select id="playerCountSel">
+        <option value="2">2 Players</option>
+        <option value="3">3 Players</option>
+        <option value="4" selected>4 Players</option>
+      </select>
+    </div>
+    <div class="setup-row" id="nameInputs"></div>
+    <div class="setup-row">
+      <label>Win Condition</label>
+      <div class="radio-group">
+        <label><input type="radio" name="winMode" value="elimination"> Last Sailor Standing</label>
+        <label><input type="radio" name="winMode" value="gold" checked> Race to 500 Gold</label>
+      </div>
+    </div>
+    <button id="startBtn">&#9875; Start Voyage</button>
+  </div>
+</div>
+
+<div id="gameScreen">
+  <div id="turnIndicator"></div>
+  <div class="game-top">
+    <div id="canvasWrap">
+      <canvas id="gameCanvas" width="900" height="620"></canvas>
+      <div class="modal-overlay" id="diceModal"><div class="modal" id="diceModalContent"></div></div>
+      <div class="modal-overlay" id="eventModal"><div class="modal" id="eventModalContent"></div></div>
+      <div class="modal-overlay" id="combatModal"><div class="modal" id="combatModalContent"></div></div>
+      <div class="modal-overlay" id="shopModal"><div class="modal" id="shopModalContent"></div></div>
+    </div>
+    <div id="actionLog">
+      <h3>Captain's Log</h3>
+      <div id="logEntries"></div>
+    </div>
+  </div>
+  <div id="hud"></div>
+</div>
+
+<div id="winOverlay">
+  <h1 id="winTitle"></h1>
+  <p id="winSubtitle"></p>
+  <canvas id="winCanvas" width="600" height="300"></canvas>
+  <button id="playAgainBtn">Play Again</button>
+</div>
+
+<script>
+// ==================== AUDIO ====================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function ensureAudio() { if (!audioCtx) audioCtx = new AudioCtx(); }
+function playDiceRoll() { ensureAudio(); for (let i=0;i<6;i++){const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=800-i*80;o.type='square';g.gain.value=0.08;const t=audioCtx.currentTime+i*0.05;o.start(t);o.stop(t+0.04);}}
+function playGoldCollect() { ensureAudio(); [523.25,659.25,783.99].forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type='sine';g.gain.value=0.1;const t=audioCtx.currentTime+i*0.08;o.start(t);o.stop(t+0.12);}); }
+function playCombatStart() { ensureAudio(); const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=80;o.type='sine';g.gain.setValueAtTime(0.2,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.2);o.start();o.stop(audioCtx.currentTime+0.2); }
+function playCannonFire() { ensureAudio(); const b=audioCtx.sampleRate*0.15,buf=audioCtx.createBuffer(1,b,audioCtx.sampleRate),d=buf.getChannelData(0);for(let i=0;i<b;i++)d[i]=(Math.random()*2-1)*(1-i/b);const s=audioCtx.createBufferSource(),g=audioCtx.createGain();s.buffer=buf;s.connect(g);g.connect(audioCtx.destination);g.gain.value=0.15;s.start(); }
+function playSinking() { ensureAudio(); const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.setValueAtTime(400,audioCtx.currentTime);o.frequency.linearRampToValueAtTime(100,audioCtx.currentTime+0.6);o.type='sine';g.gain.value=0.12;o.start();o.stop(audioCtx.currentTime+0.6); }
+function playWinFanfare() { ensureAudio(); [523,587,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type='triangle';g.gain.value=0.1;const t=audioCtx.currentTime+i*0.12;o.start(t);o.stop(t+0.15);}); }
+function playHarborBell() { ensureAudio(); const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=440;o.type='sine';g.gain.setValueAtTime(0.12,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);o.start();o.stop(audioCtx.currentTime+0.4); }
+
+// ==================== ISLANDS ====================
+const islands = {
+  harbor:    { name:'Harbor Island',    x:450, y:370, r:70,  safe:true,  goldMin:0,   goldMax:0 },
+  pearl:     { name:'Pearl Island',     x:130, y:310, r:44,  safe:false, goldMin:20,  goldMax:45 },
+  peaks:     { name:'Peaks of Terror',  x:170, y:110, r:52,  safe:false, goldMin:60,  goldMax:100 },
+  rockspine: { name:'Rockspine Island', x:560, y:95,  r:48,  safe:false, goldMin:40,  goldMax:70 },
+  rockpine:  { name:'Rockpine Island',  x:650, y:255, r:42,  safe:false, goldMin:35,  goldMax:65 },
+  botom:     { name:'BOTOM Isle',       x:700, y:410, r:38,  safe:false, goldMin:0,   goldMax:150 },
+  skull:     { name:'Skull Island',     x:590, y:530, r:50,  safe:false, goldMin:100, goldMax:150 },
+};
+
+// ==================== MAP IMAGE ====================
+const mapImg = new Image();
+mapImg.src = 'map.png';
+let mapLoaded = false;
+mapImg.onload = () => { mapLoaded = true; };
+
+// ==================== ROUTES & DOTS ====================
+const routeDefs = [
+  { id:'r1', from:'harbor', to:'pearl',     dots:8 },
+  { id:'r2', from:'harbor', to:'peaks',     dots:9 },
+  { id:'r3', from:'harbor', to:'rockspine', dots:8 },
+  { id:'r4', from:'rockspine', to:'rockpine', dots:4 },
+  { id:'r5', from:'harbor', to:'botom',     dots:7 },
+  { id:'r6', from:'harbor', to:'skull',     dots:8 },
+  { id:'r7', from:'rockpine', to:'botom',   dots:5 },
+];
+const routes = {};
+const allDots = [];
+routeDefs.forEach(rd => {
+  const f = islands[rd.from], t = islands[rd.to];
+  const dots = [];
+  for (let i = 0; i < rd.dots; i++) {
+    const p = (i + 1) / (rd.dots + 1);
+    const dot = { x: f.x + (t.x - f.x) * p, y: f.y + (t.y - f.y) * p, routeId: rd.id, dotIndex: i };
+    dots.push(dot);
+    allDots.push(dot);
+  }
+  routes[rd.id] = { ...rd, dots, fromKey: rd.from, toKey: rd.to };
+});
+
+// ==================== UPGRADES ====================
+const upgradeDefs = [
+  { id:'cannons',  name:'Bigger Cannons',  cost:80, desc:'+2 to combat dice' },
+  { id:'armor',    name:'Hull Armor',       cost:60, desc:'+2 max HP' },
+  { id:'sails',    name:'Speed Sails',      cost:50, desc:'Roll 2 dice, take higher' },
+  { id:'merchant', name:'Merchant License', cost:40, desc:'+25% gold at Pearl Island' },
+  { id:'tmap',     name:'Treasure Map',     cost:30, desc:'See BOTOM Isle result first' },
+];
+
+// ==================== PARTICLES ====================
+let particles = [];
+function addParticle(p) { particles.push(p); }
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life--;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    const t = p.life / p.maxLife;
+    if (p.type === 'wake') { p.rx += 0.4; p.ry += 0.2; p.opacity = t * 0.4; }
+    if (p.type === 'splash') { p.opacity = t; }
+    if (p.type === 'explosion') { p.opacity = t; p.radius += 1.5; }
+    if (p.type === 'coin') { p.y += p.vy; p.vy -= 0.05; p.opacity = t; }
+    if (p.type === 'confetti') { p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.rotation += 0.1; p.opacity = Math.min(1, p.life / 30); }
+  }
+}
+function drawParticles(c) {
+  particles.forEach(p => {
+    c.save();
+    c.globalAlpha = p.opacity || 0.5;
+    if (p.type === 'wake') { c.strokeStyle='#fff'; c.lineWidth=1; c.beginPath(); c.ellipse(p.x,p.y,p.rx,p.ry,0,0,Math.PI*2); c.stroke(); }
+    if (p.type === 'splash') { c.strokeStyle='#fff'; c.lineWidth=1.5; for(let i=0;i<3;i++){const a=(Math.PI*2/3)*i+p.phase,l=6*(1-p.life/p.maxLife)+3;c.beginPath();c.moveTo(p.x,p.y);c.lineTo(p.x+Math.cos(a)*l,p.y+Math.sin(a)*l);c.stroke();} }
+    if (p.type === 'explosion') { for(let i=0;i<8;i++){const a=(Math.PI*2/8)*i;c.strokeStyle=i%2===0?'#f39c12':'#e74c3c';c.lineWidth=2;c.beginPath();c.moveTo(p.x,p.y);c.lineTo(p.x+Math.cos(a)*p.radius,p.y+Math.sin(a)*p.radius);c.stroke();} }
+    if (p.type === 'coin') { c.fillStyle='#f1c40f'; c.beginPath(); c.arc(p.x,p.y,4,0,Math.PI*2); c.fill(); c.strokeStyle='#d4a843'; c.lineWidth=1; c.stroke(); }
+    if (p.type === 'cannonball') { c.fillStyle='#222'; c.beginPath(); c.arc(p.x,p.y,5,0,Math.PI*2); c.fill(); }
+    if (p.type === 'confetti') { c.translate(p.x,p.y); c.rotate(p.rotation); c.fillStyle=p.color; c.fillRect(-3,-2,6,4); }
+    c.restore();
+  });
+}
+
+// ==================== GAME STATE ====================
+const PLAYER_COLORS = ['#c0392b','#2980b9','#27ae60','#f39c12'];
+const PLAYER_NAMES_DEFAULT = ['Red Beard','Blue Wave','Green Gale','Gold Eye'];
+let state = null;
+let animating = false;
+
+function createPlayer(id, name, color) {
+  return { id, name, color, atIsland:'harbor', routeId:null, dotIndex:-1, carriedGold:0, bankedGold:0, hp:5, maxHp:5, upgrades:[], alive:true, shipAngle:0, bobOffset:id*1.3, visitedRockspineThisTrip:false, sinkAnim:null, shakeFrames:0, x:islands.harbor.x+(id-1.5)*22, y:islands.harbor.y-10 };
+}
+
+// ==================== SETUP ====================
+const playerCountSel = document.getElementById('playerCountSel');
+const nameInputsDiv = document.getElementById('nameInputs');
+function buildNameInputs() {
+  const n = parseInt(playerCountSel.value);
+  nameInputsDiv.innerHTML = '<label>Player Names</label>';
+  for (let i = 0; i < n; i++) {
+    const row = document.createElement('div');
+    row.className = 'player-name-row';
+    row.innerHTML = `<div class="player-color-dot" style="background:${PLAYER_COLORS[i]}"></div><input type="text" value="${PLAYER_NAMES_DEFAULT[i]}" maxlength="16">`;
+    nameInputsDiv.appendChild(row);
+  }
+}
+playerCountSel.addEventListener('change', buildNameInputs);
+buildNameInputs();
+document.getElementById('startBtn').addEventListener('click', startGame);
+
+function startGame() {
+  const n = parseInt(playerCountSel.value);
+  const names = [...nameInputsDiv.querySelectorAll('input')].map(i => i.value.trim() || 'Pirate');
+  const winMode = document.querySelector('input[name="winMode"]:checked').value;
+  const players = [];
+  for (let i = 0; i < n; i++) players.push(createPlayer(i, names[i], PLAYER_COLORS[i]));
+  state = { players, currentPlayerIndex:0, phase:'roll', winMode, diceResult:0, movesLeft:0, logs:[], gameOver:false, winner:null };
+  document.getElementById('setupScreen').classList.remove('active');
+  document.getElementById('gameScreen').classList.add('active');
+  addLog(null, 'The voyage begins!');
+  updateHUD();
+  updateTurnIndicator();
+  showDiceModal();
+  requestAnimationFrame(gameLoop);
+}
+
+// ==================== CANVAS ====================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function gameLoop() {
+  if (!state) return;
+  updateParticles();
+  drawScene();
+  requestAnimationFrame(gameLoop);
+}
+
+function drawScene() {
+  // Draw map image as background
+  if (mapLoaded) {
+    ctx.drawImage(mapImg, 0, 0, 900, 620);
+  } else {
+    // Fallback blue ocean while loading
+    ctx.fillStyle = '#2277c0';
+    ctx.fillRect(0, 0, 900, 620);
+  }
+  drawDots();
+  drawShips();
+  drawParticles(ctx);
+}
+
+function drawDots() {
+  if (!state) return;
+  const cp = state.players[state.currentPlayerIndex];
+  const now = Date.now();
+
+  // Base dots - subtle markers on map
+  allDots.forEach(d => {
+    ctx.fillStyle = 'rgba(255,220,100,0.45)';
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(180,140,40,0.6)';
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Highlight reachable destinations
+  if (state.phase === 'move' && state.movesLeft > 0 && !animating) {
+    const reachable = getAllReachableWithPaths(cp, state.movesLeft);
+    reachable.forEach(r => {
+      const coords = posToCoords(r.pos);
+      const pulse = Math.sin(now / 180) * 4;
+      // Outer glow
+      ctx.fillStyle = 'rgba(241,196,15,0.25)';
+      ctx.beginPath();
+      ctx.arc(coords.x, coords.y, 16 + pulse, 0, Math.PI * 2);
+      ctx.fill();
+      // Mid ring
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(coords.x, coords.y, 10, 0, Math.PI * 2);
+      ctx.stroke();
+      // Solid dot
+      ctx.fillStyle = '#f1c40f';
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(coords.x, coords.y, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Inner bright point
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(coords.x, coords.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+}
+
+function drawShip(c, p, drawX, drawY, scale) {
+  if (!p.alive && !p.sinkAnim) return;
+  c.save();
+  c.translate(drawX, drawY);
+  let s = scale || 1;
+  let angle = p.shipAngle;
+  if (p.sinkAnim) {
+    const prog = 1 - (p.sinkAnim.frames / p.sinkAnim.maxFrames);
+    angle += prog * Math.PI / 2;
+    s *= (1 - prog);
+    if (p.sinkAnim.frames <= 0) { p.sinkAnim = null; c.restore(); return; }
+    p.sinkAnim.frames--;
+  }
+  let shakeX = 0;
+  if (p.shakeFrames > 0) { shakeX = (p.shakeFrames % 2 === 0 ? 3 : -3); p.shakeFrames--; }
+  c.translate(shakeX, 0);
+  c.rotate(angle);
+  c.scale(s, s);
+
+  // Water line / shadow under hull
+  c.fillStyle = 'rgba(0,40,80,0.3)';
+  c.beginPath();
+  c.ellipse(0, 12, 18, 5, 0, 0, Math.PI * 2);
+  c.fill();
+
+  // Hull - curved pirate ship shape
+  c.fillStyle = '#6b3a1f';
+  c.beginPath();
+  c.moveTo(-16, 8);                // stern bottom-left
+  c.quadraticCurveTo(-18, 2, -14, -6);  // stern curve up
+  c.lineTo(-10, -8);               // stern top
+  c.lineTo(10, -8);                // bow top
+  c.quadraticCurveTo(16, -6, 18, -2);   // bow curve
+  c.quadraticCurveTo(20, 4, 14, 10);    // bow bottom curve (pointy)
+  c.lineTo(-14, 10);               // bottom
+  c.quadraticCurveTo(-17, 10, -16, 8);
+  c.closePath();
+  c.fill();
+  // Hull dark outline
+  c.strokeStyle = '#3a1a08';
+  c.lineWidth = 1.5;
+  c.stroke();
+
+  // Hull planks
+  c.strokeStyle = '#8a5230';
+  c.lineWidth = 0.7;
+  c.beginPath(); c.moveTo(-13, 0); c.lineTo(15, 0); c.stroke();
+  c.beginPath(); c.moveTo(-14, 4); c.lineTo(15, 4); c.stroke();
+
+  // Hull highlight
+  c.fillStyle = '#8a5530';
+  c.beginPath();
+  c.moveTo(-12, -7); c.lineTo(10, -7); c.lineTo(12, -5); c.lineTo(-12, -5);
+  c.closePath();
+  c.fill();
+
+  // Bowsprit (front stick)
+  c.strokeStyle = '#4a2a10';
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(12, -6);
+  c.lineTo(24, -14);
+  c.stroke();
+
+  // Rear cabin
+  c.fillStyle = '#5a2a10';
+  c.fillRect(-15, -8, 8, 6);
+  c.fillStyle = p.color;
+  c.fillRect(-15, -10, 8, 3);
+
+  // Main mast
+  c.strokeStyle = '#4a2a10';
+  c.lineWidth = 3;
+  c.beginPath();
+  c.moveTo(0, -8);
+  c.lineTo(0, -38);
+  c.stroke();
+
+  // Front mast (shorter)
+  c.lineWidth = 2;
+  c.beginPath();
+  c.moveTo(8, -8);
+  c.lineTo(8, -30);
+  c.stroke();
+
+  // Main sail (big square)
+  c.fillStyle = p.color;
+  c.globalAlpha = 0.9;
+  c.beginPath();
+  c.moveTo(-8, -36);
+  c.quadraticCurveTo(-9, -24, -8, -14);
+  c.lineTo(8, -14);
+  c.quadraticCurveTo(9, -24, 8, -36);
+  c.closePath();
+  c.fill();
+  c.globalAlpha = 1;
+  c.strokeStyle = 'rgba(0,0,0,0.3)';
+  c.lineWidth = 0.8;
+  c.stroke();
+
+  // Sail cross pattern
+  c.strokeStyle = 'rgba(255,255,255,0.35)';
+  c.lineWidth = 1.5;
+  c.beginPath();
+  c.moveTo(-7, -25); c.lineTo(7, -25);
+  c.stroke();
+  c.beginPath();
+  c.moveTo(0, -34); c.lineTo(0, -16);
+  c.stroke();
+
+  // Front sail (smaller triangle)
+  c.fillStyle = p.color;
+  c.globalAlpha = 0.85;
+  c.beginPath();
+  c.moveTo(8, -28);
+  c.lineTo(20, -14);
+  c.lineTo(8, -12);
+  c.closePath();
+  c.fill();
+  c.globalAlpha = 1;
+  c.strokeStyle = 'rgba(0,0,0,0.3)';
+  c.lineWidth = 0.6;
+  c.stroke();
+
+  // Crow's nest
+  c.fillStyle = '#4a2a10';
+  c.fillRect(-3, -39, 6, 3);
+
+  // Flag at top
+  c.fillStyle = p.color;
+  c.beginPath();
+  c.moveTo(0, -42);
+  c.lineTo(9, -40);
+  c.lineTo(0, -38);
+  c.closePath();
+  c.fill();
+  c.strokeStyle = '#222';
+  c.lineWidth = 0.5;
+  c.stroke();
+
+  // Skull on flag (tiny)
+  c.fillStyle = '#fff';
+  c.beginPath();
+  c.arc(4, -40, 1.5, 0, Math.PI * 2);
+  c.fill();
+
+  // Player color ring indicator
+  c.strokeStyle = p.color;
+  c.lineWidth = 3;
+  c.beginPath();
+  c.arc(0, 16, 7, 0, Math.PI * 2);
+  c.stroke();
+  c.fillStyle = 'rgba(0,0,0,0.5)';
+  c.fill();
+  // Player initial
+  c.fillStyle = '#fff';
+  c.font = 'bold 8px sans-serif';
+  c.textAlign = 'center';
+  c.textBaseline = 'middle';
+  c.fillText(p.name[0], 0, 16);
+
+  c.restore();
+}
+
+function drawShips() {
+  if (!state) return;
+  state.players.forEach((p) => {
+    if (!p.alive && !p.sinkAnim) return;
+    let drawX = p.x;
+    let drawY = p.y;
+    if (!animating || state.players[state.currentPlayerIndex].id !== p.id) {
+      drawY += Math.sin(Date.now() / 600 + p.bobOffset) * 2.5;
+    }
+    drawShip(ctx, p, drawX, drawY);
+  });
+}
+
+// ==================== NAVIGATION ====================
+function getPlayerPosition(p) {
+  if (p.atIsland) return { type:'island', key:p.atIsland };
+  return { type:'dot', routeId:p.routeId, dotIndex:p.dotIndex };
+}
+function getAdjacentFromDot(routeId, dotIndex) {
+  const route = routes[routeId];
+  const adj = [];
+  if (dotIndex + 1 < route.dots.length) adj.push({ type:'dot', routeId, dotIndex:dotIndex+1 });
+  else adj.push({ type:'island', key:route.toKey });
+  if (dotIndex - 1 >= 0) adj.push({ type:'dot', routeId, dotIndex:dotIndex-1 });
+  else adj.push({ type:'island', key:route.fromKey });
+  return adj;
+}
+function getAdjacentFromIsland(islandKey) {
+  const adj = [];
+  Object.values(routes).forEach(r => {
+    if (r.fromKey === islandKey) adj.push({ type:'dot', routeId:r.id, dotIndex:0 });
+    else if (r.toKey === islandKey) adj.push({ type:'dot', routeId:r.id, dotIndex:r.dots.length-1 });
+  });
+  return adj;
+}
+function posToCoords(pos) {
+  if (pos.type === 'island') { const i = islands[pos.key]; return {x:i.x,y:i.y}; }
+  const d = routes[pos.routeId].dots[pos.dotIndex];
+  return {x:d.x,y:d.y};
+}
+function getAllReachableWithPaths(player, steps) {
+  const pos = getPlayerPosition(player);
+  let frontier = [{ pos, steps:0, path:[pos] }];
+  const visited = new Set();
+  const results = [];
+  visited.add(JSON.stringify(pos));
+  while (frontier.length > 0) {
+    const next = [];
+    for (const {pos:current, steps:s, path} of frontier) {
+      if (s === steps) { results.push({pos:current,path}); continue; }
+      const adj = current.type === 'island' ? getAdjacentFromIsland(current.key) : getAdjacentFromDot(current.routeId, current.dotIndex);
+      for (const a of adj) {
+        const key = JSON.stringify(a);
+        if (!visited.has(key)) { visited.add(key); next.push({pos:a,steps:s+1,path:[...path,a]}); }
+      }
+    }
+    frontier = next;
+  }
+  return results;
+}
+
+// ==================== TURN FLOW ====================
+function currentPlayer() { return state.players[state.currentPlayerIndex]; }
+
+function nextTurn() {
+  if (state.gameOver) return;
+  let next = (state.currentPlayerIndex + 1) % state.players.length;
+  let safety = 0;
+  while (!state.players[next].alive && safety < state.players.length) {
+    next = (next + 1) % state.players.length;
+    safety++;
+  }
+  if (state.winMode === 'elimination') {
+    const alive = state.players.filter(p => p.alive);
+    if (alive.length === 1) { triggerWin(alive[0]); return; }
+  }
+  state.currentPlayerIndex = next;
+  state.phase = 'roll';
+  state.diceResult = 0;
+  state.movesLeft = 0;
+  updateHUD();
+  updateTurnIndicator();
+  showDiceModal();
+}
+
+function updateTurnIndicator() {
+  if (!state) return;
+  const cp = currentPlayer();
+  document.getElementById('turnIndicator').innerHTML = `<span style="color:${cp.color}">&#9875; ${cp.name}'s Turn</span>`;
+}
+
+// ==================== DICE ====================
+function showDiceModal() {
+  const cp = currentPlayer();
+  const modal = document.getElementById('diceModal');
+  const content = document.getElementById('diceModalContent');
+  const hasSails = cp.upgrades.includes('sails');
+  content.innerHTML = `<h2>${cp.name}'s Turn</h2><p>Roll the dice to set sail!</p>
+    <div class="dice-display"><div class="dice-val" id="dice1">?</div>${hasSails?'<div class="dice-val" id="dice2">?</div>':''}</div>
+    ${hasSails?'<p style="font-size:11px">Speed Sails: Roll 2, take higher!</p>':''}
+    <button class="modal-btn" id="rollBtn">Roll Dice</button>`;
+  modal.classList.add('active');
+  document.getElementById('rollBtn').addEventListener('click', () => {
+    playDiceRoll();
+    document.getElementById('rollBtn').disabled = true;
+    let frames = 0;
+    const anim = setInterval(() => {
+      document.getElementById('dice1').textContent = Math.ceil(Math.random()*6);
+      if (hasSails && document.getElementById('dice2')) document.getElementById('dice2').textContent = Math.ceil(Math.random()*6);
+      if (++frames >= 15) {
+        clearInterval(anim);
+        const r1 = Math.ceil(Math.random()*6), r2 = hasSails ? Math.ceil(Math.random()*6) : 0;
+        document.getElementById('dice1').textContent = r1;
+        if (hasSails && document.getElementById('dice2')) document.getElementById('dice2').textContent = r2;
+        const result = hasSails ? Math.max(r1,r2) : r1;
+        state.diceResult = result;
+        state.movesLeft = result;
+        state.phase = 'move';
+        addLog(currentPlayer(), `${currentPlayer().name} rolled ${hasSails?r1+' & '+r2+', using ':' a '}${result}!`);
+        setTimeout(() => { modal.classList.remove('active'); updateHUD(); }, 600);
+      }
+    }, 50);
+  });
+}
+
+// ==================== MOVEMENT ====================
+canvas.addEventListener('click', handleCanvasClick);
+
+function handleCanvasClick(e) {
+  if (!state || state.phase !== 'move' || state.movesLeft <= 0 || animating) return;
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width, sy = canvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * sx, my = (e.clientY - rect.top) * sy;
+  const cp = currentPlayer();
+  const reachable = getAllReachableWithPaths(cp, state.movesLeft);
+  let best = null, bestDist = Infinity;
+  for (const r of reachable) {
+    const c = posToCoords(r.pos);
+    const dist = Math.hypot(mx-c.x, my-c.y);
+    const threshold = r.pos.type === 'island' ? islands[r.pos.key].r + 12 : 16;
+    if (dist < threshold && dist < bestDist) { best = r; bestDist = dist; }
+  }
+  if (best) animateMovement(cp, best.path);
+}
+
+async function animateMovement(player, path) {
+  animating = true;
+  for (let i = 1; i < path.length; i++) {
+    const from = posToCoords(path[i-1]), to = posToCoords(path[i]);
+    player.shipAngle = Math.atan2(to.y-from.y, to.x-from.x) + Math.PI/2;
+    addParticle({type:'wake',x:from.x,y:from.y,rx:3,ry:2,opacity:0.4,life:20,maxLife:20});
+    await animateLerp(player, from.x, from.y, to.x, to.y, 350);
+    addParticle({type:'splash',x:to.x,y:to.y,opacity:1,life:12,maxLife:12,phase:Math.random()*Math.PI*2});
+
+    const pos = path[i];
+    if (pos.type === 'island') { player.atIsland = pos.key; player.routeId = null; player.dotIndex = -1; }
+    else { player.atIsland = null; player.routeId = pos.routeId; player.dotIndex = pos.dotIndex; }
+
+    // Combat check at sea
+    if (pos.type === 'dot') {
+      const enemy = state.players.find(p => p.id !== player.id && p.alive && !p.atIsland && p.routeId === pos.routeId && p.dotIndex === pos.dotIndex);
+      if (enemy) {
+        animating = false;
+        state.movesLeft = 0;
+        await triggerCombat(player, enemy);
+        updateHUD();
+        if (player.alive) endMovement(player); else nextTurn();
+        return;
+      }
+    }
+  }
+  animating = false;
+  state.movesLeft = 0;
+  endMovement(player);
+}
+
+function animateLerp(player, x1, y1, x2, y2, dur) {
+  return new Promise(resolve => {
+    const start = Date.now();
+    function step() {
+      const t = Math.min(1, (Date.now()-start)/dur);
+      const e = t*t*(3-2*t);
+      player.x = x1+(x2-x1)*e;
+      player.y = y1+(y2-y1)*e;
+      if (t < 1) requestAnimationFrame(step); else resolve();
+    }
+    step();
+  });
+}
+
+function endMovement(player) {
+  if (player.atIsland) {
+    if (player.atIsland === 'harbor') { player.visitedRockspineThisTrip = false; playHarborBell(); showShopModal(player); }
+    else triggerIslandEvent(player, player.atIsland);
+  } else { nextTurn(); }
+  updateHUD();
+}
+
+// ==================== ISLAND EVENTS ====================
+function triggerIslandEvent(player, islandKey) {
+  const isl = islands[islandKey];
+  const modal = document.getElementById('eventModal');
+  const content = document.getElementById('eventModalContent');
+
+  if (islandKey === 'pearl') {
+    let gold = randInt(isl.goldMin, isl.goldMax);
+    if (player.upgrades.includes('merchant')) gold = Math.floor(gold * 1.25);
+    player.carriedGold += gold;
+    playGoldCollect();
+    addLog(player, `${player.name} found ${gold} gold at Pearl Island!`);
+    content.innerHTML = `<h2>Pearl Island</h2><p>Lush tropics with hidden treasures...</p>
+      <p style="font-size:20px;font-weight:700">+${gold} Gold!</p>
+      ${player.upgrades.includes('merchant')?'<p style="font-size:11px">Merchant License: +25% bonus!</p>':''}
+      <button class="modal-btn" onclick="closeEventModal()">Continue</button>`;
+    modal.classList.add('active');
+  }
+  else if (islandKey === 'peaks') {
+    if (Math.random() < 0.3) {
+      const lost = Math.min(15, player.carriedGold);
+      player.carriedGold -= lost;
+      addLog(player, `Storm at Peaks! ${player.name} lost ${lost} gold!`);
+      content.innerHTML = `<h2>Peaks of Terror</h2><p>A terrible storm strikes!</p>
+        <p style="color:#c0392b;font-weight:700">Lost ${lost} gold! Pushed back!</p>
+        <button class="modal-btn danger" onclick="closeEventModal(); pushBack(${player.id},3)">Brace!</button>`;
+    } else {
+      const gold = randInt(isl.goldMin, isl.goldMax);
+      player.carriedGold += gold;
+      playGoldCollect();
+      addLog(player, `${player.name} found ${gold} gold at Peaks!`);
+      content.innerHTML = `<h2>Peaks of Terror</h2><p>You brave the treacherous peaks...</p>
+        <p style="font-size:20px;font-weight:700">+${gold} Gold!</p>
+        <button class="modal-btn" onclick="closeEventModal()">Continue</button>`;
+    }
+    modal.classList.add('active');
+  }
+  else if (islandKey === 'rockspine') {
+    const lost = Math.min(10, player.carriedGold);
+    player.carriedGold -= lost;
+    const gold = randInt(isl.goldMin, isl.goldMax);
+    player.carriedGold += gold;
+    player.visitedRockspineThisTrip = true;
+    playGoldCollect();
+    addLog(player, `${player.name}: -${lost}g trap, +${gold}g at Rockspine!`);
+    content.innerHTML = `<h2>Rockspine Island</h2><p>Cannon traps guard the shore!</p>
+      <p style="color:#c0392b">-${lost} gold from traps</p>
+      <p style="font-size:20px;font-weight:700;color:#27ae60">+${gold} Gold found!</p>
+      <button class="modal-btn" onclick="closeEventModal()">Continue</button>`;
+    modal.classList.add('active');
+  }
+  else if (islandKey === 'rockpine') {
+    let gold = randInt(isl.goldMin, isl.goldMax);
+    let bonus = player.visitedRockspineThisTrip ? 30 : 0;
+    gold += bonus;
+    player.carriedGold += gold;
+    playGoldCollect();
+    addLog(player, `${player.name} found ${gold}g at Rockpine!${bonus?' (bonus!)':''}`);
+    content.innerHTML = `<h2>Rockpine Island</h2><p>Rocky shores with buried caches...</p>
+      <p style="font-size:20px;font-weight:700">+${gold} Gold!</p>
+      ${bonus?'<p style="font-size:11px;color:#27ae60">+30 bonus for visiting Rockspine!</p>':''}
+      <button class="modal-btn" onclick="closeEventModal()">Continue</button>`;
+    modal.classList.add('active');
+  }
+  else if (islandKey === 'botom') {
+    const hasMap = player.upgrades.includes('tmap');
+    const lucky = Math.random() < 0.5;
+    if (lucky) {
+      content.innerHTML = `<h2>BOTOM Isle</h2>
+        ${hasMap?'<p>Your Treasure Map reveals...</p>':'<p>You search the mysterious isle...</p>'}
+        <p style="font-size:20px;font-weight:700;color:#27ae60">+80 Gold! Lucky find!</p>
+        <button class="modal-btn" onclick="botomResult(${player.id},true)">Claim!</button>`;
+    } else {
+      content.innerHTML = `<h2>BOTOM Isle</h2>
+        ${hasMap?'<p>Your Treasure Map reveals...</p>':'<p>You search the mysterious isle...</p>'}
+        <p style="font-size:18px;color:#c0392b">Nothing but sand and crabs.</p>
+        <button class="modal-btn" onclick="botomResult(${player.id},false)">Blast!</button>`;
+    }
+    modal.classList.add('active');
+  }
+  else if (islandKey === 'skull') {
+    showSkullFight(player, 0);
+  }
+  updateHUD();
+}
+
+window.closeEventModal = function() {
+  document.getElementById('eventModal').classList.remove('active');
+  checkWinCondition();
+  if (!state.gameOver) nextTurn();
+};
+window.botomResult = function(pid, success) {
+  const p = state.players[pid];
+  if (success) { p.carriedGold += 80; playGoldCollect(); addLog(p, `${p.name} found 80g at BOTOM Isle!`); }
+  else { addLog(p, `${p.name} found nothing at BOTOM Isle.`); }
+  updateHUD();
+  document.getElementById('eventModal').classList.remove('active');
+  checkWinCondition();
+  if (!state.gameOver) nextTurn();
+};
+window.pushBack = function(pid, dots) {
+  const p = state.players[pid];
+  if (p.atIsland) { nextTurn(); return; }
+  const route = routes[p.routeId];
+  if (!route) { nextTurn(); return; }
+  let newIdx = p.dotIndex;
+  if (route.fromKey === 'harbor') newIdx = Math.max(0, p.dotIndex - dots);
+  else if (route.toKey === 'harbor') newIdx = Math.min(route.dots.length-1, p.dotIndex + dots);
+  else newIdx = Math.max(0, p.dotIndex - dots);
+  p.dotIndex = newIdx;
+  const dot = route.dots[newIdx];
+  p.x = dot.x; p.y = dot.y;
+  updateHUD();
+  nextTurn();
+};
+
+function showSkullFight(player, attempts) {
+  const modal = document.getElementById('eventModal');
+  const content = document.getElementById('eventModalContent');
+  if (attempts >= 3) {
+    addLog(player, `${player.name} fled Skull Island!`);
+    content.innerHTML = `<h2>Skull Island</h2><p>The Skeleton Captain is too strong!</p>
+      <button class="modal-btn danger" onclick="closeEventModal()">Flee!</button>`;
+    modal.classList.add('active');
+    return;
+  }
+  const canRetry = attempts === 0 || player.carriedGold >= 10;
+  content.innerHTML = `<h2>Skull Island</h2><p>Skeleton Captain duel! Roll 4+ to win! (${attempts+1}/3)</p>
+    ${attempts>0?'<p style="font-size:11px;color:#c0392b">Retry costs 10 gold</p>':''}
+    <div class="dice-display"><div class="dice-val" id="skullDice">?</div></div>
+    <button class="modal-btn" id="skullRollBtn" ${!canRetry?'disabled':''}>${attempts===0?'Fight!':'Retry (10g)'}</button>
+    ${attempts>0?'<button class="modal-btn danger" onclick="closeEventModal()">Flee</button>':''}`;
+  modal.classList.add('active');
+  const btn = document.getElementById('skullRollBtn');
+  if (btn) btn.addEventListener('click', () => {
+    if (attempts > 0) player.carriedGold -= 10;
+    playDiceRoll();
+    btn.disabled = true;
+    let frames = 0;
+    const anim = setInterval(() => {
+      document.getElementById('skullDice').textContent = Math.ceil(Math.random()*6);
+      if (++frames >= 12) {
+        clearInterval(anim);
+        const roll = Math.ceil(Math.random()*6);
+        document.getElementById('skullDice').textContent = roll;
+        if (roll >= 4) {
+          const gold = randInt(islands.skull.goldMin, islands.skull.goldMax);
+          player.carriedGold += gold;
+          playGoldCollect();
+          addLog(player, `${player.name} beat the Skeleton Captain! +${gold}g!`);
+          content.innerHTML = `<h2>Skull Island</h2>
+            <p style="font-size:20px;font-weight:700;color:#27ae60">Victory! +${gold} Gold!</p>
+            <button class="modal-btn" onclick="closeEventModal()">Claim!</button>`;
+          updateHUD();
+        } else {
+          setTimeout(() => showSkullFight(player, attempts+1), 500);
+        }
+      }
+    }, 50);
+  });
+}
+
+// ==================== COMBAT ====================
+function triggerCombat(attacker, defender) {
+  return new Promise(resolve => {
+    if (islands[attacker.atIsland]?.safe || islands[defender.atIsland]?.safe) { resolve(); return; }
+    playCombatStart();
+    addLog(null, `${attacker.name} engages ${defender.name}!`);
+    const modal = document.getElementById('combatModal');
+    const content = document.getElementById('combatModalContent');
+    const atkBonus = attacker.upgrades.includes('cannons') ? 2 : 0;
+    const defBonus = defender.upgrades.includes('armor') ? 1 : 0;
+    content.innerHTML = `<h2>Naval Combat!</h2>
+      <div class="combat-vs">
+        <div class="combat-side"><div class="name" style="color:${attacker.color}">${attacker.name}</div><div class="roll" id="atkRoll">?</div>${atkBonus?'<div class="bonus">+2 Cannons</div>':''}</div>
+        <div style="font-size:24px;font-weight:700">VS</div>
+        <div class="combat-side"><div class="name" style="color:${defender.color}">${defender.name}</div><div class="roll" id="defRoll">?</div>${defBonus?'<div class="bonus">+1 Armor</div>':''}</div>
+      </div>
+      <button class="modal-btn" id="combatRollBtn">Fire Cannons!</button>`;
+    modal.classList.add('active');
+    document.getElementById('combatRollBtn').addEventListener('click', () => {
+      playCannonFire();
+      document.getElementById('combatRollBtn').disabled = true;
+      // Cannonball animation
+      let frame = 0;
+      const cI = setInterval(() => {
+        const t = frame/30;
+        const cx = attacker.x+(defender.x-attacker.x)*t;
+        const cy = attacker.y+(defender.y-attacker.y)*t - Math.sin(t*Math.PI)*40;
+        particles = particles.filter(p => p.type !== 'cannonball');
+        addParticle({type:'cannonball',x:cx,y:cy,life:2,opacity:1,maxLife:2});
+        if (++frame >= 30) {
+          clearInterval(cI);
+          particles = particles.filter(p => p.type !== 'cannonball');
+          addParticle({type:'explosion',x:defender.x,y:defender.y,radius:5,opacity:1,life:15,maxLife:15});
+          defender.shakeFrames = 10;
+        }
+      }, 30);
+      // Dice
+      let dF = 0;
+      const dA = setInterval(() => {
+        document.getElementById('atkRoll').textContent = Math.ceil(Math.random()*6);
+        document.getElementById('defRoll').textContent = Math.ceil(Math.random()*6);
+        if (++dF >= 15) {
+          clearInterval(dA);
+          const ar = Math.ceil(Math.random()*6)+atkBonus, dr = Math.ceil(Math.random()*6)+defBonus;
+          document.getElementById('atkRoll').textContent = ar;
+          document.getElementById('defRoll').textContent = dr;
+          const atkWins = ar > dr;
+          const winner = atkWins ? attacker : defender, loser = atkWins ? defender : attacker;
+          const stolen = loser.carriedGold;
+          winner.carriedGold += stolen;
+          loser.carriedGold = 0;
+          loser.hp--;
+          let html = `<p style="font-weight:700;color:${winner.color}">${winner.name} wins!</p><p>Stole ${stolen}g! ${loser.name} -1 HP</p>`;
+          if (loser.hp <= 0) {
+            loser.alive = false;
+            loser.sinkAnim = {frames:40,maxFrames:40};
+            playSinking();
+            for(let i=0;i<5;i++) addParticle({type:'coin',x:loser.x+(Math.random()-0.5)*20,y:loser.y,vy:-2-Math.random()*2,opacity:1,life:40,maxLife:40});
+            html += `<p style="color:#c0392b;font-weight:700">${loser.name}'s ship sinks!</p>`;
+            addLog(winner, `${winner.name} sank ${loser.name}! +${stolen}g`);
+          } else {
+            addLog(winner, `${winner.name} beat ${loser.name}, stole ${stolen}g`);
+          }
+          content.innerHTML = `<h2>Combat Result</h2>
+            <div class="combat-vs">
+              <div class="combat-side"><div class="name" style="color:${attacker.color}">${attacker.name}</div><div class="roll">${ar}</div></div>
+              <div style="font-size:24px;font-weight:700">VS</div>
+              <div class="combat-side"><div class="name" style="color:${defender.color}">${defender.name}</div><div class="roll">${dr}</div></div>
+            </div>${html}<button class="modal-btn" id="combatDoneBtn">Continue</button>`;
+          document.getElementById('combatDoneBtn').addEventListener('click', () => {
+            modal.classList.remove('active');
+            updateHUD();
+            if (!loser.alive) setTimeout(() => respawnPlayer(loser), 500);
+            resolve();
+          });
+        }
+      }, 50);
+    });
+  });
+}
+
+function respawnPlayer(p) {
+  p.alive = true; p.hp = p.maxHp; p.carriedGold = 0;
+  p.atIsland = 'harbor'; p.routeId = null; p.dotIndex = -1;
+  p.x = islands.harbor.x + (p.id-1.5)*22; p.y = islands.harbor.y - 10;
+  p.sinkAnim = null; p.shakeFrames = 0;
+  addLog(p, `${p.name} respawned at Harbor.`);
+  updateHUD();
+}
+
+// ==================== SHOP ====================
+function showShopModal(player) {
+  renderShop(player);
+  document.getElementById('shopModal').classList.add('active');
+}
+function renderShop(player) {
+  const content = document.getElementById('shopModalContent');
+  let uHTML = '';
+  upgradeDefs.forEach(u => {
+    const owned = player.upgrades.includes(u.id);
+    const canBuy = !owned && player.carriedGold >= u.cost;
+    uHTML += `<div class="shop-item"><div class="shop-item-info"><div class="shop-item-name">${u.name}</div><div class="shop-item-desc">${u.desc}</div><div class="shop-item-cost">${u.cost}g</div></div>
+      ${owned?'<span class="owned-badge">Owned</span>':`<button class="shop-btn" ${!canBuy?'disabled':''} onclick="buyUpgrade(${player.id},'${u.id}')">Buy</button>`}</div>`;
+  });
+  content.innerHTML = `<h2>Harbor Island</h2><p><b>${player.name}</b></p>
+    <p>Carried: <b>${player.carriedGold}g</b> | Banked: <b>${player.bankedGold}g</b></p>
+    <button class="modal-btn" onclick="bankGold(${player.id})" ${player.carriedGold===0?'disabled':''}>Bank All Gold (${player.carriedGold}g)</button>
+    <div style="margin-top:12px"><h3 style="font-size:13px;margin-bottom:8px">Upgrade Shop</h3>${uHTML}</div>
+    <button class="modal-btn" onclick="closeShop()" style="margin-top:12px">Set Sail</button>`;
+}
+window.bankGold = function(pid) {
+  const p = state.players[pid];
+  const amt = p.carriedGold;
+  p.bankedGold += amt; p.carriedGold = 0;
+  playGoldCollect();
+  addLog(p, `${p.name} banked ${amt}g!`);
+  renderShop(p); updateHUD(); checkWinCondition();
+};
+window.buyUpgrade = function(pid, uid) {
+  const p = state.players[pid], u = upgradeDefs.find(x => x.id === uid);
+  if (!u || p.upgrades.includes(uid) || p.carriedGold < u.cost) return;
+  p.carriedGold -= u.cost;
+  p.upgrades.push(uid);
+  if (uid === 'armor') { p.maxHp += 2; p.hp += 2; }
+  playGoldCollect();
+  addLog(p, `${p.name} bought ${u.name}!`);
+  renderShop(p); updateHUD();
+};
+window.closeShop = function() {
+  document.getElementById('shopModal').classList.remove('active');
+  if (!state.gameOver) nextTurn();
+};
+
+// ==================== WIN ====================
+function checkWinCondition() {
+  if (state.gameOver) return;
+  if (state.winMode === 'gold') { const w = state.players.find(p => p.bankedGold >= 500); if (w) triggerWin(w); }
+  if (state.winMode === 'elimination') { const alive = state.players.filter(p => p.alive); if (alive.length <= 1) triggerWin(alive[0] || state.players[0]); }
+}
+
+function triggerWin(player) {
+  state.gameOver = true; state.winner = player;
+  playWinFanfare();
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+  const overlay = document.getElementById('winOverlay');
+  document.getElementById('winTitle').textContent = `${player.name} Wins!`;
+  document.getElementById('winSubtitle').textContent = state.winMode==='gold'?`Banked ${player.bankedGold} gold!`:'Last Sailor Standing!';
+  overlay.classList.add('active');
+  const wc = document.getElementById('winCanvas'), wctx = wc.getContext('2d');
+  let shipX = -50;
+  function winAnim() {
+    wctx.clearRect(0,0,wc.width,wc.height);
+    const grad = wctx.createLinearGradient(0,0,0,wc.height);
+    grad.addColorStop(0,'#1a6eb5'); grad.addColorStop(1,'#155a94');
+    wctx.fillStyle = grad; wctx.fillRect(0,0,wc.width,wc.height);
+    const t = Date.now()/1000;
+    wctx.strokeStyle='rgba(255,255,255,0.12)';
+    for(let i=0;i<5;i++){wctx.beginPath();for(let x=0;x<wc.width;x+=3){const y=150+i*30+Math.sin(t+x*0.02+i)*8;if(x===0)wctx.moveTo(x,y);else wctx.lineTo(x,y);}wctx.stroke();}
+    shipX += 1.5; if (shipX > wc.width+50) shipX = -50;
+    drawShip(wctx, player, shipX, 140+Math.sin(Date.now()/500)*4, 1.5);
+    if (Math.random()<0.3) addParticle({type:'confetti',x:Math.random()*900,y:-10,vx:(Math.random()-0.5)*3,vy:Math.random()*2+1,color:['#c0392b','#2980b9','#27ae60','#f39c12','#f1c40f','#9b59b6'][Math.floor(Math.random()*6)],rotation:Math.random()*Math.PI*2,opacity:1,life:120,maxLife:120});
+    particles.filter(p=>p.type==='confetti').forEach(p=>{wctx.save();wctx.globalAlpha=p.opacity;wctx.translate(p.x,p.y);wctx.rotate(p.rotation);wctx.fillStyle=p.color;wctx.fillRect(-4,-3,8,6);wctx.restore();});
+    if (state.gameOver) requestAnimationFrame(winAnim);
+  }
+  winAnim();
+}
+
+document.getElementById('playAgainBtn').addEventListener('click', () => {
+  document.getElementById('winOverlay').classList.remove('active');
+  document.getElementById('gameScreen').classList.remove('active');
+  document.getElementById('setupScreen').classList.add('active');
+  state = null; particles = [];
+});
+
+// ==================== HUD ====================
+function updateHUD() {
+  if (!state) return;
+  const hud = document.getElementById('hud');
+  hud.innerHTML = '';
+  state.players.forEach(p => {
+    const isCurr = p.id === state.currentPlayerIndex;
+    const panel = document.createElement('div');
+    panel.className = `player-panel${isCurr?' current-turn':''}${!p.alive?' dead':''}`;
+    const hpPct = (p.hp/p.maxHp)*100;
+    const hpColor = hpPct>50?'#27ae60':hpPct>25?'#f39c12':'#c0392b';
+    let loc = 'At Sea';
+    if (p.atIsland) loc = islands[p.atIsland].name;
+    let uBadges = '';
+    p.upgrades.forEach(uid => { const u = upgradeDefs.find(x=>x.id===uid); if(u) uBadges += `<span class="upgrade-badge">${u.name}</span>`; });
+    let progHTML = '';
+    if (state.winMode === 'gold') {
+      const pct = Math.min(100, (p.bankedGold/500)*100);
+      progHTML = `<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><div style="font-size:9px;text-align:center;margin-top:2px">${p.bankedGold}/500g</div>`;
+    }
+    panel.innerHTML = `<div class="panel-name"><div class="panel-color" style="background:${p.color}"></div>${p.name}${isCurr?' &#9875;':''}</div>
+      <div class="hp-bar-wrap"><div class="hp-bar-fill" style="width:${hpPct}%;background:${hpColor}"></div></div>
+      <div class="panel-stats"><b>HP:</b> ${p.hp}/${p.maxHp} | <b>Carried:</b> ${p.carriedGold}g<br><b>Banked:</b> ${p.bankedGold}g | <b>At:</b> ${loc}</div>
+      <div class="panel-upgrades">${uBadges}</div>${progHTML}`;
+    hud.appendChild(panel);
+  });
+}
+
+// ==================== LOG ====================
+function addLog(player, text) {
+  if (!state) return;
+  state.logs.unshift({text, color: player?player.color:'#8b6914'});
+  if (state.logs.length > 12) state.logs.length = 12;
+  const container = document.getElementById('logEntries');
+  container.innerHTML = '';
+  state.logs.forEach(l => {
+    const d = document.createElement('div');
+    d.className = 'log-entry';
+    d.style.borderLeftColor = l.color;
+    d.textContent = l.text;
+    container.appendChild(d);
+  });
+}
+
+// ==================== UTILS ====================
+function randInt(min, max) { return Math.floor(Math.random()*(max-min+1))+min; }
+</script>
+</body>
+</html>
