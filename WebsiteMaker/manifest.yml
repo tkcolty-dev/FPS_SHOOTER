@@ -1,0 +1,9 @@
+---
+applications:
+- name: webforge
+  memory: 64M
+  disk_quota: 64M
+  buildpacks:
+  - staticfile_buildpack
+  path: .
+  random-route: true

@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>WebForge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0d0d0f;
+  --tab-strip: #0d0d0f;
+  --tab-bg: #18181b;
+  --tab-active: #222226;
+  --toolbar: #222226;
+  --input-bg: #2e2e33;
+  --input-hover: #35353b;
+  --input-focus: #2e2e33;
+  --border: rgba(255,255,255,.06);
+  --border-l: rgba(255,255,255,.1);
+  --text: #e4e4e8;
+  --text2: #a0a0a8;
+  --text3: #6e6e76;
+  --text4: #46464e;
+  --accent: #4285f4;
+  --accent-h: #5a9bf4;
+  --accent-g: rgba(66,133,244,.15);
+  --blue: #4facfe;
+  --green: #34d399;
+  --yellow: #fbbf24;
+  --red: #f87171;
+  --r: 8px;
+  --t: .15s cubic-bezier(.4,0,.2,1);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  color: var(--text);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.14); }
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: var(--text); }
+input { font-family: inherit; color: var(--text); border: none; outline: none; background: none; }
+
+/* ══════════════════════════════════
+   SHELL
+   ══════════════════════════════════ */
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
+
+/* ══════════════════════════════════
+   TAB STRIP — the thin dark bar at top
+   ══════════════════════════════════ */
+.tab-strip {
+  display: flex;
+  align-items: flex-end;
+  background: var(--tab-strip);
+  padding: 0 8px;
+  height: 40px;
+  gap: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  flex-shrink: 0;
+}
+
+/* Each tab is a rounded-top shape sitting on the toolbar */
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px;
+  min-width: 60px;
+  max-width: 240px;
+  flex: 0 1 240px;
+  background: var(--tab-bg);
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 500;
+  transition: background var(--t), color var(--t);
+  overflow: hidden;
+}
+.tab::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border);
+  transition: opacity var(--t);
+}
+.tab:last-of-type::after { display: none; }
+.tab.active::after, .tab.active + .tab::after { opacity: 0; }
+
+.tab.active {
+  background: var(--tab-active);
+  color: var(--text);
+  z-index: 2;
+}
+.tab:not(.active):hover {
+  background: #1e1e22;
+  color: var(--text2);
+}
+
+.tab-favicon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+  background: rgba(66,133,244,.15);
+  color: var(--accent);
+  transition: transform var(--t);
+}
+.tab.active .tab-favicon { transform: scale(1.05); }
+
+.tab-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.tab-close {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  transition: all var(--t);
+  flex-shrink: 0;
+  color: var(--text3);
+  margin-right: -4px;
+}
+.tab:hover .tab-close,
+.tab.active .tab-close { opacity: .5; }
+.tab-close:hover {
+  opacity: 1 !important;
+  background: rgba(248,113,113,.12);
+  color: var(--red);
+}
+
+.tab-new {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 18px;
+  color: var(--text3);
+  transition: all var(--t);
+  flex-shrink: 0;
+  margin-left: 4px;
+  margin-bottom: 3px;
+}
+.tab-new:hover {
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+}
+.tab-new:active { transform: scale(.9); }
+
+/* ══════════════════════════════════
+   TOOLBAR — back/fwd/refresh/home + address bar + actions
+   ══════════════════════════════════ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 8px;
+  background: var(--toolbar);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* Navigation circle buttons */
+.nav-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all var(--t);
+  flex-shrink: 0;
+}
+.nav-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--text3);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke var(--t);
+}
+.nav-btn:hover {
+  background: rgba(255,255,255,.06);
+}
+.nav-btn:hover svg {
+  stroke: var(--text);
+}
+.nav-btn:active {
+  transform: scale(.88);
+}
+.nav-btn.disabled {
+  opacity: .28;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════
+   ADDRESS BAR — pill shape with lock icon
+   ══════════════════════════════════ */
+.addr-container {
+  flex: 1;
+  position: relative;
+  margin: 0 4px;
+  min-width: 0;
+}
+
+.addr-bar {
+  width: 100%;
+  height: 32px;
+  padding: 0 14px 0 34px;
+  background: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text);
+  transition: all var(--t);
+  text-overflow: ellipsis;
+}
+.addr-bar::placeholder { color: var(--text4); }
+.addr-bar:hover {
+  background: var(--input-hover);
+}
+.addr-bar:focus {
+  background: var(--input-focus);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-g);
+  padding-left: 14px;
+}
+/* Hide lock icon when focused (shows full URL for editing) */
+.addr-bar:focus + .addr-lock { opacity: 0; pointer-events: none; }
+
+.addr-lock {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  transition: opacity var(--t);
+}
+.addr-lock svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--text4);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ── Suggestions dropdown ── */
+.addr-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #1e1e24;
+  border: 1px solid var(--border-l);
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 200;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  display: none;
+}
+.addr-dropdown.open {
+  display: block;
+  animation: ddIn .12s ease;
+}
+@keyframes ddIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dd-header {
+  padding: 8px 14px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text4);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.dd-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  cursor: pointer;
+  transition: background var(--t);
+}
+.dd-item:hover, .dd-item.selected {
+  background: rgba(255,255,255,.04);
+}
+.dd-item:last-child {
+  border-radius: 0 0 12px 12px;
+}
+
+.dd-emoji {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  background: rgba(255,255,255,.04);
+  flex-shrink: 0;
+}
+.dd-texts { flex: 1; min-width: 0; }
+.dd-name {
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dd-slug {
+  font-size: 11px;
+  color: var(--text4);
+  margin-top: 1px;
+}
+.dd-arrow {
+  font-size: 12px;
+  color: var(--text4);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--t);
+}
+.dd-item:hover .dd-arrow { opacity: 1; }
+
+/* ══════════════════════════════════
+   TOOLBAR RIGHT — star, share, new site
+   ══════════════════════════════════ */
+.tb-star {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all var(--t);
+  flex-shrink: 0;
+  font-size: 18px;
+  color: var(--text4);
+}
+.tb-star:hover { background: rgba(255,255,255,.06); color: var(--yellow); }
+.tb-star.on { color: var(--yellow); }
+
+.tb-share {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.05);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  transition: all var(--t);
+  flex-shrink: 0;
+}
+.tb-share svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tb-share:hover { background: rgba(255,255,255,.09); color: var(--text); }
+
+.tb-newsite {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  transition: all var(--t);
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+.tb-newsite:hover { background: var(--accent-h); }
+.tb-newsite:active { transform: scale(.96); }
+.tb-newsite svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* ══════════════════════════════════
+   LOADING BAR
+   ══════════════════════════════════ */
+.load-bar {
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), #34a853, #fbbc05, var(--accent));
+  position: relative;
+  flex-shrink: 0;
+  width: 0%;
+  opacity: 0;
+  transition: width .25s ease, opacity .15s ease;
+}
+.load-bar.active {
+  opacity: 1;
+}
+.load-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 80px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.3));
+  border-radius: 0 2px 2px 0;
+}
+
+/* ══════════════════════════════════
+   CONTENT AREA
+   ══════════════════════════════════ */
+.content-area {
+  flex: 1;
+  overflow: hidden;
+  background: var(--bg);
+  position: relative;
+}
+
+/* ══════════════════════════════════
+   HOME PAGE
+   ══════════════════════════════════ */
+.home {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px 60px;
+}
+
+/* Logo */
+.home-hero {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.home-logo {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  user-select: none;
+}
+.home-tagline {
+  color: var(--text3);
+  font-size: 15px;
+  font-weight: 400;
+  margin-top: 8px;
+}
+
+/* Search bar — white base like Google */
+.home-search-wrap {
+  width: 100%;
+  max-width: 580px;
+  margin-bottom: 36px;
+  position: relative;
+}
+.home-search {
+  width: 100%;
+  height: 48px;
+  padding: 0 22px 0 48px;
+  background: #fff;
+  border: none;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 400;
+  color: #1a1a1a;
+  transition: box-shadow var(--t);
+  box-shadow: 0 1px 6px rgba(0,0,0,.12), 0 0 0 1px rgba(255,255,255,.04);
+}
+.home-search::placeholder {
+  color: #9aa0a6;
+}
+.home-search:hover {
+  box-shadow: 0 2px 10px rgba(0,0,0,.2), 0 0 0 1px rgba(255,255,255,.06);
+}
+.home-search:focus {
+  outline: none;
+  box-shadow: 0 2px 14px rgba(0,0,0,.25), 0 0 0 1px rgba(255,255,255,.08);
+}
+.home-search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.home-search-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: #9aa0a6;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Shortcut tiles */
+.shortcuts {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  width: 100%;
+  max-width: 440px;
+  margin-bottom: 0;
+}
+@media (max-width: 500px) {
+  .shortcuts { grid-template-columns: repeat(3, 1fr); }
+}
+.shortcut {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all var(--t);
+  text-decoration: none;
+}
+.shortcut:hover {
+  background: rgba(255,255,255,.04);
+}
+.shortcut:active {
+  transform: scale(.95);
+}
+.shortcut-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--tab-bg);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--t);
+}
+.shortcut-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.shortcut:hover .shortcut-icon {
+  background: #1e1e22;
+  border-color: var(--border-l);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.3);
+}
+.shortcut-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Home search dropdown */
+.home-search-dd {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 0 0 16px 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,.18);
+  overflow: hidden;
+  z-index: 100;
+  display: none;
+}
+.home-search-dd.open { display: block; animation: ddIn .1s ease; }
+.home-dd-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  cursor: pointer;
+  color: #333;
+  font-size: 14px;
+  transition: background .1s;
+}
+.home-dd-item:hover, .home-dd-item.sel { background: #f1f3f4; }
+.home-dd-item svg {
+  width: 16px; height: 16px;
+  fill: none; stroke: #9aa0a6; stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+  flex-shrink: 0;
+}
+/* When home search has suggestions, merge bar+dropdown visually */
+.home-search-wrap.has-dd .home-search {
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 1px 6px rgba(0,0,0,.15);
+}
+.home-search-wrap.has-dd .home-search-dd {
+  border-top: 1px solid #e8e8e8;
+}
+
+/* ══════════════════════════════════
+   SEARCH RESULTS PAGE
+   ══════════════════════════════════ */
+.search-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.search-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  background: var(--toolbar);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.search-topbar .st-logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-right: 8px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.search-topbar input {
+  flex: 1;
+  height: 40px;
+  padding: 0 18px;
+  background: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #1a1a1a;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  max-width: 600px;
+}
+.search-topbar input:focus {
+  outline: none;
+  box-shadow: 0 1px 8px rgba(0,0,0,.15);
+}
+.search-topbar button {
+  height: 40px;
+  padding: 0 22px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all var(--t);
+  flex-shrink: 0;
+}
+.search-topbar button:hover { background: var(--accent-h); }
+.search-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  gap: 0;
+}
+.search-main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 28px 60px;
+}
+.search-sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  padding: 20px 20px 60px 0;
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 900px) {
+  .search-sidebar { display: none; }
+}
+.search-count {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 18px;
+}
+.sr {
+  margin-bottom: 22px;
+}
+.sr-url {
+  font-size: 12px;
+  color: var(--green);
+  font-family: 'Inter', monospace;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sr-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #8ab4f8;
+  cursor: pointer;
+  transition: color var(--t);
+  margin-bottom: 4px;
+  display: inline-block;
+}
+.sr-title:hover { color: #aecbfa; text-decoration: underline; }
+.sr-desc {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+.search-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text3);
+  font-size: 13px;
+  padding: 20px 0;
+}
+.search-loading .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse .8s ease infinite alternate;
+}
+.search-loading .dot:nth-child(2) { animation-delay: .15s; }
+.search-loading .dot:nth-child(3) { animation-delay: .3s; }
+@keyframes pulse { from { opacity: .3; } to { opacity: 1; } }
+
+/* ── Promoted / Ad cards ── */
+.ad-section {
+  margin-bottom: 20px;
+}
+.ad-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text4);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.ad-label svg {
+  width: 12px; height: 12px;
+  fill: none; stroke: var(--text4); stroke-width: 2;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.ad-cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.ad-card {
+  flex: 0 0 220px;
+  background: var(--tab-bg);
+  border: 1px solid var(--border-l);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all var(--t);
+  position: relative;
+}
+.ad-card:hover {
+  background: #1e1e22;
+  border-color: rgba(255,255,255,.14);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.3);
+}
+.ad-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.ad-card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.ad-card-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.ad-card-url {
+  font-size: 10px;
+  color: var(--text4);
+}
+.ad-card-desc {
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ad-card-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text4);
+  background: rgba(255,255,255,.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+/* ── Sidebar ad panel ── */
+.sidebar-promo {
+  background: var(--tab-bg);
+  border: 1px solid var(--border-l);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 14px;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.sidebar-promo:hover {
+  background: #1e1e22;
+  border-color: rgba(255,255,255,.14);
+}
+.sidebar-promo-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text4);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.sidebar-promo-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+.sidebar-promo-name {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.sidebar-promo-desc {
+  font-size: 12px;
+  color: var(--text3);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+.sidebar-promo-cta {
+  display: inline-block;
+  padding: 6px 16px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  transition: all var(--t);
+}
+.sidebar-promo:hover .sidebar-promo-cta { background: var(--accent-h); }
+.sidebar-promo-views {
+  font-size: 10px;
+  color: var(--text4);
+  margin-top: 8px;
+}
+
+/* ══════════════════════════════════
+   LIST PAGES (favorites, my sites, trending, explore)
+   ══════════════════════════════════ */
+.list-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: 28px 32px 60px;
+}
+.list-page h2 {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.list-page .lp-sub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-bottom: 22px;
+}
+.lp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.lp-card {
+  background: var(--tab-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.lp-card:hover {
+  background: #1e1e22;
+  border-color: var(--border-l);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+}
+.lp-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.lp-card-desc {
+  font-size: 11px;
+  color: var(--text3);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.lp-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text4);
+}
+.lp-card-btn {
+  padding: 4px 12px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  transition: all var(--t);
+}
+.lp-card-btn:hover { background: var(--accent-h); }
+.lp-card-fav {
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--t);
+}
+.lp-card-fav:hover { color: var(--yellow); transform: scale(1.2); }
+.lp-card-fav.on { color: var(--yellow); }
+.lp-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text3);
+}
+.lp-empty svg {
+  width: 48px; height: 48px;
+  stroke: var(--text4); stroke-width: 1.5;
+  fill: none; stroke-linecap: round; stroke-linejoin: round;
+  margin-bottom: 14px; opacity: .4;
+}
+.lp-empty p { font-size: 14px; margin-bottom: 16px; }
+.lp-empty button {
+  padding: 8px 22px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════
+   CREATE SITE MODAL
+   ══════════════════════════════════ */
+.modal-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(8px);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .18s ease;
+}
+.modal-bg.open { opacity: 1; pointer-events: auto; }
+.modal-box {
+  background: #1c1c22;
+  border: 1px solid var(--border-l);
+  border-radius: 16px;
+  padding: 28px;
+  width: 400px;
+  max-width: 92vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  transform: translateY(14px) scale(.97);
+  transition: transform .2s ease;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+}
+.modal-bg.open .modal-box { transform: translateY(0) scale(1); }
+.modal-box h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 18px;
+}
+.modal-field {
+  margin-bottom: 14px;
+}
+.modal-field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  margin-bottom: 5px;
+}
+.modal-field input, .modal-field textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-l);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+.modal-field input:focus, .modal-field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-g);
+}
+.modal-field textarea { resize: vertical; min-height: 60px; }
+.modal-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text2);
+  margin-bottom: 14px; cursor: pointer;
+}
+.modal-check input[type=checkbox] {
+  width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer;
+}
+.modal-btns {
+  display: flex; gap: 8px; margin-top: 4px;
+}
+.modal-btns button {
+  flex: 1; padding: 10px; border-radius: 10px;
+  font-size: 13px; font-weight: 600; transition: all var(--t);
+}
+.modal-btn-primary { background: var(--accent); color: #fff; }
+.modal-btn-primary:hover { background: var(--accent-h); }
+.modal-btn-secondary { background: rgba(255,255,255,.06); color: var(--text2); }
+.modal-btn-secondary:hover { background: rgba(255,255,255,.1); }
+
+/* ══════════════════════════════════
+   TOAST NOTIFICATIONS
+   ══════════════════════════════════ */
+.toast-rack {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  padding: 10px 20px;
+  background: #1e1e24;
+  border: 1px solid var(--border-l);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+  animation: toastUp .25s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+.toast.ok   { border-left: 3px solid var(--green); }
+.toast.err  { border-left: 3px solid var(--red); }
+.toast.info { border-left: 3px solid var(--accent); }
+@keyframes toastUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- ── TAB STRIP ── -->
+  <div class="tab-strip" id="tabStrip"></div>
+
+  <!-- ── TOOLBAR ── -->
+  <div class="toolbar">
+    <!-- Back -->
+    <button class="nav-btn disabled" id="btnBack" title="Go back">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    </button>
+    <!-- Forward -->
+    <button class="nav-btn disabled" id="btnFwd" title="Go forward">
+      <svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+    </button>
+    <!-- Refresh -->
+    <button class="nav-btn" id="btnRefresh" title="Refresh">
+      <svg viewBox="0 0 24 24"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+    </button>
+    <!-- Home -->
+    <button class="nav-btn" id="btnHome" title="Home">
+      <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1h-2z"/></svg>
+    </button>
+
+    <!-- Address Bar -->
+    <div class="addr-container">
+      <input class="addr-bar" id="addrBar" autocomplete="off" spellcheck="false" placeholder="Search or enter address">
+      <div class="addr-lock">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <div class="addr-dropdown" id="addrDrop"></div>
+    </div>
+
+    <!-- Star -->
+    <button class="tb-star" id="btnStar" title="Add to favorites">☆</button>
+
+    <!-- Share -->
+    <button class="tb-share" id="btnShare">
+      <svg viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+      Share
+    </button>
+
+    <!-- New Site -->
+    <button class="tb-newsite" id="btnNewSite">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Site
+    </button>
+  </div>
+
+  <!-- ── LOADING BAR ── -->
+  <div class="load-bar" id="loadBar"></div>
+
+  <!-- ── CONTENT ── -->
+  <div class="content-area" id="content"></div>
+</div>
+
+<div class="toast-rack" id="toastRack"></div>
+<div class="modal-bg" id="modalBg"><div class="modal-box" id="modalBox"></div></div>
+
+<script>
+/* ════════════════════════════════════════════
+   WEBFORGE — Browser Shell
+   ════════════════════════════════════════════ */
+(function() {
+'use strict';
+
+const $ = (sel, ctx) => (ctx || document).querySelector(sel);
+const $$ = (sel, ctx) => (ctx || document).querySelectorAll(sel);
+
+/* ── Helpers ── */
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+/* ═══════════════════
+   TOAST
+   ═══════════════════ */
+function toast(msg, type) {
+  const rack = $('#toastRack');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || 'info');
+  t.textContent = msg;
+  rack.appendChild(t);
+  setTimeout(() => {
+    t.style.transition = 'opacity .25s, transform .25s';
+    t.style.opacity = '0';
+    t.style.transform = 'translateY(8px)';
+    setTimeout(() => t.remove(), 260);
+  }, 2500);
+}
+
+/* ═══════════════════
+   LOADING BAR
+   ═══════════════════ */
+function animateLoad(callback) {
+  const bar = $('#loadBar');
+  let w = 0;
+  bar.style.width = '0%';
+  bar.classList.add('active');
+
+  const tick = setInterval(() => {
+    w += Math.random() * 18 + 8;
+    if (w > 88) w = 88;
+    bar.style.width = w + '%';
+  }, 70);
+
+  setTimeout(() => {
+    clearInterval(tick);
+    bar.style.width = '100%';
+    setTimeout(() => {
+      bar.classList.remove('active');
+      bar.style.width = '0%';
+      if (callback) callback();
+    }, 200);
+  }, 400 + Math.random() * 200);
+}
+
+/* ═══════════════════
+   TAB STATE
+   ═══════════════════ */
+let tabs = [];
+let activeTabId = null;
+let tabCounter = 0;
+
+/* ═══════════════════
+   SITE DATA (seed sites for home page + suggestions)
+   ═══════════════════ */
+/* User-created sites stored in localStorage */
+let userSites = JSON.parse(localStorage.getItem('wf_sites') || '[]');
+let favorites = JSON.parse(localStorage.getItem('wf_favs') || '[]');
+
+function saveSites() { localStorage.setItem('wf_sites', JSON.stringify(userSites)); }
+function saveFavs() { localStorage.setItem('wf_favs', JSON.stringify(favorites)); }
+
+function getPromotedSites() { return userSites.filter(s => s.promoted); }
+function getAllSites() { return userSites; }
+
+
+function createTab(title, url) {
+  const id = 't' + (++tabCounter);
+  const tab = {
+    id,
+    title: title || 'New Tab',
+    url: url || 'webforge.app',
+    page: 'home',
+    emoji: '◆',
+    history: [{ title: title || 'New Tab', url: url || 'webforge.app', page: 'home' }],
+    histIdx: 0,
+  };
+  tabs.push(tab);
+  activeTabId = id;
+  renderTabs();
+  updateNavState();
+  updateAddrBar();
+  renderContent();
+  animateLoad();
+}
+
+function switchTab(id) {
+  if (activeTabId === id) return;
+  activeTabId = id;
+  renderTabs();
+  updateNavState();
+  updateAddrBar();
+  renderContent();
+}
+
+function closeTab(id) {
+  const idx = tabs.findIndex(t => t.id === id);
+  if (idx < 0) return;
+  tabs.splice(idx, 1);
+  if (!tabs.length) {
+    createTab();
+    return;
+  }
+  if (activeTabId === id) {
+    activeTabId = tabs[Math.min(idx, tabs.length - 1)].id;
+  }
+  renderTabs();
+  updateNavState();
+  updateAddrBar();
+  renderContent();
+}
+
+function getActive() {
+  return tabs.find(t => t.id === activeTabId);
+}
+
+/* ── Navigation (back/forward) ── */
+function goBack() {
+  const tab = getActive();
+  if (!tab || tab.histIdx <= 0) return;
+  tab.histIdx--;
+  const entry = tab.history[tab.histIdx];
+  tab.title = entry.title;
+  tab.url = entry.url;
+  tab.page = entry.page || 'home';
+  renderTabs();
+  updateNavState();
+  updateAddrBar();
+  renderContent();
+  animateLoad();
+}
+
+function goForward() {
+  const tab = getActive();
+  if (!tab || tab.histIdx >= tab.history.length - 1) return;
+  tab.histIdx++;
+  const entry = tab.history[tab.histIdx];
+  tab.title = entry.title;
+  tab.url = entry.url;
+  tab.page = entry.page || 'home';
+  renderTabs();
+  updateNavState();
+  updateAddrBar();
+  renderContent();
+  animateLoad();
+}
+
+function navigate(title, url, page) {
+  const tab = getActive();
+  if (!tab) return;
+  /* trim forward history */
+  tab.history = tab.history.slice(0, tab.histIdx + 1);
+  tab.history.push({ title, url, page: page || 'home' });
+  tab.histIdx = tab.history.length - 1;
+  tab.title = title;
+  tab.url = url;
+  tab.page = page || 'home';
+  renderTabs();
+  updateNavState();
+  updateAddrBar();
+  renderContent();
+  animateLoad();
+}
+
+function updateNavState() {
+  const tab = getActive();
+  const canBack = tab && tab.histIdx > 0;
+  const canFwd = tab && tab.histIdx < tab.history.length - 1;
+  $('#btnBack').classList.toggle('disabled', !canBack);
+  $('#btnFwd').classList.toggle('disabled', !canFwd);
+}
+
+/* ═══════════════════
+   RENDER TABS
+   ═══════════════════ */
+function renderTabs() {
+  const strip = $('#tabStrip');
+  strip.innerHTML = '';
+
+  tabs.forEach(tab => {
+    const div = document.createElement('div');
+    div.className = 'tab' + (tab.id === activeTabId ? ' active' : '');
+    div.dataset.id = tab.id;
+    div.innerHTML = `
+      <div class="tab-favicon">${esc(tab.emoji)}</div>
+      <span class="tab-label">${esc(tab.title)}</span>
+      <span class="tab-close" data-close="${tab.id}">×</span>
+    `;
+    strip.appendChild(div);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'tab-new';
+  addBtn.title = 'New tab';
+  addBtn.textContent = '+';
+  addBtn.addEventListener('click', () => createTab());
+  strip.appendChild(addBtn);
+
+  /* Bind tab clicks */
+  $$('.tab', strip).forEach(el => {
+    el.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('.tab-close');
+      if (closeBtn) {
+        e.stopPropagation();
+        closeTab(closeBtn.dataset.close);
+        return;
+      }
+      switchTab(el.dataset.id);
+    });
+  });
+}
+
+/* ═══════════════════
+   CONTENT SAFETY FILTER
+   ═══════════════════ */
+const BLOCKED_WORDS = [
+  'porn','xxx','nude','naked','nsfw','sex','hentai','erotic','fetish',
+  'gore','murder','torture','suicide','kill','drug','cocaine','heroin',
+  'meth','weed','marijuana','gambling','casino','betting','extremis',
+  'terrorist','bomb','weapon','gun','exploit','hack','crack','pirat',
+  'onlyfans','escort','stripper','penis','vagina','orgasm','viagra'
+];
+
+function isSafe(text) {
+  if (!text) return true;
+  const lower = text.toLowerCase();
+  return !BLOCKED_WORDS.some(w => lower.includes(w));
+}
+
+function isQuerySafe(query) {
+  return isSafe(query);
+}
+
+function filterResults(results) {
+  return results.filter(r => isSafe(r.title) && isSafe(r.desc) && isSafe(r.url));
+}
+
+/* ═══════════════════
+   SEARCH API
+   ═══════════════════ */
+let suggestTimer = null;
+
+function fetchSuggestions(query, callback) {
+  clearTimeout(suggestTimer);
+  if (!query || query.length < 2) { callback([]); return; }
+  if (!isQuerySafe(query)) { callback([]); return; }
+  suggestTimer = setTimeout(() => {
+    fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=6&origin=*`)
+      .then(r => r.json())
+      .then(data => {
+        const names = data[1] || [];
+        const urls = data[3] || [];
+        const results = names.map((n, i) => ({ name: n, url: urls[i] || '' }));
+        callback(results.filter(r => isSafe(r.name)));
+      })
+      .catch(() => callback([]));
+  }, 200);
+}
+
+function fetchSearchResults(query, callback) {
+  if (!isQuerySafe(query)) {
+    callback([]);
+    return;
+  }
+  fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1&skip_disambig=1&no_redirect=1`)
+    .then(r => r.json())
+    .then(data => {
+      const results = [];
+      if (data.AbstractText && data.AbstractURL) {
+        results.push({
+          title: data.Heading || query,
+          url: data.AbstractURL,
+          desc: data.AbstractText
+        });
+      }
+      if (data.RelatedTopics) {
+        data.RelatedTopics.forEach(t => {
+          if (t.FirstURL && t.Text) {
+            results.push({
+              title: t.Text.split(' - ')[0] || t.Text.slice(0, 60),
+              url: t.FirstURL,
+              desc: t.Text
+            });
+          }
+          if (t.Topics) {
+            t.Topics.forEach(st => {
+              if (st.FirstURL && st.Text) {
+                results.push({
+                  title: st.Text.split(' - ')[0] || st.Text.slice(0, 60),
+                  url: st.FirstURL,
+                  desc: st.Text
+                });
+              }
+            });
+          }
+        });
+      }
+      if (data.Results) {
+        data.Results.forEach(r => {
+          if (r.FirstURL && r.Text) {
+            results.push({ title: r.Text, url: r.FirstURL, desc: '' });
+          }
+        });
+      }
+      callback(filterResults(results).slice(0, 10));
+    })
+    .catch(() => callback([]));
+}
+
+function doSearch(query) {
+  if (!isQuerySafe(query)) {
+    toast('That search is not allowed', 'err');
+    return;
+  }
+  navigate('Search: ' + query, 'webforge.app/search?q=' + encodeURIComponent(query), 'search');
+}
+
+/* ═══════════════════
+   RENDER CONTENT
+   ═══════════════════ */
+function renderContent() {
+  const tab = getActive();
+  if (!tab) return;
+  const area = $('#content');
+  area.innerHTML = '';
+
+  switch (tab.page) {
+    case 'search': renderSearch(area); break;
+    case 'favorites': renderFavorites(area); break;
+    case 'mysites': renderMySites(area); break;
+    case 'trending': renderTrending(area); break;
+    case 'explore': renderExplore(area); break;
+    case 'home': default: renderHome(area); break;
+  }
+}
+
+/* ═══════════════════
+   MODAL
+   ═══════════════════ */
+function showModal(html) {
+  $('#modalBox').innerHTML = html;
+  $('#modalBg').classList.add('open');
+}
+function closeModal() { $('#modalBg').classList.remove('open'); }
+$('#modalBg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+/* ═══════════════════
+   CREATE SITE
+   ═══════════════════ */
+function showCreateSite() {
+  showModal(`
+    <h3>Create New Site</h3>
+    <div class="modal-field"><label>Site Name</label><input id="crName" placeholder="My Cool Site"></div>
+    <div class="modal-field"><label>Description</label><textarea id="crDesc" placeholder="What is your site about?"></textarea></div>
+    <div class="modal-field"><label>Tags (comma separated)</label><input id="crTags" placeholder="tech, blog, portfolio"></div>
+    <label class="modal-check"><input type="checkbox" id="crPromote"> Promote this site (show as ad in search results)</label>
+    <div class="modal-field" id="crAdField" style="display:none"><label>Ad Tagline</label><input id="crAdLine" placeholder="Visit us today — 50% off!"></div>
+    <div class="modal-btns">
+      <button class="modal-btn-secondary" id="crCancel">Cancel</button>
+      <button class="modal-btn-primary" id="crSubmit">Create Site</button>
+    </div>
+  `);
+  $('#crPromote').addEventListener('change', function() {
+    $('#crAdField').style.display = this.checked ? 'block' : 'none';
+  });
+  $('#crCancel').addEventListener('click', closeModal);
+  $('#crSubmit').addEventListener('click', () => {
+    const name = $('#crName').value.trim();
+    if (!name) { toast('Enter a site name', 'err'); return; }
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.floor(Math.random()*900+100);
+    const site = {
+      id: 'site-' + Date.now(),
+      slug,
+      name,
+      desc: $('#crDesc').value.trim() || 'A WebForge site',
+      tags: $('#crTags').value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean),
+      views: 0,
+      color: '#' + Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0'),
+      promoted: $('#crPromote').checked,
+      adLine: $('#crAdLine')?.value.trim() || '',
+      created: Date.now()
+    };
+    userSites.push(site);
+    saveSites();
+    closeModal();
+    toast('Site "' + name + '" created!', 'ok');
+    navigate(name, 'webforge.app/' + slug, 'mysites');
+  });
+}
+
+/* ═══════════════════
+   HOME PAGE
+   ═══════════════════ */
+function renderHome(area) {
+  const div = document.createElement('div');
+  div.className = 'home';
+
+  const svgStar = `<svg viewBox="0 0 24 24" stroke="#fbbc05"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`;
+  const svgFolder = `<svg viewBox="0 0 24 24" stroke="#4285f4"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`;
+  const svgPlus = `<svg viewBox="0 0 24 24" stroke="#34a853"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
+  const svgTrend = `<svg viewBox="0 0 24 24" stroke="#ea4335"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
+  const svgGlobe = `<svg viewBox="0 0 24 24" stroke="#4285f4"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
+
+  div.innerHTML = `
+    <div class="home-hero">
+      <div class="home-logo">WebForge</div>
+      <div class="home-tagline">Build beautiful websites in your browser</div>
+    </div>
+
+    <div class="home-search-wrap" id="homeSearchWrap">
+      <div class="home-search-icon">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      </div>
+      <input class="home-search" id="homeSearch" placeholder="Search the web or enter a site..." autocomplete="off" spellcheck="false">
+      <div class="home-search-dd" id="homeDD"></div>
+    </div>
+
+    <div class="shortcuts">
+      <div class="shortcut" data-action="favorites">
+        <div class="shortcut-icon">${svgStar}</div>
+        <div class="shortcut-label">Favorites</div>
+      </div>
+      <div class="shortcut" data-action="mysites">
+        <div class="shortcut-icon">${svgFolder}</div>
+        <div class="shortcut-label">My Sites</div>
+      </div>
+      <div class="shortcut" data-action="create">
+        <div class="shortcut-icon">${svgPlus}</div>
+        <div class="shortcut-label">Create</div>
+      </div>
+      <div class="shortcut" data-action="trending">
+        <div class="shortcut-icon">${svgTrend}</div>
+        <div class="shortcut-label">Trending</div>
+      </div>
+      <div class="shortcut" data-action="explore">
+        <div class="shortcut-icon">${svgGlobe}</div>
+        <div class="shortcut-label">Explore</div>
+      </div>
+    </div>
+  `;
+
+  area.appendChild(div);
+
+  /* ── Home search with live suggestions ── */
+  const searchInput = $('#homeSearch', div);
+  const homeDd = $('#homeDD', div);
+  const wrap = $('#homeSearchWrap', div);
+  let homeSel = -1;
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim();
+    if (q.length < 2) {
+      homeDd.classList.remove('open');
+      wrap.classList.remove('has-dd');
+      return;
+    }
+    fetchSuggestions(q, (results) => {
+      if (!results.length) { homeDd.classList.remove('open'); wrap.classList.remove('has-dd'); return; }
+      homeSel = -1;
+      homeDd.innerHTML = results.map((r, i) => `
+        <div class="home-dd-item" data-i="${i}" data-q="${esc(r.name)}">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          ${esc(r.name)}
+        </div>
+      `).join('');
+      homeDd.classList.add('open');
+      wrap.classList.add('has-dd');
+      $$('.home-dd-item', homeDd).forEach(el => {
+        el.addEventListener('click', () => {
+          doSearch(el.dataset.q);
+          homeDd.classList.remove('open');
+          wrap.classList.remove('has-dd');
+        });
+      });
+    });
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    const items = $$('.home-dd-item', homeDd);
+    if (e.key === 'ArrowDown' && items.length) {
+      e.preventDefault();
+      homeSel = Math.min(homeSel + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('sel', i === homeSel));
+      searchInput.value = items[homeSel].dataset.q;
+    } else if (e.key === 'ArrowUp' && items.length) {
+      e.preventDefault();
+      homeSel = Math.max(homeSel - 1, -1);
+      items.forEach((el, i) => el.classList.toggle('sel', i === homeSel));
+      if (homeSel >= 0) searchInput.value = items[homeSel].dataset.q;
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      homeDd.classList.remove('open');
+      wrap.classList.remove('has-dd');
+      const v = searchInput.value.trim();
+      if (v) doSearch(v);
+    } else if (e.key === 'Escape') {
+      homeDd.classList.remove('open');
+      wrap.classList.remove('has-dd');
+    }
+  });
+
+  searchInput.addEventListener('blur', () => {
+    setTimeout(() => { homeDd.classList.remove('open'); wrap.classList.remove('has-dd'); }, 180);
+  });
+
+  /* ── Shortcut clicks ── */
+  $$('.shortcut', div).forEach(sc => {
+    sc.addEventListener('click', () => {
+      const action = sc.dataset.action;
+      if (action === 'favorites') navigate('Favorites', 'webforge.app/favorites', 'favorites');
+      else if (action === 'mysites') navigate('My Sites', 'webforge.app/my-sites', 'mysites');
+      else if (action === 'create') showCreateSite();
+      else if (action === 'trending') navigate('Trending', 'webforge.app/trending', 'trending');
+      else if (action === 'explore') navigate('Explore', 'webforge.app/explore', 'explore');
+    });
+  });
+}
+
+/* ═══════════════════
+   FAVORITES PAGE
+   ═══════════════════ */
+function renderFavorites(area) {
+  const favSites = userSites.filter(s => favorites.includes(s.slug));
+  const div = document.createElement('div');
+  div.className = 'list-page';
+  div.innerHTML = `<h2>Favorites</h2><p class="lp-sub">${favSites.length} saved site${favSites.length!==1?'s':''}</p>` +
+    (favSites.length ? `<div class="lp-grid">${favSites.map(s => lpCard(s, true)).join('')}</div>` :
+    `<div class="lp-empty"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><p>No favorites yet</p><button onclick="navigate('New Tab','webforge.app','home')">Browse sites</button></div>`);
+  area.appendChild(div);
+  bindLpCards(div);
+}
+
+/* ═══════════════════
+   MY SITES PAGE
+   ═══════════════════ */
+function renderMySites(area) {
+  const div = document.createElement('div');
+  div.className = 'list-page';
+  div.innerHTML = `<h2>My Sites</h2><p class="lp-sub">${userSites.length} site${userSites.length!==1?'s':''} created</p>` +
+    (userSites.length ? `<div class="lp-grid">${userSites.map(s => lpCard(s, false, true)).join('')}</div>` :
+    `<div class="lp-empty"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg><p>You haven't created any sites yet</p><button id="lpCreate">Create your first site</button></div>`);
+  area.appendChild(div);
+  bindLpCards(div);
+  $('#lpCreate', div)?.addEventListener('click', showCreateSite);
+}
+
+/* ═══════════════════
+   TRENDING PAGE
+   ═══════════════════ */
+function renderTrending(area) {
+  const sorted = [...userSites].sort((a,b) => (b.views||0) - (a.views||0));
+  const div = document.createElement('div');
+  div.className = 'list-page';
+  div.innerHTML = `<h2>Trending</h2><p class="lp-sub">Most viewed sites on WebForge</p>` +
+    (sorted.length ? `<div class="lp-grid">${sorted.map(s => lpCard(s)).join('')}</div>` :
+    `<div class="lp-empty"><svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg><p>No sites yet ��� create one to get started</p><button id="lpCreate">Create a site</button></div>`);
+  area.appendChild(div);
+  bindLpCards(div);
+  $('#lpCreate', div)?.addEventListener('click', showCreateSite);
+}
+
+/* ═══════════════════
+   EXPLORE PAGE
+   ═══════════════════ */
+function renderExplore(area) {
+  const all = [...userSites].sort(() => Math.random() - 0.5);
+  const div = document.createElement('div');
+  div.className = 'list-page';
+  div.innerHTML = `<h2>Explore</h2><p class="lp-sub">Discover sites on WebForge</p>` +
+    (all.length ? `<div class="lp-grid">${all.map(s => lpCard(s)).join('')}</div>` :
+    `<div class="lp-empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg><p>Nothing to explore yet — be the first to create a site!</p><button id="lpCreate">Create a site</button></div>`);
+  area.appendChild(div);
+  bindLpCards(div);
+  $('#lpCreate', div)?.addEventListener('click', showCreateSite);
+}
+
+/* ═══════════════════
+   LIST PAGE CARD HELPER
+   ═══════════════════ */
+function lpCard(site, showFav, showPromoted) {
+  const isFav = favorites.includes(site.slug);
+  return `<div class="lp-card" data-slug="${site.slug}">
+    <div class="lp-card-name">${esc(site.name)}${site.promoted ? ' <span style="font-size:9px;color:var(--accent);font-weight:700">AD</span>' : ''}</div>
+    <div class="lp-card-desc">${esc(site.desc)}</div>
+    <div class="lp-card-foot">
+      <span>${(site.tags||[]).slice(0,2).map(t=>'#'+t).join(' ')}</span>
+      <span class="lp-card-fav ${isFav?'on':''}" data-fav="${site.slug}">${isFav?'★':'☆'}</span>
+    </div>
+  </div>`;
+}
+
+function bindLpCards(container) {
+  $$('.lp-card', container).forEach(c => {
+    c.addEventListener('click', (e) => {
+      const fav = e.target.closest('.lp-card-fav');
+      if (fav) {
+        e.stopPropagation();
+        const slug = fav.dataset.fav;
+        const idx = favorites.indexOf(slug);
+        if (idx >= 0) { favorites.splice(idx, 1); toast('Removed from favorites', 'info'); }
+        else { favorites.push(slug); toast('Added to favorites', 'ok'); }
+        saveFavs();
+        renderContent();
+        return;
+      }
+      toast('Site: ' + c.dataset.slug, 'info');
+    });
+  });
+}
+
+/* ═══════════════════
+   SEARCH RESULTS PAGE
+   ═══════════════════ */
+function getMatchingAds(query) {
+  const q = query.toLowerCase();
+  const promoted = getPromotedSites();
+  if (!promoted.length) return [];
+  const matched = promoted.filter(s =>
+    s.name.toLowerCase().includes(q) ||
+    (s.tags||[]).some(t => q.includes(t) || t.includes(q)) ||
+    s.desc.toLowerCase().includes(q)
+  );
+  if (matched.length) return matched;
+  return promoted.sort(() => Math.random() - 0.5).slice(0, 2);
+}
+
+function renderSearch(area) {
+  const tab = getActive();
+  const raw = tab.url.replace('webforge.app/search?q=', '');
+  const query = decodeURIComponent(raw);
+
+  const ads = getMatchingAds(query);
+  /* Pick one for sidebar feature */
+  const sidebarAd = ads[0] || demoSites.find(s => s.promoted);
+
+  const div = document.createElement('div');
+  div.className = 'search-page';
+  div.innerHTML = `
+    <div class="search-topbar">
+      <span class="st-logo" id="srLogo">WebForge</span>
+      <input id="srInput" value="${esc(query)}" placeholder="Search..." autocomplete="off">
+      <button id="srBtn">Search</button>
+    </div>
+    <div class="search-body">
+      <div class="search-main">
+        <div id="srAds"></div>
+        <div id="srResults">
+          <div class="search-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>Searching...</span></div>
+        </div>
+      </div>
+      <div class="search-sidebar" id="srSidebar"></div>
+    </div>
+  `;
+  area.appendChild(div);
+
+  const input = $('#srInput', div);
+  const resBox = $('#srResults', div);
+  const adsBox = $('#srAds', div);
+  const sidebar = $('#srSidebar', div);
+
+  function renderAds(q) {
+    const matchedAds = getMatchingAds(q);
+    if (!matchedAds.length) { adsBox.innerHTML = ''; return; }
+    adsBox.innerHTML = `
+      <div class="ad-section">
+        <div class="ad-label">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+          Sponsored
+        </div>
+        <div class="ad-cards">
+          ${matchedAds.map(s => `
+            <div class="ad-card" data-slug="${s.slug}">
+              <div class="ad-card-badge">Ad</div>
+              <div class="ad-card-head">
+                <div class="ad-card-icon" style="background:${s.color}20">${s.emoji}</div>
+                <div>
+                  <div class="ad-card-name">${esc(s.name)}</div>
+                  <div class="ad-card-url">webforge.app/${esc(s.slug)}</div>
+                </div>
+              </div>
+              <div class="ad-card-desc">${esc(s.adLine || s.desc)}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    $$('.ad-card', adsBox).forEach(c => {
+      c.addEventListener('click', () => {
+        const s = userSites.find(x => x.slug === c.dataset.slug);
+        if (s) navigate(s.name, 'webforge.app/' + s.slug, 'view');
+      });
+    });
+  }
+
+  function renderSidebar(q) {
+    const sa = getMatchingAds(q)[0];
+    if (!sa) { sidebar.innerHTML = ''; return; }
+    sidebar.innerHTML = `
+      <div class="sidebar-promo" data-slug="${sa.slug}">
+        <div class="sidebar-promo-label">Promoted Site</div>
+        <div class="sidebar-promo-icon">${sa.emoji}</div>
+        <div class="sidebar-promo-name">${esc(sa.name)}</div>
+        <div class="sidebar-promo-desc">${esc(sa.desc)}</div>
+        <span class="sidebar-promo-cta">Visit Site</span>
+        <div class="sidebar-promo-views">${sa.views.toLocaleString()} views</div>
+      </div>
+    `;
+    $('.sidebar-promo', sidebar)?.addEventListener('click', () => {
+      navigate(sa.name, 'webforge.app/' + sa.slug, 'view');
+    });
+  }
+
+  function runSearch(q) {
+    if (!isQuerySafe(q)) {
+      resBox.innerHTML = '<div class="search-count" style="color:var(--red)">This search has been blocked by WebForge SafeSearch.</div>';
+      adsBox.innerHTML = '';
+      sidebar.innerHTML = '';
+      return;
+    }
+    renderAds(q);
+    renderSidebar(q);
+    resBox.innerHTML = '<div class="search-loading"><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>Searching...</span></div>';
+    fetchSearchResults(q, (results) => {
+      if (!results.length) {
+        resBox.innerHTML = `<div class="search-count">No results found for "${esc(q)}"</div><p style="color:var(--text3);font-size:13px;margin-top:8px">Try a different search term or check your spelling.</p>`;
+        return;
+      }
+      let html = `<div class="search-count">${results.length} result${results.length !== 1 ? 's' : ''} for "${esc(q)}"</div>`;
+      results.forEach(r => {
+        let domain = '';
+        try { domain = new URL(r.url).hostname; } catch(e) {}
+        html += `
+          <div class="sr">
+            <div class="sr-url">${esc(domain)}</div>
+            <div class="sr-title" data-href="${esc(r.url)}">${esc(r.title)}</div>
+            <div class="sr-desc">${esc(r.desc)}</div>
+          </div>
+        `;
+      });
+      resBox.innerHTML = html;
+      $$('.sr-title', resBox).forEach(el => {
+        el.addEventListener('click', () => {
+          const url = el.dataset.href;
+          if (url) window.open(url, '_blank', 'noopener');
+        });
+      });
+    });
+  }
+
+  runSearch(query);
+
+  $('#srLogo', div).addEventListener('click', () => {
+    navigate('New Tab', 'webforge.app', 'home');
+  });
+  $('#srBtn', div).addEventListener('click', () => {
+    const v = input.value.trim();
+    if (v) { tab.url = 'webforge.app/search?q=' + encodeURIComponent(v); updateAddrBar(); runSearch(v); }
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); const v = input.value.trim(); if (v) { tab.url = 'webforge.app/search?q=' + encodeURIComponent(v); updateAddrBar(); runSearch(v); } }
+  });
+}
+
+/* ═══════════════════
+   ADDRESS BAR
+   ═══════════════════ */
+function updateAddrBar() {
+  const tab = getActive();
+  if (!tab) return;
+  const bar = $('#addrBar');
+  bar.value = tab.url;
+}
+
+function initAddrBar() {
+  const bar = $('#addrBar');
+  const drop = $('#addrDrop');
+  let selIdx = -1;
+
+  bar.addEventListener('focus', () => {
+    bar.select();
+  });
+
+  bar.addEventListener('input', () => {
+    const q = bar.value.trim().toLowerCase();
+    if (q.length < 1) {
+      drop.classList.remove('open');
+      return;
+    }
+
+    /* Local matches first */
+    const locals = userSites.filter(s =>
+      s.name.toLowerCase().includes(q) || s.slug.includes(q)
+    );
+
+    /* Show locals immediately */
+    function renderDrop(localItems, apiItems) {
+      selIdx = -1;
+      let html = '';
+      if (localItems.length) {
+        html += '<div class="dd-header">WebForge Sites</div>';
+        html += localItems.map((s, i) => `
+          <div class="dd-item" data-slug="${s.slug}" data-type="local">
+            <div class="dd-emoji">${s.emoji}</div>
+            <div class="dd-texts">
+              <div class="dd-name">${esc(s.name)}</div>
+              <div class="dd-slug">webforge.app/${esc(s.slug)}</div>
+            </div>
+            <span class="dd-arrow">↵</span>
+          </div>
+        `).join('');
+      }
+      if (apiItems.length) {
+        html += '<div class="dd-header">Web Suggestions</div>';
+        html += apiItems.map((s) => `
+          <div class="dd-item" data-q="${esc(s.name)}" data-type="search">
+            <div class="dd-emoji"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6e6e76" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg></div>
+            <div class="dd-texts">
+              <div class="dd-name">${esc(s.name)}</div>
+            </div>
+            <span class="dd-arrow">↵</span>
+          </div>
+        `).join('');
+      }
+      if (!html) { drop.classList.remove('open'); return; }
+      drop.innerHTML = html;
+      drop.classList.add('open');
+
+      $$('.dd-item', drop).forEach(item => {
+        item.addEventListener('click', () => {
+          if (item.dataset.type === 'local') {
+            const slug = item.dataset.slug;
+            const site = userSites.find(s => s.slug === slug);
+            if (site) {
+              navigate(site.name, 'webforge.app/' + site.slug, 'view');
+            }
+          } else {
+            doSearch(item.dataset.q);
+          }
+          drop.classList.remove('open');
+        });
+      });
+    }
+
+    /* Show locals immediately, then add API results */
+    renderDrop(locals, []);
+    fetchSuggestions(q, (apiResults) => {
+      renderDrop(locals, apiResults);
+    });
+  });
+
+  bar.addEventListener('keydown', (e) => {
+    const items = $$('.dd-item', drop);
+
+    if (e.key === 'ArrowDown' && items.length) {
+      e.preventDefault();
+      selIdx = Math.min(selIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle('selected', i === selIdx));
+    } else if (e.key === 'ArrowUp' && items.length) {
+      e.preventDefault();
+      selIdx = Math.max(selIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle('selected', i === selIdx));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      drop.classList.remove('open');
+      if (selIdx >= 0 && items[selIdx]) {
+        items[selIdx].click();
+      } else {
+        const v = bar.value.trim();
+        if (v) {
+          /* If it looks like a webforge URL, navigate directly */
+          if (v.startsWith('webforge.app/')) {
+            navigate(v, v, 'view');
+          } else {
+            doSearch(v);
+          }
+        }
+      }
+      bar.blur();
+    } else if (e.key === 'Escape') {
+      drop.classList.remove('open');
+      bar.blur();
+    }
+  });
+
+  bar.addEventListener('blur', () => {
+    setTimeout(() => drop.classList.remove('open'), 150);
+  });
+}
+
+/* ═══════════════════
+   TOOLBAR BUTTON EVENTS
+   ═══════════════════ */
+function initToolbar() {
+  $('#btnBack').addEventListener('click', goBack);
+  $('#btnFwd').addEventListener('click', goForward);
+  $('#btnRefresh').addEventListener('click', () => {
+    renderContent();
+    animateLoad();
+  });
+  $('#btnHome').addEventListener('click', () => {
+    navigate('New Tab', 'webforge.app', 'home');
+  });
+
+  /* Star toggle */
+  let starred = false;
+  $('#btnStar').addEventListener('click', () => {
+    starred = !starred;
+    $('#btnStar').textContent = starred ? '★' : '☆';
+    $('#btnStar').classList.toggle('on', starred);
+    toast(starred ? 'Added to favorites' : 'Removed from favorites', starred ? 'ok' : 'info');
+  });
+
+  /* Share */
+  $('#btnShare').addEventListener('click', () => {
+    const tab = getActive();
+    if (tab) {
+      navigator.clipboard.writeText(tab.url)
+        .then(() => toast('Link copied to clipboard', 'ok'))
+        .catch(() => toast('Share: ' + tab.url, 'info'));
+    }
+  });
+
+  /* New Site */
+  $('#btnNewSite').addEventListener('click', () => {
+    showCreateSite();
+  });
+}
+
+/* ═══════════════════
+   INIT
+   ═══════════════════ */
+function init() {
+  createTab('New Tab', 'webforge.app');
+  initAddrBar();
+  initToolbar();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
