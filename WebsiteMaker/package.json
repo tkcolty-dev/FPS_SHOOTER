@@ -1,0 +1,15 @@
+{
+  "name": "webforge",
+  "version": "1.0.0",
+  "description": "Visual website builder with AI assistant",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
