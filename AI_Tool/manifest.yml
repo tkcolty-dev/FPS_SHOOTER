@@ -1,0 +1,14 @@
+---
+applications:
+  - name: scholar-search
+    memory: 256M
+    disk_quota: 512M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node server.js
+    env:
+      NODE_ENV: production
+      NPM_CONFIG_PRODUCTION: "true"
+    services:
+      - scholar-llm
