@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Sign In Sheet</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #f3f1e9;
+    color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+  .page {
+    max-width: 720px; margin: 0 auto;
+    background: #fff; min-height: 100vh;
+    box-shadow: 0 0 0 1px #e3dfce, 0 18px 50px rgba(0,0,0,0.06);
+  }
+
+  .head {
+    padding: 22px 24px 16px;
+    border-bottom: 2px solid #111;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .head h1 {
+    margin: 0; font-family: Georgia, "Times New Roman", serif;
+    font-size: 26px; font-weight: 700; letter-spacing: -0.01em;
+  }
+  .head .date {
+    color: #6b6b6b; font-size: 13px;
+    font-family: Georgia, serif; font-style: italic;
+    margin-left: auto;
+  }
+  .mic-top {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: #fff; border: 1.5px solid #e3dfce;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .mic-top.live { background: #fef2f2; border-color: #fca5a5; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.35);} 50%{box-shadow:0 0 0 8px rgba(220,38,38,0);} }
+  .mic-top svg { width: 16px; height: 16px; stroke: #111; fill: none; stroke-width: 2; stroke-linecap: round; }
+  .gear-btn {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: #fff; border: 1.5px solid #e3dfce;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .gear-btn svg { width: 18px; height: 18px; stroke: #111; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .gear-btn:active { background: #fafaf3; }
+
+  /* Rows */
+  .row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 22px;
+    border-bottom: 1px solid #ece9d8;
+  }
+  .name {
+    flex: 1;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 20px; font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .time {
+    font-family: Georgia, serif;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    color: #6b6b6b;
+    min-width: 60px;
+    text-align: right;
+  }
+
+  /* Big buttons mode */
+  body.big .row { padding: 22px 24px; gap: 16px; }
+  body.big .name { font-size: 26px; }
+  body.big .toggle { width: 240px; height: 64px; padding: 6px; }
+  body.big .toggle .slide { top: 6px; height: calc(100% - 12px); width: calc(50% - 6px); left: 6px; }
+  body.big .toggle .seg { font-size: 18px; letter-spacing: 0.06em; }
+  body.big .time { font-size: 16px; min-width: 76px; }
+
+  /* Slide toggle */
+  .toggle {
+    position: relative;
+    display: flex;
+    background: #f1efe4;
+    border-radius: 999px;
+    padding: 4px;
+    width: 160px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  .toggle .slide {
+    position: absolute;
+    top: 4px;
+    height: calc(100% - 8px);
+    width: calc(50% - 4px);
+    border-radius: 999px;
+    transition: transform 280ms cubic-bezier(0.4, 1.2, 0.5, 1), background 200ms, opacity 200ms;
+    opacity: 0;
+    left: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  }
+  .toggle[data-state="in"] .slide {
+    opacity: 1;
+    transform: translateX(0);
+    background: #10b981;
+  }
+  .toggle[data-state="out"] .slide {
+    opacity: 1;
+    transform: translateX(100%);
+    background: #f97316;
+  }
+  .toggle .seg {
+    position: relative; z-index: 1;
+    flex: 1;
+    border: 0; background: transparent;
+    font-family: -apple-system, sans-serif;
+    font-size: 14px; font-weight: 700;
+    color: #6b6b6b;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: color 180ms;
+  }
+  .toggle[data-state="in"] .seg[data-type="in"] { color: #fff; }
+  .toggle[data-state="out"] .seg[data-type="out"] { color: #fff; }
+  .toggle .seg:active { transform: scale(0.95); }
+
+  /* Add */
+  .add-row {
+    padding: 18px;
+    text-align: center;
+    font-family: Georgia, serif; font-style: italic;
+    color: #9b9684;
+    cursor: pointer;
+  }
+  .add-row:active { background: #fafaf3; }
+
+  .add-input {
+    display: none;
+    padding: 14px 16px;
+    border-bottom: 1px solid #ece9d8;
+    background: #fafaf3;
+    gap: 8px;
+    align-items: center;
+  }
+  .add-input.show { display: flex; }
+  .add-input input {
+    flex: 1; border: 1.5px solid #d6d2c2; border-radius: 8px;
+    padding: 12px 14px; font-size: 16px; outline: none;
+    font-family: Georgia, serif;
+    background: #fff;
+  }
+  .add-input input:focus { border-color: #111; }
+  .add-input button {
+    border: 0; padding: 12px 18px; border-radius: 8px;
+    font-family: Georgia, serif; font-weight: 700; font-size: 14px;
+    cursor: pointer;
+  }
+  .add-input .ok { background: #111; color: #fff; }
+  .add-input .x { background: transparent; color: #888; font-size: 20px; padding: 8px 12px; }
+
+  /* Edit */
+  .edit-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.35);
+    display: none; align-items: center; justify-content: center;
+    padding: 20px; z-index: 60;
+  }
+  .edit-bg.show { display: flex; }
+  .edit-pop {
+    background: #fff; border-radius: 14px; padding: 18px;
+    width: 100%; max-width: 360px;
+  }
+  .edit-pop input {
+    width: 100%; border: 1.5px solid #d6d2c2; border-radius: 8px;
+    padding: 12px 14px; font-size: 17px; outline: none;
+    font-family: Georgia, serif; margin-bottom: 12px;
+  }
+  .edit-pop input:focus { border-color: #111; }
+  .edit-pop .row-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .edit-pop button {
+    border: 0; border-radius: 8px; padding: 10px 16px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: Georgia, serif;
+  }
+  .edit-pop .cancel { background: #f3f1e9; color: #6b6b6b; }
+  .edit-pop .save { background: #111; color: #fff; }
+  .edit-pop .del { background: none; color: #b91c1c; margin-right: auto; }
+
+  /* Settings popover */
+  .settings-pop {
+    background: #fff; border-radius: 14px; padding: 18px;
+    width: 100%; max-width: 360px;
+  }
+  .settings-pop h3 {
+    margin: 0 0 14px; font-family: Georgia, serif; font-size: 20px;
+  }
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 0;
+  }
+  .setting-row .lbl {
+    font-family: Georgia, serif; font-size: 16px;
+  }
+  .setting-row .sub {
+    font-size: 12px; color: #888; margin-top: 2px;
+    font-family: -apple-system, sans-serif;
+  }
+  .iswitch {
+    position: relative; width: 50px; height: 28px;
+    background: #d1d5db; border-radius: 999px;
+    cursor: pointer; transition: background 200ms;
+    flex-shrink: 0;
+  }
+  .iswitch.on { background: #10b981; }
+  .iswitch::after {
+    content: '';
+    position: absolute; top: 3px; left: 3px;
+    width: 22px; height: 22px;
+    background: #fff; border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 220ms cubic-bezier(0.4, 1.2, 0.5, 1);
+  }
+  .iswitch.on::after { transform: translateX(22px); }
+
+  .settings-foot {
+    display: flex; justify-content: flex-end; margin-top: 14px;
+  }
+  .settings-foot button {
+    border: 0; border-radius: 8px; padding: 10px 18px;
+    background: #111; color: #fff;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    font-family: Georgia, serif;
+  }
+
+  .voice-hint {
+    padding: 10px 18px;
+    font-family: Georgia, serif;
+    font-style: italic;
+    color: #6b6b6b;
+    font-size: 13px;
+    text-align: center;
+    background: #fef3c7;
+    border-bottom: 1px solid #fbbf24;
+    display: none;
+  }
+  .voice-hint.show { display: block; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #111; color: #fff;
+    padding: 12px 20px; border-radius: 999px;
+    font-family: Georgia, serif; font-size: 15px;
+    opacity: 0; transition: opacity 200ms, transform 200ms;
+    pointer-events: none; z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 520px) {
+    .head { padding: 16px 14px 12px; }
+    .head h1 { font-size: 20px; }
+    .row { padding: 12px 14px; gap: 8px; }
+    .name { font-size: 17px; }
+    .toggle { width: 130px; height: 40px; }
+    .toggle .seg { font-size: 12px; }
+    .time { min-width: 50px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="head">
+    <h1>Sign In Sheet</h1>
+    <button class="mic-top" id="mic" aria-label="Voice">
+      <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 11v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+    </button>
+    <button class="gear-btn" id="gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <div class="date" id="date">—</div>
+  </div>
+
+  <div class="voice-hint" id="voice-hint">Listening… say a name then "in" or "out"</div>
+
+  <div id="rows"></div>
+
+  <div class="add-input" id="add-input">
+    <input id="add-name" placeholder="Type a name…" autocomplete="off" />
+    <button class="ok" id="add-ok">Add</button>
+    <button class="x" id="add-cancel">×</button>
+  </div>
+  <div class="add-row" id="add-row">+ Add a name</div>
+</div>
+
+<!-- Settings -->
+<div class="edit-bg" id="settings-bg">
+  <div class="settings-pop">
+    <h3>Settings</h3>
+    <div class="setting-row">
+      <div>
+        <div class="lbl">Big buttons</div>
+        <div class="sub">Larger toggles and names</div>
+      </div>
+      <div class="iswitch" id="sw-big"></div>
+    </div>
+    <div class="settings-foot">
+      <button id="settings-done">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="edit-bg" id="edit-pop">
+  <div class="edit-pop">
+    <input id="edit-name" autocomplete="off" />
+    <div class="row-btns">
+      <button class="del" id="edit-del">Delete</button>
+      <button class="cancel" id="edit-cancel">Cancel</button>
+      <button class="save" id="edit-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const LS_P = 'sign_people_v7';
+  const LS_E = 'sign_entries_v7';
+  const LS_D = 'sign_day_v7';
+  const LS_S = 'sign_settings_v7';
+
+  let people = load(LS_P, []);
+  let entries = load(LS_E, {});
+  let settings = load(LS_S, { big: false });
+
+  function load(k, fb) { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } }
+  function save() {
+    localStorage.setItem(LS_P, JSON.stringify(people));
+    localStorage.setItem(LS_E, JSON.stringify(entries));
+  }
+  function uid() { return Math.random().toString(36).slice(2,10); }
+  function esc(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
+
+  (function autoReset() {
+    const today = new Date().toDateString();
+    const last = localStorage.getItem(LS_D);
+    if (last && last !== today) { entries = {}; localStorage.setItem(LS_E, JSON.stringify(entries)); }
+    localStorage.setItem(LS_D, today);
+  })();
+
+  document.getElementById('date').textContent =
+    new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const $rows = document.getElementById('rows');
+  function render() {
+    $rows.innerHTML = people.map(p => {
+      const e = entries[p.id] || {};
+      const state = e.status || '';
+      const timeStr = e.ts ? fmtTime(e.ts) : '';
+      return `
+        <div class="row">
+          <div class="name" data-edit="${p.id}">${esc(p.name)}</div>
+          <div class="toggle" data-state="${state}" data-pid="${p.id}">
+            <div class="slide"></div>
+            <button class="seg" data-type="in">In</button>
+            <button class="seg" data-type="out">Out</button>
+          </div>
+          <div class="time">${timeStr}</div>
+        </div>
+      `;
+    }).join('');
+
+    $rows.querySelectorAll('.toggle .seg').forEach(el => {
+      el.addEventListener('click', () => {
+        const t = el.closest('.toggle');
+        toggle(t.dataset.pid, el.dataset.type);
+      });
+    });
+    $rows.querySelectorAll('.name').forEach(el => {
+      let t;
+      el.addEventListener('pointerdown', () => { t = setTimeout(() => { openEdit(el.dataset.edit); t = null; }, 500); });
+      el.addEventListener('pointerup', () => { if (t) clearTimeout(t); });
+      el.addEventListener('pointerleave', () => { if (t) clearTimeout(t); });
+    });
+  }
+
+  function toggle(pid, type) {
+    if (!entries[pid]) entries[pid] = {};
+    const cur = entries[pid].status;
+    if (cur === type) {
+      entries[pid] = {};
+    } else {
+      entries[pid] = { status: type, ts: Date.now() };
+    }
+    save(); render();
+    const p = people.find(x => x.id === pid);
+    if (entries[pid].status) toast(`${p.name} signed ${type}`);
+  }
+
+  // Voice
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recog = null;
+  const $mic = document.getElementById('mic');
+  const $voiceHint = document.getElementById('voice-hint');
+  $mic.addEventListener('click', () => {
+    if (!SR) return toast('Voice not supported');
+    if (recog) return stopVoice();
+    recog = new SR();
+    recog.lang = 'en-US'; recog.interimResults = false; recog.continuous = false;
+    recog.onstart = () => { $mic.classList.add('live'); $voiceHint.classList.add('show'); };
+    recog.onresult = ev => handleVoice(ev.results[0][0].transcript.toLowerCase().trim());
+    recog.onerror = () => stopVoice();
+    recog.onend = () => { $mic.classList.remove('live'); $voiceHint.classList.remove('show'); recog = null; };
+    try { recog.start(); } catch {}
+  });
+  function stopVoice() { try { recog && recog.stop(); } catch {} }
+  function handleVoice(txt) {
+    const outMatch = /\b(out|signed out|sign out|check out|clock out|leaving)\b/.test(txt);
+    const inMatch = /\b(in|signed in|sign in|check in|clock in|i'?m in)\b/.test(txt);
+    const type = outMatch ? 'out' : (inMatch ? 'in' : null);
+    if (!type) return toast('Say a name and "in" or "out"');
+    const cleaned = txt.replace(/\b(signed?|check(?:ed)?|clock(?:ed)?|in|out|i'?m|leaving)\b/g, '').trim();
+    const tokens = cleaned.split(/\s+/).filter(Boolean);
+    let best = null, bestScore = 0;
+    for (const p of people) {
+      const nameL = p.name.toLowerCase();
+      let score = 0;
+      for (const tok of tokens) if (nameL.includes(tok)) score += tok.length;
+      if (score > bestScore) { best = p; bestScore = score; }
+    }
+    if (!best) return toast(`Heard "${txt}" — no name match`);
+    entries[best.id] = { status: type, ts: Date.now() };
+    save(); render();
+    toast(`${best.name} signed ${type}`);
+  }
+
+  // Add
+  const $addInput = document.getElementById('add-input');
+  const $addRow = document.getElementById('add-row');
+  const $addName = document.getElementById('add-name');
+  $addRow.addEventListener('click', () => {
+    $addInput.classList.add('show');
+    $addRow.style.display = 'none';
+    $addName.value = '';
+    setTimeout(() => $addName.focus(), 50);
+  });
+  document.getElementById('add-cancel').addEventListener('click', closeAdd);
+  document.getElementById('add-ok').addEventListener('click', doAdd);
+  $addName.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doAdd();
+    if (e.key === 'Escape') closeAdd();
+  });
+  function doAdd() {
+    const name = $addName.value.trim();
+    if (!name) return;
+    people.push({ id: uid(), name });
+    save(); render(); closeAdd();
+  }
+  function closeAdd() { $addInput.classList.remove('show'); $addRow.style.display = ''; }
+
+  // Edit
+  const $editPop = document.getElementById('edit-pop');
+  const $editName = document.getElementById('edit-name');
+  let editId = null;
+  function openEdit(id) {
+    const p = people.find(x => x.id === id);
+    if (!p) return;
+    editId = id; $editName.value = p.name;
+    $editPop.classList.add('show');
+    setTimeout(() => $editName.focus(), 50);
+  }
+  function closeEdit() { $editPop.classList.remove('show'); }
+  document.getElementById('edit-cancel').addEventListener('click', closeEdit);
+  $editPop.addEventListener('click', e => { if (e.target === $editPop) closeEdit(); });
+  document.getElementById('edit-save').addEventListener('click', () => {
+    const v = $editName.value.trim();
+    if (!v || !editId) return closeEdit();
+    const p = people.find(x => x.id === editId); if (p) p.name = v;
+    save(); render(); closeEdit();
+  });
+  document.getElementById('edit-del').addEventListener('click', () => {
+    if (!editId) return;
+    if (!confirm('Delete this person?')) return;
+    people = people.filter(x => x.id !== editId);
+    delete entries[editId];
+    save(); render(); closeEdit();
+  });
+  $editName.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('edit-save').click(); });
+
+  // Settings
+  const $settingsBg = document.getElementById('settings-bg');
+  const $swBig = document.getElementById('sw-big');
+  function applySettings() {
+    document.body.classList.toggle('big', !!settings.big);
+    $swBig.classList.toggle('on', !!settings.big);
+  }
+  function saveSettings() {
+    localStorage.setItem(LS_S, JSON.stringify(settings));
+  }
+  document.getElementById('gear').addEventListener('click', () => {
+    applySettings();
+    $settingsBg.classList.add('show');
+  });
+  $swBig.addEventListener('click', () => {
+    settings.big = !settings.big;
+    saveSettings();
+    applySettings();
+  });
+  document.getElementById('settings-done').addEventListener('click', () => $settingsBg.classList.remove('show'));
+  $settingsBg.addEventListener('click', e => { if (e.target === $settingsBg) $settingsBg.classList.remove('show'); });
+  applySettings();
+
+  // Toast
+  const $toast = document.getElementById('toast');
+  let toastT;
+  function toast(msg) {
+    $toast.textContent = msg;
+    $toast.classList.add('show');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => $toast.classList.remove('show'), 1500);
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>
