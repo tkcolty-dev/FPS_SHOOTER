@@ -1,0 +1,76 @@
+# Star Blaster — written in BlockForge-Script, compiled to blocks
+@name Star Blaster
+@show score lives
+
+stage backdrop=space:
+
+sprite Ship costume=rocket x=0 y=-150 size=80:
+  on flag:
+    score = 0
+    lives = 5
+    goto(0, -150)
+    forever:
+      shipX = xpos()
+      if keyPressed("left arrow"):
+        changeX(-7)
+      if keyPressed("right arrow"):
+        changeX(7)
+      if xpos() > 230:
+        setx(230)
+      if xpos() < -230:
+        setx(-230)
+      if lives == 0:
+        say("GAME OVER", 3)
+        stopAll()
+
+sprite Bullet costume=bullet x=0 y=-115 visible=false:
+  on flag:
+    hide()
+  on key "space":
+    goto(shipX, -115)
+    show()
+    until ypos() > 175:
+      changeY(20)
+    hide()
+
+sprite Asteroid1 costume=rock x=-120 y=190 color=#9aa4b8:
+  on flag:
+    forever:
+      goto(random(-220, 220), 190)
+      show()
+      until ypos() < -195:
+        changeY(-3)
+        if touching("Bullet"):
+          score += 1
+          sety(-200)
+        if touching("Ship"):
+          lives -= 1
+          sety(-200)
+
+sprite Asteroid2 costume=rock x=0 y=190 color=#c08a5a:
+  on flag:
+    forever:
+      goto(random(-220, 220), 190)
+      show()
+      until ypos() < -195:
+        changeY(-4)
+        if touching("Bullet"):
+          score += 1
+          sety(-200)
+        if touching("Ship"):
+          lives -= 1
+          sety(-200)
+
+sprite Asteroid3 costume=rock x=120 y=190 color=#8f7fb0:
+  on flag:
+    forever:
+      goto(random(-220, 220), 190)
+      show()
+      until ypos() < -195:
+        changeY(-5)
+        if touching("Bullet"):
+          score += 1
+          sety(-200)
+        if touching("Ship"):
+          lives -= 1
+          sety(-200)

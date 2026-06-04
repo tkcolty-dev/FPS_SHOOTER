@@ -1,0 +1,76 @@
+# Crystal Quest — a little RPG platformer (compiled to blocks)
+@name Crystal Quest
+@show hp gold
+
+stage backdrop=sky:
+
+# --- level geometry (static platforms) ---
+sprite Ground costume=ground x=0 y=-165:
+
+sprite Ledge1 costume=ledge x=-150 y=-80:
+
+sprite Ledge2 costume=ledge x=40 y=-10:
+
+sprite Ledge3 costume=ledge x=175 y=55:
+
+sprite Door costume=door x=175 y=98:
+
+# --- collectible gold ---
+sprite Coin costume=coin x=40 y=18:
+  on flag:
+    show()
+    forever:
+      if touching("Hero"):
+        gold += 1
+        hide()
+        wait(0.4)
+        goto(random(-200, 200), random(-40, 90))
+        show()
+
+# --- patrolling enemy ---
+sprite Slime costume=slime x=60 y=-130 size=90:
+  on flag:
+    edir = 2
+    forever:
+      changeX(edir)
+      if xpos() > 120:
+        edir = -2
+      if xpos() < -20:
+        edir = 2
+
+# --- the hero ---
+sprite Hero costume=hero color=#4C97FF x=-180 y=-110 size=95:
+  on flag:
+    hp = 5
+    gold = 0
+    vy = 0
+    goto(-180, -110)
+    forever:
+      onGround = 0
+      if keyPressed("left arrow"):
+        changeX(-5)
+      if keyPressed("right arrow"):
+        changeX(5)
+      vy -= 1
+      if vy < -11:
+        vy = -11
+      changeY(vy)
+      if touching("Ground") || touching("Ledge1") || touching("Ledge2") || touching("Ledge3"):
+        changeY(-vy)
+        vy = 0
+        onGround = 1
+      if onGround == 1:
+        if keyPressed("up arrow"):
+          vy = 14
+      if touching("Slime"):
+        hp -= 1
+        vy = 9
+        wait(0.4)
+      if hp == 0:
+        say("GAME OVER", 3)
+        stopAll()
+      if touching("Door"):
+        say("YOU ESCAPED!", 3)
+        stopAll()
+      if ypos() < -210:
+        goto(-180, -110)

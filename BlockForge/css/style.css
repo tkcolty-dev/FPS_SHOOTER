@@ -1,0 +1,184 @@
+:root{
+  --bg:#0f1320; --bg-2:#161b2e; --panel:#1c2236; --panel-2:#232a42;
+  --line:#2c3450; --line-soft:#222a42;
+  --text:#e8ecf7; --muted:#94a0c0; --faint:#5d6088;
+  --accent:#4c7cff; --accent-2:#7a5cff; --flag:#3ad17a; --stop:#ff5470;
+  --motion:#4c97ff; --looks:#9966ff; --sound:#cf63cf; --event:#ffbf00;
+  --control:#ffab19; --sensing:#5cb1d6; --operator:#59c059; --variable:#ff8c1a; --custom:#ff6680;
+  --shadow:0 10px 40px rgba(0,0,0,.45);
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:radial-gradient(1200px 600px at 80% -10%, #1b234a 0%, transparent 60%), var(--bg);
+  color:var(--text);
+  font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+  display:flex; flex-direction:column; overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit; cursor:pointer; border:none; color:inherit}
+.hidden{display:none !important}
+
+/* ---------- TOP BAR ---------- */
+.topbar{
+  display:flex; align-items:center; gap:18px; padding:10px 18px;
+  background:linear-gradient(180deg,#171d30,#12172600);
+  background-color:var(--bg-2);
+  border-bottom:1px solid var(--line); height:60px; z-index:30; position:relative;
+}
+.brand{display:flex; align-items:center; gap:11px}
+.logo{
+  width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:20px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:0 6px 18px rgba(76,124,255,.45); color:#fff; font-weight:700;
+}
+.brand-text{display:flex; flex-direction:column; line-height:1.1}
+.brand-name{font-weight:800; font-size:18px; letter-spacing:.2px}
+.brand-sub{font-size:11px; color:var(--muted); letter-spacing:.5px; text-transform:uppercase}
+
+.menu{display:flex; align-items:center; gap:4px; position:relative}
+.menu-btn{
+  background:transparent; padding:8px 13px; border-radius:9px; font-size:13.5px; font-weight:600;
+  color:var(--muted); transition:.15s;
+}
+.menu-btn:hover{background:var(--panel-2); color:var(--text)}
+
+.run-controls{margin-left:auto; display:flex; align-items:center; gap:10px}
+.run-btn{
+  width:40px;height:40px;border-radius:11px;font-size:16px;font-weight:800;
+  display:grid;place-items:center; background:var(--panel-2); transition:.15s; border:1px solid var(--line);
+}
+.run-btn.flag{color:var(--flag)} .run-btn.flag:hover{background:rgba(58,209,122,.16); box-shadow:0 0 0 2px rgba(58,209,122,.3)}
+.run-btn.stop{color:var(--stop)} .run-btn.stop:hover{background:rgba(255,84,112,.16); box-shadow:0 0 0 2px rgba(255,84,112,.3)}
+.divider{width:1px;height:26px;background:var(--line)}
+.bridge-status{font-size:12px;font-weight:700;padding:7px 11px;border-radius:9px;letter-spacing:.2px;transition:.2s; white-space:nowrap}
+.bridge-status.off{color:var(--muted);background:var(--panel-2)}
+.bridge-status.on{color:var(--flag);background:rgba(58,209,122,.14); box-shadow:0 0 0 1px rgba(58,209,122,.3) inset}
+.bridge-status.flash{animation:bridgeFlash .6s ease}
+@keyframes bridgeFlash{0%{box-shadow:0 0 0 3px rgba(122,92,255,.6)}100%{box-shadow:0 0 0 1px rgba(58,209,122,.3) inset}}
+.claude-btn{
+  padding:10px 15px;border-radius:11px;font-weight:700;font-size:13.5px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff;
+  box-shadow:0 6px 18px rgba(122,92,255,.4); transition:.15s;
+}
+.claude-btn:hover{transform:translateY(-1px); box-shadow:0 9px 24px rgba(122,92,255,.55)}
+
+.dropdown{
+  position:absolute; top:46px; left:0; background:var(--panel); border:1px solid var(--line);
+  border-radius:12px; padding:6px; box-shadow:var(--shadow); min-width:200px; z-index:40;
+}
+.dropdown button{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:8px;font-size:13.5px;color:var(--text);background:transparent}
+.dropdown button:hover{background:var(--panel-2)}
+
+/* ---------- LAYOUT ---------- */
+.layout{flex:1; display:flex; min-height:0}
+.editor-pane{flex:1.55; display:flex; flex-direction:column; min-width:0; border-right:1px solid var(--line); background:var(--bg)}
+.stage-pane{flex:1; display:flex; flex-direction:column; min-width:380px; max-width:520px; background:var(--bg-2)}
+
+.pane-tabs{display:flex; align-items:center; gap:4px; padding:8px 12px; background:var(--bg-2); border-bottom:1px solid var(--line)}
+.tab{padding:7px 15px;border-radius:9px;font-weight:600;font-size:13px;color:var(--muted);background:transparent;transition:.15s}
+.tab:hover{color:var(--text)} .tab.active{background:var(--accent); color:#fff}
+.tab-spacer{flex:1}
+.editing-target{font-size:12.5px; color:var(--muted)}
+.editing-target b{color:var(--text)}
+
+.tab-panel{display:none; flex:1; min-height:0}
+.tab-panel.active{display:block}
+#blockly-area{position:relative; height:100%; width:100%}
+
+/* ---------- STAGE ---------- */
+.stage-header{display:flex; align-items:center; justify-content:space-between; padding:10px 14px}
+.stage-meta{display:flex; align-items:center; gap:10px; font-size:12px; color:var(--muted)}
+.fps{font-variant-numeric:tabular-nums; background:var(--panel); padding:3px 8px; border-radius:7px; min-width:54px; text-align:center}
+.stage-size{opacity:.7}
+.icon-btn{width:32px;height:32px;border-radius:9px;background:var(--panel);font-size:15px;color:var(--muted)}
+.icon-btn:hover{color:var(--text);background:var(--panel-2)}
+
+.stage-wrap{position:relative; align-self:center; margin:0 14px; border-radius:14px; overflow:hidden;
+  box-shadow:var(--shadow); border:1px solid var(--line)}
+#stage{display:block; width:480px; height:360px; background:#fff; image-rendering:auto}
+
+.ask-overlay{position:absolute; left:10px; right:10px; bottom:10px; display:flex; gap:8px; align-items:center;
+  background:rgba(20,25,40,.95); padding:9px; border-radius:11px; border:1px solid var(--line)}
+.ask-overlay span{font-size:13px}
+.ask-overlay input{flex:1; background:#0e1322; border:1px solid var(--line); border-radius:8px; color:var(--text); padding:7px 9px}
+.ask-overlay button{background:var(--flag); color:#06301a; width:34px;height:34px;border-radius:8px;font-weight:800}
+
+/* ---------- SPRITES ---------- */
+.sprite-zone{flex:1; min-height:0; display:flex; flex-direction:column; padding:14px; gap:10px}
+.sprite-list-header{display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.5px}
+.add-sprite{width:30px;height:30px;border-radius:9px;background:var(--accent);color:#fff;font-size:18px;font-weight:700;line-height:1}
+.add-sprite:hover{background:var(--accent-2)}
+.sprite-list{display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:9px; overflow:auto; align-content:start; padding-bottom:4px}
+.sprite-card{
+  background:var(--panel); border:2px solid transparent; border-radius:12px; padding:8px 6px 6px;
+  display:flex; flex-direction:column; align-items:center; gap:5px; transition:.12s; position:relative;
+}
+.sprite-card:hover{background:var(--panel-2)}
+.sprite-card.active{border-color:var(--accent); background:var(--panel-2)}
+.sprite-thumb{width:46px;height:46px;border-radius:9px;background:#fff;display:grid;place-items:center;overflow:hidden}
+.sprite-thumb img{max-width:100%;max-height:100%}
+.sprite-card .nm{font-size:11.5px; color:var(--text); max-width:64px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sprite-card.is-stage .sprite-thumb{background:linear-gradient(135deg,#2a3354,#1a2138)}
+
+.sprite-inspector{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:11px; display:flex; flex-direction:column; gap:9px}
+.insp-row{display:flex; align-items:center; gap:8px}
+.insp-row label{font-size:12px; color:var(--muted); min-width:42px}
+.sprite-inspector input[type=text],.sprite-inspector input[type=number]{
+  flex:1; background:#0e1322; border:1px solid var(--line); border-radius:8px; color:var(--text); padding:6px 8px; font-size:13px; width:100%;
+}
+.insp-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:7px}
+.insp-grid label{display:block; font-size:11px; color:var(--muted); margin-bottom:3px}
+.insp-grid input{width:100%; background:#0e1322; border:1px solid var(--line); border-radius:8px; color:var(--text); padding:5px 6px; font-size:12.5px}
+.insp-toggles{justify-content:space-between}
+.chk{display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted)}
+.del-sprite{background:rgba(255,84,112,.14); color:var(--stop); padding:6px 11px; border-radius:8px; font-size:12.5px; font-weight:600}
+.del-sprite:hover{background:rgba(255,84,112,.26)}
+
+/* ---------- COSTUMES ---------- */
+.costumes-panel{padding:16px; overflow:auto}
+.costume-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:12px; margin-top:12px}
+.costume-card{background:var(--panel); border:2px solid transparent; border-radius:12px; padding:10px; text-align:center; cursor:pointer}
+.costume-card.active{border-color:var(--accent)}
+.costume-card .cv{width:100%; height:90px; background:#fff; border-radius:8px; display:grid; place-items:center; overflow:hidden; margin-bottom:8px}
+.costume-card .cv img{max-width:100%; max-height:100%}
+.costume-card .cn{font-size:12px; color:var(--muted)}
+.costume-actions{display:flex; gap:9px; align-items:center}
+.costume-actions button{background:var(--accent); color:#fff; padding:9px 14px; border-radius:9px; font-weight:600; font-size:13px}
+.costume-actions button.ghost{background:var(--panel-2); color:var(--text)}
+.empty-note{color:var(--muted); padding:24px; text-align:center}
+
+/* ---------- MODAL ---------- */
+.modal{position:fixed; inset:0; background:rgba(8,11,20,.72); backdrop-filter:blur(6px); display:grid; place-items:center; z-index:100}
+.modal-card{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:26px 28px; max-width:600px; width:92%; box-shadow:var(--shadow); position:relative; max-height:86vh; overflow:auto}
+.modal-card h2{margin:0 0 12px; font-size:22px}
+.modal-card p{color:var(--muted); line-height:1.55; margin:0 0 16px}
+.modal-card strong{color:var(--text)}
+.modal-close{position:absolute; top:16px; right:16px; width:32px;height:32px;border-radius:9px; background:var(--panel-2); color:var(--muted); font-size:14px}
+.modal-close:hover{color:var(--text)}
+.bridge-steps{margin:0 0 18px; padding-left:20px; color:var(--text); line-height:1.9; font-size:14px}
+.bridge-steps i{color:var(--accent)}
+.bridge-steps code{background:var(--panel-2); padding:2px 7px; border-radius:6px; font-size:12.5px}
+.bridge-format{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; font-size:13px; color:var(--muted)}
+.copy-btn{background:var(--accent); color:#fff; padding:8px 13px; border-radius:9px; font-weight:600; font-size:12.5px}
+.schema-preview{background:#0c1020; border:1px solid var(--line); border-radius:11px; padding:14px; font-size:11.5px; line-height:1.55; color:#a8b6da; overflow:auto; max-height:280px; font-family:"SF Mono",ui-monospace,Menlo,monospace}
+
+/* ---------- TOAST ---------- */
+.toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--line); color:var(--text); padding:12px 20px; border-radius:12px; box-shadow:var(--shadow); font-size:13.5px; z-index:200; animation:rise .25s ease}
+@keyframes rise{from{opacity:0; transform:translate(-50%,12px)} to{opacity:1; transform:translate(-50%,0)}}
+
+/* ---------- BIG STAGE / PLAY MODE ---------- */
+body.big-stage .editor-pane{display:none}
+body.big-stage .stage-pane{max-width:none; flex:1; align-items:center}
+body.big-stage .stage-wrap{margin:18px auto}
+body.big-stage #stage{width:min(94vw,1040px); height:auto; aspect-ratio:4 / 3}
+body.big-stage .sprite-zone{max-width:1040px; width:94vw; margin:0 auto}
+body.big-stage .sprite-list{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+
+/* Blockly tweaks for the dark theme flyout */
+.blocklyMainBackground{stroke:none !important}
+.blocklyFlyoutBackground{fill:#12172a !important; fill-opacity:.96}
+.blocklyScrollbarHandle{fill:#39426a}
+.blocklyToolboxDiv{background:#12172a !important; padding:6px 0; border-right:1px solid var(--line)}
+.blocklyTreeRow{margin:2px 6px; border-radius:9px}

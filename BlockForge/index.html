@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BlockForge — Block Code Game Studio</title>
+<link rel="preconnect" href="https://unpkg.com" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ===================== TOP BAR ===================== -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">◧</div>
+      <div class="brand-text">
+        <span class="brand-name">BlockForge</span>
+        <span class="brand-sub">block code game studio</span>
+      </div>
+    </div>
+
+    <nav class="menu">
+      <button id="btn-new" class="menu-btn">New</button>
+      <button id="btn-import" class="menu-btn">Open Project</button>
+      <button id="btn-export" class="menu-btn">Save Project</button>
+      <button id="btn-load-sample" class="menu-btn">Examples ▾</button>
+      <div id="sample-menu" class="dropdown hidden"></div>
+    </nav>
+
+    <div class="run-controls">
+      <button id="btn-green-flag" class="run-btn flag" title="Run (green flag)">▶</button>
+      <button id="btn-stop" class="run-btn stop" title="Stop everything">■</button>
+      <div class="divider"></div>
+      <span id="bridge-status" class="bridge-status off" title="Live Claude bridge">● offline</span>
+      <button id="btn-claude" class="claude-btn" title="How Claude works with this">⚡ Claude Bridge</button>
+    </div>
+
+    <input type="file" id="file-input" accept=".json,.bfproject" hidden />
+  </header>
+
+  <!-- ===================== MAIN LAYOUT ===================== -->
+  <main class="layout">
+    <!-- Block editor -->
+    <section class="editor-pane">
+      <div class="pane-tabs">
+        <button class="tab active" data-tab="code">Code</button>
+        <button class="tab" data-tab="costumes">Costumes</button>
+        <button class="tab" data-tab="sounds">Sounds</button>
+        <div class="tab-spacer"></div>
+        <span id="editing-target" class="editing-target">Stage</span>
+      </div>
+      <div id="blockly-area" class="tab-panel active"></div>
+      <div id="costumes-panel" class="tab-panel costumes-panel"></div>
+      <div id="sounds-panel" class="tab-panel sounds-panel">
+        <p class="empty-note">Sounds are coming soon — focus is on motion, looks, control & game logic.</p>
+      </div>
+    </section>
+
+    <!-- Stage + sprites -->
+    <section class="stage-pane">
+      <div class="stage-header">
+        <div class="stage-meta">
+          <span id="fps-readout" class="fps">—</span>
+          <span class="stage-size">480 × 360</span>
+        </div>
+        <div class="stage-modes">
+          <button id="btn-fullstage" class="icon-btn" title="Big stage">⤢</button>
+        </div>
+      </div>
+      <div class="stage-wrap">
+        <canvas id="stage" width="480" height="360"></canvas>
+        <div id="ask-overlay" class="ask-overlay hidden">
+          <span id="ask-question"></span>
+          <input id="ask-input" type="text" />
+          <button id="ask-ok">✔</button>
+        </div>
+      </div>
+
+      <div class="sprite-zone">
+        <div class="sprite-list-header">
+          <span>Sprites</span>
+          <button id="btn-add-sprite" class="add-sprite" title="Add a sprite">＋</button>
+        </div>
+        <div id="sprite-list" class="sprite-list"></div>
+
+        <div id="sprite-inspector" class="sprite-inspector">
+          <div class="insp-row">
+            <label>Name</label>
+            <input id="insp-name" type="text" />
+          </div>
+          <div class="insp-grid">
+            <div><label>x</label><input id="insp-x" type="number" /></div>
+            <div><label>y</label><input id="insp-y" type="number" /></div>
+            <div><label>dir</label><input id="insp-dir" type="number" /></div>
+            <div><label>size</label><input id="insp-size" type="number" /></div>
+          </div>
+          <div class="insp-row insp-toggles">
+            <label class="chk"><input id="insp-show" type="checkbox" /> Show</label>
+            <button id="btn-del-sprite" class="del-sprite">Delete</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===================== CLAUDE BRIDGE MODAL ===================== -->
+  <div id="claude-modal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close>✕</button>
+      <h2>⚡ The Claude Bridge — live, like Roblox Studio</h2>
+      <p>Keep this editor open. <strong>Tell Claude what you want and it builds it right here, live</strong> —
+         sprites, costumes and block scripts appear instantly. Then you refine everything by hand.
+         Claude also <strong>sees your live edits</strong>, so the next request builds on what you changed.</p>
+      <ol class="bridge-steps">
+        <li>Start the bridge: <code>node bridge/server.js</code>, then open <code>http://localhost:4321</code>.</li>
+        <li>The badge top-right turns <b style="color:#3ad17a">● live</b> when connected.</li>
+        <li>Say to Claude: <i>"add an enemy that chases the player and a score"</i> — it appears in seconds.</li>
+        <li>Drag blocks, add sprites & costumes. Hit <b>▶</b> to play. Ask Claude for the next change.</li>
+      </ol>
+      <div class="bridge-format">
+        <span>What Claude can do live:</span>
+        <button id="btn-copy-schema" class="copy-btn">Copy block reference</button>
+      </div>
+      <pre id="schema-preview" class="schema-preview"></pre>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Blockly -->
+  <script src="https://unpkg.com/blockly@11.1.1/blockly.min.js"></script>
+  <!-- App modules -->
+  <script src="js/blocks.js"></script>
+  <script src="js/vm.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
