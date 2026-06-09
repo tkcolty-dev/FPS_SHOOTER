@@ -998,11 +998,12 @@ function physStep(sh,dt,t){
   // ---- rotation / attitude ----
   const rotAccel=sh.mass>0 ? 0 : 0;
   let torque=0;
-  // reaction wheels (player)
+  // reaction wheels (always available) + gimballed engine thrust (only while burning)
   let wheel=0; sh.insts.forEach(it=>{if(it.attached)wheel+=it.torque;});
+  let gimbal=0; sh.insts.forEach(it=>{if(it.attached&&it.active&&it.type==="engine"&&engineHasFuel(sh,it)) gimbal+=engineThrust(it,sh.atmP||0)*0.05;});
   const ctrl=(sh._controllable===false?0:1)*((keys['a']?1:0)-(keys['d']?1:0) + ((keys['q']?0.3:0)-(keys['e']?0.3:0)));
-  const I=Math.max(0.5, sh.mass*Math.pow(sh.totalH/100,2)/12 + sh.mass*0.02);
-  sh.av += (ctrl*wheel/Math.max(sh.mass,0.3))*dt*2.2;
+  const authority = wheel + gimbal*sh.throttle;   // thrust vectoring adds steering under power
+  sh.av += (ctrl*authority/Math.max(sh.mass,0.3))*dt*2.2;
   // aero restoring torque from fins / body (points rocket toward prograde in atmosphere)
   if(ctxB.body===PLANET && alt<PLANET.atmoTop){
     const v=len(sh.vx,sh.vy);
@@ -1138,8 +1139,16 @@ function drawFlight(t){
   }
   curCam=cam;
 
-  // background stars (parallax)
+  // background
   ctx.fillStyle="#04060d"; ctx.fillRect(0,0,W,H);
+
+  // flight view rotates so the body you're near is always "down" — conveys lateral/orbital motion
+  let camRot=0;
+  if(!mapView){ const upAng=Math.atan2(ship.y-cB.cy, ship.x-cB.cx); camRot=upAng-Math.PI/2; }
+  ctx.save();
+  if(camRot){ ctx.translate(W/2,H/2); ctx.rotate(camRot); ctx.translate(-W/2,-H/2); }
+
+  // stars (parallax, drawn inside the rotation so the field turns with the world)
   for(const s of stars){
     const px=((s.x*W - cam.x*cam.z*0.02)%W+W)%W;
     const py=((s.y*H + cam.y*cam.z*0.02)%H+H)%H;
@@ -1167,6 +1176,7 @@ function drawFlight(t){
     drawShip(ctx,cam,t);
     drawParticles(ctx,cam);
   }
+  ctx.restore();
   ctx.setTransform(1,0,0,1,0,0);
 }
 
@@ -1338,8 +1348,10 @@ function drawParticles(c,cam){
 }
 
 /* map orbits */
-// shared Verlet propagator: returns path points (+times) + periapsis/apoapsis states (rel. to cx,cy)
-function propagate(x,y,vx,vy,t,steps,h,cx,cy){
+// dominant body's centre at time t (for measuring orbit-relative Ap/Pe along a heliocentric path)
+function bodyCenter(B,t){ return B===PLANET?earthPos(t): B===MOON?moonPos(t): {x:0,y:0}; }
+// shared Verlet propagator: Ap/Pe measured relative to body B as it moves
+function propagate(x,y,vx,vy,t,steps,h,B){
   const pts=[[x,y]], times=[t]; let a=gravityAt(x,y,t);
   let minR=Infinity,maxR=-Infinity,minS=null,maxS=null,hit=false;
   let moonMin=Infinity,moonMinT=t,moonMinPt=null,soiT=null,moonHit=false; // encounter tracking
@@ -1347,7 +1359,7 @@ function propagate(x,y,vx,vy,t,steps,h,cx,cy){
     x+=vx*h+0.5*a.ax*h*h; y+=vy*h+0.5*a.ay*h*h;
     const a2=gravityAt(x,y,t+h); vx+=0.5*(a.ax+a2.ax)*h; vy+=0.5*(a.ay+a2.ay)*h; a=a2; t+=h;
     if(i%2===0){pts.push([x,y]);times.push(t);}
-    const rr=len(x-cx,y-cy);
+    const bc=bodyCenter(B,t), rr=len(x-bc.x,y-bc.y);
     if(rr<minR){minR=rr;minS={x,y,vx,vy,t};}
     if(rr>maxR){maxR=rr;maxS={x,y,vx,vy,t};}
     const mp=moonPos(t), ep=earthPos(t), md=len(x-mp.x,y-mp.y);
@@ -1389,8 +1401,12 @@ function nodeState(){
   return propagateTo(ship.x,ship.y,ship.vx,ship.vy,met,met+dur,3);
 }
 function nodeBurn(st,ob){
-  const v=len(st.vx,st.vy)||1, pux=st.vx/v, puy=st.vy/v;
-  const rx=st.x-ob.cx, ry=st.y-ob.cy, rr=len(rx,ry)||1, rux=rx/rr, ruy=ry/rr;
+  // prograde/radial in the body's frame AT the node's time (not heliocentric)
+  const B=ob.body, tt=st.t;
+  const bp = B===PLANET?earthPos(tt): B===MOON?moonPos(tt): {x:0,y:0};
+  const bv = bodyVel(B,tt);
+  const rvx=st.vx-bv.x, rvy=st.vy-bv.y, v=len(rvx,rvy)||1, pux=rvx/v, puy=rvy/v;   // prograde
+  const rx=st.x-bp.x, ry=st.y-bp.y, rr=len(rx,ry)||1, rux=rx/rr, ruy=ry/rr;        // radial out
   return {nvx:st.vx+pux*ship.node.dvp+rux*ship.node.dvr,
           nvy:st.vy+puy*ship.node.dvp+ruy*ship.node.dvr, pux,puy,rux,ruy};
 }
@@ -1480,7 +1496,7 @@ function framePts(pts,times,body,ax,ay){ return pts.map((p,i)=>{const f=framePos
 function framePt(x,y,t,body,ax,ay){ const f=framePos(body,t); return [x-f.x+ax,y-f.y+ay]; }
 function drawOrbit(c,cam,t){
   const ob=orbit(ship,t), cx=ob.cx, cy=ob.cy, B=ob.body;
-  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,t,4200,4,cx,cy);
+  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,t,4200,4,B);
   const fp=framePts(res.pts,res.times,B,cx,cy);
   lastPredict={pts:fp,times:res.times,cx,cy};
   drawPath(c,cam,fp,"#46e0c0cc");
@@ -1493,7 +1509,7 @@ function drawOrbit(c,cam,t){
     if(st){
       lastNodeState=st;
       const b=nodeBurn(st,ob);
-      const res2=propagate(st.x,st.y,b.nvx,b.nvy,st.t,4200,4,cx,cy);
+      const res2=propagate(st.x,st.y,b.nvx,b.nvy,st.t,4200,4,B);
       drawPath(c,cam,framePts(res2.pts,res2.times,B,cx,cy),"#ffb347ee",[8,6]);
       if(res2.minS){const m=framePt(res2.minS.x,res2.minS.y,res2.minS.t,B,cx,cy); mapMarker(c,cam,m[0],m[1],"#ffd27a","Pe' "+fmtDist(res2.minR-B.R));}
       if(ob.energy<0 && res2.maxS){const m=framePt(res2.maxS.x,res2.maxS.y,res2.maxS.t,B,cx,cy); mapMarker(c,cam,m[0],m[1],"#ffd27a","Ap' "+fmtDist(res2.maxR-B.R));}
@@ -1536,7 +1552,7 @@ function drawEncounter(c,cam,enc,col,B,ax,ay){
   mapMarker(c,cam,m[0],m[1],col, enc.hit?"⚠ Moon impact":"Moon Pe "+fmtDist(Math.max(0,enc.peAlt)));
 }
 function drawNodeGizmo(c,cam,st,b,fx,fy){
-  const ns=worldToScreen(fx,fy,cam), dpr=devicePixelRatio, R=22*dpr, HP=58*dpr;
+  const ns=worldToScreen(fx,fy,cam), dpr=devicePixelRatio, R=26*dpr, HP=72*dpr;
   const proS=screenDir(st.x,st.y,b.pux,b.puy,cam), radS=screenDir(st.x,st.y,b.rux,b.ruy,cam);
   // gizmo ring
   c.strokeStyle="#9fb4d4aa";c.lineWidth=1.5*dpr;c.beginPath();c.arc(ns.x,ns.y,R,0,TAU);c.stroke();
@@ -1544,9 +1560,9 @@ function drawNodeGizmo(c,cam,st,b,fx,fy){
   const arm=(dir,sgn,col,key)=>{
     const ax={x:dir.x*sgn,y:dir.y*sgn}, bx=ns.x+ax.x*R, by=ns.y+ax.y*R, hx=ns.x+ax.x*HP, hy=ns.y+ax.y*HP;
     c.strokeStyle=col;c.lineWidth=3*dpr;c.beginPath();c.moveTo(bx,by);c.lineTo(hx,hy);c.stroke();
-    c.fillStyle="#06121f";c.beginPath();c.arc(hx,hy,10*dpr,0,TAU);c.fill();
+    c.fillStyle="#06121f";c.beginPath();c.arc(hx,hy,14*dpr,0,TAU);c.fill();
     c.strokeStyle=col;c.lineWidth=2*dpr;c.stroke();
-    drawNavSym(c,hx,hy,11*dpr,key,col);
+    drawNavSym(c,hx,hy,15*dpr,key,col);
     nodeHandlePos[key]={x:hx,y:hy,ax};
   };
   arm(proS,1,"#7ee07a","pro"); arm(proS,-1,"#7ee07a","retro");
@@ -1565,7 +1581,7 @@ function drawSystemView(c,cam,t){
   c.fillStyle="#bcd6ff";c.fillText("Earth",es.x,es.y-14);
   // ship's heliocentric trajectory (only meaningful once free of Earth; in Earth's SOI it simply rides Earth's orbit)
   if(cB.body===SUN){
-    const res=propagate(ship.x,ship.y,ship.vx,ship.vy,t,3200,150,0,0);
+    const res=propagate(ship.x,ship.y,ship.vx,ship.vy,t,3200,150,SUN);
     const v=len(ship.vx,ship.vy), r=len(ship.x,ship.y)||1, energy=v*v/2 - SUN.mu/r;
     drawPath(c,cam,res.pts,"#46e0c0cc");
     if(res.minS) mapMarker(c,cam,res.minS.x,res.minS.y,"#6ad0ff","Pe "+fmtDist(res.minR-SUN.R));
@@ -1834,7 +1850,7 @@ function refreshSasButtons(){
 /* ---- maneuver node (prograde + radial Δv, placeable anywhere) ---- */
 function nodeApoTime(){
   const ob=orbit(ship,met);
-  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.cx,ob.cy);
+  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.body);
   return res.maxS? res.maxS.t : met+90;
 }
 function makeNode(){ if(ship){ ship.node={t:nodeApoTime(),dvp:0,dvr:0}; updateNodePanel(); } }
@@ -1843,16 +1859,17 @@ function adjustNode(d){ if(!ship)return; if(!ship.node)ship.node={t:nodeApoTime(
 function circularize(){
   if(!ship)return;
   const ob=orbit(ship,met);
-  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.cx,ob.cy);
+  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.body);
   if(!res.maxS){ flash("NO APOAPSIS","get onto a rising arc first"); return; }
-  const vCirc=Math.sqrt(ob.mu/res.maxR), vAp=len(res.maxS.vx,res.maxS.vy);
+  const bvA=bodyVel(ob.body,res.maxS.t);            // body-relative speed at apoapsis
+  const vAp=len(res.maxS.vx-bvA.x, res.maxS.vy-bvA.y), vCirc=Math.sqrt(ob.mu/res.maxR);
   ship.node={t:res.maxS.t,dvp:vCirc-vAp,dvr:0}; updateNodePanel();
 }
 function snapNode(kind){
   if(!ship)return; if(!ship.node)makeNode();
   const ob=orbit(ship,met);
   if(kind==='ap'||kind==='pe'){
-    const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.cx,ob.cy);
+    const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.body);
     const s=kind==='ap'?res.maxS:res.minS; if(s)ship.node.t=s.t;
   } else {
     const T=orbitPeriod(ob); if(isFinite(T)) ship.node.t=Math.max(met,ship.node.t+kind*T);
@@ -1892,7 +1909,7 @@ function updateOrbitInfo(){
   const T=orbitPeriod(ob);
   document.getElementById('oiPer').textContent=isFinite(T)?fmtTime(T):"escape";
   // time to Ap / Pe from predicted path
-  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.cx,ob.cy);
+  const res=propagate(ship.x,ship.y,ship.vx,ship.vy,met,3200,3,ob.body);
   document.getElementById('oiTap').textContent=(ob.energy<0&&res.maxS)?fmtTime(res.maxS.t-met):"–";
   document.getElementById('oiTpe').textContent=res.minS?fmtTime(res.minS.t-met):"–";
 }
@@ -1911,13 +1928,13 @@ game.addEventListener('mousedown',e=>{
   // 1) grab a Δv handle
   if(nodeHandlePos){
     for(const key in nodeHandlePos){const h=nodeHandlePos[key];
-      if(len(mx-h.x,my-h.y)<18*dpr){ nodeDrag={key,h}; e.preventDefault(); return; }}
+      if(len(mx-h.x,my-h.y)<26*dpr){ nodeDrag={key,h}; e.preventDefault(); return; }}
   }
   // 1b) grab the hub → slide node along orbit
   if(nodeHubPos && len(mx-nodeHubPos.x,my-nodeHubPos.y)<nodeHubPos.r){ nodeDrag={key:'hub'}; e.preventDefault(); return; }
   // 2) click the orbit line to drop / move the node there
   if(lastPredict){
-    let best=-1,bd=22*dpr;
+    let best=-1,bd=34*dpr;
     for(let i=0;i<lastPredict.pts.length;i++){
       const s=worldToScreen(lastPredict.pts[i][0],lastPredict.pts[i][1],curCam);
       const d=len(mx-s.x,my-s.y); if(d<bd){bd=d;best=i;}
@@ -1939,10 +1956,10 @@ addEventListener('mousemove',e=>{
       if(best>=0){ ship.node.t=lastPredict.times[best]; updateNodePanel(); } }
     return;
   }
-  if(!lastNodeState)return;
-  const ns=worldToScreen(lastNodeState.x,lastNodeState.y,curCam), ax=nodeDrag.h.ax;
+  if(!lastNodeState||!nodeHubPos)return;
+  const ns=nodeHubPos, ax=nodeDrag.h.ax;             // gizmo centre (drawn/framed position)
   const proj=(mx-ns.x)*ax.x+(my-ns.y)*ax.y;          // px along the handle's axis
-  const comp=Math.max(0,(proj-46*dpr))*(1.1/dpr);    // ≈1.1 m/s per pixel pulled out
+  const comp=Math.max(0,(proj-26*dpr))*(1.1/dpr);    // ≈1.1 m/s per pixel pulled out
   if(nodeDrag.key==='pro')    ship.node.dvp= comp;
   else if(nodeDrag.key==='retro')  ship.node.dvp=-comp;
   else if(nodeDrag.key==='radout') ship.node.dvr= comp;
