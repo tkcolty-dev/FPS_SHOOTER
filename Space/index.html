@@ -261,6 +261,7 @@
   </div>
   <div id="flightBtns">
     <button onclick="toggleMap()" id="mapBtn">🗺 Map (M)</button>
+    <button onclick="toggleSystem()" id="sysBtn">☀ System (V)</button>
     <button onclick="toggleHelp()">？ Keys</button>
     <button onclick="backToVAB()">↩ VAB</button>
     <button onclick="goCenter()">🏠 Center</button>
@@ -334,7 +335,7 @@
     <kbd>W</kbd>/<kbd>S</kbd> or <kbd>Shift</kbd>/<kbd>Ctrl</kbd> throttle<br>
     <kbd>X</kbd> cut · <kbd>Z</kbd> full throttle<br>
     <kbd>Space</kbd> stage · <kbd>T</kbd> SAS hold<br>
-    <kbd>,</kbd>/<kbd>.</kbd> time warp · <kbd>M</kbd> map<br>
+    <kbd>,</kbd>/<kbd>.</kbd> time warp · <kbd>M</kbd> map · <kbd>V</kbd> system<br>
     <kbd>R</kbd> parachutes · <kbd>F</kbd> hold prograde<br>
     <kbd>N</kbd> maneuver node · <kbd>[</kbd>/<kbd>]</kbd> burn Δv<br>
     <kbd>+</kbd>/<kbd>-</kbd> zoom<br>
@@ -771,7 +772,7 @@ addEventListener('keydown',e=>{ if(mode!=="build")return; const k=e.key;
 
 /* ============================ FLIGHT ============================ */
 let ship=null, started=false, paused=false, mode="center";
-let camZoom=1, camTargetZoom=1, mapView=false, curCam=null, nodeDrag=null;
+let camZoom=1, camTargetZoom=1, mapView=false, systemView=false, curCam=null, nodeDrag=null;
 let met=0, warp=1, warpLevels=[1,2,5,20,100,1000,10000];
 const keys={};
 
@@ -1123,7 +1124,10 @@ function drawFlight(t){
   const ep=earthPos(t), mp=moonPos(t), cB=bodyContext(ship.x,ship.y,t);
   // camera
   let cam;
-  if(mapView){
+  if(mapView && systemView){
+    const zoomToFit = Math.min(W,H)/(PLANET.orbitR*2.6);   // whole solar system, Sun-centred
+    cam={x:0, y:0, z:zoomToFit*camZoom};
+  } else if(mapView){
     const fitR = cB.body===SUN? PLANET.orbitR*1.35 : cB.body===MOON? MOON.soi*1.4 : MOON.orbitR*1.35;
     const zoomToFit = Math.min(W,H)/(fitR*2.2);
     cam={x:cB.cx, y:cB.cy, z:zoomToFit*camZoom};
@@ -1148,12 +1152,15 @@ function drawFlight(t){
 
   if(mapView){
     drawMoonOrbit(ctx,cam,t);
-    drawOrbit(ctx,cam,t);
-    const s=worldToScreen(ship.x,ship.y,cam);
-    ctx.fillStyle="#46e0c0"; ctx.beginPath();ctx.arc(s.x,s.y,5,0,TAU);ctx.fill();
-    const bv=bodyVel(cB.body,t), rvx=ship.vx-bv.x, rvy=ship.vy-bv.y; // body-relative velocity
-    ctx.strokeStyle="#ffb347";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x,s.y);
-    ctx.lineTo(s.x+rvx*0.8*cam.z,s.y-rvy*0.8*cam.z);ctx.stroke();
+    if(systemView){ drawSystemView(ctx,cam,t); }
+    else {
+      drawOrbit(ctx,cam,t);
+      const s=worldToScreen(ship.x,ship.y,cam);
+      ctx.fillStyle="#46e0c0"; ctx.beginPath();ctx.arc(s.x,s.y,5,0,TAU);ctx.fill();
+      const bv=bodyVel(cB.body,t), rvx=ship.vx-bv.x, rvy=ship.vy-bv.y; // body-relative velocity
+      ctx.strokeStyle="#ffb347";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x,s.y);
+      ctx.lineTo(s.x+rvx*0.8*cam.z,s.y-rvy*0.8*cam.z);ctx.stroke();
+    }
   } else {
     drawShip(ctx,cam,t);
     drawParticles(ctx,cam);
@@ -1544,6 +1551,26 @@ function drawNodeGizmo(c,cam,st,b,fx,fy){
   c.strokeStyle="#7a5a1a";c.lineWidth=2*dpr;c.stroke();
   nodeHubPos={x:ns.x,y:ns.y,r:R};
 }
+// Sun-centred solar-system view: the whole heliocentric picture on demand
+function drawSystemView(c,cam,t){
+  const ep=earthPos(t), cB=bodyContext(ship.x,ship.y,t);
+  // label the Sun and Earth
+  const ss=worldToScreen(0,0,cam), es=worldToScreen(ep.x,ep.y,cam);
+  c.fillStyle="#ffd86a";c.font="bold 11px ui-monospace";c.textAlign="center";c.fillText("Sun",ss.x,ss.y+SUN.R*cam.z+14);
+  c.fillStyle="#bcd6ff";c.fillText("Earth",es.x,es.y-14);
+  // ship's heliocentric trajectory (only meaningful once free of Earth; in Earth's SOI it simply rides Earth's orbit)
+  if(cB.body===SUN){
+    const res=propagate(ship.x,ship.y,ship.vx,ship.vy,t,3200,150,0,0);
+    const v=len(ship.vx,ship.vy), r=len(ship.x,ship.y)||1, energy=v*v/2 - SUN.mu/r;
+    drawPath(c,cam,res.pts,"#46e0c0cc");
+    if(res.minS) mapMarker(c,cam,res.minS.x,res.minS.y,"#6ad0ff","Pe "+fmtDist(res.minR-SUN.R));
+    if(energy<0 && res.maxS) mapMarker(c,cam,res.maxS.x,res.maxS.y,"#ff9a5a","Ap "+fmtDist(res.maxR-SUN.R));
+  }
+  // "you are here" marker
+  const s=worldToScreen(ship.x,ship.y,cam);
+  c.strokeStyle="#46e0c0";c.lineWidth=2;c.beginPath();c.arc(s.x,s.y,7,0,TAU);c.stroke();
+  c.fillStyle="#46e0c0";c.beginPath();c.arc(s.x,s.y,2.5,0,TAU);c.fill();
+}
 function drawMoonOrbit(c,cam,t){
   // Earth's orbit around the Sun
   const ss=worldToScreen(0,0,cam);
@@ -1760,6 +1787,7 @@ addEventListener('keydown',e=>{
   if(k===' '){e.preventDefault();nextStage();}
   if(k==='t'){ship.sas=!ship.sas;ship.sasTarget=ship.angle;}
   if(k==='m')toggleMap();
+  if(k==='v')toggleSystem();
   if(k==='r')deployChutes();
   if(k==='z')ship.throttle=1;
   if(k==='x')ship.throttle=0;
@@ -1779,8 +1807,12 @@ function setWarp(d){
   if(warpLevels[i]>5 && alt<PLANET.atmoTop){ i=Math.min(i, warpLevels.indexOf(5)); flash("CAN'T WARP","too deep in atmosphere"); }
   warp=warpLevels[i];
 }
-function toggleMap(){mapView=!mapView;camTargetZoom=mapView?1:0.9;camZoom=camTargetZoom;
-  document.getElementById('mapBtn').classList.toggle('btn-acc',mapView);updateNodePanel();}
+function toggleMap(){mapView=!mapView; systemView=false; camTargetZoom=mapView?1:0.9;camZoom=camTargetZoom;
+  document.getElementById('mapBtn').classList.toggle('btn-acc',mapView);
+  document.getElementById('sysBtn').classList.remove('btn-acc'); updateNodePanel();}
+function toggleSystem(){ if(!ship)return; systemView=!systemView; if(systemView)mapView=true; camTargetZoom=1;camZoom=1;
+  document.getElementById('sysBtn').classList.toggle('btn-acc',systemView);
+  document.getElementById('mapBtn').classList.toggle('btn-acc',mapView&&!systemView); updateNodePanel(); }
 
 /* ---- SAS hold modes ---- */
 function setSas(mode){
