@@ -93,10 +93,11 @@
   #flight{position:absolute;inset:0}
   #hudTop{position:absolute;top:0;left:0;right:0;display:flex;gap:10px;align-items:center;
     padding:8px 12px;pointer-events:none;z-index:4}
-  .gauge{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:6px 12px;
-    font:12px/1.25 ui-monospace,monospace;min-width:96px;backdrop-filter:blur(4px)}
-  .gauge .l{color:var(--dim);font-size:10px;letter-spacing:.5px}
-  .gauge .v{font-size:15px;font-weight:700;color:#fff}
+  #hudTop{gap:6px !important}
+  .gauge{background:var(--panel);border:1px solid var(--edge);border-radius:9px;padding:4px 8px;
+    font:11px/1.2 ui-monospace,monospace;min-width:52px;backdrop-filter:blur(4px)}
+  .gauge .l{color:var(--dim);font-size:8.5px;letter-spacing:.3px}
+  .gauge .v{font-size:13px;font-weight:700;color:#fff}
   .gauge .v small{font-size:10px;color:var(--dim);font-weight:400}
   #warpBadge{color:var(--acc2);font-weight:700}
   #flightBtns{position:absolute;top:8px;right:12px;display:flex;gap:8px;z-index:5}
@@ -144,6 +145,18 @@
   #burnCue{position:absolute;right:176px;bottom:172px;z-index:6;background:#0b2a4a;border:1px solid #4aa3ff;
     color:#bfe0ff;padding:6px 13px;border-radius:8px;font:bold 13px ui-monospace;box-shadow:0 0 16px #4aa3ff66;
     animation:pulse .8s infinite}
+  #noSignal{position:absolute;left:50%;top:150px;transform:translateX(-50%);z-index:6;background:#2a1a0d;
+    border:1px solid var(--acc2);color:#ffd9a8;padding:6px 14px;border-radius:20px;font:bold 12px ui-monospace;animation:pulse 1s infinite}
+  #structWarn{position:absolute;left:50%;top:186px;transform:translateX(-50%);z-index:6;background:#2a0d0d;
+    border:1px solid var(--danger);color:#ff9a9a;padding:5px 13px;border-radius:20px;font:bold 12px ui-monospace;animation:pulse .6s infinite}
+  #burnDir{position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:5;width:210px;text-align:center;
+    background:var(--panel);border:1px solid #4aa3ff;border-radius:12px;padding:9px 12px;backdrop-filter:blur(6px);box-shadow:0 8px 30px #000a}
+  .bd-h{font:bold 11px ui-monospace;color:#7cc0ff;letter-spacing:1.5px}
+  .bd-dv{font:bold 24px ui-monospace;color:#fff;margin:2px 0} .bd-dv small{font-size:12px;color:var(--dim)}
+  .bd-row{font:bold 11px ui-monospace;margin-top:3px}
+  #bdAlign.ok{color:var(--good)} #bdAlign.off{color:var(--acc2)}
+  .bd-sub{display:flex;justify-content:space-between;color:var(--dim);font-weight:400}
+  .bd-sub b{color:#cdd9ef}
   #reentryWarn{position:absolute;left:50%;top:120px;transform:translateX(-50%);z-index:6;
     background:#2a0d0d;border:1px solid var(--danger);color:#ff9a9a;padding:6px 14px;border-radius:20px;
     font:bold 12px ui-monospace;animation:pulse 1s infinite}
@@ -239,6 +252,7 @@
     <div class="gauge"><div class="l">TWR / G</div><div class="v" id="gTwr">0.0</div></div>
     <div class="gauge"><div class="l">VESSEL ΔV</div><div class="v" id="gDv">0<small> m/s</small></div></div>
     <div class="gauge"><div class="l">MISSION TIME</div><div class="v" id="gMet">T+00:00</div></div>
+    <div class="gauge"><div class="l">COMMS</div><div class="v" id="gComm">—</div></div>
     <div class="gauge"><div class="l">WARP</div><div class="v" id="warpBadge">1×</div></div>
   </div>
   <div id="flightBtns">
@@ -300,6 +314,15 @@
 
   <div id="burnCue" class="hidden">▶ BURN &nbsp;<span id="burnDv"></span></div>
   <div id="reentryWarn" class="hidden">⚠ REENTRY HEATING</div>
+  <div id="noSignal" class="hidden">📡 NO SIGNAL — probe uncontrollable</div>
+  <div id="structWarn" class="hidden">⚠ STRUCTURAL STRESS</div>
+
+  <div id="burnDir" class="hidden">
+    <div class="bd-h">⊕ MANEUVER</div>
+    <div class="bd-dv"><span id="bdDv">0</span> <small>m/s</small></div>
+    <div class="bd-row"><span id="bdAlign">ALIGN TO MARKER</span></div>
+    <div class="bd-row bd-sub"><span>Node T- <b id="bdEta">–</b></span><span>Burn <b id="bdBurn">–</b></span></div>
+  </div>
 
   <div id="helpCard" class="hidden">
     <b>FLIGHT CONTROLS</b><br>
@@ -350,7 +373,11 @@ MOON.orbitW = Math.sqrt(PLANET.mu/MOON.orbitR)/MOON.orbitR; // circular
 MOON.soi = MOON.orbitR*Math.pow(MOON.mu/PLANET.mu,0.4);      // sphere of influence radius
 const g0 = 9.81;
 const DSCALE = 0.062;   // part width units → metres (body diameter), for real aero
-const CHUTE_AREA = 110; // m² of drag area per deployed parachute (Cd≈1.2)
+const CHUTE_AREA = 110; // m² of drag area per fully-deployed parachute (Cd≈1.4)
+const SOUND = 340;      // speed of sound (m/s) for Mach / transonic drag
+const CHUTE_SAFE_Q = 13000;  // Pa — dynamic pressure low enough to begin deploying
+const CHUTE_RIP_Q  = 46000;  // Pa — deploying above this rips the canopy
+const CHUTE_FULL_ALT = 4000; // m — altitude below which a drogue goes to full canopy
 
 function moonPos(t){
   const a = MOON.ang + MOON.orbitW*t;
@@ -876,8 +903,8 @@ function physStep(sh,dt,t){
       else { sh.node.dvp=0; sh.node.dvr=0; }
     }
   }
-  // --- real aerodynamic drag:  F = ½ρv²·Cd·A  (SI units) ---
-  sh.q=0;
+  // --- real aerodynamic drag with transonic (Mach) effects ---
+  sh.q=0; sh.mach=0;
   if(sh.atmP>0){
     const rho=PLANET.rho0*sh.atmP, v=len(sh.vx,sh.vy);
     if(v>0.1){
@@ -890,13 +917,20 @@ function physStep(sh,dt,t){
       const aoa=Math.abs(angDiff(sh.angle,Math.atan2(sh.vy,sh.vx))), s=Math.sin(aoa);
       const area=A0+(Aside-A0)*s*s;
       let Cd=sh.insts.some(it=>it.attached&&it.key==="nose")?0.18:0.34;
-      let chuteA=0; if(sh.parachutesOut)sh.insts.forEach(it=>{if(it.attached&&it.type==="chute"&&it.deployed)chuteA+=CHUTE_AREA;});
+      // transonic drag rise — Cd spikes near Mach 1, eases off supersonic
+      const mach=v/SOUND; sh.mach=mach;
+      let mf=1; if(mach>0.8&&mach<1.25) mf=1+1.5*Math.sin((mach-0.8)/0.45*Math.PI); else if(mach>=1.25) mf=1.2;
+      Cd*=mf;
       const q=0.5*rho*v*v; sh.q=q;                       // dynamic pressure (Pa)
-      const F=q*(Cd*area+1.2*chuteA);                     // drag force (N)
+      // parachutes: progressive (drogue→full) deployment, rip if opened too fast
+      let chuteA=0;
+      sh.insts.forEach(it=>{ if(it.attached&&it.type==="chute") chuteA+=updateChute(sh,it,q,alt,dt); });
+      const F=q*(Cd*area+1.4*chuteA);                     // drag force (N)
       const da=F/(sh.mass*1000);                          // a=F/m, mass tonnes→kg
       ngx-=da*sh.vx/v; ngy-=da*sh.vy/v;
     }
   }
+  sh._ng=len(ngx,ngy);                                // structural load driver (thrust+drag accel)
   // --- velocity-Verlet integration: symplectic, keeps orbits stable even at high time warp ---
   const a0=gravityAt(sh.x,sh.y,t);
   sh.vx+=ngx*dt; sh.vy+=ngy*dt;                       // non-gravitational kick
@@ -912,7 +946,7 @@ function physStep(sh,dt,t){
   let torque=0;
   // reaction wheels (player)
   let wheel=0; sh.insts.forEach(it=>{if(it.attached)wheel+=it.torque;});
-  const ctrl=(keys['a']?1:0)-(keys['d']?1:0) + ((keys['q']?0.3:0)-(keys['e']?0.3:0));
+  const ctrl=(sh._controllable===false?0:1)*((keys['a']?1:0)-(keys['d']?1:0) + ((keys['q']?0.3:0)-(keys['e']?0.3:0)));
   const I=Math.max(0.5, sh.mass*Math.pow(sh.totalH/100,2)/12 + sh.mass*0.02);
   sh.av += (ctrl*wheel/Math.max(sh.mass,0.3))*dt*2.2;
   // aero restoring torque from fins / body (points rocket toward prograde in atmosphere)
@@ -1169,14 +1203,16 @@ function drawShip(c,cam,t){
     const screenAng=Math.atan2(-up.y,up.x); // canvas angle of "up"
     c.rotate(screenAng+Math.PI/2);
     c.scale(sc,sc);
-    if(it.type==="chute"&&it.deployed){
-      // canopy
-      c.fillStyle="#d44a5e";c.beginPath();
-      c.moveTo(-it.w*1.6,-it.h-26);c.quadraticCurveTo(0,-it.h-46,it.w*1.6,-it.h-26);
+    if(it.type==="chute"&&(it.deployFrac||0)>0.02){
+      // canopy scales with deployment fraction (drogue → full)
+      const f=it.deployFrac, wsp=it.w*(0.7+f*1.4), top=-it.h-12-f*34;
+      c.fillStyle=f<0.4?"#e0843a":"#d44a5e";c.beginPath();
+      c.moveTo(-wsp,top+8);c.quadraticCurveTo(0,top-10,wsp,top+8);
       c.lineTo(it.w*0.5,-it.h-6);c.lineTo(-it.w*0.5,-it.h-6);c.closePath();c.fill();
+      c.fillStyle="#ffffff55";c.fillRect(-wsp*0.5,top-2,wsp*0.5,5);
       c.strokeStyle="#fff8";c.lineWidth=0.6;
-      c.beginPath();c.moveTo(-it.w*1.6,-it.h-26);c.lineTo(-it.w*0.4,-it.h/2);
-      c.moveTo(it.w*1.6,-it.h-26);c.lineTo(it.w*0.4,-it.h/2);c.stroke();
+      c.beginPath();c.moveTo(-wsp,top+8);c.lineTo(-it.w*0.4,-it.h/2);
+      c.moveTo(wsp,top+8);c.lineTo(it.w*0.4,-it.h/2);c.stroke();
     }
     drawPart(c,it.key,0,0,true);
     c.restore();
@@ -1321,6 +1357,48 @@ function vesselDv(sh){
     rem-=ps.reduce((a,p)=>a+p.dryMass+p.fuel,0);
   });
   return dv;
+}
+// ---- COMMS: line-of-sight signal from vessel to Mission Control ----
+const KSC={x:0,y:PLANET.R};
+function segHitsCircle(ax,ay,bx,by,cx,cy,R){
+  const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;
+  let t=L2>0?((cx-ax)*dx+(cy-ay)*dy)/L2:0; t=clamp(t,0,1);
+  return len(ax+dx*t-cx, ay+dy*t-cy) < R*0.999;
+}
+function updateComms(sh){
+  const d=len(sh.x-KSC.x, sh.y-KSC.y), mp=moonPos(met);
+  const blocked = segHitsCircle(sh.x,sh.y,KSC.x,KSC.y,0,0,PLANET.R)
+               || segHitsCircle(sh.x,sh.y,KSC.x,KSC.y,mp.x,mp.y,MOON.R);
+  const maxRange=9e6;
+  sh._signal = blocked?0: clamp(1-d/maxRange,0.03,1);
+  sh._connected = sh._signal>0;
+  const hasCrew=sh.crew&&sh.crew.length>0;
+  sh._probeOnly=!hasCrew;
+  sh._controllable = hasCrew || sh._connected;   // probes need a signal; crew can always fly
+}
+// ---- STRUCTURE: joints fail under excessive thrust/aero load ----
+const STRUT_K=165;   // joint strength per unit width (kN); tuned so sane rockets hold
+function updateStructure(sh){
+  if(sh.dead){sh._stress=0;return;}
+  const parts=sh.insts.filter(it=>it.attached&&!it.radial).sort((a,b)=>a.cy-b.cy); // bottom→top
+  if(parts.length<2){sh._stress=0;return;}
+  const acc=sh._ng||0;                       // non-gravitational accel (thrust+drag) loads joints
+  const masses=parts.map(p=>p.dryMass+p.fuel);
+  const above=[]; let cum=0;
+  for(let i=parts.length-1;i>=0;i--){cum+=masses[i];above[i]=cum;}
+  let maxStress=0,breakIdx=-1;
+  for(let i=0;i<parts.length-1;i++){
+    const load=above[i+1]*acc;                          // kN through joint i
+    const strength=STRUT_K*Math.min(parts[i].w,parts[i+1].w);
+    const st=load/strength; if(st>maxStress){maxStress=st;breakIdx=i;}
+  }
+  sh._stress=maxStress;
+  if(maxStress>1 && breakIdx>=0){
+    const yJ=(parts[breakIdx].cy+parts[breakIdx+1].cy)/2;
+    sh.insts.forEach(it=>{if(it.attached&&!it.radial&&it.cy>yJ)it.attached=false;});
+    flash("STRUCTURAL FAILURE","a joint snapped under load — ease the throttle");
+    boom(sh.x,sh.y); computeCOM(sh);
+  }
 }
 // per-frame node maths (burn direction, ETA) — runs in any view so burn guidance works
 function updateNodeCalc(){
@@ -1478,7 +1556,8 @@ function updateHUD(t){
   const sv=surfaceVel(ship,cB,t); const surfSpd=len(sv.x,sv.y); const orbSpd=len(ship.vx,ship.vy);
   const showOrb = alt>PLANET.atmoTop || cB.body===MOON;
   document.getElementById('gSpdL').textContent= showOrb?"ORB VEL":"SURF VEL";
-  document.getElementById('gSpd').innerHTML=Math.round(showOrb?orbSpd:surfSpd)+'<small> m/s</small>';
+  const machStr=(ship.atmP>0&&ship.mach>0.25)?' <small>M'+ship.mach.toFixed(1)+'</small>':'';
+  document.getElementById('gSpd').innerHTML=Math.round(showOrb?orbSpd:surfSpd)+'<small> m/s</small>'+machStr;
   const ob=orbit(ship,t);
   document.getElementById('gAp').innerHTML = ob.ap===Infinity?'∞ <small>escape</small>': (ob.ap>0?fmtDist(ob.ap):'—');
   document.getElementById('gPe').innerHTML = ob.pe>-cB.R?fmtDist(ob.pe):'—';
@@ -1505,6 +1584,26 @@ function updateHUD(t){
     if(dv>0.5 && ship._nodeEta!=null){ const bt=burnTimeFor(ship,dv);
       if(ship._nodeEta<=bt/2+0.6 && ship._nodeEta>-bt){ showBurn=true; document.getElementById('burnDv').textContent=Math.round(dv)+" m/s"; } } }
   document.getElementById('burnCue').classList.toggle('hidden',!showBurn);
+  // comms readout
+  const sig=ship._signal||0, gc=document.getElementById('gComm');
+  if(ship._probeOnly && !ship._connected){ gc.textContent="NO LINK"; gc.style.color="var(--danger)"; }
+  else if(!ship._connected){ gc.textContent=ship.crew&&ship.crew.length?"LOCAL":"—"; gc.style.color="var(--dim)"; }
+  else { const bars="▁▂▃▄▅▆▇█"; gc.textContent=Math.round(sig*100)+"%"; gc.style.color=sig>0.4?"var(--good)":"var(--acc2)"; }
+  document.getElementById('noSignal').classList.toggle('hidden', !(ship._probeOnly && !ship._connected));
+  // structural stress
+  document.getElementById('structWarn').classList.toggle('hidden', !((ship._stress||0)>0.8 && !ship.dead));
+  // burn director (point-and-shoot guidance) — shown outside map view
+  const bd=document.getElementById('burnDir'), n=ship.node, ndv=n?len(n.dvp,n.dvr):0;
+  if(n && ndv>0.5 && !mapView){
+    bd.classList.remove('hidden');
+    document.getElementById('bdDv').textContent=Math.round(ndv);
+    document.getElementById('bdEta').textContent=ship._nodeEta!=null?fmtTime(Math.max(0,ship._nodeEta)):"–";
+    document.getElementById('bdBurn').textContent=burnTimeFor(ship,ndv).toFixed(1)+"s";
+    const off=Math.abs(angDiff(ship._burnDir||0,ship.angle))*180/Math.PI;
+    const al=document.getElementById('bdAlign');
+    if(off<8){al.textContent="ALIGNED ✓ — burn!";al.className="ok";}
+    else {al.textContent="▲ TURN TO BLUE MARKER ("+Math.round(off)+"°)";al.className="off";}
+  } else bd.classList.add('hidden');
   // reentry warning + milestone
   document.getElementById('reentryWarn').classList.toggle('hidden', !(ship.heat>0.35));
   if(ship.heat>0.4 && !ship._reentry){ship._reentry=true;flash("REENTRY","plasma building — hold retrograde to slow");}
@@ -1523,10 +1622,33 @@ function buildStagePanel(){
 }
 
 /* ============================ EVENTS / OUTCOMES ============================ */
+// per-chute deployment state machine; returns its current drag area (m²)
+function updateChute(sh,it,q,alt,dt){
+  if(!it.chuteState) it.chuteState="stowed";
+  if(it.chuteState==="stowed"||it.chuteState==="cut") return 0;
+  if(it.chuteState==="armed"){            // wait for safe dynamic pressure to begin opening
+    if(q<CHUTE_SAFE_Q){ it.chuteState="partial"; }
+    return 0;
+  }
+  if(q>CHUTE_RIP_Q && (it.deployFrac||0)>0.05){   // opened into too much air → rips off
+    it.chuteState="cut"; it.deployFrac=0; flash("PARACHUTE RIPPED","deployed too fast — slow down first"); return 0;
+  }
+  if(it.chuteState==="partial"){
+    it.deployFrac=Math.min(0.28,(it.deployFrac||0)+dt*0.7);
+    if(alt<CHUTE_FULL_ALT) it.chuteState="full";
+  } else if(it.chuteState==="full"){
+    it.deployFrac=Math.min(1,(it.deployFrac||0)+dt*0.5);
+  }
+  return (it.deployFrac||0)*CHUTE_AREA;
+}
 function deployChutes(){
-  let any=false;
-  ship.insts.forEach(it=>{if(it.attached&&it.type==="chute"){it.deployed=true;any=true;}});
-  if(any){ship.parachutesOut=true; flash("PARACHUTES","slowing descent");}
+  let armed=0,already=0;
+  ship.insts.forEach(it=>{if(it.attached&&it.type==="chute"){
+    if(!it.chuteState||it.chuteState==="stowed"){it.chuteState="armed";it.deployFrac=0;armed++;}
+    else if(it.chuteState!=="cut")already++; }});
+  ship.parachutesOut=true; ship.parachutesArmed=true;
+  if(armed) flash("PARACHUTES ARMED","will open automatically when slow enough");
+  else if(!already) flash("NO PARACHUTES","none on this vessel");
 }
 function crash(bodyName){
   if(ship.dead)return;
@@ -1746,10 +1868,12 @@ let lastT=performance.now();
 function loop(now){
   const realDt=Math.min(0.05,(now-lastT)/1000); lastT=now;
   if(mode==="flight"&&ship){
-    // throttle keys
-    if(keys['w']||keys['shift'])ship.throttle=clamp(ship.throttle+realDt*0.8,0,1);
-    if(keys['s']||keys['control'])ship.throttle=clamp(ship.throttle-realDt*0.8,0,1);
-    updateNodeCalc();
+    updateComms(ship); updateNodeCalc();
+    // throttle keys (only when the vessel can be controlled — probes need a signal)
+    if(ship._controllable){
+      if(keys['w']||keys['shift'])ship.throttle=clamp(ship.throttle+realDt*0.8,0,1);
+      if(keys['s']||keys['control'])ship.throttle=clamp(ship.throttle-realDt*0.8,0,1);
+    }
     // physics with warp + substeps
     if(!ship.dead && !ship.won){
       const simDt=realDt*warp;
@@ -1758,6 +1882,7 @@ function loop(now){
       const sub=clamp(Math.ceil(simDt/hmax),1,400);
       const h=simDt/sub;
       for(let i=0;i<sub;i++){ physStep(ship,h,met); met+=h; }
+      updateStructure(ship);
     }
     checkMilestones(met);
     camZoom=lerp(camZoom,camTargetZoom,0.15);
