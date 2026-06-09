@@ -87,6 +87,11 @@
   .sl-row .rm{margin-left:auto;color:var(--danger);cursor:pointer;font-weight:700;padding:0 4px}
   .sl-row .rm:hover{color:#fff}
   #launchBtn{font-size:16px;padding:13px;letter-spacing:1px}
+  .dim{color:var(--dim)}
+  #selInfo{font-size:12px;display:flex;align-items:center;gap:8px;min-height:24px}
+  #selInfo .rm{margin-left:auto;background:#3a1820;border:1px solid var(--danger);color:#ffb0b8;border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer}
+  #selInfo .rm:hover{background:var(--danger);color:#fff}
+  #vab{cursor:default}
   #symRow{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--dim)}
 
   /* ================= FLIGHT HUD ================= */
@@ -222,19 +227,18 @@
     <div id="palette"></div>
     <div id="buildStage">
       <canvas id="vab"></canvas>
-      <div id="buildHint">Click parts to stack your rocket ↓ &nbsp;·&nbsp; or load a preset →</div>
+      <div id="buildHint">Pick a part, then click on the pad to place it</div>
     </div>
     <div id="rightPanel">
       <div class="badge">Presets</div>
       <div id="presetWrap"></div>
-      <div class="badge" style="margin-top:4px">Symmetry boosters</div>
+      <div class="badge" style="margin-top:4px">Symmetry</div>
       <div id="symRow">
-        <button onclick="addRadial(-1)">−</button>
-        <span>SRB pairs: <b id="symN">0</b></span>
-        <button onclick="addRadial(1)">+</button>
+        <button id="symBtn" onclick="toggleSym()">Mirror ×2</button>
+        <span style="font-size:11px;color:var(--dim)">boosters &amp; fins</span>
       </div>
-      <div class="badge" style="margin-top:4px">Stack (top → bottom)</div>
-      <div id="stackList"></div>
+      <div class="badge" style="margin-top:4px">Selected</div>
+      <div id="selInfo"><span class="dim">— click a part to select —</span></div>
       <button class="btn-acc" id="launchBtn" onclick="launch()">🚀 LAUNCH</button>
       <button onclick="clearRocket()">Clear</button>
     </div>
@@ -409,69 +413,109 @@ const PALETTE_GROUPS = [
   ["Utility", ["decoupler"]],
 ];
 const PRESETS = {
-  "Sounding Rocket":{stack:["pod","chute","tankM","engMd"],srb:0},
-  "Orbiter":{stack:["pod","chute","tankM","engMd","decoupler","tankL","engMd"],srb:2},
-  "Mun Lander":{stack:["pod","chute","probe","tankS","engSm","decoupler","tankL","engMd","decoupler","tankL","engLg"],srb:4},
+  "Sounding Rocket":{keys:["pod","chute","tankM","engMd"],srb:0},
+  "Orbiter":{keys:["pod","chute","tankM","engMd","decoupler","tankL","engMd"],srb:2},
+  "Mun Lander":{keys:["pod","chute","probe","tankS","engSm","decoupler","tankL","engMd","decoupler","tankL","engLg"],srb:4},
 };
 
-/* ---------- ROCKET STATE (build) ---------- */
-let stack=[];        // array of part keys, index0 = top (nose)
-let radialPairs=0;   // SRB pairs strapped to the lowest tank
+/* ===================== SNAP-AND-PLACE EDITOR MODEL =====================
+   `placed` is the source of truth: a graph of parts, each with a centre (x,y in
+   build units, +y = down) and an attachment to a parent node. The flight ship,
+   staging and stats are all derived from it.                                   */
+let placed=[];          // {id,key,x,y,parent,pnode}  pnode: 'top'|'bottom'|'L'|'R'|null(root)
+let _pid=1;
+let placeKey=null;      // part being placed (ghost following cursor) or null
+let selId=null;         // selected placed part
+let symMode=2;          // mirror symmetry for radial parts (1 or 2)
 
-function partH(k){return PARTS[k].h;}
-function rocketHeight(){return stack.reduce((s,k)=>s+partH(k),0);}
-
-/* compute summary stats for VAB */
-function rocketStats(){
-  let mass=0,fuel=0,dry=0;
-  stack.forEach(k=>{const p=PARTS[k];mass+=p.mass+(p.fuel||0);dry+=p.mass;fuel+=p.fuel||0;});
-  for(let i=0;i<radialPairs*2;i++){const p=PARTS.srb;mass+=p.mass+p.fuel;dry+=p.mass;}
-  // crude dv: sum stage by stage
-  const st=buildStages();
-  let dv=0;
-  let remMass=mass;
-  st.forEach(s=>{
-    if(s.engines.length){
-      const isp=s.engines.reduce((a,e)=>a+PARTS[e.key].isp,0)/s.engines.length;
-      const f=s.fuelMass;
-      if(f>0 && remMass>0){
-        const after=remMass-f;
-        if(after>0) dv+=isp*g0*Math.log(remMass/after);
-      }
-    }
-    remMass-=s.dropMass;
-  });
-  // launch TWR — at sea level (engines are weaker in atmosphere)
-  let thr=0; const st0=st[0]||{engines:[]};
-  st0.engines.forEach(e=>thr+=engineThrust(PARTS[e.key],1));
-  const twr=thr/(mass*g0);
-  return {mass,fuel,dry,dv,twr,stages:st.length};
+// attachment capability per part type
+function cap(key){
+  const t=PARTS[key].type;
+  if(key==="srb"||t==="fin") return {top:false,bottom:false,radial:true,stack:false};
+  if(t==="engine") return {top:true,bottom:false,radial:false,stack:true}; // bolts under a tank
+  if(key==="nose") return {top:false,bottom:true,radial:false,stack:true};  // sits on top
+  return {top:true,bottom:true,radial:false,stack:true};                    // pod/probe/chute/tank/decoupler
+}
+const ph=p=>PARTS[p.key].h, pw=p=>PARTS[p.key].w;
+const byId=id=>placed.find(p=>p.id===id);
+function isRadialKey(k){return cap(k).radial;}
+function occupied(E,node){ return placed.some(p=>p.parent===E.id&&p.pnode===node); }
+function snapTarget(key,cx,cy){
+  const ck=cap(key), kw=PARTS[key].w, kh=PARTS[key].h; let best=null,bd=52;
+  for(const E of placed){
+    const cE=cap(E.key), Eh=PARTS[E.key].h, Ew=PARTS[E.key].w;
+    if(ck.top && cE.bottom && !occupied(E,"bottom")){ const d=len(cx-E.x,cy-(E.y+Eh/2));
+      if(d<bd){bd=d;best={x:E.x,y:E.y+Eh/2+kh/2,parent:E.id,pnode:"bottom"};} }
+    if(ck.bottom && cE.top && !occupied(E,"top")){ const d=len(cx-E.x,cy-(E.y-Eh/2));
+      if(d<bd){bd=d;best={x:E.x,y:E.y-Eh/2-kh/2,parent:E.id,pnode:"top"};} }
+    if(ck.radial && cE.stack){ for(const side of [-1,1]){
+      const sy=clamp(cy,E.y-Eh/2+kh/2,E.y+Eh/2-kh/2), d=len(cx-(E.x+side*Ew/2),cy-sy);
+      if(d<bd){bd=d;best={x:E.x+side*(Ew/2+kw/2),y:sy,parent:E.id,pnode:side<0?"L":"R"};} } }
+  }
+  return best;
+}
+function placePart(key,target){
+  if(!target){ if(!placed.length){placed.push({id:_pid++,key,x:0,y:0,parent:null,pnode:null});return true;} return false; }
+  placed.push({id:_pid++,key,x:target.x,y:target.y,parent:target.parent,pnode:target.pnode});
+  if(cap(key).radial && symMode===2 && (target.pnode==="L"||target.pnode==="R")){
+    const E=byId(target.parent);
+    if(E){ const side2=target.pnode==="L"?"R":"L";
+      placed.push({id:_pid++,key,x:E.x+(side2==="L"?-1:1)*(PARTS[E.key].w/2+PARTS[key].w/2),y:target.y,parent:E.id,pnode:side2}); }
+  }
+  return true;
+}
+function descendantIds(id){ const ids=[id]; let frontier=[id];
+  while(frontier.length){ const next=[]; placed.forEach(p=>{ if(frontier.includes(p.parent)){ids.push(p.id);next.push(p.id);} }); frontier=next; }
+  return ids; }
+function deletePart(id){ const s=new Set(descendantIds(id)); placed=placed.filter(p=>!s.has(p.id)); if(s.has(selId))selId=null; }
+function hitPart(cx,cy){ for(let i=placed.length-1;i>=0;i--){const p=placed[i],P=PARTS[p.key];
+  if(Math.abs(cx-p.x)<=P.w/2&&Math.abs(cy-p.y)<=P.h/2)return p.id;} return null; }
+function bboxUnits(){ if(!placed.length)return {minx:-15,maxx:15,miny:-25,maxy:25};
+  let a=1e9,b=-1e9,c=1e9,d=-1e9; placed.forEach(p=>{const P=PARTS[p.key];
+    a=Math.min(a,p.x-P.w/2);b=Math.max(b,p.x+P.w/2);c=Math.min(c,p.y-P.h/2);d=Math.max(d,p.y+P.h/2);});
+  return {minx:a,maxx:b,miny:c,maxy:d}; }
+function rocketHeight(){const b=bboxUnits();return b.maxy-b.miny;}
+function rocketMaxW(){const b=bboxUnits();return b.maxx-b.minx;}
+function buildStackPreset(keys,srbPairs){
+  placed=[]; _pid=1; selId=null; placeKey=null;
+  let prev=null,y=0;
+  keys.forEach(k=>{ const h=PARTS[k].h; const part={id:_pid++,key:k,x:0,y:y+h/2,parent:prev?prev.id:null,pnode:prev?"bottom":null};
+    placed.push(part); prev=part; y+=h; });
+  if(srbPairs>0){ const tanks=placed.filter(p=>PARTS[p.key].type==="tank");
+    const low=tanks.length?tanks.reduce((a,b)=>a.y>b.y?a:b):null;
+    if(low){ const sp=PARTS.srb, lw=PARTS[low.key].w;
+      for(let r=0;r<srbPairs;r++)for(const side of [-1,1])
+        placed.push({id:_pid++,key:"srb",x:low.x+side*(lw/2+sp.w/2+r*(sp.w+2)+2),y:low.y,parent:low.id,pnode:side<0?"L":"R"}); } }
 }
 
-/* ---------- STAGING MODEL ----------
-   Build instance list bottom→top. Group into stages separated by decouplers.
-   Stage 0 = bottom segment engines + all radial SRBs (ignite at liftoff).
-   Each subsequent stage = decouple lower segment, ignite next engine up.        */
+/* ---------- summary stats for VAB ---------- */
+function rocketStats(){
+  let mass=0,fuel=0,dry=0;
+  placed.forEach(p=>{const P=PARTS[p.key];mass+=P.mass+(P.fuel||0);dry+=P.mass;fuel+=P.fuel||0;});
+  const st=buildStages(); let dv=0, rem=mass;
+  st.forEach(s=>{ if(s.engines.length){ const isp=s.engines.reduce((a,e)=>a+PARTS[e.key].isp,0)/s.engines.length;
+    const f=s.fuelMass; if(f>0&&rem>f){const after=rem-f; if(after>0)dv+=isp*g0*Math.log(rem/after);} }
+    rem-=s.dropMass; });
+  let thr=0; const st0=st[0]||{engines:[]}; st0.engines.forEach(e=>thr+=engineThrust(PARTS[e.key],1));
+  const twr=mass>0?thr/(mass*g0):0;
+  return {mass,fuel,dry,dv,twr,stages:st.length,count:placed.length};
+}
+
+/* ---------- STAGING MODEL (derived from `placed`) ---------- */
 function buildStages(){
-  // segments: contiguous central parts split by decouplers, ordered bottom→top
+  const central=placed.filter(p=>!isRadialKey(p.key)&&p.pnode!=="L"&&p.pnode!=="R").sort((a,b)=>b.y-a.y); // bottom→top
+  const radials=placed.filter(p=>isRadialKey(p.key)||p.pnode==="L"||p.pnode==="R");
   const segs=[]; let cur=[];
-  for(let i=stack.length-1;i>=0;i--){           // bottom→top
-    const k=stack[i];
-    if(PARTS[k].type==="decoupler"){ segs.push({parts:cur,decoupler:true}); cur=[]; }
-    else cur.push({key:k,idx:i});
-  }
-  segs.push({parts:cur,decoupler:false});
+  for(const p of central){ if(PARTS[p.key].type==="decoupler"){segs.push(cur);cur=[];} else cur.push(p); }
+  segs.push(cur);
   const stages=[];
   segs.forEach((seg,si)=>{
-    const engines=seg.parts.filter(p=>PARTS[p.key].type==="engine");
-    const fuelMass=seg.parts.reduce((a,p)=>a+(PARTS[p.key].fuel||0),0);
-    let dropMass=seg.parts.reduce((a,p)=>a+PARTS[p.key].mass+(PARTS[p.key].fuel||0),0);
-    const stage={engines:engines.slice(),fuelMass,dropMass,segIdx:si,radial:false,parts:seg.parts.slice()};
-    if(si===0 && radialPairs>0){
-      stage.radial=true;
-      for(let r=0;r<radialPairs*2;r++) stage.engines.push({key:"srb",idx:-1-r,radial:true});
-      stage.fuelMass+=radialPairs*2*PARTS.srb.fuel;
-    }
+    const engines=seg.filter(p=>PARTS[p.key].type==="engine").map(p=>({key:p.key}));
+    let fuelMass=seg.reduce((a,p)=>a+(PARTS[p.key].fuel||0),0);
+    let dropMass=seg.reduce((a,p)=>a+PARTS[p.key].mass+(PARTS[p.key].fuel||0),0);
+    const stage={engines,fuelMass,dropMass,segIdx:si,radial:false,parts:seg};
+    if(si===0 && radials.length){ stage.radial=true;
+      radials.forEach(p=>{ if(PARTS[p.key].type==="srb"){ stage.engines.push({key:p.key,radial:true}); stage.fuelMass+=PARTS[p.key].fuel; } }); }
     stages.push(stage);
   });
   return stages;
@@ -501,7 +545,7 @@ function buildPalette(){
       const tx=document.createElement('div');
       tx.innerHTML=`<div class="pn">${p.name}</div><div class="pd">${p.label}</div>`;
       b.appendChild(c); b.appendChild(tx);
-      b.onclick=()=>addPart(k);
+      b.onclick=()=>pickPart(k);
       el.appendChild(b);
     });
   });
@@ -516,36 +560,28 @@ function drawPartIcon(c,k){
   const p=PARTS[k]; const sc=Math.min(36/Math.max(p.w,p.h),1.4);
   c.scale(sc,sc); drawPart(c,k,0,0,false); c.restore();
 }
-function addPart(k){
-  // sensible auto-placement: command/aero go on top, engines/decoupler bottom, else above lowest engine
-  const t=PARTS[k].type;
-  if(t==="pod"||t==="probe"||t==="aero"||t==="chute") stack.unshift(k);
-  else stack.push(k);
-  refreshBuild();
-}
-function addRadial(d){ radialPairs=clamp(radialPairs+d,0,4); refreshBuild(); }
-function loadPreset(name){ const p=PRESETS[name]; stack=p.stack.slice(); radialPairs=p.srb; refreshBuild(); }
-function clearRocket(){ stack=[]; radialPairs=0; refreshBuild(); }
-function removeAt(i){ stack.splice(i,1); refreshBuild(); }
+function pickPart(k){ placeKey=k; selId=null; refreshBuild(); }
+function toggleSym(){ symMode = symMode===2?1:2; refreshBuild(); }
+function loadPreset(name){ const p=PRESETS[name]; buildStackPreset(p.keys,p.srb); refreshBuild(); }
+function clearRocket(){ placed=[]; selId=null; placeKey=null; refreshBuild(); }
+function deleteSelected(){ if(selId!=null){deletePart(selId); refreshBuild();} }
 
 function refreshBuild(){
-  const sl=document.getElementById('stackList'); sl.innerHTML='';
-  stack.forEach((k,i)=>{
-    const r=document.createElement('div'); r.className='sl-row';
-    r.innerHTML=`<span>${i+1}. ${PARTS[k].name}</span><span class="rm">✕</span>`;
-    r.querySelector('.rm').onclick=()=>removeAt(i);
-    sl.appendChild(r);
-  });
-  document.getElementById('symN').textContent=radialPairs;
   const s=rocketStats();
   document.getElementById('sMass').textContent=s.mass.toFixed(1);
   document.getElementById('sDv').textContent=Math.round(s.dv);
   document.getElementById('sTwr').textContent=s.twr.toFixed(2);
   document.getElementById('sStages').textContent=s.stages;
-  document.getElementById('launchBtn').style.opacity = (stack.length&&s.twr>=1)?1:.55;
-  document.getElementById('buildHint').textContent =
-    stack.length? (s.twr<1? "⚠ TWR below 1 — add engines or drop weight" : "Looks flightworthy. Hit LAUNCH →")
-    : "Click parts to stack your rocket ↓  ·  or load a preset →";
+  const sb=document.getElementById('symBtn'); if(sb)sb.textContent="Mirror ×"+symMode;
+  // selected-part info
+  const si=document.getElementById('selInfo'); const sp=selId!=null?byId(selId):null;
+  if(sp) si.innerHTML=`<b>${PARTS[sp.key].name}</b><button class="rm" onclick="deleteSelected()">Delete ✕</button>`;
+  else si.innerHTML='<span class="dim">— click a part to select —</span>';
+  document.getElementById('launchBtn').style.opacity = (s.count&&s.twr>=1)?1:.55;
+  const hint=document.getElementById('buildHint');
+  if(placeKey) hint.innerHTML=`Placing <b>${PARTS[placeKey].name}</b> — click to attach · right-click/Esc to cancel`;
+  else if(!s.count) hint.textContent="Pick a part on the left, then click on the pad to place it (start with a pod)";
+  else hint.textContent= s.twr<1? "⚠ TWR below 1 — add engines or drop weight" : "Looks flightworthy — hit LAUNCH →";
 }
 
 /* draw a single part centred at (x,y). local -y = toward nose, +y = toward engine/base */
@@ -670,38 +706,65 @@ function drawPart(c,k,x,y,detailed=true){
   c.restore();
 }
 
-/* VAB render loop (rocket preview, centred) */
+/* VAB render loop — snap-and-place editor */
+let vabCam={sc:4,ox:0,oy:0}, vabMouse={x:0,y:0};
+function vabToScreen(ux,uy){ return {x:vabCam.ox+ux*vabCam.sc, y:vabCam.oy+uy*vabCam.sc}; }
+function vabFromEvent(e){ const r=vab.getBoundingClientRect(),dpr=devicePixelRatio;
+  const mx=(e.clientX-r.left)*dpr, my=(e.clientY-r.top)*dpr;
+  return {x:(mx-vabCam.ox)/vabCam.sc, y:(my-vabCam.oy)/vabCam.sc}; }
 function drawVAB(){
   ensureSize(vab);
-  const w=vab.width,h=vab.height,dpr=devicePixelRatio;
-  vctx.setTransform(1,0,0,1,0,0);
-  vctx.clearRect(0,0,w,h);
-  if(stack.length){
-    const totalH=rocketHeight();
-    const widths=stack.map(k=>PARTS[k].w);
-    const maxW=Math.max(...widths, radialPairs?80:0);
-    const sc=Math.min((h*0.80)/totalH,(w*0.45)/maxW,7*dpr);
-    vctx.save();
-    vctx.translate(w/2,h/2);
-    vctx.scale(sc,sc);
-    // platform
-    vctx.fillStyle="#16203a"; vctx.fillRect(-maxW/2-30,totalH/2+4,(maxW/2+30)*2,8/sc*dpr+6);
-    // radial SRBs
-    let acc=-totalH/2, lowestTankY=null,lowestTankW=0;
-    stack.forEach(k=>{const p=PARTS[k];if(p.type==="tank"){lowestTankY=acc+p.h/2;lowestTankW=p.w;}acc+=p.h;});
-    if(radialPairs>0&&lowestTankY!==null){
-      const sp=PARTS.srb;
-      for(let s=-1;s<=1;s+=2)for(let r=0;r<radialPairs;r++){
-        const off=(lowestTankW/2+sp.w/2+2+r*(sp.w+2))*s;
-        drawPart(vctx,"srb",off,lowestTankY,true);
-      }
+  const W=vab.width,H=vab.height,dpr=devicePixelRatio;
+  vctx.setTransform(1,0,0,1,0,0); vctx.clearRect(0,0,W,H);
+  // fit camera to bbox (+ headroom)
+  const bb=bboxUnits(), padU=26;
+  const sc=Math.min(W*0.9/((bb.maxx-bb.minx)+padU*2), H*0.92/((bb.maxy-bb.miny)+padU*2), 7*dpr);
+  const ctrX=(bb.minx+bb.maxx)/2, ctrY=(bb.miny+bb.maxy)/2;
+  vabCam={sc, ox:W/2-ctrX*sc, oy:H/2-ctrY*sc};
+  // faint grid
+  vctx.strokeStyle="#16203a"; vctx.lineWidth=1; const gs=20*sc;
+  for(let gx=vabCam.ox%gs; gx<W; gx+=gs){vctx.beginPath();vctx.moveTo(gx,0);vctx.lineTo(gx,H);vctx.stroke();}
+  for(let gy=vabCam.oy%gs; gy<H; gy+=gs){vctx.beginPath();vctx.moveTo(0,gy);vctx.lineTo(W,gy);vctx.stroke();}
+  // launch platform at the base of the rocket
+  if(placed.length){ const baseS=vabToScreen(ctrX,bb.maxy);
+    vctx.fillStyle="#16203a"; vctx.fillRect(baseS.x-(rocketMaxW()/2+24)*sc, baseS.y+2, (rocketMaxW()/2+24)*sc*2, 7); }
+  // placed parts
+  const drawAt=(key,ux,uy,alpha)=>{ const s=vabToScreen(ux,uy); vctx.save(); if(alpha)vctx.globalAlpha=alpha;
+    vctx.translate(s.x,s.y); vctx.scale(sc,sc); drawPart(vctx,key,0,0,true); vctx.restore(); vctx.globalAlpha=1; };
+  placed.forEach(p=>{ drawAt(p.key,p.x,p.y);
+    if(p.id===selId){ const s=vabToScreen(p.x,p.y),P=PARTS[p.key];
+      vctx.strokeStyle="#46e0c0"; vctx.lineWidth=2; vctx.setLineDash([5,4]);
+      vctx.strokeRect(s.x-P.w/2*sc,s.y-P.h/2*sc,P.w*sc,P.h*sc); vctx.setLineDash([]); } });
+  // placement ghost + snap node highlight
+  if(placeKey){
+    const tgt=snapTarget(placeKey,vabMouse.x,vabMouse.y);
+    let gx,gy,ok=true;
+    if(tgt){gx=tgt.x;gy=tgt.y;} else if(!placed.length){gx=0;gy=0;} else {gx=vabMouse.x;gy=vabMouse.y;ok=false;}
+    if(tgt){ const E=byId(tgt.parent),Eh=PARTS[E.key].h,Ew=PARTS[E.key].w;
+      let np=tgt.pnode==="bottom"?{x:E.x,y:E.y+Eh/2}:tgt.pnode==="top"?{x:E.x,y:E.y-Eh/2}:{x:E.x+(tgt.pnode==="L"?-1:1)*Ew/2,y:tgt.y};
+      const ns=vabToScreen(np.x,np.y); vctx.strokeStyle="#46e0c0"; vctx.lineWidth=2;
+      vctx.beginPath(); vctx.arc(ns.x,ns.y,7,0,TAU); vctx.stroke(); }
+    drawAt(placeKey,gx,gy, ok?0.6:0.3);
+    if(cap(placeKey).radial && symMode===2 && tgt && (tgt.pnode==="L"||tgt.pnode==="R")){
+      const E=byId(tgt.parent); drawAt(placeKey, E.x+(tgt.pnode==="L"?1:-1)*(PARTS[E.key].w/2+PARTS[placeKey].w/2), gy, 0.6);
     }
-    let yy=-totalH/2;
-    stack.forEach(k=>{const p=PARTS[k];drawPart(vctx,k,0,yy+p.h/2,true);yy+=p.h;});
-    vctx.restore();
   }
   requestAnimationFrame(drawVAB);
 }
+// editor input
+vab.addEventListener('mousemove',e=>{ vabMouse=vabFromEvent(e);
+  vab.style.cursor = placeKey?"copy":(hitPart(vabMouse.x,vabMouse.y)!=null?"pointer":"default"); });
+vab.addEventListener('mousedown',e=>{ if(mode!=="build")return; vabMouse=vabFromEvent(e);
+  if(e.button===2){ placeKey=null; refreshBuild(); return; }
+  if(placeKey){ const tgt=snapTarget(placeKey,vabMouse.x,vabMouse.y);
+    if(placePart(placeKey,tgt)) refreshBuild(); return; }
+  selId=hitPart(vabMouse.x,vabMouse.y); refreshBuild();
+});
+vab.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('keydown',e=>{ if(mode!=="build")return; const k=e.key;
+  if(k==="Escape"){placeKey=null;refreshBuild();}
+  if((k==="Delete"||k==="Backspace")&&selId!=null){e.preventDefault();deleteSelected();}
+});
 
 /* ============================ FLIGHT ============================ */
 let ship=null, started=false, paused=false, mode="center";
@@ -710,34 +773,17 @@ let met=0, warp=1, warpLevels=[1,2,5,20,100,1000,10000];
 const keys={};
 
 function makeShip(){
-  // instantiate parts bottom→top with positions; pos at COM in world frame
-  const insts=[];
-  let y=0; // local y from base upward (we'll layout bottom=0)
-  // layout from bottom: reverse stack
-  const order=stack.slice().reverse(); // bottom→top
-  let baseY=0;
-  order.forEach((k)=>{
-    const p=PARTS[k];
-    insts.push({key:k,type:p.type,cy:baseY+p.h/2,h:p.h,w:p.w,
-      dryMass:p.mass, fuel:p.fuel||0, fuelMax:p.fuel||0,
-      active:false, attached:true, radial:false, torque:p.torque||0, fin:p.fin||0, drag:p.drag||0.3,
-      thrust:p.thrust||0, isp:p.isp||250, deployed:false});
-    baseY+=p.h;
-  });
-  // radial SRBs attach at lowest tank center
-  let lowestTankCy=null,lowestTankW=0;
-  insts.forEach(it=>{if(it.type==="tank"){lowestTankCy=it.cy;lowestTankW=it.w;}});
-  if(radialPairs>0 && lowestTankCy===null){ // attach to lowest engine/part
-    lowestTankCy=insts.length?insts[Math.floor(insts.length/2)].cy:20; lowestTankW=20;
-  }
-  for(let s=-1;s<=1 && radialPairs>0;s+=2)for(let r=0;r<radialPairs;r++){
-    const sp=PARTS.srb;
-    const off=(lowestTankW/2+sp.w/2+2+r*(sp.w+2))*s;
-    insts.push({key:"srb",type:"srb",cy:lowestTankCy,h:sp.h,w:sp.w,dx:off,
-      dryMass:sp.mass,fuel:sp.fuel,fuelMax:sp.fuel,active:false,attached:true,radial:true,
-      thrust:sp.thrust,isp:sp.isp,drag:sp.drag,torque:0,fin:0});
-  }
-  const totalH=baseY;
+  // build flight instances from the placed-parts graph
+  const baseY=Math.max(...placed.map(p=>p.y+PARTS[p.key].h/2));
+  const topY =Math.min(...placed.map(p=>p.y-PARTS[p.key].h/2));
+  const root=placed.find(p=>p.parent===null); const cx0=root?root.x:0;
+  const insts=placed.map(p=>{ const P=PARTS[p.key]; const isRad=isRadialKey(p.key)||p.pnode==="L"||p.pnode==="R";
+    const it={key:p.key,type:P.type,cy:baseY-p.y,h:P.h,w:P.w,
+      dryMass:P.mass, fuel:P.fuel||0, fuelMax:P.fuel||0,
+      active:false, attached:true, radial:isRad, torque:P.torque||0, fin:P.fin||0, drag:P.drag||0.3,
+      thrust:P.thrust||0, isp:P.isp||250, deployed:false};
+    if(isRad) it.dx=p.x-cx0; return it; });
+  const totalH=baseY-topY;
   const sh={
     insts, totalH,
     x:0, y:PLANET.R, vx:0, vy:0,
@@ -777,7 +823,8 @@ function totalThrustActive(sh){
 }
 
 function launch(){
-  if(!stack.length){flash("ADD PARTS FIRST","build a rocket on the left");return;}
+  if(!placed.length){flash("ADD PARTS FIRST","build a rocket in the VAB");return;}
+  if(!placed.some(p=>PARTS[p.key].type==="pod"||p.key==="probe")){flash("NO COMMAND PART","add a command pod or probe core");return;}
   ship=makeShip(); assignCrew(ship);
   met=0; warp=1; camZoom=0.9; camTargetZoom=0.9; mapView=false;
   document.getElementById('build').classList.add('hidden');
@@ -985,38 +1032,25 @@ function physStep(sh,dt,t){
   computeCOM(sh);
 
   // ---- ground collision ----
-  const baseAlt = ctxB.alt - sh.comY; // bottom of rocket above surface (approx)
+  // ground contact — evaluated against the POST-integration position
+  const cB2=bodyContext(sh.x,sh.y,t);
+  const baseAlt=cB2.alt - sh.comY;
   if(baseAlt<=0){
-    // landed or crashed
-    const surfV=surfaceVel(sh,ctxB,t);
-    const vmag=len(surfV.x,surfV.y);
-    // snap to surface
-    const rr=len(sh.x-ctxB.cx,sh.y-ctxB.cy);
-    const ux=(sh.x-ctxB.cx)/rr, uy=(sh.y-ctxB.cy)/rr;
-    sh.x=ctxB.cx+ux*(ctxB.R+sh.comY); sh.y=ctxB.cy+uy*(ctxB.R+sh.comY);
-    // kill inward velocity
-    const intoV=sh.vx*(-ux)+sh.vy*(-uy);
-    if(vmag>14 && !sh.landed){
-      crash(ctxB.body.name);
-    } else {
-      // settle
-      sh.vx-=intoV*(-ux); sh.vy-=intoV*(-uy);
-      sh.vx*=0.4; sh.vy*=0.4; sh.av*=0.3;
-      if(!sh.landed){
-        sh.landed=true;
-        if(ctxB.body===MOON && !sh.dead){ winMun(); }
+    const rr=len(sh.x-cB2.cx,sh.y-cB2.cy)||1;
+    const ux=(sh.x-cB2.cx)/rr, uy=(sh.y-cB2.cy)/rr;          // outward unit
+    sh.x=cB2.cx+ux*(cB2.R+sh.comY); sh.y=cB2.cy+uy*(cB2.R+sh.comY);  // rest base on surface
+    const vr=sh.vx*ux+sh.vy*uy;                              // radial velocity (+ = climbing away)
+    const surfV=surfaceVel(sh,cB2,t), vmag=len(surfV.x,surfV.y);
+    if(vr<0){                                                // moving into the ground
+      if(vmag>14 && !sh.landed && !sh.parachutesOut){ crash(cB2.body.name); }
+      else {
+        sh.vx-=vr*ux; sh.vy-=vr*uy;                          // cancel inward component only
+        sh.vx*=0.6; sh.vy*=0.6; sh.av*=0.4;
+        if(!sh.landed){ sh.landed=true; if(cB2.body===MOON && !sh.dead) winMun(); }
       }
     }
-    // align upright when slow & landed
-    if(sh.landed){
-      const up=Math.atan2(uy,ux);
-      sh.sasTarget=up;
-      sh.angle=lerp(sh.angle,up,0.2);
-      sh.vx=lerp(sh.vx,surfV.x?surfaceVel(sh,ctxB,t).x:0,0); // keep moving with surface implicitly
-    }
-  } else {
-    if(sh.landed && baseAlt>2){ sh.landed=false; }
-  }
+    if(sh.landed){ const up=Math.atan2(uy,ux); sh.sasTarget=up; sh.angle=lerp(sh.angle,up,0.15); }
+  } else if(sh.landed && baseAlt>2){ sh.landed=false; }
 }
 function drawFuel(sh,dt){
   // liquid engines: if their own fuel array empty, pull from tanks (we stored fuel on tanks separately).
@@ -2029,7 +2063,7 @@ function hireKerbal(){
 
 /* ---- assign crew at launch ---- */
 function podCapacity(){
-  let cap=0; stack.forEach(k=>{ if(k==="pod")cap+=1; }); return cap;
+  let cap=0; placed.forEach(p=>{ if(p.key==="pod")cap+=1; }); return cap;
 }
 function assignCrew(sh){
   sh.crew=[];
@@ -2071,8 +2105,8 @@ function layoutBuildings(W,H){
     {id:"mission",label:"Mission Control", x:W*0.27, y:gy, w:W*0.13, desc:`${save.missions} missions flown.`,
       onClick:()=>toast(`Mission Control: ${save.missions} flights · 💰${Math.round(save.funds).toLocaleString()}`)},
     {id:"vab",   label:"VAB", x:W*0.46, y:gy, w:W*0.13, desc:"Assemble your rocket.", onClick:()=>{goBuild();}},
-    {id:"pad",   label:"Launch Pad", x:W*0.66, y:gy, w:W*0.12, desc: stack.length?"Roll out & fly your rocket.":"Build a rocket first.",
-      onClick:()=>{ if(stack.length){launch();} else {goBuild();toast("Assemble a rocket in the VAB first.");} }},
+    {id:"pad",   label:"Launch Pad", x:W*0.66, y:gy, w:W*0.12, desc: placed.length?"Roll out & fly your rocket.":"Build a rocket first.",
+      onClick:()=>{ if(placed.length){launch();} else {goBuild();toast("Assemble a rocket in the VAB first.");} }},
     {id:"astro", label:"Astronaut Complex", x:W*0.86, y:gy, w:W*0.12, desc:`Hire & manage crew (${save.roster.length}).`, onClick:()=>openCrew()},
   ];
 }
@@ -2175,23 +2209,16 @@ function drawBuilding(c,b,gy,hov){
     c.fillStyle="#5b6376";c.beginPath();c.arc(0,0,w*0.08,0,TAU);c.fill();c.restore();
   }
 }
-function rocketMaxW(){return stack.length?Math.max(...stack.map(k=>PARTS[k].w),radialPairs?60:0):20;}
 function drawMiniRocket(c,x,baseY,sc){
-  if(!stack.length){ // generic rocket
+  if(!placed.length){ // generic rocket
     c.fillStyle="#dfe4ee";c.fillRect(x-5,baseY-40,10,34);
     c.fillStyle="#c8413a";c.beginPath();c.moveTo(x,baseY-52);c.lineTo(x+5,baseY-40);c.lineTo(x-5,baseY-40);c.fill();
     c.fillStyle="#5b6376";c.beginPath();c.moveTo(x-5,baseY-6);c.lineTo(x+5,baseY-6);c.lineTo(x+3,baseY);c.lineTo(x-3,baseY);c.fill();
     return;
   }
-  c.save();c.translate(x,baseY);c.scale(sc,sc);
-  const totalH=rocketHeight();
-  let lowestTankCy=null,lowestTankW=0,acc=0;
-  stack.slice().reverse().forEach(k=>{const p=PARTS[k];if(p.type==="tank"){lowestTankCy=-(acc+p.h/2);lowestTankW=p.w;}acc+=p.h;});
-  if(radialPairs>0&&lowestTankCy!==null){const sp=PARTS.srb;
-    for(let s=-1;s<=1;s+=2)for(let r=0;r<radialPairs;r++){const off=(lowestTankW/2+sp.w/2+2+r*(sp.w+2))*s;drawPart(c,"srb",off,lowestTankCy,true);}}
-  let yy=0;
-  stack.slice().reverse().forEach(k=>{const p=PARTS[k];drawPart(c,k,0,-(yy+p.h/2),true);yy+=p.h;});
-  c.restore();
+  const bb=bboxUnits(), root=placed.find(p=>p.parent===null), cx0=root?root.x:0;
+  placed.forEach(p=>{ const px=x+(p.x-cx0)*sc, py=baseY-(bb.maxy-p.y)*sc;
+    c.save();c.translate(px,py);c.scale(sc,sc);drawPart(c,p.key,0,0,true);c.restore(); });
 }
 function sccLoop(ts){
   if(mode==="center"){ sccT+=1/60; if(toastT>0)toastT-=1/60; drawScene(); }
