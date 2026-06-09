@@ -359,34 +359,37 @@ const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const lerp=(a,b,t)=>a+(b-a)*t;
 const len=(x,y)=>Math.hypot(x,y);
 
-/* ---------- WORLD CONSTANTS (scaled but KSP-flavoured) ---------- */
-const PLANET = {
-  name:"Earth", x:0, y:0, R:300000, color1:"#2f7fd0", color2:"#0c2a5a",
-  mu: 9.81*300000*300000,          // g·R²
-  atmoH: 7000,                      // scale height
-  atmoTop: 55000,                   // where atmosphere ends
-  rho0: 1.1,                        // sea-level density
+/* ---------- HELIOCENTRIC WORLD ----------
+   The Sun sits at the origin. Earth orbits the Sun; the Moon orbits Earth.
+   Body positions are functions of time, so gravity, trajectories and the
+   launch site all move with their parent — a real Copernican system.        */
+const SUN = {
+  name:"Sun", R:34000000, color1:"#fff3bf", color2:"#ff8a1e", mu:null,
+};
+const PLANET = {           // Earth
+  name:"Earth", R:300000, color1:"#2f7fd0", color2:"#0c2a5a",
+  mu: 9.81*300000*300000, atmoH:7000, atmoTop:55000, rho0:1.1,
+  orbitR: 8.2e9, ang0:0, w:null, soi:null,
 };
 const MOON = {
   name:"Moon", R:80000, color1:"#cdcdd6", color2:"#5c5c66",
-  mu: 1.62*80000*80000,
-  orbitR: 3200000, orbitW: null,    // angular vel computed below
-  ang: 0.6, soi: null,
+  mu: 1.62*80000*80000, orbitR:3200000, ang0:0.6, w:null, soi:null,
 };
-MOON.orbitW = Math.sqrt(PLANET.mu/MOON.orbitR)/MOON.orbitR; // circular
-MOON.soi = MOON.orbitR*Math.pow(MOON.mu/PLANET.mu,0.4);      // sphere of influence radius
+SUN.mu     = PLANET.mu*333000;                                  // realistic Sun:Earth mass ratio
+PLANET.w   = Math.sqrt(SUN.mu/PLANET.orbitR)/PLANET.orbitR;     // Earth's year (angular vel)
+PLANET.soi = PLANET.orbitR*Math.pow(PLANET.mu/SUN.mu,0.4);
+MOON.w     = Math.sqrt(PLANET.mu/MOON.orbitR)/MOON.orbitR;
+MOON.soi   = MOON.orbitR*Math.pow(MOON.mu/PLANET.mu,0.4);
 const g0 = 9.81;
 const DSCALE = 0.062;   // part width units → metres (body diameter), for real aero
 const CHUTE_AREA = 110; // m² of drag area per fully-deployed parachute (Cd≈1.4)
 const SOUND = 340;      // speed of sound (m/s) for Mach / transonic drag
-const CHUTE_SAFE_Q = 13000;  // Pa — dynamic pressure low enough to begin deploying
-const CHUTE_RIP_Q  = 46000;  // Pa — deploying above this rips the canopy
-const CHUTE_FULL_ALT = 4000; // m — altitude below which a drogue goes to full canopy
+const CHUTE_SAFE_Q = 13000, CHUTE_RIP_Q = 46000, CHUTE_FULL_ALT = 4000;
 
-function moonPos(t){
-  const a = MOON.ang + MOON.orbitW*t;
-  return {x:Math.cos(a)*MOON.orbitR, y:Math.sin(a)*MOON.orbitR};
-}
+function earthPos(t){ const a=PLANET.ang0+PLANET.w*t; return {x:Math.cos(a)*PLANET.orbitR, y:Math.sin(a)*PLANET.orbitR}; }
+function earthVel(t){ const a=PLANET.ang0+PLANET.w*t, v=PLANET.w*PLANET.orbitR; return {x:-Math.sin(a)*v, y:Math.cos(a)*v}; }
+function moonPos(t){ const e=earthPos(t),a=MOON.ang0+MOON.w*t; return {x:e.x+Math.cos(a)*MOON.orbitR, y:e.y+Math.sin(a)*MOON.orbitR}; }
+function moonVel(t){ const ev=earthVel(t),a=MOON.ang0+MOON.w*t,v=MOON.w*MOON.orbitR; return {x:ev.x-Math.sin(a)*v, y:ev.y+Math.cos(a)*v}; }
 
 /* ---------- PARTS ---------- */
 // mass in tonnes, thrust in kN, fuel in tonnes. accel(m/s²)=thrustkN/massT.
@@ -794,10 +797,13 @@ function makeShip(){
     landed:true, dead:false, won:false, comY:0,
     parachutesOut:false, ground:PLANET, fx:0,fy:0,
   };
-  // place so base sits on pad: COM offset
+  // place on Earth's launch pad, co-moving with Earth's orbital velocity around the Sun
   computeCOM(sh);
-  sh.y = PLANET.R + sh.comY;     // lift so base at surface
-  sh.x = 0;
+  const e=earthPos(0), ev=earthVel(0);
+  sh.angle=Math.PI/2;            // points away from Earth centre (local "up")
+  sh.x=e.x; sh.y=e.y+PLANET.R+sh.comY;
+  sh.vx=ev.x; sh.vy=ev.y;
+  sh.sasTarget=Math.PI/2;
   return sh;
 }
 function computeCOM(sh){
@@ -900,31 +906,29 @@ function assignSegments(sh){
 }
 
 /* ============================ PHYSICS ============================ */
+// gravity from the Sun (origin), Earth and Moon — all at their time-dependent positions
 function gravityAt(x,y,t){
-  let ax=0,ay=0;
-  // planet
-  let dx=PLANET.x-x, dy=PLANET.y-y, r2=dx*dx+dy*dy, r=Math.sqrt(r2);
-  let a=PLANET.mu/r2; ax+=a*dx/r; ay+=a*dy/r;
-  // moon
-  const mp=moonPos(t); dx=mp.x-x; dy=mp.y-y; r2=dx*dx+dy*dy; r=Math.sqrt(r2);
-  a=MOON.mu/r2; ax+=a*dx/r; ay+=a*dy/r;
+  const ep=earthPos(t), mp=moonPos(t); let ax=0,ay=0;
+  let dx=-x, dy=-y, r2=dx*dx+dy*dy, r=Math.sqrt(r2)||1, a=SUN.mu/r2; ax+=a*dx/r; ay+=a*dy/r;
+  dx=ep.x-x; dy=ep.y-y; r2=dx*dx+dy*dy; r=Math.sqrt(r2)||1; a=PLANET.mu/r2; ax+=a*dx/r; ay+=a*dy/r;
+  dx=mp.x-x; dy=mp.y-y; r2=dx*dx+dy*dy; r=Math.sqrt(r2)||1; a=MOON.mu/r2; ax+=a*dx/r; ay+=a*dy/r;
   return {ax,ay};
 }
 function atmoDensity(alt){
-  if(alt>=PLANET.atmoTop||alt<0&&alt<-1e9) {}
   if(alt>=PLANET.atmoTop) return 0;
   if(alt<0) alt=0;
   return PLANET.rho0*Math.exp(-alt/PLANET.atmoH);
 }
-function altitudeOf(x,y){ return len(x,y)-PLANET.R; }
+// altitude above Earth's surface (Earth has the only atmosphere) — uses current sim time
+function altitudeOf(x,y){ const e=earthPos(met); return len(x-e.x,y-e.y)-PLANET.R; }
 function bodyContext(x,y,t){
-  // which body are we closest to (for landing / surface vel)
-  const mp=moonPos(t);
-  const dM=len(x-mp.x,y-mp.y)-MOON.R;
-  const dP=len(x,y)-PLANET.R;
-  if(dM<dP && dM<MOON.R*1.4) return {body:MOON, cx:mp.x, cy:mp.y, R:MOON.R, alt:dM, atmo:false};
-  return {body:PLANET, cx:0, cy:0, R:PLANET.R, alt:dP, atmo:true};
+  const ep=earthPos(t), mp=moonPos(t);
+  const dM=len(x-mp.x,y-mp.y), dE=len(x-ep.x,y-ep.y), dS=len(x,y);
+  if(dM<MOON.soi && dM-MOON.R < dE-PLANET.R) return {body:MOON, cx:mp.x, cy:mp.y, R:MOON.R, alt:dM-MOON.R, atmo:false};
+  if(dE<PLANET.soi) return {body:PLANET, cx:ep.x, cy:ep.y, R:PLANET.R, alt:dE-PLANET.R, atmo:true};
+  return {body:SUN, cx:0, cy:0, R:SUN.R, alt:dS-SUN.R, atmo:false};
 }
+function kscPos(){ const e=earthPos(met); return {x:e.x, y:e.y+PLANET.R}; }   // launch site, co-moving with Earth
 
 function physStep(sh,dt,t){
   if(sh.dead||sh.won) return;
@@ -1032,20 +1036,22 @@ function physStep(sh,dt,t){
   computeCOM(sh);
 
   // ---- ground collision ----
-  // ground contact — evaluated against the POST-integration position
+  // ground contact — evaluated against the POST-integration position, in the body's frame
   const cB2=bodyContext(sh.x,sh.y,t);
   const baseAlt=cB2.alt - sh.comY;
   if(baseAlt<=0){
     const rr=len(sh.x-cB2.cx,sh.y-cB2.cy)||1;
-    const ux=(sh.x-cB2.cx)/rr, uy=(sh.y-cB2.cy)/rr;          // outward unit
-    sh.x=cB2.cx+ux*(cB2.R+sh.comY); sh.y=cB2.cy+uy*(cB2.R+sh.comY);  // rest base on surface
-    const vr=sh.vx*ux+sh.vy*uy;                              // radial velocity (+ = climbing away)
-    const surfV=surfaceVel(sh,cB2,t), vmag=len(surfV.x,surfV.y);
-    if(vr<0){                                                // moving into the ground
+    const ux=(sh.x-cB2.cx)/rr, uy=(sh.y-cB2.cy)/rr;            // outward unit
+    sh.x=cB2.cx+ux*(cB2.R+sh.comY); sh.y=cB2.cy+uy*(cB2.R+sh.comY);
+    const bv=bodyVel(cB2.body,t);                             // body co-moves (Earth orbits the Sun)
+    let rvx=sh.vx-bv.x, rvy=sh.vy-bv.y;                       // velocity relative to surface
+    const vr=rvx*ux+rvy*uy, vmag=len(rvx,rvy);
+    if(vr<0){
       if(vmag>14 && !sh.landed && !sh.parachutesOut){ crash(cB2.body.name); }
       else {
-        sh.vx-=vr*ux; sh.vy-=vr*uy;                          // cancel inward component only
-        sh.vx*=0.6; sh.vy*=0.6; sh.av*=0.4;
+        rvx-=vr*ux; rvy-=vr*uy;                               // cancel inward component
+        rvx*=0.6; rvy*=0.6; sh.av*=0.4;                       // friction on tangential
+        sh.vx=bv.x+rvx; sh.vy=bv.y+rvy;
         if(!sh.landed){ sh.landed=true; if(cB2.body===MOON && !sh.dead) winMun(); }
       }
     }
@@ -1071,15 +1077,10 @@ function drawFuel(sh,dt){
   });
 }
 function angDiff(a,b){let d=((a-b)%TAU+TAU)%TAU; if(d>Math.PI)d-=TAU; return d;}
+function bodyVel(body,t){ return body===MOON?moonVel(t):body===PLANET?earthVel(t):{x:0,y:0}; }
 function surfaceVel(sh,ctxB,t){
-  // velocity relative to rotating/orbiting body surface. Planet not rotating here (simplify);
-  // Moon orbits, so surface moves with moon's orbital velocity.
-  if(ctxB.body===MOON){
-    const mp=moonPos(t), mp2=moonPos(t+0.01);
-    const mvx=(mp2.x-mp.x)/0.01, mvy=(mp2.y-mp.y)/0.01;
-    return {x:sh.vx-mvx, y:sh.vy-mvy};
-  }
-  return {x:sh.vx, y:sh.vy};
+  const bv=bodyVel(ctxB.body,t);   // surface moves with the body's orbital motion
+  return {x:sh.vx-bv.x, y:sh.vy-bv.y};
 }
 
 /* For thrust-fuel: SRBs store own fuel; engines pull from tanks (handled in drawFuel).
@@ -1093,7 +1094,7 @@ function orbit(sh,t){
   const cx=cB.cx, cy=cB.cy, mu=cB.body.mu;
   const rx=sh.x-cx, ry=sh.y-cy;
   let vx=sh.vx, vy=sh.vy;
-  if(cB.body===MOON){const mp=moonPos(t),mp2=moonPos(t+0.001);vx-=(mp2.x-mp.x)/0.001;vy-=(mp2.y-mp.y)/0.001;}
+  const bv=bodyVel(cB.body,t); vx-=bv.x; vy-=bv.y;   // velocity relative to the body's frame
   const r=len(rx,ry), v=len(vx,vy);
   const energy=v*v/2 - mu/r;
   let ap=null,pe=null,ecc=null;
@@ -1119,41 +1120,40 @@ function drawFlight(t){
   const W=game.width,H=game.height,dpr=devicePixelRatio;
   ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,W,H);
 
+  const ep=earthPos(t), mp=moonPos(t), cB=bodyContext(ship.x,ship.y,t);
   // camera
   let cam;
   if(mapView){
-    const zoomToFit = Math.min(W,H)/ (MOON.orbitR*2.4);
-    cam={x:0,y:0,z:zoomToFit*camZoom};
+    const fitR = cB.body===SUN? PLANET.orbitR*1.35 : cB.body===MOON? MOON.soi*1.4 : MOON.orbitR*1.35;
+    const zoomToFit = Math.min(W,H)/(fitR*2.2);
+    cam={x:cB.cx, y:cB.cy, z:zoomToFit*camZoom};
   } else {
-    const z = (1.1*dpr) * camZoom;
-    cam={x:ship.x, y:ship.y, z};
+    cam={x:ship.x, y:ship.y, z:(1.1*dpr)*camZoom};
   }
   curCam=cam;
 
-  // background stars (parallax, only non-map)
+  // background stars (parallax)
   ctx.fillStyle="#04060d"; ctx.fillRect(0,0,W,H);
-  if(!mapView){
-    for(const s of stars){
-      const px=((s.x*W - cam.x*cam.z*0.02)%W+W)%W;
-      const py=((s.y*H + cam.y*cam.z*0.02)%H+H)%H;
-      ctx.globalAlpha=s.b; ctx.fillStyle="#bcd2ff"; ctx.fillRect(px,py,s.s,s.s);
-    }
-    ctx.globalAlpha=1;
+  for(const s of stars){
+    const px=((s.x*W - cam.x*cam.z*0.02)%W+W)%W;
+    const py=((s.y*H + cam.y*cam.z*0.02)%H+H)%H;
+    ctx.globalAlpha=s.b; ctx.fillStyle="#bcd2ff"; ctx.fillRect(px,py,s.s,s.s);
   }
+  ctx.globalAlpha=1;
 
-  // atmosphere glow + planet
-  drawBody(ctx,PLANET,0,0,cam,true);
-  const mp=moonPos(t); drawBody(ctx,MOON,mp.x,mp.y,cam,false);
+  // bodies: Sun, Earth, Moon at their current positions
+  drawBody(ctx,SUN,0,0,cam,false);
+  drawBody(ctx,PLANET,ep.x,ep.y,cam,true);
+  drawBody(ctx,MOON,mp.x,mp.y,cam,false);
 
   if(mapView){
+    drawMoonOrbit(ctx,cam,t);
     drawOrbit(ctx,cam,t);
-    drawMoonOrbit(ctx,cam);
-    // ship marker
     const s=worldToScreen(ship.x,ship.y,cam);
     ctx.fillStyle="#46e0c0"; ctx.beginPath();ctx.arc(s.x,s.y,5,0,TAU);ctx.fill();
-    // velocity vector
+    const bv=bodyVel(cB.body,t), rvx=ship.vx-bv.x, rvy=ship.vy-bv.y; // body-relative velocity
     ctx.strokeStyle="#ffb347";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(s.x,s.y);
-    ctx.lineTo(s.x+ship.vx*0.02*cam.z*40,s.y-ship.vy*0.02*cam.z*40);ctx.stroke();
+    ctx.lineTo(s.x+rvx*0.8*cam.z,s.y-rvy*0.8*cam.z);ctx.stroke();
   } else {
     drawShip(ctx,cam,t);
     drawParticles(ctx,cam);
@@ -1171,6 +1171,18 @@ const CRATERS=[[0.45,0.20,0.10],[-0.30,-0.40,0.14],[0.20,-0.45,0.08],[-0.50,0.15
   [0.0,0.50,0.09],[-0.15,0.10,0.05],[0.35,0.45,0.07],[-0.55,-0.20,0.05],[0.10,-0.10,0.06]];
 function drawBody(c,body,cx,cy,cam,planet){
   const s=worldToScreen(cx,cy,cam), R=body.R*cam.z;
+  // the Sun — glowing disc + corona, always visible as a light source
+  if(body===SUN){
+    const coronaR=Math.max(R*2.4, 60);
+    const cg=c.createRadialGradient(s.x,s.y,R*0.6,s.x,s.y,coronaR);
+    cg.addColorStop(0,"#fff6cc"); cg.addColorStop(0.25,"#ffd86a99"); cg.addColorStop(0.6,"#ff9b2e44"); cg.addColorStop(1,"#ff8a1e00");
+    c.fillStyle=cg; c.beginPath();c.arc(s.x,s.y,coronaR,0,TAU);c.fill();
+    if(R>=1){ const g=c.createRadialGradient(s.x-R*0.2,s.y-R*0.2,R*0.1,s.x,s.y,R);
+      g.addColorStop(0,"#fffef2");g.addColorStop(0.7,body.color1);g.addColorStop(1,body.color2);
+      c.fillStyle=g; c.beginPath();c.arc(s.x,s.y,R,0,TAU);c.fill(); }
+    else { c.fillStyle="#fff6cc"; c.beginPath();c.arc(s.x,s.y,3,0,TAU);c.fill(); }
+    return;
+  }
   // atmosphere halo (Earth)
   if(planet){
     const atmoR=(PLANET.R+PLANET.atmoTop)*cam.z;
@@ -1179,6 +1191,9 @@ function drawBody(c,body,cx,cy,cam,planet){
     c.fillStyle=g; c.beginPath();c.arc(s.x,s.y,atmoR,0,TAU);c.fill();
   }
   if(R<0.5)return;
+  // sunlight direction (toward the Sun at the origin) for shading the night side
+  const sdL=len(cx,cy)||1, sdx=-cx/sdL, sdy=-cy/sdL;       // world unit toward Sun
+  const litx=sdx, lity=-sdy;                               // screen (y flipped)
   // base sphere
   const g=c.createRadialGradient(s.x-R*0.35,s.y-R*0.4,R*0.1,s.x,s.y,R*1.05);
   g.addColorStop(0,body.color1); g.addColorStop(0.75,body.color1); g.addColorStop(1,body.color2);
@@ -1208,9 +1223,9 @@ function drawBody(c,body,cx,cy,cam,planet){
         c.fillStyle="#00000028";c.beginPath();c.arc(s.x+cr[0]*R,s.y+cr[1]*R,rr,0,TAU);c.fill();
         c.strokeStyle="#ffffff33";c.lineWidth=Math.max(0.6,rr*0.18);c.beginPath();c.arc(s.x+cr[0]*R,s.y+cr[1]*R,rr*0.85,0,TAU);c.stroke();}
     }
-    // terminator: shade the night side (sun toward upper-right)
-    const tg=c.createRadialGradient(s.x+R*0.55,s.y-R*0.55,R*0.2,s.x,s.y,R*1.25);
-    tg.addColorStop(0,"#00000000");tg.addColorStop(0.6,"#00000022");tg.addColorStop(1,"#000010aa");
+    // terminator: shade the side facing away from the Sun
+    const tg=c.createRadialGradient(s.x+litx*R*0.6,s.y+lity*R*0.6,R*0.2,s.x,s.y,R*1.3);
+    tg.addColorStop(0,"#00000000");tg.addColorStop(0.55,"#00000022");tg.addColorStop(1,"#000010bb");
     c.fillStyle=tg;c.beginPath();c.arc(s.x,s.y,R,0,TAU);c.fill();
     c.restore();
   }
@@ -1323,11 +1338,12 @@ function propagate(x,y,vx,vy,t,steps,h,cx,cy){
     const rr=len(x-cx,y-cy);
     if(rr<minR){minR=rr;minS={x,y,vx,vy,t};}
     if(rr>maxR){maxR=rr;maxS={x,y,vx,vy,t};}
-    const mp=moonPos(t), md=len(x-mp.x,y-mp.y);
+    const mp=moonPos(t), ep=earthPos(t), md=len(x-mp.x,y-mp.y);
     if(md<moonMin){moonMin=md;moonMinT=t;moonMinPt=[x,y];}
     if(soiT===null && md<MOON.soi) soiT=t;
-    if(len(x,y)<PLANET.R){hit=true;pts.push([x,y]);times.push(t);break;}
+    if(len(x-ep.x,y-ep.y)<PLANET.R){hit=true;pts.push([x,y]);times.push(t);break;}
     if(md<MOON.R){moonHit=true;hit=true;pts.push([x,y]);times.push(t);break;}
+    if(len(x,y)<SUN.R){hit=true;pts.push([x,y]);times.push(t);break;}
   }
   const enc = moonMin<MOON.soi ? {min:moonMin, t:moonMinT, pt:moonMinPt, soiT, peAlt:moonMin-MOON.R, hit:moonHit} : null;
   return {pts,times,minR,maxR,minS,maxS,hit,enc};
@@ -1392,17 +1408,17 @@ function vesselDv(sh){
   });
   return dv;
 }
-// ---- COMMS: line-of-sight signal from vessel to Mission Control ----
-const KSC={x:0,y:PLANET.R};
+// ---- COMMS: line-of-sight signal from vessel to Mission Control (on Earth) ----
 function segHitsCircle(ax,ay,bx,by,cx,cy,R){
   const dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;
   let t=L2>0?((cx-ax)*dx+(cy-ay)*dy)/L2:0; t=clamp(t,0,1);
   return len(ax+dx*t-cx, ay+dy*t-cy) < R*0.999;
 }
 function updateComms(sh){
-  const d=len(sh.x-KSC.x, sh.y-KSC.y), mp=moonPos(met);
-  const blocked = segHitsCircle(sh.x,sh.y,KSC.x,KSC.y,0,0,PLANET.R)
-               || segHitsCircle(sh.x,sh.y,KSC.x,KSC.y,mp.x,mp.y,MOON.R);
+  const ksc=kscPos(), ep=earthPos(met), mp=moonPos(met);
+  const d=len(sh.x-ksc.x, sh.y-ksc.y);
+  const blocked = segHitsCircle(sh.x,sh.y,ksc.x,ksc.y,ep.x,ep.y,PLANET.R)
+               || segHitsCircle(sh.x,sh.y,ksc.x,ksc.y,mp.x,mp.y,MOON.R);
   const maxRange=9e6;
   sh._signal = blocked?0: clamp(1-d/maxRange,0.03,1);
   sh._connected = sh._signal>0;
@@ -1445,14 +1461,20 @@ function updateNodeCalc(){
     ship._nodeEta=ship.node.t-met;
   }
 }
+// frame transform — express the heliocentric prediction in the dominant body's CURRENT frame,
+// so a local orbit draws as a clean closed ellipse instead of a Sun-dragged spiral
+function framePos(body,t){ return body===PLANET?earthPos(t): body===MOON?moonPos(t): {x:0,y:0}; }
+function framePts(pts,times,body,ax,ay){ return pts.map((p,i)=>{const f=framePos(body,times[i]); return [p[0]-f.x+ax,p[1]-f.y+ay];}); }
+function framePt(x,y,t,body,ax,ay){ const f=framePos(body,t); return [x-f.x+ax,y-f.y+ay]; }
 function drawOrbit(c,cam,t){
-  const ob=orbit(ship,t), cx=ob.cx, cy=ob.cy;
+  const ob=orbit(ship,t), cx=ob.cx, cy=ob.cy, B=ob.body;
   const res=propagate(ship.x,ship.y,ship.vx,ship.vy,t,4200,4,cx,cy);
-  lastPredict={pts:res.pts,times:res.times,cx,cy};
-  drawPath(c,cam,res.pts,"#46e0c0cc");
-  if(res.minS) mapMarker(c,cam,res.minS.x,res.minS.y,"#6ad0ff","Pe "+fmtDist(res.minR-ob.body.R));
-  if(ob.energy<0 && res.maxS) mapMarker(c,cam,res.maxS.x,res.maxS.y,"#ff9a5a","Ap "+fmtDist(res.maxR-ob.body.R));
-  ship._curEnc=res.enc; if(res.enc&&ob.body===PLANET) drawEncounter(c,cam,res.enc,"#bcd6ff");
+  const fp=framePts(res.pts,res.times,B,cx,cy);
+  lastPredict={pts:fp,times:res.times,cx,cy};
+  drawPath(c,cam,fp,"#46e0c0cc");
+  if(res.minS){const m=framePt(res.minS.x,res.minS.y,res.minS.t,B,cx,cy); mapMarker(c,cam,m[0],m[1],"#6ad0ff","Pe "+fmtDist(res.minR-B.R));}
+  if(ob.energy<0 && res.maxS){const m=framePt(res.maxS.x,res.maxS.y,res.maxS.t,B,cx,cy); mapMarker(c,cam,m[0],m[1],"#ff9a5a","Ap "+fmtDist(res.maxR-B.R));}
+  ship._curEnc=res.enc; if(res.enc&&B===PLANET) drawEncounter(c,cam,res.enc,"#bcd6ff",B,cx,cy);
   ship._nodeEta=null; lastNodeState=null; nodeHandlePos=null; ship._nodeEnc=null;
   if(ship.node){
     const st=nodeState();
@@ -1460,12 +1482,13 @@ function drawOrbit(c,cam,t){
       lastNodeState=st;
       const b=nodeBurn(st,ob);
       const res2=propagate(st.x,st.y,b.nvx,b.nvy,st.t,4200,4,cx,cy);
-      drawPath(c,cam,res2.pts,"#ffb347ee",[8,6]);
-      if(res2.minS) mapMarker(c,cam,res2.minS.x,res2.minS.y,"#ffd27a","Pe' "+fmtDist(res2.minR-ob.body.R));
-      if(ob.energy<0 && res2.maxS) mapMarker(c,cam,res2.maxS.x,res2.maxS.y,"#ffd27a","Ap' "+fmtDist(res2.maxR-ob.body.R));
-      ship._nodeEnc=res2.enc; if(res2.enc) drawEncounter(c,cam,res2.enc,"#ffd27a");
+      drawPath(c,cam,framePts(res2.pts,res2.times,B,cx,cy),"#ffb347ee",[8,6]);
+      if(res2.minS){const m=framePt(res2.minS.x,res2.minS.y,res2.minS.t,B,cx,cy); mapMarker(c,cam,m[0],m[1],"#ffd27a","Pe' "+fmtDist(res2.minR-B.R));}
+      if(ob.energy<0 && res2.maxS){const m=framePt(res2.maxS.x,res2.maxS.y,res2.maxS.t,B,cx,cy); mapMarker(c,cam,m[0],m[1],"#ffd27a","Ap' "+fmtDist(res2.maxR-B.R));}
+      ship._nodeEnc=res2.enc; if(res2.enc) drawEncounter(c,cam,res2.enc,"#ffd27a",B,cx,cy);
       ship._nodeEta=ship.node.t-t;
-      drawNodeGizmo(c,cam,st,b);
+      const fn=framePt(st.x,st.y,ship.node.t,B,cx,cy);
+      drawNodeGizmo(c,cam,st,b,fn[0],fn[1]);
     }
   }
 }
@@ -1486,9 +1509,10 @@ function drawNavSym(c,x,y,s,kind,col){
   c.restore();
 }
 // draw a predicted Moon encounter: ghost Moon + SOI ring where the Moon will be, + closest-approach marker
-function drawEncounter(c,cam,enc,col){
+function drawEncounter(c,cam,enc,col,B,ax,ay){
   if(!enc||!enc.pt)return;
-  const gp=moonPos(enc.t), s=worldToScreen(gp.x,gp.y,cam);
+  const gpW=moonPos(enc.t), gp=B?framePt(gpW.x,gpW.y,enc.t,B,ax,ay):[gpW.x,gpW.y];
+  const s=worldToScreen(gp[0],gp[1],cam);
   c.strokeStyle=col+"66";c.lineWidth=1.2;c.setLineDash([5,6]);
   c.beginPath();c.arc(s.x,s.y,MOON.soi*cam.z,0,TAU);c.stroke();c.setLineDash([]);
   const R=Math.max(2.5,MOON.R*cam.z);
@@ -1496,10 +1520,11 @@ function drawEncounter(c,cam,enc,col){
   g.addColorStop(0,"#c9c9d4cc");g.addColorStop(1,"#5c5c66bb");
   c.fillStyle=g;c.beginPath();c.arc(s.x,s.y,R,0,TAU);c.fill();
   c.strokeStyle=col;c.lineWidth=1.5;c.beginPath();c.arc(s.x,s.y,R,0,TAU);c.stroke();
-  mapMarker(c,cam,enc.pt[0],enc.pt[1],col, enc.hit?"⚠ Moon impact":"Moon Pe "+fmtDist(Math.max(0,enc.peAlt)));
+  const m=B?framePt(enc.pt[0],enc.pt[1],enc.t,B,ax,ay):enc.pt;
+  mapMarker(c,cam,m[0],m[1],col, enc.hit?"⚠ Moon impact":"Moon Pe "+fmtDist(Math.max(0,enc.peAlt)));
 }
-function drawNodeGizmo(c,cam,st,b){
-  const ns=worldToScreen(st.x,st.y,cam), dpr=devicePixelRatio, R=22*dpr, HP=58*dpr;
+function drawNodeGizmo(c,cam,st,b,fx,fy){
+  const ns=worldToScreen(fx,fy,cam), dpr=devicePixelRatio, R=22*dpr, HP=58*dpr;
   const proS=screenDir(st.x,st.y,b.pux,b.puy,cam), radS=screenDir(st.x,st.y,b.rux,b.ruy,cam);
   // gizmo ring
   c.strokeStyle="#9fb4d4aa";c.lineWidth=1.5*dpr;c.beginPath();c.arc(ns.x,ns.y,R,0,TAU);c.stroke();
@@ -1519,9 +1544,13 @@ function drawNodeGizmo(c,cam,st,b){
   c.strokeStyle="#7a5a1a";c.lineWidth=2*dpr;c.stroke();
   nodeHubPos={x:ns.x,y:ns.y,r:R};
 }
-function drawMoonOrbit(c,cam){
-  const s=worldToScreen(0,0,cam);
-  c.strokeStyle="#ffffff22";c.lineWidth=1;c.beginPath();c.arc(s.x,s.y,MOON.orbitR*cam.z,0,TAU);c.stroke();
+function drawMoonOrbit(c,cam,t){
+  // Earth's orbit around the Sun
+  const ss=worldToScreen(0,0,cam);
+  c.strokeStyle="#3a5f8a55";c.lineWidth=1;c.beginPath();c.arc(ss.x,ss.y,PLANET.orbitR*cam.z,0,TAU);c.stroke();
+  // Moon's orbit around Earth
+  const ep=earthPos(t), es=worldToScreen(ep.x,ep.y,cam);
+  c.strokeStyle="#ffffff22";c.beginPath();c.arc(es.x,es.y,MOON.orbitR*cam.z,0,TAU);c.stroke();
 }
 
 /* ============================ NAVBALL ============================ */
@@ -1529,9 +1558,9 @@ function drawNavball(t){
   const W=150,H=150,cx=75,cy=75,R=58;
   nctx.clearRect(0,0,W,H);
   nctx.save();nctx.beginPath();nctx.arc(cx,cy,R,0,TAU);nctx.clip();
-  // local "up" (radial out) defines pitch reference
-  const rr=len(ship.x,ship.y);
-  const upAng=Math.atan2(ship.y,ship.x);     // radial out direction (world)
+  // local "up" (radial out from the dominant body) defines pitch reference
+  const _cB=bodyContext(ship.x,ship.y,t);
+  const upAng=Math.atan2(ship.y-_cB.cy,ship.x-_cB.cx);   // radial out direction (world)
   // pitch = angle between nose and local horizon
   const noseRel=angDiff(ship.angle,upAng);   // 0 = pointing straight up
   // sky/ground gradient rotated by noseRel (so when pointing up, sky on top)
@@ -1587,7 +1616,7 @@ function updateHUD(t){
   const cB=bodyContext(ship.x,ship.y,t);
   const alt=cB.alt;
   document.getElementById('gAlt').innerHTML=fmtDist(alt).replace(/ (\w+)$/,'<small> $1</small>');
-  const sv=surfaceVel(ship,cB,t); const surfSpd=len(sv.x,sv.y); const orbSpd=len(ship.vx,ship.vy);
+  const sv=surfaceVel(ship,cB,t); const surfSpd=len(sv.x,sv.y); const orbSpd=surfSpd; // body-relative
   const showOrb = alt>PLANET.atmoTop || cB.body===MOON;
   document.getElementById('gSpdL').textContent= showOrb?"ORB VEL":"SURF VEL";
   const machStr=(ship.atmP>0&&ship.mach>0.25)?' <small>M'+ship.mach.toFixed(1)+'</small>':'';
@@ -1624,7 +1653,7 @@ function updateHUD(t){
   else if(!ship._connected){ gc.textContent=ship.crew&&ship.crew.length?"LOCAL":"—"; gc.style.color="var(--dim)"; }
   else { const bars="▁▂▃▄▅▆▇█"; gc.textContent=Math.round(sig*100)+"%"; gc.style.color=sig>0.4?"var(--good)":"var(--acc2)"; }
   document.getElementById('noSignal').classList.toggle('hidden', !(ship._probeOnly && !ship._connected));
-  // structural stress
+  // structural stress (kept — a real overload indicator, not chatter)
   document.getElementById('structWarn').classList.toggle('hidden', !((ship._stress||0)>0.8 && !ship.dead));
   // burn director (point-and-shoot guidance) — shown outside map view
   const bd=document.getElementById('burnDir'), n=ship.node, ndv=n?len(n.dvp,n.dvr):0;
@@ -1638,10 +1667,6 @@ function updateHUD(t){
     if(off<8){al.textContent="ALIGNED ✓ — burn!";al.className="ok";}
     else {al.textContent="▲ TURN TO BLUE MARKER ("+Math.round(off)+"°)";al.className="off";}
   } else bd.classList.add('hidden');
-  // reentry warning + milestone
-  document.getElementById('reentryWarn').classList.toggle('hidden', !(ship.heat>0.35));
-  if(ship.heat>0.4 && !ship._reentry){ship._reentry=true;flash("REENTRY","plasma building — hold retrograde to slow");}
-  if(ship.heat<0.1) ship._reentry=false;
 }
 function buildStagePanel(){
   const el=document.getElementById('stagePanel'); el.innerHTML='';
@@ -1664,9 +1689,7 @@ function updateChute(sh,it,q,alt,dt){
     if(q<CHUTE_SAFE_Q){ it.chuteState="partial"; }
     return 0;
   }
-  if(q>CHUTE_RIP_Q && (it.deployFrac||0)>0.05){   // opened into too much air → rips off
-    it.chuteState="cut"; it.deployFrac=0; flash("PARACHUTE RIPPED","deployed too fast — slow down first"); return 0;
-  }
+  if(q>CHUTE_RIP_Q && (it.deployFrac||0)>0.05){ it.chuteState="cut"; it.deployFrac=0; return 0; }
   if(it.chuteState==="partial"){
     it.deployFrac=Math.min(0.28,(it.deployFrac||0)+dt*0.7);
     if(alt<CHUTE_FULL_ALT) it.chuteState="full";
@@ -1681,8 +1704,6 @@ function deployChutes(){
     if(!it.chuteState||it.chuteState==="stowed"){it.chuteState="armed";it.deployFrac=0;armed++;}
     else if(it.chuteState!=="cut")already++; }});
   ship.parachutesOut=true; ship.parachutesArmed=true;
-  if(armed) flash("PARACHUTES ARMED","will open automatically when slow enough");
-  else if(!already) flash("NO PARACHUTES","none on this vessel");
 }
 function crash(bodyName){
   if(ship.dead)return;
