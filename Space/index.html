@@ -121,10 +121,11 @@
     background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:6px 16px;
     font:12px ui-monospace;color:var(--dim);z-index:4}
   #stageNow b{color:var(--acc2)}
-  #msg{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;
+  #msg{position:absolute;left:50%;bottom:48px;transform:translateX(-50%);text-align:center;
     pointer-events:none;z-index:6}
-  #msg .big{font-size:34px;font-weight:800;letter-spacing:2px;text-shadow:0 3px 18px #000}
-  #msg .sub{font-size:14px;color:var(--dim);margin-top:6px}
+  #msg .big{font:600 13px ui-monospace;letter-spacing:.5px;color:#dbe4f2;background:#0b1320d0;
+    border:1px solid var(--edge);padding:5px 13px;border-radius:8px;display:inline-block}
+  #msg .sub{font-size:11px;color:var(--dim);margin-top:4px}
   #sasModes{position:absolute;right:172px;bottom:14px;display:flex;flex-direction:column;gap:5px;z-index:4}
   .sm{padding:5px 9px;font:bold 11px ui-monospace;min-width:44px;text-align:center}
   .sm.on{background:linear-gradient(180deg,#1c6b5d,#13453c);border-color:#46e0c0;color:#eafff8}
@@ -839,7 +840,6 @@ function launch(){
   document.getElementById('flight').classList.remove('hidden');
   fit(); mode="flight"; started=true;
   buildStagePanel(); showMsg("",""); hideResult();
-  flash("LAUNCHPAD","press SPACE to ignite first stage");
 }
 function backToVAB(){
   mode="build"; ship=null; releaseCrew();
@@ -956,9 +956,11 @@ function physStep(sh,dt,t){
     }
   }
   // --- real aerodynamic drag with transonic (Mach) effects ---
+  // the air co-moves with Earth, so drag uses velocity RELATIVE to the atmosphere
   sh.q=0; sh.mach=0;
   if(sh.atmP>0){
-    const rho=PLANET.rho0*sh.atmP, v=len(sh.vx,sh.vy);
+    const av=earthVel(t), avx=sh.vx-av.x, avy=sh.vy-av.y, v=len(avx,avy);
+    const rho=PLANET.rho0*sh.atmP;
     if(v>0.1){
       // frontal area from widest cross-section; broadside area from length×diameter
       let maxW=0,totL=0;
@@ -966,7 +968,7 @@ function physStep(sh,dt,t){
         if(fw>maxW)maxW=fw; if(!it.radial)totL+=it.h;}});
       const D=maxW*DSCALE, A0=Math.PI*0.25*D*D, Aside=Math.max(A0,totL*DSCALE*D);
       // angle of attack → projected area grows from frontal (aligned) to broadside (sideways)
-      const aoa=Math.abs(angDiff(sh.angle,Math.atan2(sh.vy,sh.vx))), s=Math.sin(aoa);
+      const aoa=Math.abs(angDiff(sh.angle,Math.atan2(avy,avx))), s=Math.sin(aoa);
       const area=A0+(Aside-A0)*s*s;
       let Cd=sh.insts.some(it=>it.attached&&it.key==="nose")?0.18:0.34;
       // transonic drag rise — Cd spikes near Mach 1, eases off supersonic
@@ -979,7 +981,7 @@ function physStep(sh,dt,t){
       sh.insts.forEach(it=>{ if(it.attached&&it.type==="chute") chuteA+=updateChute(sh,it,q,alt,dt); });
       const F=q*(Cd*area+1.4*chuteA);                     // drag force (N)
       const da=F/(sh.mass*1000);                          // a=F/m, mass tonnes→kg
-      ngx-=da*sh.vx/v; ngy-=da*sh.vy/v;
+      ngx-=da*avx/v; ngy-=da*avy/v;
     }
   }
   sh._ng=len(ngx,ngy);                                // structural load driver (thrust+drag accel)
@@ -1293,12 +1295,15 @@ function drawShip(c,cam,t){
       if(Math.random()<ship.throttle) spawnExhaust(fwx,fwy,up);
     }
   }
-  // ---- reentry plasma heating ----
-  const v=len(ship.vx,ship.vy), alt=altitudeOf(ship.x,ship.y), cB=bodyContext(ship.x,ship.y,t);
+  // ---- reentry plasma heating (air-relative speed) ----
+  const av=earthVel(t), avx=ship.vx-av.x, avy=ship.vy-av.y, v=len(avx,avy);
+  const alt=altitudeOf(ship.x,ship.y), cB=bodyContext(ship.x,ship.y,t);
   let q=0; if(cB.body===PLANET && alt<PLANET.atmoTop) q=0.5*atmoDensity(alt)*v*v;
-  ship.heat=lerp(ship.heat||0, clamp((q-160)/1300,0,1), 0.12);
-  if(ship.heat>0.05 && v>50){
-    const vd={x:ship.vx/v,y:ship.vy/v}, lead=ship.totalH*0.55;
+  // heating only when genuinely hypersonic in thick air (reentry), not on a Mach-1 ascent
+  const heatTarget=(cB.body===PLANET && alt<PLANET.atmoTop && v>1100)? clamp((q-22000)/45000,0,1):0;
+  ship.heat=lerp(ship.heat||0, heatTarget, 0.12);
+  if(ship.heat>0.05 && v>200){
+    const vd={x:avx/v,y:avy/v}, lead=ship.totalH*0.55;
     const gx=ship.x+vd.x*lead, gy=ship.y+vd.y*lead, s=worldToScreen(gx,gy,cam);
     const R=(16+ship.heat*34)*cam.z+12, a=ship.heat;
     const g=c.createRadialGradient(s.x,s.y,1,s.x,s.y,R);
@@ -1749,15 +1754,12 @@ let maxAlt=0;
 function checkMilestones(t){
   const alt=altitudeOf(ship.x,ship.y);
   maxAlt=Math.max(maxAlt,alt);
-  if(!ship._space && alt>PLANET.atmoTop){ship._space=true;flash("SPACE!","you left the atmosphere");}
-  // Max-Q: peak dynamic pressure during ascent
+  if(!ship._space && alt>PLANET.atmoTop){ship._space=true;}
   if(ship.q>(ship._peakQ||0)) ship._peakQ=ship.q;
-  if(!ship._maxq && ship._peakQ>4000 && ship.q<ship._peakQ*0.8 && alt<PLANET.atmoTop && alt>1500){
-    ship._maxq=true; flash("MAX Q","peak aerodynamic stress — "+Math.round(ship._peakQ/1000)+" kPa");
-  }
+  if(!ship._maxq && ship._peakQ>4000 && ship.q<ship._peakQ*0.8 && alt<PLANET.atmoTop && alt>1500){ ship._maxq=true; }
   const ob=orbit(ship,t);
   if(!ship._orbit && ob.pe>0 && ob.body===PLANET && alt>PLANET.atmoTop){
-    ship._orbit=true; flash("ORBIT ACHIEVED  +💰5,000","periapsis above atmosphere — you're circling Kerba");
+    ship._orbit=true;
     save.missions++; addFunds(5000);
   }
 }
