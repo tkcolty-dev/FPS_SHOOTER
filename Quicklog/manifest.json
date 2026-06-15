@@ -1,0 +1,14 @@
+{
+  "name": "QuickLog — Calories",
+  "short_name": "QuickLog",
+  "description": "Quick offline calorie logging. No account needed.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7fb",
+  "theme_color": "#f6f7fb",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
