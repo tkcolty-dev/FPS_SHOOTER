@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22c55e"/>
+      <stop offset="1" stop-color="#15a34a"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#g)"/>
+  <!-- tote bag body -->
+  <path d="M150 196 h212 a16 16 0 0 1 16 17.6 l-20 150 a40 40 0 0 1 -39.7 35.4 H193.7 a40 40 0 0 1 -39.7 -35.4 l-20 -150 a16 16 0 0 1 16 -17.6 Z" fill="#ffffff"/>
+  <!-- handles -->
+  <path d="M196 196 v-22 a60 60 0 0 1 120 0 v22" fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round"/>
+  <!-- check -->
+  <path d="M214 286 l30 30 l58 -64" fill="none" stroke="#15a34a" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
