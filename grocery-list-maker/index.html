@@ -649,7 +649,16 @@ function fallbackCopy(text){
 window.addEventListener("hashchange",()=>{ if((location.hash||"").startsWith("#s=")) boot(); });
 boot();
 if("serviceWorker" in navigator){
-  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  // Auto-pick-up new versions: when a freshly-installed SW takes control,
+  // reload once so the user always sees the latest app (no stale page).
+  const hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(!hadController || refreshing) return; refreshing=true; location.reload();
+  });
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("sw.js").then(reg=>reg.update()).catch(()=>{});
+  });
 }
 </script>
 </body>

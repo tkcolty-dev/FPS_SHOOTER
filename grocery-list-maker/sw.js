@@ -1,4 +1,4 @@
-const CACHE = "tote-v2";
+const CACHE = "tote-v3";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {
@@ -16,13 +16,16 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
 
-  // Navigations: serve the cached app shell first so it always opens offline,
-  // and so deep links (#s=...) still resolve the app even with no network.
+  // Navigations: network-FIRST so the app always loads the latest version when
+  // online (no getting stuck on a stale cached page), and fall back to the
+  // cached shell when offline. Deep links (#s=...) still resolve either way.
   if (req.mode === "navigate") {
     e.respondWith(
-      caches.match("./index.html").then(cached =>
-        cached || fetch(req).catch(() => caches.match("./index.html"))
-      )
+      fetch(req).then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put("./index.html", copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match("./index.html").then(c => c || caches.match("./")))
     );
     return;
   }
