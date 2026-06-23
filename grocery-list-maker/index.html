@@ -132,21 +132,14 @@
   }
   .gotdiv .ln{flex:1;height:1px;background:var(--line)}
   .gotdiv svg{width:15px;height:15px;flex:none}
-  /* compact "in the cart" bar — collapsed by default so checked items barely take space */
-  .cartbar{
-    display:flex;align-items:center;gap:10px;width:100%;margin:12px 0 2px;
-    padding:11px 13px;border-radius:13px;border:1px solid var(--line);background:var(--surface);
-    box-shadow:var(--shadow-sm);cursor:pointer;font-family:inherit;
-    font-size:14.5px;font-weight:650;color:var(--muted);transition:transform .12s var(--ease)
-  }
-  .cartbar:active{transform:scale(.99)}
-  .cartbar .cb-ico{width:22px;height:22px;border-radius:50%;background:var(--accent);
-    display:grid;place-items:center;flex:none}
-  .cartbar .cb-ico svg{width:13px;height:13px}
-  .cartbar .cb-tx{flex:1;text-align:left}
-  .chev{display:grid;place-items:center;color:var(--faint);transition:transform .2s var(--ease)}
-  .chev svg{width:17px;height:17px}
-  .chev.open{transform:rotate(180deg)}
+  /* filter: crossed-off items are hidden until you switch to the "Crossed off" tab */
+  .filt{display:flex;gap:5px;background:var(--surface2);border-radius:12px;padding:4px;margin:2px 18px 6px}
+  .filt button{flex:1;border:none;background:none;font-family:inherit;font-size:13.5px;font-weight:650;
+    color:var(--muted);padding:9px 8px;border-radius:9px;cursor:pointer;
+    transition:color .18s,background .18s,box-shadow .18s}
+  .filt button.on{background:var(--surface);color:var(--txt);box-shadow:var(--shadow-sm)}
+  .filt button:active{transform:scale(.98)}
+  .hint{font-size:13px;color:var(--muted);text-align:center;padding:2px 10px 10px}
 
   /* ---------- empty ---------- */
   .empty{text-align:center;padding:38px 30px;color:var(--muted)}
@@ -359,7 +352,7 @@ function guessCat(name){
 let view="list";          // "list" | "shared"
 let shared=null, sharedId=null;
 let lastAdded=null;       // id to flash
-let revealChecked=false;  // session: reveal the checked section while it's hidden
+let viewFilter="todo";    // session filter: "todo" (default) | "done" (crossed-off)
 
 function boot(){
   const h=location.hash||"";
@@ -436,39 +429,35 @@ function itemRow(it, gi, done){
   </li>`;
 }
 
-// checked items live in one compact bar, collapsed by default — tap to expand & uncheck
-function checkedSection(got){
-  if(!got.length) return "";
-  const open = revealChecked;
-  return `<button class="cartbar" id="revealtog">
-      <span class="cb-ico">${ICON.checkw}</span>
-      <span class="cb-tx">${got.length} in the cart</span>
-      <span class="chev ${open?'open':''}">${ICON.chev}</span></button>
-    ${open?`<ul class="items" style="margin-top:9px">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`:""}`;
-}
-
 function renderList(){
   const l=active();
   const s=stats(l.items);
   const todo=l.items.filter(i=>!i.done), got=l.items.filter(i=>i.done);
+  if(!got.length) viewFilter="todo";   // nothing crossed off → stay on the main list
+
+  // filter tabs only appear once something is crossed off
+  const filter = got.length ? `<div class="filt">
+      <button data-f="todo" class="${viewFilter==='todo'?'on':''}">To get · ${todo.length}</button>
+      <button data-f="done" class="${viewFilter==='done'?'on':''}">Crossed off · ${got.length}</button>
+    </div>` : "";
+
   let body;
   if(!l.items.length){
     body=`<div class="empty fadein"><div class="e-ico">${esc(l.emoji)}</div>
       <h3>Start your list</h3><p>Type an item below and hit add. Try “milk”, “2 bananas”, or “eggs”.</p></div>`;
+  } else if(viewFilter==='done'){
+    body=`<div class="listbody"><div class="hint">Tap an item to put it back on your list.</div>
+      <ul class="items">${got.map(it=>itemRow(it,0,true)).join("")}</ul></div>`;
+  } else if(!todo.length){
+    body=`<div class="empty fadein"><div class="e-ico">🎉</div>
+      <h3>All crossed off</h3><p>${got.length} item${got.length!==1?'s':''} done. Tap “Crossed off” to see them.</p></div>`;
+  } else if(db.groupAisle){
+    const by={}; todo.forEach(it=>{ (by[it.cat]=by[it.cat]||[]).push(it); });
+    body=`<div class="listbody">`+CAT_ORDER.filter(k=>by[k]).map(k=>`
+      <div class="grouphead">${CAT[k].e} ${esc(CAT[k].label)}</div>
+      <ul class="items">${by[k].map(it=>itemRow(it,0,false)).join("")}</ul>`).join("")+`</div>`;
   } else {
-    let todoHTML;
-    if(!todo.length){
-      todoHTML=`<div class="empty fadein" style="padding:30px 30px 4px"><div class="e-ico">🎉</div>
-        <h3>All checked off</h3><p>${got.length} item${got.length!==1?'s':''} in the cart.</p></div>`;
-    } else if(db.groupAisle){
-      const by={}; todo.forEach(it=>{ (by[it.cat]=by[it.cat]||[]).push(it); });
-      todoHTML=CAT_ORDER.filter(k=>by[k]).map(k=>`
-        <div class="grouphead">${CAT[k].e} ${esc(CAT[k].label)}</div>
-        <ul class="items">${by[k].map(it=>itemRow(it,0,false)).join("")}</ul>`).join("");
-    } else {
-      todoHTML=`<ul class="items">${todo.map(it=>itemRow(it,0,false)).join("")}</ul>`;
-    }
-    body=`<div class="listbody">${todoHTML}${checkedSection(got)}</div>`;
+    body=`<div class="listbody"><ul class="items">${todo.map(it=>itemRow(it,0,false)).join("")}</ul></div>`;
   }
 
   App().innerHTML=`
@@ -488,6 +477,7 @@ function renderList(){
              :`<span>Empty list</span>`}
       </div>
     </div>
+    ${filter}
     <div class="scroll" id="scroll">${body}</div>
     <div class="addbar">
       <div class="row">
@@ -503,15 +493,14 @@ function renderList(){
   App().querySelector("#share").onclick=()=>doShare(l);
   const title=App().querySelector("#title");
   title.onchange=()=>{ const v=title.value.trim(); if(v){l.name=v;save();} else title.value=l.name; };
-  const rt=App().querySelector("#revealtog");
-  if(rt) rt.onclick=()=>{ revealChecked=!revealChecked; renderList(); };
+  App().querySelectorAll(".filt button").forEach(b=>b.onclick=()=>{ viewFilter=b.dataset.f; renderList(); });
   bindRows(l);
   const add=App().querySelector("#add");
   const submit=()=>{
     const v=add.value; if(!v.trim()) return;
     const {name,qty,cat}=parseEntry(v);
     const it={id:uid(),name,qty,cat,done:false};
-    l.items.unshift(it); save(); lastAdded=it.id;
+    l.items.unshift(it); save(); lastAdded=it.id; viewFilter="todo";
     add.value=""; renderList();
     const a=App().querySelector("#add"); a.focus();
     App().querySelector("#scroll").scrollTop=0;
@@ -642,7 +631,7 @@ function listsSheet(){
     </div>`);
     r.addEventListener("click",e=>{
       if(e.target.closest(".ldel")) return;
-      db.active=l.id; save(); closeSheet(); renderList();
+      db.active=l.id; viewFilter="todo"; save(); closeSheet(); renderList();
     });
     const d=r.querySelector(".ldel");
     if(d) d.addEventListener("click",e=>{

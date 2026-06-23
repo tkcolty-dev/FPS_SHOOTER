@@ -1,4 +1,4 @@
-const CACHE = "tote-v8";
+const CACHE = "tote-v9";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {
