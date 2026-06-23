@@ -50,17 +50,10 @@
     padding-top:var(--safe-top);position:relative;
   }
   .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
-  .pad{padding:0 18px}
   button{font-family:inherit}
 
   /* ---------- Header ---------- */
-  header{
-    display:flex;align-items:center;gap:12px;
-    padding:16px 18px 10px;
-  }
-  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px;letter-spacing:-.03em}
-  .brand img{width:30px;height:30px;border-radius:9px;display:block}
-  .grow{flex:1}
+  header{display:flex;align-items:center;gap:10px;padding:14px 16px 8px}
   .icon-btn{
     width:42px;height:42px;border-radius:13px;border:1px solid var(--line);
     background:var(--surface);color:var(--muted);display:grid;place-items:center;
@@ -69,169 +62,126 @@
   }
   .icon-btn:active{transform:scale(.9);background:var(--surface2);color:var(--txt)}
   .icon-btn svg{width:21px;height:21px}
-  .htitle{font-size:13px;color:var(--muted);font-weight:600;padding:0 18px 4px}
+  .grow{flex:1}
+  .share-pill{
+    display:flex;align-items:center;gap:7px;height:42px;padding:0 16px;border-radius:13px;
+    border:none;background:var(--accent);color:#fff;font-weight:700;font-size:15px;cursor:pointer;
+    box-shadow:var(--shadow-sm);transition:transform .12s var(--ease),background .15s;
+  }
+  .share-pill:active{transform:scale(.94);background:var(--accent-hover)}
+  .share-pill svg{width:18px;height:18px}
 
-  /* ---------- Home: list cards ---------- */
-  .cards{display:grid;grid-template-columns:1fr;gap:12px;padding:6px 18px 140px}
-  @media(min-width:560px){ .cards{grid-template-columns:1fr 1fr} }
-  .card{
-    background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);
-    padding:16px;box-shadow:var(--shadow-sm);cursor:pointer;position:relative;overflow:hidden;
-    transition:transform .15s var(--ease),box-shadow .2s;
+  /* ---------- Title block ---------- */
+  .titlewrap{padding:4px 18px 8px}
+  .titlerow{display:flex;align-items:center;gap:11px}
+  .demoji{
+    font-size:30px;line-height:1;cursor:pointer;flex:none;width:46px;height:46px;
+    display:grid;place-items:center;border-radius:14px;background:var(--accent-soft);
+    transition:transform .12s var(--ease)
   }
-  .card:active{transform:scale(.985);box-shadow:var(--shadow-md)}
-  .card .top{display:flex;align-items:center;gap:12px}
-  .card .emoji{
-    width:48px;height:48px;border-radius:14px;background:var(--accent-soft);
-    display:grid;place-items:center;font-size:25px;flex:none;
+  .demoji:active{transform:scale(.9)}
+  .titlerow input{
+    flex:1;font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.1;
+    border:none;background:none;color:var(--txt);width:100%;padding:2px 0;font-family:inherit
   }
-  .card .nm{font-weight:700;font-size:17px;letter-spacing:-.02em;line-height:1.2}
-  .card .meta{font-size:13px;color:var(--muted);margin-top:3px}
-  .bar{height:7px;border-radius:6px;background:var(--surface2);margin-top:14px;overflow:hidden}
-  .bar > i{display:block;height:100%;background:var(--accent);border-radius:6px;width:0;
-    transition:width .5s var(--ease)}
-  .card .done-badge{
-    position:absolute;top:14px;right:14px;color:var(--accent);font-size:13px;font-weight:700;
-    display:flex;align-items:center;gap:4px;opacity:0;transition:opacity .2s
-  }
-  .card.complete .done-badge{opacity:1}
-
-  /* ---------- Empty state ---------- */
-  .empty{
-    text-align:center;padding:60px 30px;color:var(--muted);
-  }
-  .empty .e-ico{font-size:54px;margin-bottom:8px}
-  .empty h3{font-size:19px;color:var(--txt);font-weight:750;margin-bottom:6px;letter-spacing:-.02em}
-  .empty p{font-size:14.5px;line-height:1.5;max-width:280px;margin:0 auto}
-
-  /* ---------- Floating add button ---------- */
-  .fab{
-    position:absolute;left:0;right:0;bottom:calc(20px + var(--safe-bot));
-    display:flex;justify-content:center;pointer-events:none;z-index:20;
-  }
-  .fab button{
-    pointer-events:auto;border:none;cursor:pointer;
-    background:var(--accent);color:#fff;font-weight:700;font-size:16px;letter-spacing:-.01em;
-    height:54px;padding:0 26px;border-radius:27px;box-shadow:var(--shadow-lg);
-    display:flex;align-items:center;gap:9px;
-    transition:transform .14s var(--ease),background .15s;
-  }
-  .fab button:active{transform:scale(.94);background:var(--accent-hover)}
-  .fab button svg{width:21px;height:21px}
-
-  /* ---------- List detail ---------- */
-  .detail-head{padding:6px 18px 10px}
-  .detail-title{display:flex;align-items:center;gap:11px}
-  .detail-title .demoji{font-size:30px;line-height:1}
-  .detail-title h1,.detail-title input{font-size:25px;font-weight:800;letter-spacing:-.03em;flex:1;
-    line-height:1.1;border:none;background:none;color:var(--txt);width:100%;padding:2px 0;
-    font-family:inherit}
-  .detail-title h1:focus,.detail-title input:focus{outline:none}
-  .detail-sub{font-size:13px;color:var(--muted);margin-top:7px;display:flex;align-items:center;gap:8px}
-  .mini-bar{flex:1;height:6px;border-radius:5px;background:var(--surface2);overflow:hidden;max-width:160px}
+  .titlerow input:focus{outline:none}
+  .subrow{display:flex;align-items:center;gap:9px;margin-top:9px;font-size:13px;color:var(--muted)}
+  .mini-bar{flex:1;height:6px;border-radius:5px;background:var(--surface2);overflow:hidden;max-width:200px}
   .mini-bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .45s var(--ease)}
 
-  /* category groups */
-  .group{margin:2px 18px 4px}
+  /* ---------- Items ---------- */
+  .listbody{padding:2px 16px 120px}
   .grouphead{
-    display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:750;
-    color:var(--faint);text-transform:uppercase;letter-spacing:.05em;
-    padding:14px 4px 6px;
+    display:flex;align-items:center;gap:7px;font-size:12px;font-weight:750;
+    color:var(--faint);text-transform:uppercase;letter-spacing:.05em;padding:16px 4px 7px;
   }
-  .grouphead .gc{font-size:14px}
   ul.items{list-style:none}
   li.item{
     display:flex;align-items:center;gap:13px;background:var(--surface);
-    border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:8px;
+    border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:8px;
     box-shadow:var(--shadow-sm);cursor:pointer;position:relative;
-    transition:transform .12s var(--ease),opacity .25s,background .15s;
-    touch-action:pan-y;
+    transition:transform .12s var(--ease),opacity .25s,background .25s;
   }
   li.item:active{transform:scale(.99);background:#fcfdfb}
   .check{
-    width:25px;height:25px;border-radius:50%;border:2.2px solid var(--line);flex:none;
+    width:26px;height:26px;border-radius:50%;border:2.2px solid var(--line);flex:none;
     display:grid;place-items:center;transition:all .2s var(--ease);
   }
-  .check svg{width:14px;height:14px;stroke:#fff;opacity:0;transform:scale(.4);transition:all .2s var(--ease)}
+  .check svg{width:14px;height:14px;opacity:0;transform:scale(.4);transition:all .2s var(--ease)}
   li.item.done .check{background:var(--accent);border-color:var(--accent)}
   li.item.done .check svg{opacity:1;transform:scale(1)}
-  .iname{flex:1;font-size:16px;font-weight:550;letter-spacing:-.01em;line-height:1.25;
-    transition:color .2s}
+  .iname{flex:1;font-size:16.5px;font-weight:550;letter-spacing:-.01em;line-height:1.25;transition:color .2s}
   li.item.done .iname{color:var(--faint);text-decoration:line-through;text-decoration-color:var(--line)}
-  .qty{
-    font-size:12.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);
-    border-radius:7px;padding:3px 8px;flex:none;
-  }
+  .qty{font-size:12.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);
+    border-radius:7px;padding:3px 8px;flex:none}
   li.item.done .qty{color:var(--faint);background:var(--surface2)}
   .del{
     width:30px;height:30px;border-radius:9px;border:none;background:transparent;color:var(--faint);
-    display:grid;place-items:center;flex:none;cursor:pointer;opacity:.55;
+    display:grid;place-items:center;flex:none;cursor:pointer;opacity:.5;
     transition:opacity .15s,background .15s,color .15s
   }
   .del:active{background:var(--warn-soft);color:var(--warn);opacity:1}
   .del svg{width:17px;height:17px}
+  .gotdiv{
+    display:flex;align-items:center;gap:9px;color:var(--faint);font-size:12.5px;font-weight:700;
+    padding:18px 4px 8px;text-transform:uppercase;letter-spacing:.04em
+  }
+  .gotdiv .ln{flex:1;height:1px;background:var(--line)}
+  .gotdiv svg{width:15px;height:15px;flex:none}
 
-  /* add bar */
+  /* ---------- empty ---------- */
+  .empty{text-align:center;padding:38px 30px;color:var(--muted)}
+  .empty .e-ico{font-size:50px;margin-bottom:6px}
+  .empty h3{font-size:18px;color:var(--txt);font-weight:750;margin-bottom:5px;letter-spacing:-.02em}
+  .empty p{font-size:14.5px;line-height:1.5;max-width:280px;margin:0 auto}
+
+  /* ---------- add bar ---------- */
   .addbar{
     position:absolute;left:0;right:0;bottom:0;padding:12px 16px calc(12px + var(--safe-bot));
-    background:linear-gradient(to top,var(--bg) 62%,rgba(246,247,244,0));
-    z-index:15;
+    background:linear-gradient(to top,var(--bg) 64%,rgba(246,247,244,0));z-index:15;
   }
   .addbar .row{
     display:flex;gap:10px;background:var(--surface);border:1px solid var(--line);
     border-radius:16px;padding:6px 6px 6px 16px;box-shadow:var(--shadow-md);align-items:center;
   }
-  .addbar input{
-    flex:1;border:none;background:none;font-size:16px;color:var(--txt);font-family:inherit;
-    padding:10px 0;letter-spacing:-.01em;
-  }
+  .addbar input{flex:1;border:none;background:none;font-size:16.5px;color:var(--txt);
+    font-family:inherit;padding:11px 0;letter-spacing:-.01em}
   .addbar input:focus{outline:none}
   .addbar input::placeholder{color:var(--faint)}
   .add-go{
-    width:42px;height:42px;border-radius:12px;border:none;background:var(--accent);color:#fff;
+    width:44px;height:44px;border-radius:12px;border:none;background:var(--accent);color:#fff;
     display:grid;place-items:center;cursor:pointer;flex:none;
     transition:transform .12s var(--ease),background .15s;
   }
   .add-go:active{transform:scale(.9);background:var(--accent-hover)}
-  .add-go svg{width:22px;height:22px}
+  .add-go svg{width:23px;height:23px}
 
-  /* shared banner */
+  /* ---------- shared banner ---------- */
   .banner{
-    margin:4px 18px 6px;background:var(--accent-soft);border:1px solid #cdeccf;
-    border-radius:14px;padding:12px 14px;display:flex;gap:11px;align-items:flex-start;
+    margin:2px 18px 4px;background:var(--accent-soft);border:1px solid #cdeccf;
+    border-radius:14px;padding:11px 14px;display:flex;gap:10px;align-items:flex-start;
   }
-  .banner .bico{font-size:18px;line-height:1.2}
+  .banner .bico{font-size:17px;line-height:1.2}
   .banner .bt{font-size:13px;line-height:1.45;color:#1c5a30}
   .banner .bt b{font-weight:750}
 
-  /* ---------- Sheet / modal ---------- */
-  .scrim{
-    position:fixed;inset:0;background:rgba(20,40,25,.34);opacity:0;pointer-events:none;
-    transition:opacity .28s var(--ease);z-index:40;backdrop-filter:blur(2px)
-  }
+  /* ---------- sheets ---------- */
+  .scrim{position:fixed;inset:0;background:rgba(20,40,25,.34);opacity:0;pointer-events:none;
+    transition:opacity .28s var(--ease);z-index:40;backdrop-filter:blur(2px)}
   .scrim.on{opacity:1;pointer-events:auto}
   .sheet{
-    position:fixed;left:0;right:0;bottom:0;z-index:50;
-    background:var(--surface);border-radius:24px 24px 0 0;
-    padding:8px 20px calc(22px + var(--safe-bot));
+    position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--surface);
+    border-radius:24px 24px 0 0;padding:8px 20px calc(20px + var(--safe-bot));
     transform:translateY(102%);transition:transform .34s var(--ease);
-    max-width:600px;margin:0 auto;box-shadow:var(--shadow-lg);
+    max-width:600px;margin:0 auto;box-shadow:var(--shadow-lg);max-height:86vh;overflow-y:auto;
   }
   .sheet.on{transform:translateY(0)}
   .grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 14px}
   .sheet h2{font-size:20px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;text-align:center}
-  .sheet .sub{font-size:13.5px;color:var(--muted);text-align:center;margin-bottom:18px;line-height:1.45}
-  .field{
-    width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:14px;
-    padding:14px 15px;font-size:16px;font-family:inherit;color:var(--txt);margin-bottom:12px;
-    transition:border-color .15s;
-  }
-  .field:focus{outline:none;border-color:var(--accent)}
-  .emojirow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;justify-content:center}
-  .emojirow button{
-    width:46px;height:46px;border-radius:13px;border:1.5px solid var(--line);background:var(--surface);
-    font-size:23px;cursor:pointer;transition:all .14s var(--ease)
-  }
+  .sheet .sub{font-size:13.5px;color:var(--muted);text-align:center;margin-bottom:16px;line-height:1.45}
+  .emojirow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;justify-content:center}
+  .emojirow button{width:48px;height:48px;border-radius:13px;border:1.5px solid var(--line);
+    background:var(--surface);font-size:24px;cursor:pointer;transition:all .14s var(--ease)}
   .emojirow button.sel{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.05)}
   .emojirow button:active{transform:scale(.92)}
   .btn{
@@ -245,17 +195,50 @@
   .btn.soft{background:var(--surface2);color:var(--txt);margin-top:10px}
   .btn.danger{background:var(--warn-soft);color:var(--warn);margin-top:10px}
   .btn svg{width:20px;height:20px}
-  .sheet-actions{display:flex;flex-direction:column}
-  .share-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
-  .share-actions .btn{margin-top:0}
+
+  /* lists switcher */
+  .lrow{
+    display:flex;align-items:center;gap:13px;padding:13px 14px;border-radius:14px;
+    border:1.5px solid var(--line);margin-bottom:9px;cursor:pointer;background:var(--surface);
+    transition:transform .12s var(--ease),border-color .15s,background .15s;
+  }
+  .lrow:active{transform:scale(.99)}
+  .lrow.active{border-color:var(--accent);background:var(--accent-soft)}
+  .lrow .le{width:42px;height:42px;border-radius:12px;background:var(--surface2);display:grid;
+    place-items:center;font-size:22px;flex:none}
+  .lrow.active .le{background:#fff}
+  .lrow .ltx{flex:1;min-width:0}
+  .lrow .ln2{font-weight:700;font-size:16px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis}
+  .lrow .lm{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .lrow .tick{color:var(--accent);flex:none}
+  .lrow .tick svg{width:22px;height:22px}
+  .ldel{width:34px;height:34px;border-radius:10px;border:none;background:transparent;color:var(--faint);
+    display:grid;place-items:center;cursor:pointer;flex:none}
+  .ldel:active{background:var(--warn-soft);color:var(--warn)}
+  .ldel svg{width:18px;height:18px}
+
+  /* menu rows */
+  .mrow{display:flex;align-items:center;gap:13px;width:100%;padding:15px 6px;border:none;background:none;
+    cursor:pointer;font-size:16px;font-weight:600;color:var(--txt);border-bottom:1px solid var(--line);
+    text-align:left}
+  .mrow:last-of-type{border-bottom:none}
+  .mrow .mi{width:24px;display:grid;place-items:center;color:var(--muted);flex:none}
+  .mrow .mi svg{width:21px;height:21px}
+  .mrow.warn{color:var(--warn)} .mrow.warn .mi{color:var(--warn)}
+  .mrow .grow{flex:1}
+  .toggle{width:46px;height:28px;border-radius:16px;background:var(--surface2);position:relative;
+    flex:none;transition:background .2s}
+  .toggle.on{background:var(--accent)}
+  .toggle i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;
+    box-shadow:var(--shadow-sm);transition:transform .2s var(--ease)}
+  .toggle.on i{transform:translateX(18px)}
 
   /* toast */
-  .toast{
-    position:fixed;left:50%;bottom:calc(24px + var(--safe-bot));transform:translate(-50%,140%);
-    background:#16241a;color:#fff;border-radius:14px;padding:13px 16px;z-index:60;
-    display:flex;align-items:center;gap:14px;font-size:14px;font-weight:550;box-shadow:var(--shadow-lg);
-    transition:transform .34s var(--ease);max-width:90%;
-  }
+  .toast{position:fixed;left:50%;bottom:calc(24px + var(--safe-bot));transform:translate(-50%,140%);
+    background:#16241a;color:#fff;border-radius:14px;padding:13px 16px;z-index:60;display:flex;
+    align-items:center;gap:14px;font-size:14px;font-weight:550;box-shadow:var(--shadow-lg);
+    transition:transform .34s var(--ease);max-width:90%}
   .toast.on{transform:translate(-50%,0)}
   .toast button{background:none;border:none;color:#7ee2a0;font-weight:700;font-size:14px;cursor:pointer;flex:none}
 
@@ -263,7 +246,9 @@
   @keyframes fade{to{opacity:0;transform:translateX(40px) scale(.96);height:0;margin:0;padding-top:0;padding-bottom:0}}
   @keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
   .pop{animation:pop .3s var(--ease)}
-  .fadein{animation:fadein .35s var(--ease)}
+  .justadded{animation:flash .9s var(--ease)}
+  @keyframes flash{0%{background:var(--accent-soft);border-color:#bfe6c8}100%{background:var(--surface);border-color:var(--line)}}
+  .fadein{animation:fadein .3s var(--ease)}
   @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style>
 </head>
@@ -277,470 +262,391 @@
 /* ============================ data ============================ */
 const LS = "tote.db.v1";
 const CATS = [
+  {k:"frozen",   label:"Frozen",         e:"🧊"},
   {k:"produce",  label:"Produce",        e:"🥬"},
   {k:"dairy",    label:"Dairy & Eggs",   e:"🥚"},
   {k:"meat",     label:"Meat & Seafood", e:"🍗"},
   {k:"bakery",   label:"Bakery",         e:"🍞"},
-  {k:"frozen",   label:"Frozen",         e:"🧊"},
   {k:"pantry",   label:"Pantry & Canned",e:"🥫"},
   {k:"snacks",   label:"Snacks & Sweets",e:"🍪"},
   {k:"drinks",   label:"Drinks",         e:"🧃"},
   {k:"household",label:"Household",       e:"🧻"},
   {k:"other",    label:"Other",          e:"🛒"},
 ];
-const CAT_ORDER = CATS.map(c=>c.k);
+const CAT_ORDER = ["produce","bakery","meat","dairy","frozen","pantry","snacks","drinks","household","other"];
 const CAT = Object.fromEntries(CATS.map(c=>[c.k,c]));
 const CATWORDS = [
   ["frozen",  ["frozen","ice cream","ice-cream","popsicle","waffle"]],
-  ["produce", ["apple","banana","lettuce","spinach","kale","tomato","onion","garlic","potato","carrot","pepper","cucumber","broccoli","celery","lemon","lime","orange","grape","berr","strawber","blueber","avocado","mushroom","zucchini","squash","cilantro","parsley","basil","herb","ginger","corn","bean sprout","cabbage","cauliflower","pear","peach","plum","mango","melon","salad","greens","fruit","veg"]],
+  ["produce", ["apple","banana","lettuce","spinach","kale","tomato","onion","garlic","potato","carrot","pepper","cucumber","broccoli","celery","lemon","lime","orange","grape","berr","strawber","blueber","avocado","mushroom","zucchini","squash","cilantro","parsley","basil","herb","ginger","corn","cabbage","cauliflower","pear","peach","plum","mango","melon","salad","greens","fruit","veg"]],
   ["dairy",   ["milk","egg","cheese","butter","yogurt","yoghurt","cream","sour cream","cottage","mozzarella","cheddar","parmesan","feta","margarine","creamer"]],
   ["meat",    ["chicken","beef","pork","bacon","sausage","steak","turkey","ham","fish","salmon","tuna","shrimp","lamb","ground","mince","ribs","wing","tofu","deli","hot dog"]],
   ["bakery",  ["bread","bagel","bun","roll","croissant","muffin","tortilla","baguette","pita","cake","donut","doughnut","pastry","loaf","naan"]],
-  ["pantry",  ["rice","pasta","flour","sugar","oil","olive oil","salt","pepper","spice","sauce","ketchup","mustard","mayo","can","canned","beans","soup","broth","stock","cereal","oats","oatmeal","peanut butter","jam","jelly","honey","vinegar","noodle","lentil","quinoa","tomato sauce","syrup","baking","yeast","spaghetti","taco","salsa","coconut milk","tea","coffee"]],
+  ["pantry",  ["rice","pasta","flour","sugar","oil","olive oil","salt","spice","sauce","ketchup","mustard","mayo","can","canned","beans","soup","broth","stock","cereal","oats","oatmeal","peanut butter","jam","jelly","honey","vinegar","noodle","lentil","quinoa","syrup","baking","yeast","spaghetti","taco","salsa","tea","coffee"]],
   ["snacks",  ["chip","cracker","cookie","candy","chocolate","popcorn","pretzel","nuts","granola","bar","snack","gum","jerky","trail mix"]],
-  ["drinks",  ["water","juice","soda","pop","cola","beer","wine","seltzer","kombucha","gatorade","energy drink","lemonade","sparkling","drink","smoothie"]],
-  ["household",["paper towel","toilet paper","tissue","napkin","soap","detergent","dish soap","cleaner","bleach","sponge","trash bag","foil","wrap","ziploc","battery","shampoo","toothpaste","deodorant","razor","lotion","diaper","wipes","laundry","bag"]],
+  ["drinks",  ["water","juice","soda","pop","cola","beer","wine","seltzer","kombucha","gatorade","lemonade","sparkling","drink","smoothie"]],
+  ["household",["paper towel","toilet paper","tissue","napkin","soap","detergent","dish soap","cleaner","bleach","sponge","trash bag","foil","wrap","ziploc","battery","shampoo","toothpaste","deodorant","razor","lotion","diaper","wipes","laundry"]],
 ];
 const EMOJIS = ["🛒","🧺","🥗","🍝","🥘","🎉","🍕","🏖️","🧁","🌮","🍳","🥑"];
 
 function uid(){ return Math.random().toString(36).slice(2,9) + (performance.now()|0).toString(36); }
 function load(){
-  try{ const d = JSON.parse(localStorage.getItem(LS)); if(d&&d.lists) return d; }catch(e){}
-  return { lists:[] };
+  let d=null; try{ d=JSON.parse(localStorage.getItem(LS)); }catch(e){}
+  if(!d || !Array.isArray(d.lists)) d={lists:[],active:null,groupAisle:false};
+  if(typeof d.groupAisle!=="boolean") d.groupAisle=false;
+  return d;
 }
 function save(){ try{ localStorage.setItem(LS, JSON.stringify(db)); }catch(e){} }
 let db = load();
 
-/* ---- smart parse: pull a quantity out of free text; guess a category ---- */
+function ensureList(){
+  if(!db.lists.length){
+    db.lists.push({id:uid(),name:"Grocery List",emoji:"🛒",items:[],created:Date.now()});
+  }
+  if(!db.active || !db.lists.some(l=>l.id===db.active)) db.active=db.lists[0].id;
+  save();
+}
+function active(){ return db.lists.find(l=>l.id===db.active) || db.lists[0]; }
+
+/* ---- smart parse ---- */
 function parseEntry(raw){
-  let name = raw.trim().replace(/\s+/g," ");
-  let qty = "";
-  let m;
-  if((m = name.match(/^(\d+)\s+(.+)$/))){ qty = m[1]; name = m[2]; }           // "2 milk"
-  else if((m = name.match(/^(.+?)\s*[x×]\s*(\d+)$/i))){ name = m[1]; qty = m[2];}// "milk x2"
-  else if((m = name.match(/^(.+?)\s+(\d+)$/))){ name = m[1]; qty = m[2]; }      // "eggs 12"
-  name = name.trim();
-  return { name, qty, cat: guessCat(name) };
+  let name=raw.trim().replace(/\s+/g," "), qty="", m;
+  if((m=name.match(/^(\d+)\s+(.+)$/))){ qty=m[1]; name=m[2]; }
+  else if((m=name.match(/^(.+?)\s*[x×]\s*(\d+)$/i))){ name=m[1]; qty=m[2]; }
+  else if((m=name.match(/^(.+?)\s+(\d+)$/))){ name=m[1]; qty=m[2]; }
+  name=name.trim();
+  return { name, qty, cat:guessCat(name) };
 }
 function guessCat(name){
-  const n = name.toLowerCase();
+  const n=name.toLowerCase();
   for(const [cat,words] of CATWORDS){ if(words.some(w=>n.includes(w))) return cat; }
   return "other";
 }
 
 /* ============================ routing ============================ */
-let view = "home";      // "home" | "list" | "shared"
-let openId = null;      // current list id (owned)
-let shared = null;      // {name,emoji,items} decoded snapshot
-let sharedId = null;    // stable key for the snapshot's local check state
-
-function go(v, id){ view=v; openId=id||null; render(); }
+let view="list";          // "list" | "shared"
+let shared=null, sharedId=null;
+let lastAdded=null;       // id to flash
 
 function boot(){
-  const h = location.hash || "";
+  const h=location.hash||"";
   if(h.startsWith("#s=")){
-    const data = decodeList(h.slice(3));
-    if(data){ shared = data; sharedId = "tote.sh."+hash32(h.slice(3)); view="shared"; }
+    const data=decodeList(h.slice(3));
+    if(data){ shared=data; sharedId="tote.sh."+hash32(h.slice(3)); view="shared"; render(); return; }
   }
-  render();
+  ensureList(); view="list"; render();
 }
 
-/* ============================ share encode / decode ============================ */
+/* ============================ share encode/decode ============================ */
 function b64urlEncode(str){
-  const utf8 = encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
-  return btoa(utf8).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+  const u=encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+  return btoa(u).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 }
 function b64urlDecode(s){
-  s = s.replace(/-/g,"+").replace(/_/g,"/");
-  while(s.length%4) s+="=";
-  const bin = atob(s); let pct="";
-  for(let i=0;i<bin.length;i++) pct += "%"+("00"+bin.charCodeAt(i).toString(16)).slice(-2);
+  s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4) s+="=";
+  const bin=atob(s); let pct=""; for(let i=0;i<bin.length;i++) pct+="%"+("00"+bin.charCodeAt(i).toString(16)).slice(-2);
   return decodeURIComponent(pct);
 }
 function hash32(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))>>>0; return h.toString(36); }
-
-function encodeList(list){
-  const payload = { n:list.name, e:list.emoji, i:list.items.map(it=>[it.name, it.qty||"", it.cat||"other"]) };
-  return b64urlEncode(JSON.stringify(payload));
+function encodeList(l){
+  const p={n:l.name,e:l.emoji,i:l.items.map(it=>[it.name,it.qty||"",it.cat||"other"])};
+  return b64urlEncode(JSON.stringify(p));
 }
 function decodeList(code){
   try{
-    const p = JSON.parse(b64urlDecode(code));
-    if(!p || !Array.isArray(p.i)) return null;
-    return {
-      name: p.n || "Shared list",
-      emoji: p.e || "🛒",
-      items: p.i.map(a=>({ name:String(a[0]||""), qty:String(a[1]||""), cat:a[2]||"other" })).filter(x=>x.name)
-    };
+    const p=JSON.parse(b64urlDecode(code));
+    if(!p||!Array.isArray(p.i)) return null;
+    return { name:p.n||"Shared list", emoji:p.e||"🛒",
+      items:p.i.map(a=>({name:String(a[0]||""),qty:String(a[1]||""),cat:a[2]||"other"})).filter(x=>x.name) };
   }catch(e){ return null; }
 }
-function shareURL(list){ return location.origin + location.pathname + "#s=" + encodeList(list); }
-function shareText(list, url){
-  const lines = list.items.map(it => "• " + (it.qty? it.qty+"× ":"") + it.name);
-  return (list.emoji?list.emoji+" ":"") + list.name + "\n" + lines.join("\n") +
-         "\n\nTap to open & check off:\n" + url;
+function shareURL(l){ return location.origin+location.pathname+"#s="+encodeList(l); }
+function shareText(l,url){
+  const lines=l.items.map(it=>"• "+(it.qty?it.qty+"× ":"")+it.name);
+  return (l.emoji?l.emoji+" ":"")+l.name+"\n"+lines.join("\n")+"\n\nTap to open & check off:\n"+url;
 }
 
-/* ============================ helpers ============================ */
-const ICON = {
+/* ============================ icons / helpers ============================ */
+const ICON={
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
-  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>',
+  share:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/><path d="M12 3v13"/><path d="M8 7l4-4 4 4"/></svg>',
+  lists:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
   dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
-  check:'<svg viewBox="0 0 24 24" fill="none" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
-  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
+  checkw:'<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>',
   trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14"/></svg>',
   save:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>',
-  msg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.34 9.5 9.5 0 0 1-3-.5L3 21l1.66-4.5A8.38 8.38 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></svg>',
-  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
+  aisle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>',
+  broom:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5l-7 7M11 11l-6 6 2 2 6-6M8 14l2 2"/></svg>',
 };
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function el(html){ const t=document.createElement("template"); t.innerHTML=html.trim(); return t.content.firstElementChild; }
-const App = ()=>document.getElementById("app");
-function listById(id){ return db.lists.find(l=>l.id===id); }
-function stats(items){ const t=items.length, d=items.filter(i=>i.done).length; return {t,d,left:t-d,pct:t?Math.round(d/t*100):0}; }
-
-/* group items by category, preserving CAT_ORDER; unchecked above checked within a group */
-function grouped(items){
-  const by = {};
-  items.forEach((it,idx)=>{ (by[it.cat]=by[it.cat]||[]).push({it,idx}); });
-  return CAT_ORDER.filter(k=>by[k]).map(k=>({
-    cat:CAT[k],
-    rows: by[k].sort((a,b)=>(a.it.done-b.it.done))
-  }));
-}
+const App=()=>document.getElementById("app");
+function stats(items){ const t=items.length,d=items.filter(i=>i.done).length; return {t,d,left:t-d,pct:t?Math.round(d/t*100):0}; }
 
 /* ============================ render ============================ */
-function render(){
-  if(view==="shared") return renderShared();
-  if(view==="list")   return renderList();
-  return renderHome();
-}
+function render(){ return view==="shared"?renderShared():renderList(); }
 
-function renderHome(){
-  const lists = db.lists;
-  const cards = lists.map(l=>{
-    const s = stats(l.items);
-    return `<div class="card ${s.t&&s.left===0?'complete':''}" data-open="${l.id}">
-      <div class="done-badge">${ICON.check.replace('stroke-width','stroke="#15a34a" stroke-width')} Done</div>
-      <div class="top">
-        <div class="emoji">${esc(l.emoji||"🛒")}</div>
-        <div>
-          <div class="nm">${esc(l.name)}</div>
-          <div class="meta">${s.t? `${s.left} left · ${s.t} item${s.t>1?'s':''}` : "Empty — tap to add"}</div>
-        </div>
-      </div>
-      ${s.t? `<div class="bar"><i style="width:${s.pct}%"></i></div>`:""}
-    </div>`;
-  }).join("");
-
-  App().innerHTML = `
-    <header>
-      <div class="brand"><img src="icon.svg" alt=""/>Tote</div>
-      <div class="grow"></div>
-    </header>
-    <div class="htitle">${lists.length? "Your lists" : ""}</div>
-    <div class="scroll">
-      ${lists.length ? `<div class="cards fadein">${cards}</div>` : `
-        <div class="empty fadein">
-          <div class="e-ico">🧺</div>
-          <h3>No lists yet</h3>
-          <p>Make a grocery list, check things off, and share a link anyone can use — no app or account needed.</p>
-        </div>`}
-    </div>
-    <div class="fab"><button id="newList">${ICON.plus}New list</button></div>
-  `;
-  App().querySelectorAll("[data-open]").forEach(c=>c.onclick=()=>go("list",c.dataset.open));
-  App().querySelector("#newList").onclick=()=>newListSheet();
+function itemRow(it, gi, done){
+  return `<li class="item ${done?'done':''} ${it.id===lastAdded?'justadded':''}" data-id="${it.id}">
+    <span class="check">${ICON.checkw}</span>
+    <span class="iname">${esc(it.name)}</span>
+    ${it.qty?`<span class="qty">${esc(it.qty)}×</span>`:""}
+    <button class="del" data-del="${it.id}">${ICON.trash}</button>
+  </li>`;
 }
 
 function renderList(){
-  const l = listById(openId);
-  if(!l) return go("home");
-  const s = stats(l.items);
-  const groups = grouped(l.items);
-  const body = l.items.length ? groups.map(g=>`
-    <div class="group">
-      <div class="grouphead"><span class="gc">${g.cat.e}</span>${esc(g.cat.label)}</div>
-      <ul class="items">
-        ${g.rows.map(({it,idx})=>itemRow(it,idx)).join("")}
-      </ul>
-    </div>`).join("") : `
-    <div class="empty fadein">
-      <div class="e-ico">${esc(l.emoji||"🛒")}</div>
-      <h3>Add your first item</h3>
-      <p>Type below — Tote sorts everything by aisle automatically. Try “2 milk” or “bananas”.</p>
+  const l=active();
+  const s=stats(l.items);
+  let body;
+  if(!l.items.length){
+    body=`<div class="empty fadein"><div class="e-ico">${esc(l.emoji)}</div>
+      <h3>Start your list</h3><p>Type an item below and hit add. Try “milk”, “2 bananas”, or “eggs”.</p></div>`;
+  } else if(db.groupAisle){
+    const by={}; l.items.forEach(it=>{ (by[it.cat]=by[it.cat]||[]).push(it); });
+    body=`<div class="listbody">`+CAT_ORDER.filter(k=>by[k]).map(k=>`
+      <div class="grouphead">${CAT[k].e} ${esc(CAT[k].label)}</div>
+      <ul class="items">${by[k].sort((a,b)=>a.done-b.done).map(it=>itemRow(it,0,it.done)).join("")}</ul>`).join("")+`</div>`;
+  } else {
+    const todo=l.items.filter(i=>!i.done), got=l.items.filter(i=>i.done);
+    body=`<div class="listbody">
+      <ul class="items">${todo.map(it=>itemRow(it,0,false)).join("")}</ul>
+      ${got.length?`<div class="gotdiv">${ICON.check.replace('currentColor','#9aa79c')} In the cart · ${got.length}<span class="ln"></span></div>
+        <ul class="items">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`:""}
     </div>`;
+  }
 
-  App().innerHTML = `
+  App().innerHTML=`
     <header>
-      <button class="icon-btn" id="back">${ICON.back}</button>
+      <button class="icon-btn" id="lists" title="My lists">${ICON.lists}</button>
       <div class="grow"></div>
-      <button class="icon-btn" id="share">${ICON.share}</button>
+      <button class="share-pill" id="share">${ICON.share}Share</button>
       <button class="icon-btn" id="menu">${ICON.dots}</button>
     </header>
-    <div class="detail-head">
-      <div class="detail-title">
-        <span class="demoji">${esc(l.emoji||"🛒")}</span>
-        <input id="title" value="${esc(l.name)}" />
+    <div class="titlewrap">
+      <div class="titlerow">
+        <span class="demoji" id="emoji">${esc(l.emoji)}</span>
+        <input id="title" value="${esc(l.name)}" spellcheck="false"/>
       </div>
-      <div class="detail-sub">
-        ${s.t? `<span>${s.d}/${s.t} done</span><div class="mini-bar"><i style="width:${s.pct}%"></i></div>`
-              : `<span>Empty list</span>`}
+      <div class="subrow">
+        ${s.t?`<span>${s.left? s.left+" to get":"All done 🎉"}</span><div class="mini-bar"><i style="width:${s.pct}%"></i></div>`
+             :`<span>Empty list</span>`}
       </div>
     </div>
-    <div class="scroll" id="listScroll" style="padding-bottom:96px">${body}</div>
+    <div class="scroll" id="scroll">${body}</div>
     <div class="addbar">
       <div class="row">
-        <input id="add" placeholder="Add item…" autocomplete="off" enterkeyhint="done"
-               autocapitalize="words" />
+        <input id="add" placeholder="Add item…" autocomplete="off" autocapitalize="words" enterkeyhint="done"/>
         <button class="add-go" id="addGo">${ICON.plus}</button>
       </div>
-    </div>
-  `;
-  App().querySelector("#back").onclick=()=>go("home");
-  App().querySelector("#share").onclick=()=>shareSheet(l);
-  App().querySelector("#menu").onclick=()=>listMenu(l);
-  const title = App().querySelector("#title");
-  title.onchange=()=>{ const v=title.value.trim(); if(v){ l.name=v; save(); } else title.value=l.name; };
+    </div>`;
+  lastAdded=null;
+
+  App().querySelector("#lists").onclick=listsSheet;
+  App().querySelector("#menu").onclick=()=>menuSheet(l);
+  App().querySelector("#emoji").onclick=()=>emojiSheet(l);
+  App().querySelector("#share").onclick=()=>doShare(l);
+  const title=App().querySelector("#title");
+  title.onchange=()=>{ const v=title.value.trim(); if(v){l.name=v;save();} else title.value=l.name; };
   bindRows(l);
-  const add = App().querySelector("#add");
+  const add=App().querySelector("#add");
   const submit=()=>{
-    const v=add.value;
-    if(!v.trim()) return;
+    const v=add.value; if(!v.trim()) return;
     const {name,qty,cat}=parseEntry(v);
-    l.items.unshift({id:uid(),name,qty,cat,done:false});
-    save(); add.value=""; renderList();
-    App().querySelector("#add").focus();
+    const it={id:uid(),name,qty,cat,done:false};
+    l.items.unshift(it); save(); lastAdded=it.id;
+    add.value=""; renderList();
+    const a=App().querySelector("#add"); a.focus();
+    App().querySelector("#scroll").scrollTop=0;
   };
   App().querySelector("#addGo").onclick=submit;
   add.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); submit(); }});
 }
 
-function itemRow(it, idx, readonly){
-  return `<li class="item ${it.done?'done':''}" data-i="${idx}">
-    <span class="check">${ICON.check.replace('stroke-width','stroke="#fff" stroke-width')}</span>
-    <span class="iname">${esc(it.name)}</span>
-    ${it.qty? `<span class="qty">${esc(it.qty)}×</span>`:""}
-    ${readonly? "" : `<button class="del" data-del="${idx}">${ICON.trash}</button>`}
-  </li>`;
-}
-
 function bindRows(l){
   App().querySelectorAll("li.item").forEach(row=>{
-    const idx = +row.dataset.i;
+    const id=row.dataset.id;
     row.addEventListener("click",e=>{
       if(e.target.closest(".del")) return;
-      const it = l.items[idx];
-      it.done = !it.done;
-      save();
+      const it=l.items.find(x=>x.id===id); if(!it) return;
+      it.done=!it.done; save();
       row.classList.toggle("done",it.done);
-      if(it.done){ const c=row.querySelector(".check"); c.classList.add("pop"); }
-      // resort gently after the toggle animation
-      clearTimeout(bindRows._t);
-      bindRows._t = setTimeout(()=>{ if(view==="list") renderList(); }, 280);
+      if(it.done) row.querySelector(".check").classList.add("pop");
+      clearTimeout(bindRows._t); bindRows._t=setTimeout(()=>{ if(view==="list") renderList(); },300);
     });
   });
   App().querySelectorAll("[data-del]").forEach(b=>{
     b.addEventListener("click",e=>{
       e.stopPropagation();
-      const idx=+b.dataset.del;
-      const removed = l.items[idx];
-      const row=b.closest("li.item");
-      row.classList.add("removing");
+      const id=b.dataset.del, idx=l.items.findIndex(x=>x.id===id);
+      if(idx<0) return;
+      const removed=l.items[idx];
+      b.closest("li.item").classList.add("removing");
       l.items.splice(idx,1); save();
-      toast(`Removed “${removed.name}”`, "Undo", ()=>{
-        l.items.splice(Math.min(idx,l.items.length),0,removed); save(); renderList();
-      });
-      setTimeout(()=>{ if(view==="list") renderList(); }, 240);
+      toast(`Removed “${removed.name}”`,"Undo",()=>{ l.items.splice(Math.min(idx,l.items.length),0,removed); save(); renderList(); });
+      setTimeout(()=>{ if(view==="list") renderList(); },240);
     });
   });
 }
 
-/* ---------------- shared (snapshot) view ---------------- */
+/* ---------------- share action (one tap) ---------------- */
+async function doShare(l){
+  if(!l.items.length){ toast("Add some items first"); return; }
+  const url=shareURL(l), txt=shareText(l,url);
+  try{
+    if(navigator.share){ await navigator.share({title:l.name,text:txt}); return; }
+  }catch(e){ if(e&&e.name==="AbortError") return; }
+  try{ await navigator.clipboard.writeText(url); toast("Link copied — paste it in a text ✓"); }
+  catch(e){ fallbackCopy(url); }
+}
+
+/* ---------------- shared (recipient snapshot) ---------------- */
 function loadSharedChecks(){ try{ return JSON.parse(localStorage.getItem(sharedId))||{}; }catch(e){ return {}; } }
-function saveSharedChecks(map){ try{ localStorage.setItem(sharedId, JSON.stringify(map)); }catch(e){} }
+function saveSharedChecks(m){ try{ localStorage.setItem(sharedId,JSON.stringify(m)); }catch(e){} }
 
 function renderShared(){
-  const checks = loadSharedChecks();
-  const items = shared.items.map((it,i)=>({...it, done:!!checks[i]}));
-  const s = stats(items);
-  const groups = grouped(items.map((it,i)=>({...it,_oi:i}))).map(g=>g); // keep original index via _oi
-  // rebuild groups keeping original index
-  const by={}; items.forEach((it,i)=>{ (by[it.cat]=by[it.cat]||[]).push({it,oi:i}); });
-  const ordered = CAT_ORDER.filter(k=>by[k]).map(k=>({cat:CAT[k],rows:by[k].sort((a,b)=>a.it.done-b.it.done)}));
-
-  const body = ordered.map(g=>`
-    <div class="group">
-      <div class="grouphead"><span class="gc">${g.cat.e}</span>${esc(g.cat.label)}</div>
-      <ul class="items">
-        ${g.rows.map(({it,oi})=>`
-          <li class="item ${it.done?'done':''}" data-oi="${oi}">
-            <span class="check">${ICON.check.replace('stroke-width','stroke="#fff" stroke-width')}</span>
-            <span class="iname">${esc(it.name)}</span>
-            ${it.qty?`<span class="qty">${esc(it.qty)}×</span>`:""}
-          </li>`).join("")}
-      </ul>
-    </div>`).join("");
-
-  App().innerHTML = `
+  const checks=loadSharedChecks();
+  const items=shared.items.map((it,i)=>({...it,done:!!checks[i],oi:i}));
+  const s=stats(items);
+  const todo=items.filter(i=>!i.done), got=items.filter(i=>i.done);
+  const rowS=(it)=>`<li class="item ${it.done?'done':''}" data-oi="${it.oi}">
+    <span class="check">${ICON.checkw}</span><span class="iname">${esc(it.name)}</span>
+    ${it.qty?`<span class="qty">${esc(it.qty)}×</span>`:""}</li>`;
+  App().innerHTML=`
     <header>
-      <div class="brand"><img src="icon.svg" alt=""/>Tote</div>
+      <div style="display:flex;align-items:center;gap:9px;font-weight:800;font-size:20px;letter-spacing:-.03em">
+        <img src="icon.svg" style="width:28px;height:28px;border-radius:8px"/>Tote</div>
       <div class="grow"></div>
-      <button class="icon-btn" id="copyMine" title="Save a copy">${ICON.save}</button>
+      <button class="share-pill" id="copyMine" style="background:var(--surface);color:var(--accent);border:1px solid var(--line)">${ICON.save}Save</button>
     </header>
-    <div class="detail-head">
-      <div class="detail-title">
-        <span class="demoji">${esc(shared.emoji||"🛒")}</span>
-        <h1 style="font-size:24px">${esc(shared.name)}</h1>
-      </div>
-      <div class="detail-sub">
-        <span>${s.d}/${s.t} done</span><div class="mini-bar"><i style="width:${s.pct}%"></i></div>
-      </div>
+    <div class="titlewrap">
+      <div class="titlerow"><span class="demoji">${esc(shared.emoji)}</span>
+        <span style="font-size:24px;font-weight:800;letter-spacing:-.03em">${esc(shared.name)}</span></div>
+      <div class="subrow"><span>${s.left} to get</span><div class="mini-bar"><i style="width:${s.pct}%"></i></div></div>
     </div>
-    <div class="banner">
-      <span class="bico">🔗</span>
-      <span class="bt"><b>Shared list.</b> Check items off for yourself — it’s saved on this device only and won’t change the original. Tap <b>Save a copy</b> to make it your own editable list.</span>
-    </div>
-    <div class="scroll" style="padding-bottom:24px">${body}</div>
-  `;
+    <div class="banner"><span class="bico">🔗</span>
+      <span class="bt"><b>Shared with you.</b> Check things off as you shop — saved on your phone only, won’t change the sender’s list.</span></div>
+    <div class="scroll"><div class="listbody">
+      <ul class="items">${todo.map(rowS).join("")}</ul>
+      ${got.length?`<div class="gotdiv">${ICON.check.replace('currentColor','#9aa79c')} In the cart · ${got.length}<span class="ln"></span></div>
+        <ul class="items">${got.map(rowS).join("")}</ul>`:""}
+    </div></div>`;
   App().querySelectorAll("li.item").forEach(row=>{
     row.addEventListener("click",()=>{
-      const oi=+row.dataset.oi;
-      const map=loadSharedChecks(); map[oi]=!map[oi]; saveSharedChecks(map);
-      row.classList.toggle("done",!!map[oi]);
-      if(map[oi]) row.querySelector(".check").classList.add("pop");
-      clearTimeout(renderShared._t);
-      renderShared._t=setTimeout(renderShared,280);
+      const oi=+row.dataset.oi, m=loadSharedChecks(); m[oi]=!m[oi]; saveSharedChecks(m);
+      row.classList.toggle("done",!!m[oi]);
+      if(m[oi]) row.querySelector(".check").classList.add("pop");
+      clearTimeout(renderShared._t); renderShared._t=setTimeout(renderShared,300);
     });
   });
   App().querySelector("#copyMine").onclick=()=>{
+    ensureList();
     const l={id:uid(),name:shared.name,emoji:shared.emoji,
       items:shared.items.map(it=>({id:uid(),name:it.name,qty:it.qty,cat:it.cat||guessCat(it.name),done:false})),
       created:Date.now()};
-    db.lists.unshift(l); save();
+    db.lists.unshift(l); db.active=l.id; save();
     history.replaceState(null,"",location.pathname);
-    toast("Saved to your lists ✓");
-    go("list",l.id);
+    view="list"; toast("Saved to your lists ✓"); render();
   };
 }
 
 /* ============================ sheets ============================ */
-const scrim = document.getElementById("scrim");
+const scrim=document.getElementById("scrim");
 let curSheet=null;
 function openSheet(node){
-  closeSheet();
-  curSheet=node; document.body.appendChild(node);
+  closeSheet(); curSheet=node; document.body.appendChild(node);
   requestAnimationFrame(()=>{ scrim.classList.add("on"); node.classList.add("on"); });
   scrim.onclick=closeSheet;
 }
-function closeSheet(){
-  scrim.classList.remove("on");
-  const n=curSheet; curSheet=null;
-  if(n){ n.classList.remove("on"); setTimeout(()=>n.remove(),340); }
-}
+function closeSheet(){ scrim.classList.remove("on"); const n=curSheet; curSheet=null;
+  if(n){ n.classList.remove("on"); setTimeout(()=>n.remove(),340); } }
 
-function newListSheet(){
-  let emoji=EMOJIS[0];
-  const node = el(`<div class="sheet">
-    <div class="grab"></div>
-    <h2>New list</h2>
-    <div class="sub">Give it a name and a tag.</div>
-    <input class="field" id="nlname" placeholder="e.g. Weekend shop" autocapitalize="words"/>
-    <div class="emojirow">${EMOJIS.map((e,i)=>`<button data-e="${e}" class="${i===0?'sel':''}">${e}</button>`).join("")}</div>
-    <button class="btn primary" id="nlcreate">${ICON.plus}Create list</button>
-  </div>`);
-  node.querySelectorAll(".emojirow button").forEach(b=>b.onclick=()=>{
-    node.querySelectorAll(".emojirow button").forEach(x=>x.classList.remove("sel"));
-    b.classList.add("sel"); emoji=b.dataset.e;
+function listsSheet(){
+  const node=el(`<div class="sheet"><div class="grab"></div>
+    <h2>My lists</h2><div class="sub">Tap to switch. Most people only need one.</div>
+    <div id="lwrap"></div>
+    <button class="btn primary" id="newL">${ICON.plus}New list</button></div>`);
+  const wrap=node.querySelector("#lwrap");
+  db.lists.forEach(l=>{
+    const s=stats(l.items);
+    const r=el(`<div class="lrow ${l.id===db.active?'active':''}" data-id="${l.id}">
+      <div class="le">${esc(l.emoji)}</div>
+      <div class="ltx"><div class="ln2">${esc(l.name)}</div>
+        <div class="lm">${s.t?`${s.left} to get · ${s.t} item${s.t>1?'s':''}`:"Empty"}</div></div>
+      ${l.id===db.active?`<span class="tick">${ICON.check}</span>`:""}
+      ${db.lists.length>1?`<button class="ldel" data-del="${l.id}">${ICON.trash}</button>`:""}
+    </div>`);
+    r.addEventListener("click",e=>{
+      if(e.target.closest(".ldel")) return;
+      db.active=l.id; save(); closeSheet(); renderList();
+    });
+    const d=r.querySelector(".ldel");
+    if(d) d.addEventListener("click",e=>{
+      e.stopPropagation();
+      db.lists=db.lists.filter(x=>x.id!==l.id);
+      if(db.active===l.id) db.active=db.lists[0].id;
+      save(); closeSheet(); listsSheet();
+    });
+    wrap.appendChild(r);
   });
-  const create=()=>{
-    const name=(node.querySelector("#nlname").value.trim())||"Grocery list";
-    const l={id:uid(),name,emoji,items:[],created:Date.now()};
-    db.lists.unshift(l); save(); closeSheet(); go("list",l.id);
-  };
-  node.querySelector("#nlcreate").onclick=create;
-  node.querySelector("#nlname").addEventListener("keydown",e=>{if(e.key==="Enter")create();});
-  openSheet(node);
-  setTimeout(()=>node.querySelector("#nlname").focus(),300);
-}
-
-function shareSheet(l){
-  if(!l.items.length){ toast("Add some items first"); return; }
-  const url = shareURL(l);
-  const txt = shareText(l,url);
-  const node = el(`<div class="sheet">
-    <div class="grab"></div>
-    <h2>Share “${esc(l.name)}”</h2>
-    <div class="sub">Sends a snapshot link. They can open it & check items off on their phone — it won’t sync back to you.</div>
-    <div class="share-actions">
-      <button class="btn primary" id="sysShare">${ICON.share}Share…</button>
-      <button class="btn soft" id="smsShare" style="margin-top:0">${ICON.msg}Text it</button>
-      <button class="btn soft" id="copyLink" style="margin-top:0">${ICON.link}Copy link</button>
-      <button class="btn soft" id="copyText" style="margin-top:0">${ICON.save}Copy as text</button>
-    </div>
-  </div>`);
-  node.querySelector("#sysShare").onclick=async()=>{
-    try{
-      if(navigator.share){ await navigator.share({title:l.name, text:txt}); }
-      else { await navigator.clipboard.writeText(txt); toast("Copied — paste it anywhere"); }
-      closeSheet();
-    }catch(e){}
-  };
-  node.querySelector("#smsShare").onclick=()=>{
-    location.href = "sms:&body=" + encodeURIComponent(txt);
-  };
-  node.querySelector("#copyLink").onclick=async()=>{
-    try{ await navigator.clipboard.writeText(url); toast("Link copied ✓"); }catch(e){ fallbackCopy(url); }
-  };
-  node.querySelector("#copyText").onclick=async()=>{
-    try{ await navigator.clipboard.writeText(txt); toast("List copied ✓"); }catch(e){ fallbackCopy(txt); }
+  node.querySelector("#newL").onclick=()=>{
+    const l={id:uid(),name:"Grocery List",emoji:"🛒",items:[],created:Date.now()};
+    db.lists.unshift(l); db.active=l.id; save(); closeSheet(); renderList();
+    setTimeout(()=>{ const a=App().querySelector("#add"); a&&a.focus(); },360);
   };
   openSheet(node);
 }
 
-function listMenu(l){
+function emojiSheet(l){
+  const node=el(`<div class="sheet"><div class="grab"></div>
+    <h2>Pick a tag</h2><div class="sub">Just a little icon for this list.</div>
+    <div class="emojirow">${EMOJIS.map(e=>`<button data-e="${e}" class="${e===l.emoji?'sel':''}">${e}</button>`).join("")}</div></div>`);
+  node.querySelectorAll(".emojirow button").forEach(b=>b.onclick=()=>{ l.emoji=b.dataset.e; save(); closeSheet(); renderList(); });
+  openSheet(node);
+}
+
+function menuSheet(l){
   const s=stats(l.items);
-  const node = el(`<div class="sheet">
-    <div class="grab"></div>
-    <h2>${esc(l.name)}</h2>
-    <div class="sub">${s.t} item${s.t!==1?'s':''} · ${s.d} done</div>
-    <div class="sheet-actions">
-      ${s.d? `<button class="btn soft" id="clearDone">Clear ${s.d} checked item${s.d>1?'s':''}</button>`:""}
-      ${s.t? `<button class="btn soft" id="uncheck" style="margin-top:10px">Uncheck all</button>`:""}
-      <button class="btn danger" id="delList">${ICON.trash}Delete list</button>
-    </div>
+  const node=el(`<div class="sheet"><div class="grab"></div>
+    <h2>${esc(l.name)}</h2><div class="sub">${s.t} item${s.t!==1?'s':''} · ${s.d} in cart</div>
+    <div class="mrow" id="tg"><span class="mi">${ICON.aisle}</span>Sort by aisle<span class="grow"></span>
+      <span class="toggle ${db.groupAisle?'on':''}"><i></i></span></div>
+    ${s.d?`<button class="mrow" id="clr"><span class="mi">${ICON.broom}</span>Clear ${s.d} checked item${s.d>1?'s':''}</button>`:""}
+    ${s.t?`<button class="mrow" id="unc"><span class="mi">${ICON.check}</span>Uncheck everything</button>`:""}
+    <button class="mrow warn" id="del"><span class="mi">${ICON.trash}</span>${db.lists.length>1?"Delete this list":"Clear whole list"}</button>
   </div>`);
-  const cd=node.querySelector("#clearDone");
-  if(cd) cd.onclick=()=>{ l.items=l.items.filter(i=>!i.done); save(); closeSheet(); renderList(); };
-  const uc=node.querySelector("#uncheck");
-  if(uc) uc.onclick=()=>{ l.items.forEach(i=>i.done=false); save(); closeSheet(); renderList(); };
-  node.querySelector("#delList").onclick=()=>{
-    db.lists=db.lists.filter(x=>x.id!==l.id); save(); closeSheet(); go("home");
+  node.querySelector("#tg").onclick=()=>{ db.groupAisle=!db.groupAisle; save();
+    node.querySelector(".toggle").classList.toggle("on",db.groupAisle); renderList(); };
+  const clr=node.querySelector("#clr"); if(clr) clr.onclick=()=>{ l.items=l.items.filter(i=>!i.done); save(); closeSheet(); renderList(); };
+  const unc=node.querySelector("#unc"); if(unc) unc.onclick=()=>{ l.items.forEach(i=>i.done=false); save(); closeSheet(); renderList(); };
+  node.querySelector("#del").onclick=()=>{
+    if(db.lists.length>1){ db.lists=db.lists.filter(x=>x.id!==l.id); db.active=db.lists[0].id; }
+    else { l.items=[]; }
+    save(); closeSheet(); renderList();
   };
   openSheet(node);
 }
 
 /* ============================ toast ============================ */
-const toastEl=document.getElementById("toast");
-let toastT=null;
-function toast(msg, actionLabel, action){
+const toastEl=document.getElementById("toast"); let toastT=null;
+function toast(msg,label,action){
   clearTimeout(toastT);
-  toastEl.innerHTML = `<span>${esc(msg)}</span>` + (actionLabel?`<button>${esc(actionLabel)}</button>`:"");
-  if(actionLabel){ toastEl.querySelector("button").onclick=()=>{ action&&action(); hideToast(); }; }
+  toastEl.innerHTML=`<span>${esc(msg)}</span>`+(label?`<button>${esc(label)}</button>`:"");
+  if(label) toastEl.querySelector("button").onclick=()=>{ action&&action(); hideToast(); };
   toastEl.classList.add("on");
-  toastT=setTimeout(hideToast, actionLabel?4200:1900);
+  toastT=setTimeout(hideToast,label?4200:1900);
 }
 function hideToast(){ toastEl.classList.remove("on"); }
 function fallbackCopy(text){
   const ta=document.createElement("textarea"); ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
   document.body.appendChild(ta); ta.select();
-  try{ document.execCommand("copy"); toast("Copied ✓"); }catch(e){ toast("Couldn’t copy"); }
+  try{ document.execCommand("copy"); toast("Link copied ✓"); }catch(e){ toast("Couldn’t copy"); }
   ta.remove();
 }
 
 /* ============================ go ============================ */
-window.addEventListener("hashchange", ()=>{ if((location.hash||"").startsWith("#s=")) boot(); });
+window.addEventListener("hashchange",()=>{ if((location.hash||"").startsWith("#s=")) boot(); });
 boot();
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
