@@ -115,19 +115,28 @@
   .qty{font-size:12.5px;font-weight:700;color:var(--accent);background:var(--accent-soft);
     border-radius:7px;padding:3px 8px;flex:none}
   li.item.done .qty{color:var(--faint);background:var(--surface2)}
-  .del{
-    width:30px;height:30px;border-radius:9px;border:none;background:transparent;color:var(--faint);
-    display:grid;place-items:center;flex:none;cursor:pointer;opacity:.5;
+  .rowacts{display:flex;align-items:center;gap:2px;flex:none}
+  .editbtn,.del{
+    width:32px;height:32px;border-radius:9px;border:none;background:transparent;
+    display:grid;place-items:center;flex:none;cursor:pointer;
     transition:opacity .15s,background .15s,color .15s
   }
+  .editbtn{color:var(--faint);opacity:.65}
+  .editbtn:active{background:var(--accent-soft);color:var(--accent);opacity:1}
+  .del{color:#d96b6b;opacity:.8}
   .del:active{background:var(--warn-soft);color:var(--warn);opacity:1}
-  .del svg{width:17px;height:17px}
+  .editbtn svg,.del svg{width:18px;height:18px}
   .gotdiv{
     display:flex;align-items:center;gap:9px;color:var(--faint);font-size:12.5px;font-weight:700;
     padding:18px 4px 8px;text-transform:uppercase;letter-spacing:.04em
   }
   .gotdiv .ln{flex:1;height:1px;background:var(--line)}
   .gotdiv svg{width:15px;height:15px;flex:none}
+  button.gotdiv{width:100%;background:none;font-family:inherit}
+  button.gotdiv:active{opacity:.6}
+  .chev{display:grid;place-items:center;color:var(--faint);transition:transform .2s var(--ease)}
+  .chev svg{width:16px;height:16px}
+  .chev.open{transform:rotate(180deg)}
 
   /* ---------- empty ---------- */
   .empty{text-align:center;padding:38px 30px;color:var(--muted)}
@@ -193,7 +202,8 @@
   .btn.primary{background:var(--accent);color:#fff}
   .btn.primary:active{background:var(--accent-hover)}
   .btn.soft{background:var(--surface2);color:var(--txt);margin-top:10px}
-  .btn.danger{background:var(--warn-soft);color:var(--warn);margin-top:10px}
+  .btn.danger{background:var(--warn);color:#fff;margin-top:10px;box-shadow:0 6px 16px -8px rgba(220,38,38,.6)}
+  .btn.danger:active{background:#b91c1c}
   .btn svg{width:20px;height:20px}
 
   /* lists switcher */
@@ -331,6 +341,7 @@ function guessCat(name){
 let view="list";          // "list" | "shared"
 let shared=null, sharedId=null;
 let lastAdded=null;       // id to flash
+let revealChecked=false;  // session: reveal the checked section while it's hidden
 
 function boot(){
   const h=location.hash||"";
@@ -384,6 +395,8 @@ const ICON={
   aisle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/></svg>',
   broom:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 5l-7 7M11 11l-6 6 2 2 6-6M8 14l2 2"/></svg>',
   eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+  pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>',
+  chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
 };
 function esc(s){ return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function el(html){ const t=document.createElement("template"); t.innerHTML=html.trim(); return t.content.firstElementChild; }
@@ -398,34 +411,49 @@ function itemRow(it, gi, done){
     <span class="check">${ICON.checkw}</span>
     <span class="iname">${esc(it.name)}</span>
     ${it.qty?`<span class="qty">${esc(it.qty)}×</span>`:""}
-    <button class="del" data-del="${it.id}">${ICON.trash}</button>
+    <span class="rowacts">
+      <button class="editbtn" data-edit="${it.id}" aria-label="Edit">${ICON.pencil}</button>
+      <button class="del" data-del="${it.id}" aria-label="Delete">${ICON.trash}</button>
+    </span>
   </li>`;
+}
+
+// the "In the cart" checked block — collapsible (tap to reveal/uncheck) when hidden
+function checkedSection(got){
+  if(!got.length) return "";
+  const gchk = ICON.check.replace('currentColor','#9aa79c');
+  if(db.hideChecked){
+    const open = revealChecked;
+    return `<button class="gotdiv tap" id="revealtog">${gchk} In the cart · ${got.length}
+        <span class="ln"></span><span class="chev ${open?'open':''}">${ICON.chev}</span></button>
+      ${open?`<ul class="items">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`:""}`;
+  }
+  return `<div class="gotdiv">${gchk} In the cart · ${got.length}<span class="ln"></span></div>
+    <ul class="items">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`;
 }
 
 function renderList(){
   const l=active();
   const s=stats(l.items);
-  // when "hide checked" is on, only unchecked items are shown (counts still tracked)
-  const vis = db.hideChecked ? l.items.filter(i=>!i.done) : l.items;
+  const todo=l.items.filter(i=>!i.done), got=l.items.filter(i=>i.done);
   let body;
   if(!l.items.length){
     body=`<div class="empty fadein"><div class="e-ico">${esc(l.emoji)}</div>
       <h3>Start your list</h3><p>Type an item below and hit add. Try “milk”, “2 bananas”, or “eggs”.</p></div>`;
-  } else if(!vis.length){
-    body=`<div class="empty fadein"><div class="e-ico">🎉</div>
-      <h3>All checked off</h3><p>${s.d} item${s.d!==1?'s':''} in the cart. Nice work!</p></div>`;
-  } else if(db.groupAisle){
-    const by={}; vis.forEach(it=>{ (by[it.cat]=by[it.cat]||[]).push(it); });
-    body=`<div class="listbody">`+CAT_ORDER.filter(k=>by[k]).map(k=>`
-      <div class="grouphead">${CAT[k].e} ${esc(CAT[k].label)}</div>
-      <ul class="items">${by[k].sort((a,b)=>a.done-b.done).map(it=>itemRow(it,0,it.done)).join("")}</ul>`).join("")+`</div>`;
   } else {
-    const todo=vis.filter(i=>!i.done), got=vis.filter(i=>i.done);
-    body=`<div class="listbody">
-      <ul class="items">${todo.map(it=>itemRow(it,0,false)).join("")}</ul>
-      ${got.length?`<div class="gotdiv">${ICON.check.replace('currentColor','#9aa79c')} In the cart · ${got.length}<span class="ln"></span></div>
-        <ul class="items">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`:""}
-    </div>`;
+    let todoHTML;
+    if(!todo.length){
+      todoHTML=`<div class="empty fadein" style="padding:30px 30px 4px"><div class="e-ico">🎉</div>
+        <h3>All checked off</h3><p>${got.length} item${got.length!==1?'s':''} in the cart.</p></div>`;
+    } else if(db.groupAisle){
+      const by={}; todo.forEach(it=>{ (by[it.cat]=by[it.cat]||[]).push(it); });
+      todoHTML=CAT_ORDER.filter(k=>by[k]).map(k=>`
+        <div class="grouphead">${CAT[k].e} ${esc(CAT[k].label)}</div>
+        <ul class="items">${by[k].map(it=>itemRow(it,0,false)).join("")}</ul>`).join("");
+    } else {
+      todoHTML=`<ul class="items">${todo.map(it=>itemRow(it,0,false)).join("")}</ul>`;
+    }
+    body=`<div class="listbody">${todoHTML}${checkedSection(got)}</div>`;
   }
 
   App().innerHTML=`
@@ -460,6 +488,8 @@ function renderList(){
   App().querySelector("#share").onclick=()=>doShare(l);
   const title=App().querySelector("#title");
   title.onchange=()=>{ const v=title.value.trim(); if(v){l.name=v;save();} else title.value=l.name; };
+  const rt=App().querySelector("#revealtog");
+  if(rt) rt.onclick=()=>{ revealChecked=!revealChecked; renderList(); };
   bindRows(l);
   const add=App().querySelector("#add");
   const submit=()=>{
@@ -479,13 +509,20 @@ function bindRows(l){
   App().querySelectorAll("li.item").forEach(row=>{
     const id=row.dataset.id;
     row.addEventListener("click",e=>{
-      if(e.target.closest(".del")) return;
+      if(e.target.closest(".del")||e.target.closest(".editbtn")) return;
       const it=l.items.find(x=>x.id===id); if(!it) return;
       it.done=!it.done; save();
       row.classList.toggle("done",it.done);
       if(it.done) row.querySelector(".check").classList.add("pop");
       if(it.done && db.hideChecked){ const left=l.items.filter(i=>!i.done).length; toast(`✓ ${it.name} · ${left} left`); }
       clearTimeout(bindRows._t); bindRows._t=setTimeout(()=>{ if(view==="list") renderList(); },300);
+    });
+  });
+  App().querySelectorAll("[data-edit]").forEach(b=>{
+    b.addEventListener("click",e=>{
+      e.stopPropagation();
+      const it=l.items.find(x=>x.id===b.dataset.edit);
+      if(it) editItemSheet(l,it);
     });
   });
   App().querySelectorAll("[data-del]").forEach(b=>{
@@ -610,6 +647,27 @@ function listsSheet(){
   openSheet(node);
 }
 
+function editItemSheet(l, it){
+  const val = it.qty ? `${it.qty} ${it.name}` : it.name;
+  const node=el(`<div class="sheet"><div class="grab"></div>
+    <h2>Edit item</h2><div class="sub">Rename it or change the amount — e.g. “2 milk”.</div>
+    <input class="field" id="ev" value="${esc(val)}" autocapitalize="words" enterkeyhint="done" spellcheck="false"/>
+    <button class="btn primary" id="esave">${ICON.check} Save</button>
+    <button class="btn danger" id="edel">${ICON.trash} Delete item</button>
+  </div>`);
+  const inp=node.querySelector("#ev");
+  const saveIt=()=>{ const v=inp.value.trim(); if(!v) return; const p=parseEntry(v);
+    it.name=p.name; it.qty=p.qty; it.cat=p.cat; save(); closeSheet(); renderList(); };
+  node.querySelector("#esave").onclick=saveIt;
+  inp.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); saveIt(); }});
+  node.querySelector("#edel").onclick=()=>{
+    const i=l.items.findIndex(x=>x.id===it.id); if(i>=0) l.items.splice(i,1);
+    save(); closeSheet(); renderList();
+  };
+  openSheet(node);
+  setTimeout(()=>{ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); },320);
+}
+
 function emojiSheet(l){
   const node=el(`<div class="sheet"><div class="grab"></div>
     <h2>Pick a tag</h2><div class="sub">Just a little icon for this list.</div>
@@ -636,7 +694,7 @@ function menuSheet(l){
     ${s.t?`<button class="btn soft" id="unc">${ICON.check}Uncheck everything</button>`:""}
     <button class="btn danger" id="del">${ICON.trash}${db.lists.length>1?"Delete this list":"Clear whole list"}</button>
   </div>`);
-  node.querySelector("#tgHide").onclick=()=>{ db.hideChecked=!db.hideChecked; save();
+  node.querySelector("#tgHide").onclick=()=>{ db.hideChecked=!db.hideChecked; revealChecked=false; save();
     node.querySelector("#tgHide .toggle").classList.toggle("on",db.hideChecked); renderList(); };
   node.querySelector("#tgAisle").onclick=()=>{ db.groupAisle=!db.groupAisle; save();
     node.querySelector("#tgAisle .toggle").classList.toggle("on",db.groupAisle); renderList(); };
