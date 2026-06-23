@@ -1,4 +1,4 @@
-const CACHE = "tote-v7";
+const CACHE = "tote-v8";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {
@@ -16,17 +16,23 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
 
-  // Navigations: network-FIRST so the app always loads the latest version when
-  // online (no getting stuck on a stale cached page), and fall back to the
-  // cached shell when offline. Deep links (#s=...) still resolve either way.
+  // Navigations: try the network for freshness, but fall back to the cached
+  // shell instantly when offline or slow — so it works as a true offline app.
   if (req.mode === "navigate") {
-    e.respondWith(
-      fetch(req).then(res => {
-        const copy = res.clone();
-        caches.open(CACHE).then(c => c.put("./index.html", copy)).catch(() => {});
+    e.respondWith((async () => {
+      const cached = await caches.match("./index.html");
+      const net = fetch(req).then(res => {
+        caches.open(CACHE).then(c => c.put("./index.html", res.clone())).catch(() => {});
         return res;
-      }).catch(() => caches.match("./index.html").then(c => c || caches.match("./")))
-    );
+      });
+      if (!cached) {
+        try { return await net; } catch (e) { return (await caches.match("./")) || Response.error(); }
+      }
+      // Have a cached copy: prefer a fresh response, but don't wait more than ~2.5s.
+      const timeout = new Promise(r => setTimeout(() => r(null), 2500));
+      const res = await Promise.race([net.catch(() => null), timeout]);
+      return res || cached;
+    })());
     return;
   }
 

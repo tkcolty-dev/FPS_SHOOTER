@@ -132,10 +132,20 @@
   }
   .gotdiv .ln{flex:1;height:1px;background:var(--line)}
   .gotdiv svg{width:15px;height:15px;flex:none}
-  button.gotdiv{width:100%;background:none;font-family:inherit}
-  button.gotdiv:active{opacity:.6}
+  /* compact "in the cart" bar — collapsed by default so checked items barely take space */
+  .cartbar{
+    display:flex;align-items:center;gap:10px;width:100%;margin:12px 0 2px;
+    padding:11px 13px;border-radius:13px;border:1px solid var(--line);background:var(--surface);
+    box-shadow:var(--shadow-sm);cursor:pointer;font-family:inherit;
+    font-size:14.5px;font-weight:650;color:var(--muted);transition:transform .12s var(--ease)
+  }
+  .cartbar:active{transform:scale(.99)}
+  .cartbar .cb-ico{width:22px;height:22px;border-radius:50%;background:var(--accent);
+    display:grid;place-items:center;flex:none}
+  .cartbar .cb-ico svg{width:13px;height:13px}
+  .cartbar .cb-tx{flex:1;text-align:left}
   .chev{display:grid;place-items:center;color:var(--faint);transition:transform .2s var(--ease)}
-  .chev svg{width:16px;height:16px}
+  .chev svg{width:17px;height:17px}
   .chev.open{transform:rotate(180deg)}
 
   /* ---------- empty ---------- */
@@ -188,6 +198,14 @@
   .grab{width:38px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 14px}
   .sheet h2{font-size:20px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;text-align:center}
   .sheet .sub{font-size:13.5px;color:var(--muted);text-align:center;margin-bottom:16px;line-height:1.45}
+  .field{
+    width:100%;border:1.5px solid var(--line);background:var(--surface);border-radius:14px;
+    padding:15px 16px;font-size:17px;font-family:inherit;color:var(--txt);margin-bottom:12px;
+    -webkit-appearance:none;transition:border-color .15s;
+  }
+  .field:focus{outline:none;border-color:var(--accent)}
+  .field::placeholder{color:var(--faint)}
+  .field.big{font-size:20px;font-weight:650;padding:18px 16px;letter-spacing:-.02em;text-align:center}
   .emojirow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;justify-content:center}
   .emojirow button{width:48px;height:48px;border-radius:13px;border:1.5px solid var(--line);
     background:var(--surface);font-size:24px;cursor:pointer;transition:all .14s var(--ease)}
@@ -418,18 +436,15 @@ function itemRow(it, gi, done){
   </li>`;
 }
 
-// the "In the cart" checked block — collapsible (tap to reveal/uncheck) when hidden
+// checked items live in one compact bar, collapsed by default — tap to expand & uncheck
 function checkedSection(got){
   if(!got.length) return "";
-  const gchk = ICON.check.replace('currentColor','#9aa79c');
-  if(db.hideChecked){
-    const open = revealChecked;
-    return `<button class="gotdiv tap" id="revealtog">${gchk} In the cart · ${got.length}
-        <span class="ln"></span><span class="chev ${open?'open':''}">${ICON.chev}</span></button>
-      ${open?`<ul class="items">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`:""}`;
-  }
-  return `<div class="gotdiv">${gchk} In the cart · ${got.length}<span class="ln"></span></div>
-    <ul class="items">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`;
+  const open = revealChecked;
+  return `<button class="cartbar" id="revealtog">
+      <span class="cb-ico">${ICON.checkw}</span>
+      <span class="cb-tx">${got.length} in the cart</span>
+      <span class="chev ${open?'open':''}">${ICON.chev}</span></button>
+    ${open?`<ul class="items" style="margin-top:9px">${got.map(it=>itemRow(it,0,true)).join("")}</ul>`:""}`;
 }
 
 function renderList(){
@@ -514,7 +529,6 @@ function bindRows(l){
       it.done=!it.done; save();
       row.classList.toggle("done",it.done);
       if(it.done) row.querySelector(".check").classList.add("pop");
-      if(it.done && db.hideChecked){ const left=l.items.filter(i=>!i.done).length; toast(`✓ ${it.name} · ${left} left`); }
       clearTimeout(bindRows._t); bindRows._t=setTimeout(()=>{ if(view==="list") renderList(); },300);
     });
   });
@@ -651,7 +665,7 @@ function editItemSheet(l, it){
   const val = it.qty ? `${it.qty} ${it.name}` : it.name;
   const node=el(`<div class="sheet"><div class="grab"></div>
     <h2>Edit item</h2><div class="sub">Rename it or change the amount — e.g. “2 milk”.</div>
-    <input class="field" id="ev" value="${esc(val)}" autocapitalize="words" enterkeyhint="done" spellcheck="false"/>
+    <input class="field big" id="ev" value="${esc(val)}" autocapitalize="words" enterkeyhint="done" spellcheck="false"/>
     <button class="btn primary" id="esave">${ICON.check} Save</button>
     <button class="btn danger" id="edel">${ICON.trash} Delete item</button>
   </div>`);
@@ -683,8 +697,6 @@ function menuSheet(l){
 
     <div class="setlabel">Display</div>
     <div class="setcard">
-      <div class="mrow" id="tgHide"><span class="mi">${ICON.eye}</span>Hide checked items<span class="grow"></span>
-        <span class="toggle ${db.hideChecked?'on':''}"><i></i></span></div>
       <div class="mrow" id="tgAisle"><span class="mi">${ICON.aisle}</span>Sort by aisle<span class="grow"></span>
         <span class="toggle ${db.groupAisle?'on':''}"><i></i></span></div>
     </div>
@@ -694,8 +706,6 @@ function menuSheet(l){
     ${s.t?`<button class="btn soft" id="unc">${ICON.check}Uncheck everything</button>`:""}
     <button class="btn danger" id="del">${ICON.trash}${db.lists.length>1?"Delete this list":"Clear whole list"}</button>
   </div>`);
-  node.querySelector("#tgHide").onclick=()=>{ db.hideChecked=!db.hideChecked; revealChecked=false; save();
-    node.querySelector("#tgHide .toggle").classList.toggle("on",db.hideChecked); renderList(); };
   node.querySelector("#tgAisle").onclick=()=>{ db.groupAisle=!db.groupAisle; save();
     node.querySelector("#tgAisle .toggle").classList.toggle("on",db.groupAisle); renderList(); };
   const clr=node.querySelector("#clr"); if(clr) clr.onclick=()=>{ l.items=l.items.filter(i=>!i.done); save(); closeSheet(); renderList(); };
