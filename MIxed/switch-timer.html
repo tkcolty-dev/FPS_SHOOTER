@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>⏱ 20:00</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+  html,body{margin:0;height:100%;font-family:'Trebuchet MS',system-ui,sans-serif;
+    background:radial-gradient(600px 400px at 50% -10%,#3a2b6b,#160f2e 70%);color:#fff;overflow:hidden}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:14px}
+  #time{font-size:22vmin;font-weight:900;line-height:.95;letter-spacing:2px;font-variant-numeric:tabular-nums;
+    text-shadow:0 4px 0 #6b2fa5,0 0 34px #a678ff}
+  #time.warn{color:#ffd23f;text-shadow:0 4px 0 #a5721f,0 0 34px #ffd23f}
+  #time.paused{opacity:.45}
+  #label{font-size:5vmin;font-weight:800;opacity:.9;text-transform:uppercase;letter-spacing:3px}
+  #status{font-size:3.4vmin;opacity:.7;min-height:1.2em}
+  .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+  button{font-family:inherit;font-weight:800;font-size:3.4vmin;padding:.5em 1em;border-radius:14px;border:none;cursor:pointer;
+    background:rgba(255,255,255,.12);color:#fff;border:2px solid rgba(255,255,255,.25)}
+  button:active{transform:translateY(2px)}
+  #pause{background:linear-gradient(#ff6fae,#c93f86);border-color:#fff}
+  body.flash{animation:fl .5s steps(2,end) infinite}
+  @keyframes fl{0%{background:#c0143f}100%{background:#160f2e}}
+  #hint{position:fixed;left:0;right:0;bottom:8px;text-align:center;font-size:2.4vmin;opacity:.55}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="label">Switch Timer</div>
+  <div id="time">20:00</div>
+  <div id="status">Two players · swap the Mac when it rings</div>
+  <div class="row">
+    <button id="pause">⏸ Pause</button>
+    <button id="reset">↺ Reset 20:00</button>
+    <button id="add">+5 min</button>
+  </div>
+</div>
+<div id="hint">Spacebar = pause/resume · R = reset · Pause me while Claude is working, resume when it's done</div>
+<script>
+const DUR=20*60;                 // 20 minutes
+let left=DUR, paused=false, last=performance.now(), ringing=false;
+const $=s=>document.getElementById(s);
+let AC;
+function ac(){ if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended')AC.resume(); return AC; }
+function ding(){
+  const c=ac(); let t=c.currentTime;
+  for(let n=0;n<4;n++){                       // four bright bell dings
+    for(const f of [880,1320,1760]){
+      const o=c.createOscillator(),g=c.createGain();
+      o.type='sine';o.frequency.value=f;o.connect(g);g.connect(c.destination);
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.25,t+0.01);g.gain.exponentialRampToValueAtTime(0.001,t+0.9);
+      o.start(t);o.stop(t+1);
+    }
+    t+=0.6;
+  }
+}
+function fmt(s){s=Math.max(0,Math.ceil(s));const m=(s/60|0);const ss=s%60;return m+':'+String(ss).padStart(2,'0');}
+function render(){
+  const el=$('time');el.textContent=fmt(left);document.title=(ringing?'🔔 ':paused?'⏸ ':'⏱ ')+fmt(left)+' — Switch';
+  el.classList.toggle('warn',left<=60&&!ringing);
+  el.classList.toggle('paused',paused);
+}
+function ring(){
+  ringing=true;ding();document.body.classList.add('flash');
+  $('label').textContent='⏰ SWITCH THE MAC!';
+  let n=10;                                   // ring + auto-restart countdown
+  $('status').textContent='Next player, you\'re up! Auto-restarting in '+n+'s…';
+  const rp=setInterval(()=>{
+    if(!ringing){clearInterval(rp);return;}
+    n--;
+    if(n<=0){ clearInterval(rp); resetTimer(); return; }   // 🔁 auto-restart to 20:00
+    if(n%3===0) ding();
+    $('status').textContent='Next player, you\'re up! Auto-restarting in '+n+'s…';
+  },1000);
+}
+function resetTimer(){ left=DUR;ringing=false;paused=false;document.body.classList.remove('flash');
+  $('label').textContent='Switch Timer';$('status').textContent='Two players · swap the Mac when it rings';
+  $('pause').textContent='⏸ Pause';render(); }
+function tick(now){
+  const dt=(now-last)/1000;last=now;
+  if(!paused&&!ringing){ left-=dt; if(left<=0){left=0;ring();} }
+  render();requestAnimationFrame(tick);
+}
+$('pause').onclick=()=>{ ac(); if(ringing){resetTimer();return;} paused=!paused;$('pause').textContent=paused?'▶ Resume':'⏸ Pause';
+  $('status').textContent=paused?'⏸ Paused (Claude working?)':'Two players · swap the Mac when it rings';render(); };
+$('reset').onclick=()=>{ac();resetTimer();};
+$('add').onclick=()=>{ac();left+=300;ringing=false;document.body.classList.remove('flash');render();};
+addEventListener('keydown',e=>{ if(e.code==='Space'){e.preventDefault();$('pause').click();} if(e.key.toLowerCase()==='r')resetTimer(); });
+addEventListener('click',()=>ac(),{once:true});
+render();requestAnimationFrame(tick);
+</script>
+</body>
+</html>
