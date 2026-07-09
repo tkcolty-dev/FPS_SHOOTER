@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FOREVER HOUSE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin:0; padding:0; background:#000; overflow:hidden; height:100%; }
+  #wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  canvas { display:block; }
+  #ui {
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; color:#b6b6b6;
+    font-family:Georgia, serif; text-align:center;
+    background:radial-gradient(ellipse at center, #0c0a10 0%, #000 100%);
+    z-index:10; transition:opacity 1s; cursor:pointer; user-select:none;
+  }
+  #ui h1 { font-size:58px; letter-spacing:14px; color:#a8b4d0; margin:0;
+           text-shadow:0 0 40px #1c2e5e; font-weight:normal; }
+  #ui .sub { font-size:15px; letter-spacing:3px; color:#6b5a5a; margin:14px 0 40px; font-style:italic; }
+  #ui .how { font-size:14px; line-height:2.1; color:#8a8a8a; }
+  #ui .begin { margin-top:44px; font-size:16px; letter-spacing:6px; color:#bbb;
+               border:1px solid #3a3448; padding:14px 46px; animation:pulse 2.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:.45} 50%{opacity:1} }
+  #ui.hidden { opacity:0; pointer-events:none; }
+  .servant { color:#d0b878; }
+  .girl { color:#c47a8a; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game"></canvas></div>
+<div id="ui">
+  <h1>FOREVER HOUSE</h1>
+  <div class="sub">"you don't have to go home. you don't ever have to go home."</div>
+  <div class="how">
+    you woke up in a house that isn't yours. the front door has <b>three locks</b>.<br>
+    the <span class="servant">servants</span> remember being guests once, too. they will help you —<br>
+    walk up to them and press <b>E</b>.<br><br>
+    but <span class="girl">Emily</span> is listening. every time someone helps you leave,<br>
+    she gets a little less patient with you.<br><br>
+    P1 — WASD &nbsp;·&nbsp; P2 — arrows &nbsp;·&nbsp; P3 — IJKL &nbsp;·&nbsp; P4 — TFGH &nbsp;·&nbsp; E — talk<br>
+    in the dark you must stay close together. if she catches <b>any</b> of you, she keeps you all.
+  </div>
+  <div style="display:flex; gap:18px; margin-top:44px;">
+    <div class="begin" id="begin1" style="margin-top:0">ALONE</div>
+    <div class="begin" id="begin2" style="margin-top:0">2 PLAYERS</div>
+    <div class="begin" id="begin3" style="margin-top:0">3 PLAYERS</div>
+    <div class="begin" id="begin4" style="margin-top:0">4 PLAYERS</div>
+  </div>
+  <a href="3d.html" style="color:#7a8ab0; font-size:13px; letter-spacing:3px; margin-top:28px;">▶ ENTER THE HOUSE IN 3D (first person)</a>
+</div>
+<script>
+(() => {
+"use strict";
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+const lightCvs = document.createElement('canvas');
+const lctx = lightCvs.getContext('2d');
+let W = 960, H = 600;
+function resize() {
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  cvs.width = W; cvs.height = H; lightCvs.width = W; lightCvs.height = H;
+  cvs.style.width = (W*s)+'px'; cvs.style.height = (H*s)+'px';
+}
+resize(); addEventListener('resize', resize);
+
+// ---------------- the mansion ----------------
+const WORLD = { w: 1800, h: 1300 };
+const T = 18;
+// rooms: foyer (S center), hall spine, library (W), dining (NW), kitchen (NE),
+// conservatory (E), nursery — Emily's room (N center), cellar stairs nook
+const walls = [
+  [0,0,WORLD.w,T],[0,WORLD.h-T,WORLD.w,T],[0,0,T,WORLD.h],[WORLD.w-T,0,T,WORLD.h],
+  // foyer walls (front door bottom center)
+  [560,860,T,440],[1220,860,T,440],
+  [560,860,240,T],[980,860,260,T],
+  // hall spine (horizontal corridor y 700..860)
+  [0,700,420,T],[540,700,300,T],[960,700,300,T],[1380,700,420,T],
+  // west rooms: library (SW), dining (NW)
+  [420,0,T,280],[420,400,T,300],
+  [0,360,180,T],[300,360,140,T],
+  // north center: nursery
+  [820,0,T,240],[820,360,T,340],
+  [820,340,220,T],[1160,340,180,T],
+  [1340,0,T,220],[1340,340,T,360],
+  // east: kitchen (NE), conservatory (SE)
+  [1340,860,240,T],[1700,860,100,T],
+  [1340,860,T,200],[1340,1160,T,140],
+  // west south: library area divider
+  [180,860,240,T],[540,860,20,T],
+  [180,860,T,220],[180,1180,T,120],
+];
+// furniture: collides like walls but drawn as wood pieces
+const furniture = [
+  [240,140,150,70],   // dining table
+  [1450,120,200,60],  // kitchen counter
+  [960,120,90,90],    // nursery toy chest
+  [240,1020,180,60],  // library table
+  [1480,1040,140,70], // conservatory planter
+];
+walls.push(...furniture);
+// wall sconces — candles mounted in the halls, they light the house faintly
+const sconces = [
+  [470,700],[890,700],[1330,700],[560,1080],[1220,1080],
+  [420,340],[820,300],[1340,280],[890,880],[180,1080],[1600,920],
+];
+// framed portraits — the family that never left
+const portraits = [[650,709],[1150,709],[890,27],[240,369],[1500,229],[380,769]];
+// chandelier over the foyer
+const chandelier = { x: 890, y: 1000 };
+// room mood tints [x,y,w,h,color]
+const roomTints = [
+  [18,18,402,342,'rgba(60,80,130,0.10)'],     // dining — cold blue
+  [838,18,502,322,'rgba(120,60,130,0.12)'],   // nursery — sickly violet
+  [1358,18,424,202,'rgba(70,110,70,0.10)'],   // kitchen — mossy
+  [18,878,162,404,'rgba(140,100,50,0.10)'],   // study nook — amber
+  [1358,1078,424,204,'rgba(60,120,90,0.10)'], // conservatory — green glass
+];
+// drifting dust motes (deterministic from index + time)
+const MOTES = 90;
+function moteHash(i,s){ const v=Math.sin(i*127.1+s*311.7)*43758.5453; return v-Math.floor(v); }
+const AABB = (x,y,r,w)=> x+r>w[0] && x-r<w[0]+w[2] && y+r>w[1] && y-r<w[1]+w[3];
+function collides(x, y, r) { return walls.some(w => AABB(x,y,r,w)); }
+function losClear(x1,y1,x2,y2) {
+  const d = Math.hypot(x2-x1,y2-y1), steps = Math.ceil(d/14);
+  for (let i=1;i<steps;i++){
+    const t=i/steps;
+    if (collides(x1+(x2-x1)*t, y1+(y2-y1)*t, 2)) return false;
+  }
+  return true;
+}
+
+const frontDoor = { x: 890, y: 1281, w: 120 }; // bottom of foyer
+
+// ---------------- cast ----------------
+const players = [
+  { x: 860, y: 1150, r: 11, speed: 170, active: true,  tint:'#c8bfae',
+    suit:'#6a4a38', hair:'#2e2018',
+    keys: { up:'w', down:'s', left:'a', right:'d' } },
+  { x: 925, y: 1150, r: 11, speed: 170, active: false, tint:'#aec2c8',
+    suit:'#3d4d62', hair:'#1c1c22',
+    keys: { up:'arrowup', down:'arrowdown', left:'arrowleft', right:'arrowright' } },
+  { x: 860, y: 1090, r: 11, speed: 170, active: false, tint:'#c8aec2',
+    suit:'#5d3a52', hair:'#3a2a1a',
+    keys: { up:'i', down:'k', left:'j', right:'l' } },
+  { x: 925, y: 1090, r: 11, speed: 170, active: false, tint:'#b5c8ae',
+    suit:'#4a5a38', hair:'#241a10',
+    keys: { up:'t', down:'g', left:'f', right:'h' } },
+];
+const TETHER = 260; // max distance any player may drift from the group
+function alivePlayers(){ return players.filter(p=>p.active); }
+function nearestPlayer(x,y){
+  let best=null, bd=1e9;
+  for(const p of alivePlayers()){
+    const d=Math.hypot(p.x-x,p.y-y);
+    if(d<bd){bd=d;best=p;}
+  }
+  return {p:best, d:bd};
+}
+const servants = [
+  { name:'ALBERT, the butler', x: 300, y: 1080, given:false, item:'FRONT DOOR KEY',
+    suit:'#23222b', trim:'#d8d4c8', hair:'#9a948a',
+    lines:["*polishes a glass that is already clean*",
+           "You shouldn't be here after dark. None of us should.",
+           "Take my key. I kept it forty years. I never once dared use it.",
+           "Go. Before she hears us."],
+    after:"She knows I gave it to you. It's alright. Run." },
+  { name:'MARGARET, the maid', x: 1520, y: 200, given:false, item:'IRON BOLT HANDLE',
+    suit:'#3a2f3d', trim:'#e8e2d4', hair:'#6a5240',
+    lines:["*stops sweeping, but doesn't turn around*",
+           "The second lock needs the bolt handle. She made me hide it in the flour tin.",
+           "Here. My hands are shaking, I'm sorry.",
+           "She was such a sweet child, once. Before the house."],
+    after:"Don't look at her eyes when she's angry. Just run." },
+  { name:'THOMAS, the gardener', x: 1600, y: 1150, given:false, item:'BRASS CHAIN KEY',
+    suit:'#39442f', trim:'#b8a878', hair:'#4a3828',
+    lines:["*is pretending to water a plant that died years ago*",
+           "The chain lock. I have it. I've had it since I was a guest, like you.",
+           "I waited too long, you see. Don't be like me.",
+           "When the door opens — don't look back. Not even to thank us."],
+    after:"It's been so long since anyone made it out. Please." },
+];
+// --- random NPC spawns: every night the house rearranges its people ---
+const spawnSpots = [
+  [300,1080],[1520,200],[1600,1150],[130,150],[280,600],
+  [950,480],[1500,450],[700,180],[1450,980],[350,950],
+];
+for(let i=spawnSpots.length-1;i>0;i--){
+  const j=Math.floor(Math.random()*(i+1));
+  [spawnSpots[i],spawnSpots[j]]=[spawnSpots[j],spawnSpots[i]];
+}
+servants.forEach((s,i)=>{ s.x=spawnSpots[i][0]; s.y=spawnSpots[i][1]; });
+
+// Emily
+const emily = {
+  x: 950, y: 160, r: 10, speed: 92, anger: 0,
+  state: 'patrol', wp: 0, chaseT: 0, giggleT: 0,
+  waypoints: [ [950,160],[300,200],[300,560],[890,560],[1520,220],[1560,1000],[890,1000],[300,1100] ],
+};
+// Emily also wakes somewhere new each night — always far from the players
+{
+  const far = spawnSpots.slice(3).filter(p => Math.hypot(p[0]-890, p[1]-1150) > 600);
+  const pick = far.length ? far[Math.floor(Math.random()*far.length)] : [950,160];
+  emily.x = pick[0]; emily.y = pick[1];
+  emily.wp = Math.floor(Math.random()*emily.waypoints.length);
+}
+const ANGER_SPEED = [118, 155, 192, 235];
+const ANGER_SIGHT = [300, 370, 450, 540];
+
+let itemsGot = 0, time = 0, gameOver = false, won = false, jumpT = 0, shake = 0;
+let dialog = null; // {lines, i, t, name, after?}
+const whispers = [
+  "why do you want to leave?", "we could play forever", "the servants are LIARS",
+  "stay. stay. stay. stay.", "i'm not angry. i'm not angry.", "you're my favorite one yet",
+];
+let whisper = null, whisperT = 0, nextWhisper = 9;
+
+const input = {};
+addEventListener('keydown', e => {
+  input[e.key.toLowerCase()] = true;
+  if (e.key.toLowerCase() === 'e') tryTalk();
+});
+addEventListener('keyup', e => input[e.key.toLowerCase()] = false);
+
+// ---------------- audio ----------------
+let AC=null, master, droneGain, heartGain;
+const MUSICBOX = [ 659, 622, 659, 622, 659, 494, 587, 523, 440, 0, 0, 330, 440, 494, 0, 0 ]; // Für Elise-ish, off
+let mbStep = 0, mbTimer = 0;
+function initAudio(){
+  AC = new (window.AudioContext||window.webkitAudioContext)();
+  master = AC.createGain(); master.gain.value = 0.5; master.connect(AC.destination);
+  const o1=AC.createOscillator(); o1.type='sawtooth'; o1.frequency.value=36;
+  const o2=AC.createOscillator(); o2.type='sine'; o2.frequency.value=39.5;
+  const f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=110;
+  droneGain=AC.createGain(); droneGain.gain.value=0.1;
+  o1.connect(f); o2.connect(f); f.connect(droneGain); droneGain.connect(master);
+  o1.start(); o2.start();
+  heartGain=AC.createGain(); heartGain.gain.value=0; heartGain.connect(master);
+}
+function pluck(freq, vol=0.14){ // music box note
+  if(!AC||!freq) return;
+  const o=AC.createOscillator(); o.type='sine'; o.frequency.value=freq*2;
+  const g=AC.createGain();
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+1.1);
+  o.connect(g); g.connect(master); o.start(); o.stop(AC.currentTime+1.1);
+}
+function thump(){
+  if(!AC) return;
+  const o=AC.createOscillator(); o.type='sine'; o.frequency.value=52;
+  const g=AC.createGain();
+  g.gain.setValueAtTime(0.9, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime+0.18);
+  o.frequency.exponentialRampToValueAtTime(28, AC.currentTime+0.18);
+  o.connect(g); g.connect(heartGain); o.start(); o.stop(AC.currentTime+0.2);
+}
+function giggle(){
+  if(!AC) return;
+  for(let i=0;i<5;i++){
+    const o=AC.createOscillator(); o.type='sine';
+    const t=AC.currentTime + i*0.09;
+    o.frequency.setValueAtTime(900 - i*90 + Math.random()*60, t);
+    const g=AC.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.16, t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t+0.08);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t+0.1);
+  }
+}
+function sting(){
+  if(!AC) return;
+  const o=AC.createOscillator(); o.type='sawtooth'; o.frequency.value=1200;
+  o.frequency.exponentialRampToValueAtTime(180, AC.currentTime+0.5);
+  const g=AC.createGain(); g.gain.setValueAtTime(0.35,AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+0.55);
+  o.connect(g); g.connect(master); o.start(); o.stop(AC.currentTime+0.6);
+}
+function screech(){
+  if(!AC) return;
+  const n=AC.createBufferSource();
+  const buf=AC.createBuffer(1, AC.sampleRate*0.8, AC.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+  n.buffer=buf;
+  const f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1600; f.Q.value=1.5;
+  const g=AC.createGain(); g.gain.value=0.9;
+  n.connect(f); f.connect(g); g.connect(master); n.start();
+}
+let heartTimer=0;
+
+// ---------------- interactions ----------------
+function tryTalk(){
+  if (dialog || gameOver || won) return;
+  for (const s of servants) {
+    if (nearestPlayer(s.x, s.y).d < 55) {
+      if (!s.given) {
+        dialog = { name:s.name, lines:s.lines, i:0, t:0, servant:s };
+      } else {
+        dialog = { name:s.name, lines:[s.after], i:0, t:0 };
+      }
+      return;
+    }
+  }
+}
+
+// ---------------- update ----------------
+function moveActor(a, dx, dy){
+  let nx=a.x+dx;
+  if(!collides(nx,a.y,a.r)) a.x=nx;
+  let ny=a.y+dy;
+  if(!collides(a.x,ny,a.r)) a.y=ny;
+  a.x=Math.max(a.r,Math.min(WORLD.w-a.r,a.x));
+  a.y=Math.max(a.r,Math.min(WORLD.h-a.r,a.y));
+}
+
+function update(dt){
+  if (gameOver||won) return;
+  time += dt;
+
+  // dialogue advances itself; player frozen while listening
+  if (dialog) {
+    dialog.t += dt;
+    if (dialog.t > 2.6 || input[' ']) {
+      dialog.t = 0; dialog.i++; input[' ']=false;
+      if (dialog.i >= dialog.lines.length) {
+        if (dialog.servant && !dialog.servant.given) {
+          dialog.servant.given = true; itemsGot++;
+          emily.anger = Math.min(3, emily.anger+1);
+          emily.state = 'chase'; emily.chaseT = 6;  // she FELT that
+          sting(); giggle();
+          whisper = ["you took something.","that's not yours.","GIVE IT BACK"][emily.anger-1] || "GIVE IT BACK";
+          whisperT = 3.5;
+        }
+        dialog = null;
+      }
+    }
+  } else {
+    for(const p of alivePlayers()){
+      let mx=0,my=0;
+      if(input[p.keys.up])my--;
+      if(input[p.keys.down])my++;
+      if(input[p.keys.left])mx--;
+      if(input[p.keys.right])mx++;
+      const l=Math.hypot(mx,my)||1;
+      p.moving = (mx!==0||my!==0);
+      moveActor(p, mx/l*p.speed*dt, my/l*p.speed*dt);
+    }
+    // tether — you must stay together in the dark
+    const ap = alivePlayers();
+    if (ap.length>1){
+      const cx=ap.reduce((s,p)=>s+p.x,0)/ap.length, cy=ap.reduce((s,p)=>s+p.y,0)/ap.length;
+      for(const p of ap){
+        const d=Math.hypot(p.x-cx,p.y-cy);
+        if(d>TETHER){
+          moveActor(p, (cx-p.x)/d*(d-TETHER), (cy-p.y)/d*(d-TETHER));
+        }
+      }
+    }
+  }
+
+  // ---- Emily AI — hunts whichever player is closer ----
+  const near = nearestPlayer(emily.x, emily.y);
+  const target = near.p, distP = near.d;
+  const sees = distP < ANGER_SIGHT[emily.anger] && losClear(emily.x,emily.y,target.x,target.y);
+  if (sees && emily.state!=='chase') { emily.state='chase'; emily.chaseT=4; giggle(); }
+  if (emily.state==='chase') {
+    emily.chaseT -= dt;
+    if (sees) emily.chaseT = Math.max(emily.chaseT, 2.5);
+    const sp = ANGER_SPEED[emily.anger] * (dialog?0.4:1);
+    if (distP > 2) {
+      // simple chase w/ wall slide
+      const dx=(target.x-emily.x)/distP, dy=(target.y-emily.y)/distP;
+      moveActor(emily, dx*sp*dt, dy*sp*dt);
+      // if stuck against wall, jitter along it
+      if (Math.abs(dx)>0.1 && collides(emily.x+dx*4, emily.y, emily.r))
+        moveActor(emily, 0, Math.sign(dy||1)*sp*dt);
+      if (Math.abs(dy)>0.1 && collides(emily.x, emily.y+dy*4, emily.r))
+        moveActor(emily, Math.sign(dx||1)*sp*dt, 0);
+    }
+    if (emily.chaseT <= 0) emily.state='patrol';
+  } else {
+    // patrol waypoints; angrier = patrols closer to you
+    let tgt = emily.waypoints[emily.wp];
+    if (emily.anger>=2 && Math.random()<0.002) { emily.state='chase'; emily.chaseT=3; giggle(); }
+    const d = Math.hypot(tgt[0]-emily.x, tgt[1]-emily.y);
+    if (d < 20) emily.wp = (emily.wp+1) % emily.waypoints.length;
+    else moveActor(emily, (tgt[0]-emily.x)/d*emily.speed*dt, (tgt[1]-emily.y)/d*emily.speed*dt);
+  }
+  // caught — either player is enough; she keeps you both
+  if (distP < target.r + emily.r + 2) {
+    gameOver=true; jumpT=1.4; shake=28; screech();
+    if(droneGain)droneGain.gain.value=0;
+  }
+
+  // win — every player at the front door with all 3 locks open
+  const atDoor = p => p.y > WORLD.h-60 &&
+      p.x > frontDoor.x-frontDoor.w/2 && p.x < frontDoor.x+frontDoor.w/2;
+  if (itemsGot===3 && alivePlayers().every(atDoor)) {
+    won=true; if(droneGain)droneGain.gain.value=0;
+    pluck(523,.3); setTimeout(()=>pluck(659,.3),200); setTimeout(()=>pluck(784,.3),400);
+  }
+
+  // whispers
+  nextWhisper -= dt;
+  if (nextWhisper<=0){
+    whisper = whispers[Math.floor(Math.random()*whispers.length)];
+    whisperT = 3; nextWhisper = 10 + Math.random()*10 - emily.anger*2;
+  }
+  if (whisperT>0) whisperT-=dt;
+
+  // music box — faster & more wrong as anger rises
+  mbTimer -= dt;
+  if (mbTimer<=0){
+    const detune = 1 + (Math.random()-0.5)*0.012*emily.anger*3;
+    pluck(MUSICBOX[mbStep]*detune, 0.11 + emily.anger*0.02);
+    mbStep=(mbStep+1)%MUSICBOX.length;
+    mbTimer = (emily.state==='chase'? 0.19 : 0.3) - emily.anger*0.02;
+  }
+  // heartbeat
+  const fear = Math.max(0, Math.min(1, 1 - distP/420));
+  if(heartGain) heartGain.gain.value = 0.1 + fear*0.9;
+  heartTimer -= dt;
+  if(heartTimer<=0){ thump(); heartTimer = 1.15 - fear*0.8; }
+  if(droneGain&&!gameOver) droneGain.gain.value = 0.1 + fear*0.12 + emily.anger*0.02;
+
+  shake = Math.max(0, shake - dt*40);
+}
+
+// ---------------- render ----------------
+function drawWorld(camX,camY){
+  // wooden floor — planks with warm tone
+  ctx.fillStyle='#2e241b'; ctx.fillRect(0,0,W,H);
+  const plankH = 34;
+  for(let y=-(((camY%plankH)+plankH)%plankH); y<H; y+=plankH){
+    const row = Math.floor((y+camY)/plankH);
+    ctx.fillStyle = row%2===0 ? 'rgba(255,210,150,0.045)' : 'rgba(0,0,0,0.07)';
+    ctx.fillRect(0,y,W,plankH);
+    ctx.strokeStyle='rgba(0,0,0,0.28)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+    // plank end-joints, offset per row
+    const off = (row%2)*90;
+    for(let x=-(((camX+off)%180)+180)%180; x<W; x+=180){
+      ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+plankH); ctx.stroke();
+    }
+  }
+  // rugs — bordered, patterned
+  const rug=(rx,ry,rw,rh,base,border)=>{
+    const x=rx-camX,y=ry-camY;
+    if(x>W||y>H||x+rw<0||y+rh<0)return;
+    ctx.fillStyle=base; ctx.fillRect(x,y,rw,rh);
+    ctx.strokeStyle=border; ctx.lineWidth=3; ctx.strokeRect(x+8,y+8,rw-16,rh-16);
+    ctx.strokeStyle='rgba(0,0,0,0.3)'; ctx.lineWidth=1; ctx.strokeRect(x+16,y+16,rw-32,rh-32);
+  };
+  rug(700,950,380,240,'rgba(108,34,44,0.5)','rgba(190,150,90,0.5)');
+  rug(150,100,340,180,'rgba(40,60,88,0.45)','rgba(170,160,120,0.45)');
+  rug(900,420,300,180,'rgba(88,44,90,0.35)','rgba(190,150,90,0.4)');
+  // room mood tints
+  for(const rt of roomTints){
+    const x=rt[0]-camX,y=rt[1]-camY;
+    if(x>W||y>H||x+rt[2]<0||y+rt[3]<0)continue;
+    ctx.fillStyle=rt[4]; ctx.fillRect(x,y,rt[2],rt[3]);
+  }
+  // walls — panelled, with base shadow
+  const solidCount = walls.length - furniture.length;
+  for(let i=0;i<solidCount;i++){
+    const w=walls[i];
+    const x=w[0]-camX,y=w[1]-camY;
+    if(x>W||y>H||x+w[2]<0||y+w[3]<0)continue;
+    ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(x+3,y+5,w[2],w[3]); // drop shadow
+    ctx.fillStyle='#463339'; ctx.fillRect(x,y,w[2],w[3]);
+    ctx.fillStyle='#5d454c'; ctx.fillRect(x,y,w[2],Math.min(6,w[3]));  // top light
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.fillRect(x,y+w[3]-Math.min(5,w[3]),w[2],Math.min(5,w[3]));     // baseboard
+    // panel lines on long walls
+    if(w[2]>120){ ctx.strokeStyle='rgba(0,0,0,0.22)'; ctx.lineWidth=1;
+      for(let px=x+60;px<x+w[2]-20;px+=60){ctx.beginPath();ctx.moveTo(px,y+4);ctx.lineTo(px,y+w[3]-4);ctx.stroke();}
+    }
+    if(w[3]>120){ ctx.strokeStyle='rgba(0,0,0,0.22)'; ctx.lineWidth=1;
+      for(let py=y+60;py<y+w[3]-20;py+=60){ctx.beginPath();ctx.moveTo(x+4,py);ctx.lineTo(x+w[2]-4,py);ctx.stroke();}
+    }
+  }
+  // furniture — warm wood pieces
+  for(const f of furniture){
+    const x=f[0]-camX,y=f[1]-camY;
+    if(x>W||y>H||x+f[2]<0||y+f[3]<0)continue;
+    ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fillRect(x+3,y+5,f[2],f[3]);
+    ctx.fillStyle='#5a3d26'; ctx.fillRect(x,y,f[2],f[3]);
+    ctx.fillStyle='#75512f'; ctx.fillRect(x+3,y+3,f[2]-6,f[3]-6);
+    ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=1;
+    for(let gy=y+8;gy<y+f[3]-4;gy+=9){ctx.beginPath();ctx.moveTo(x+5,gy);ctx.lineTo(x+f[2]-5,gy);ctx.stroke();}
+    ctx.strokeStyle='#2e1d10'; ctx.lineWidth=2; ctx.strokeRect(x,y,f[2],f[3]);
+  }
+  // portraits — gilt frames, faces too faded to name
+  for(const p of portraits){
+    const x=p[0]-camX,y=p[1]-camY;
+    if(x<-40||y<-40||x>W+40||y>H+40)continue;
+    ctx.save(); ctx.translate(x,y);
+    ctx.fillStyle='#7a6230'; ctx.fillRect(-14,-18,28,36);
+    ctx.fillStyle='#1c1620'; ctx.fillRect(-11,-15,22,30);
+    ctx.fillStyle='#4a4148';
+    ctx.beginPath(); ctx.ellipse(0,-4,6,8,0,0,Math.PI*2); ctx.fill(); // a pale bust
+    ctx.fillStyle='#6a5f62';
+    ctx.beginPath(); ctx.ellipse(0,-7,3.4,4.4,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#8a7238'; ctx.lineWidth=1.5; ctx.strokeRect(-14,-18,28,36);
+    ctx.restore();
+  }
+  // chandelier — hangs over the foyer
+  {
+    const x=chandelier.x-camX, y=chandelier.y-camY;
+    if(x>-80&&y>-80&&x<W+80&&y<H+80){
+      ctx.save(); ctx.translate(x,y);
+      ctx.strokeStyle='#6a5a30'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(0,0,26,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.stroke();
+      for(let a=0;a<6;a++){
+        const ang=a/6*Math.PI*2 + time*0.05;
+        const cx=Math.cos(ang)*26, cy=Math.sin(ang)*26;
+        ctx.fillStyle='#e8dcc0'; ctx.fillRect(cx-1.5,cy-5,3,6);
+        const fl=1+Math.sin(time*11+a*2)*0.3;
+        ctx.save(); ctx.translate(cx,cy-7); ctx.scale(1,fl);
+        ctx.shadowColor='#ffb84a'; ctx.shadowBlur=8;
+        ctx.fillStyle='#ffd88a'; ctx.beginPath(); ctx.ellipse(0,0,1.8,3.4,0,0,Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+  }
+  // wall sconces — flickering flames
+  for(const s of sconces){
+    const x=s[0]-camX,y=s[1]-camY;
+    if(x<-40||y<-40||x>W+40||y>H+40)continue;
+    ctx.fillStyle='#6a5236'; ctx.fillRect(x-2,y-2,4,8);
+    const fl = 1 + Math.sin(time*13 + s[0])*0.25;
+    ctx.save(); ctx.translate(x,y-5); ctx.scale(1,fl);
+    ctx.shadowColor='#ffb84a'; ctx.shadowBlur=12;
+    ctx.fillStyle='#ffd88a';
+    ctx.beginPath(); ctx.ellipse(0,0,2.4,5,0,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff2c8';
+    ctx.beginPath(); ctx.ellipse(0,1,1.1,2.4,0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  // front door
+  ctx.save(); ctx.translate(frontDoor.x-camX, WORLD.h-T-camY);
+  ctx.fillStyle = itemsGot===3 ? '#274d2e' : '#3d2a20';
+  ctx.fillRect(-frontDoor.w/2, -6, frontDoor.w, 24);
+  ctx.strokeStyle = itemsGot===3 ? '#57b06a' : '#7a5a45';
+  ctx.lineWidth=2; ctx.strokeRect(-frontDoor.w/2,-6,frontDoor.w,24);
+  ctx.fillStyle = itemsGot===3 ? '#a5ffb8' : '#c9a88a';
+  ctx.font='11px Georgia'; ctx.textAlign='center';
+  ctx.fillText(itemsGot===3 ? 'THE DOOR IS OPEN' : `FRONT DOOR — ${itemsGot}/3 LOCKS`, 0, 6);
+  ctx.restore();
+  // little person sprite, top-down-ish 3/4 view
+  function drawPerson(x,y,suit,trim,hair,skin,bob,scale=1){
+    ctx.save(); ctx.translate(x,y); ctx.scale(scale,scale);
+    // shadow
+    ctx.fillStyle='rgba(0,0,0,0.45)';
+    ctx.beginPath(); ctx.ellipse(0,12,11,4.5,0,0,Math.PI*2); ctx.fill();
+    ctx.translate(0,bob);
+    // body / coat
+    ctx.fillStyle=suit;
+    ctx.beginPath(); ctx.moveTo(-8,-2); ctx.quadraticCurveTo(-10,10,-7,12);
+    ctx.lineTo(7,12); ctx.quadraticCurveTo(10,10,8,-2);
+    ctx.quadraticCurveTo(0,-8,-8,-2); ctx.fill();
+    // trim (shirt / apron)
+    ctx.fillStyle=trim;
+    ctx.beginPath(); ctx.moveTo(-3,-3); ctx.lineTo(3,-3); ctx.lineTo(2,10); ctx.lineTo(-2,10); ctx.closePath(); ctx.fill();
+    // arms
+    ctx.strokeStyle=suit; ctx.lineWidth=3.4; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(-8,0); ctx.lineTo(-11,7); ctx.moveTo(8,0); ctx.lineTo(11,7); ctx.stroke();
+    // head
+    ctx.fillStyle=skin;
+    ctx.beginPath(); ctx.arc(0,-11,6.8,0,Math.PI*2); ctx.fill();
+    // hair
+    ctx.fillStyle=hair;
+    ctx.beginPath(); ctx.arc(0,-13,6.8,Math.PI*0.95,Math.PI*2.05); ctx.fill();
+    ctx.restore();
+  }
+  // servants — warm candlelit figures
+  for(const s of servants){
+    const x=s.x-camX, y=s.y-camY;
+    if(x<-60||y<-60||x>W+60||y>H+60)continue;
+    const sway = Math.sin(time*1.6+s.x)*1.2;
+    drawPerson(x,y,s.suit,s.trim,s.hair,'#d8b894',sway*0.4);
+    // candle in hand with live flame
+    const fl = 1 + Math.sin(time*12+s.y)*0.3;
+    ctx.save(); ctx.translate(x+12,y+4);
+    ctx.fillStyle='#e8dcc0'; ctx.fillRect(-1.5,-6,3,7);
+    ctx.translate(0,-8); ctx.scale(1,fl);
+    ctx.shadowColor='#ffb84a'; ctx.shadowBlur=10;
+    ctx.fillStyle='#ffd88a'; ctx.beginPath(); ctx.ellipse(0,0,2,4,0,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    if(nearestPlayer(s.x,s.y).d<55 && !dialog){
+      ctx.fillStyle='#e8d8a8'; ctx.font='12px Georgia'; ctx.textAlign='center';
+      ctx.fillText('[E] talk', x, y-24);
+    }
+  }
+  // Emily — small, pale, wrong
+  {
+    const x=emily.x-camX, y=emily.y-camY;
+    ctx.save(); ctx.translate(x,y);
+    // she doesn't quite touch the floor
+    ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.ellipse(0,14,9,3.4,0,0,Math.PI*2); ctx.fill();
+    const hover = Math.sin(time*1.4)*1.6;
+    ctx.translate(0,hover);
+    // cold aura wisps
+    ctx.strokeStyle='rgba(160,180,220,0.13)'; ctx.lineWidth=1.5;
+    for(let wsp=0; wsp<3; wsp++){
+      const wa = time*0.9 + wsp*2.1;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(wa)*13, Math.sin(wa*1.3)*6);
+      ctx.quadraticCurveTo(Math.cos(wa+1)*18, -14-Math.sin(wa)*5, Math.cos(wa+2)*9, -22);
+      ctx.stroke();
+    }
+    const sway = emily.state==='chase' ? Math.sin(time*26)*2 : Math.sin(time*2.2)*1;
+    ctx.translate(sway,0);
+    // dress
+    ctx.fillStyle='#c7c3d4';
+    ctx.beginPath(); ctx.moveTo(0,-8); ctx.lineTo(9,10); ctx.lineTo(-9,10); ctx.closePath(); ctx.fill();
+    // head — too pale
+    ctx.fillStyle='#efe9e4';
+    ctx.beginPath(); ctx.arc(0,-11,6.5,0,Math.PI*2); ctx.fill();
+    // hair
+    ctx.fillStyle='#241d1a';
+    ctx.beginPath(); ctx.arc(0,-13,6.5,Math.PI,Math.PI*2); ctx.fill();
+    ctx.fillRect(-6.5,-13,2.5,10); ctx.fillRect(4,-13,2.5,10);
+    // eyes
+    ctx.fillStyle = emily.state==='chase' ? '#ff3333' : '#191919';
+    if(emily.state==='chase'){ ctx.shadowColor='#ff3333'; ctx.shadowBlur=8; }
+    ctx.fillRect(-3.4,-12,2,2.4); ctx.fillRect(1.4,-12,2,2.4);
+    ctx.restore();
+  }
+  // players — walking bob when moving
+  for(const p of alivePlayers()){
+    const bob = p.moving ? Math.sin(time*13 + p.x*0.01)*1.8 : Math.sin(time*2)*0.6;
+    drawPerson(p.x-camX, p.y-camY, p.suit, p.tint, p.hair, '#e0bc98', bob);
+  }
+  // dust motes drifting in the air
+  ctx.fillStyle='#ffe8c0';
+  for(let i=0;i<MOTES;i++){
+    const bx = moteHash(i,1)*WORLD.w, by = moteHash(i,2)*WORLD.h;
+    const x = bx + Math.sin(time*0.3 + i)*22 - camX;
+    const y = by + Math.sin(time*0.22 + i*1.7)*16 + Math.sin(time*0.13+i)*8 - camY;
+    if(x<0||y<0||x>W||y>H)continue;
+    ctx.globalAlpha = 0.05 + moteHash(i,3)*0.08 + Math.sin(time*0.8+i)*0.02;
+    ctx.fillRect(x, y, 1.6, 1.6);
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawLight(camX,camY){
+  lctx.globalCompositeOperation='source-over';
+  lctx.fillStyle='rgba(0,0,0,0.84)'; lctx.fillRect(0,0,W,H);
+  lctx.globalCompositeOperation='destination-out';
+  // each player's candle — warm flickering circle
+  for(const p of alivePlayers()){
+    const px=p.x-camX, py=p.y-camY;
+    const r = 320 + Math.sin(time*9+p.x)*8 + Math.sin(time*23)*3;
+    let g=lctx.createRadialGradient(px,py,10,px,py,r);
+    g.addColorStop(0,'rgba(0,0,0,0.97)'); g.addColorStop(0.55,'rgba(0,0,0,0.6)'); g.addColorStop(1,'rgba(0,0,0,0)');
+    lctx.fillStyle=g; lctx.beginPath(); lctx.arc(px,py,r,0,Math.PI*2); lctx.fill();
+  }
+  // chandelier pool of light over the foyer
+  {
+    const x=chandelier.x-camX, y=chandelier.y-camY;
+    if(x>-300&&y>-300&&x<W+300&&y<H+300){
+      const cr = 260 + Math.sin(time*8)*10;
+      const cg=lctx.createRadialGradient(x,y,10,x,y,cr);
+      cg.addColorStop(0,'rgba(0,0,0,0.9)'); cg.addColorStop(1,'rgba(0,0,0,0)');
+      lctx.fillStyle=cg; lctx.beginPath(); lctx.arc(x,y,cr,0,Math.PI*2); lctx.fill();
+    }
+  }
+  // sconce pools of light
+  for(const s of sconces){
+    const x=s[0]-camX,y=s[1]-camY;
+    if(x<-160||y<-160||x>W+160||y>H+160)continue;
+    const sr = 110 + Math.sin(time*13+s[0])*8;
+    const sg=lctx.createRadialGradient(x,y,3,x,y,sr);
+    sg.addColorStop(0,'rgba(0,0,0,0.85)'); sg.addColorStop(1,'rgba(0,0,0,0)');
+    lctx.fillStyle=sg; lctx.beginPath(); lctx.arc(x,y,sr,0,Math.PI*2); lctx.fill();
+  }
+  // servants' candles
+  for(const s of servants){
+    const x=s.x-camX,y=s.y-camY;
+    if(x<-120||y<-120||x>W+120||y>H+120)continue;
+    const sr = 90 + Math.sin(time*7+s.x)*5;
+    const sg=lctx.createRadialGradient(x,y,4,x,y,sr);
+    sg.addColorStop(0,'rgba(0,0,0,0.8)'); sg.addColorStop(1,'rgba(0,0,0,0)');
+    lctx.fillStyle=sg; lctx.beginPath(); lctx.arc(x,y,sr,0,Math.PI*2); lctx.fill();
+  }
+  // Emily has her own cold faint glow — you always half-see her coming
+  {
+    const x=emily.x-camX,y=emily.y-camY;
+    const eg=lctx.createRadialGradient(x,y,2,x,y,55);
+    eg.addColorStop(0,'rgba(0,0,0,0.55)'); eg.addColorStop(1,'rgba(0,0,0,0)');
+    lctx.fillStyle=eg; lctx.beginPath(); lctx.arc(x,y,55,0,Math.PI*2); lctx.fill();
+  }
+  ctx.drawImage(lightCvs,0,0);
+  // warm candlelight glow — additive golden pools
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  for(const p of alivePlayers()){
+    const px=p.x-camX, py=p.y-camY;
+    const g=ctx.createRadialGradient(px,py,5,px,py,200);
+    g.addColorStop(0,'rgba(255,170,70,0.13)'); g.addColorStop(1,'rgba(255,170,70,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(px,py,200,0,Math.PI*2); ctx.fill();
+  }
+  for(const s of sconces){
+    const x=s[0]-camX,y=s[1]-camY;
+    if(x<-120||y<-120||x>W+120||y>H+120)continue;
+    const g=ctx.createRadialGradient(x,y,2,x,y,90);
+    g.addColorStop(0,'rgba(255,160,60,0.14)'); g.addColorStop(1,'rgba(255,160,60,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,90,0,Math.PI*2); ctx.fill();
+  }
+  {
+    const x=chandelier.x-camX, y=chandelier.y-camY;
+    const g=ctx.createRadialGradient(x,y,5,x,y,200);
+    g.addColorStop(0,'rgba(255,180,80,0.16)'); g.addColorStop(1,'rgba(255,180,80,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,200,0,Math.PI*2); ctx.fill();
+  }
+  // Emily's cold light — you feel her before you see her
+  {
+    const x=emily.x-camX, y=emily.y-camY;
+    if(x>-120&&y>-120&&x<W+120&&y<H+120){
+      const g=ctx.createRadialGradient(x,y,2,x,y,80);
+      g.addColorStop(0,'rgba(120,160,255,0.10)'); g.addColorStop(1,'rgba(120,160,255,0)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,80,0,Math.PI*2); ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawHUD(){
+  ctx.font='14px Georgia'; ctx.textAlign='left';
+  ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(14,14,190,58);
+  ctx.fillStyle='#d0b878';
+  ctx.fillText(`LOCKS OPENED  ${itemsGot} / 3`, 26, 38);
+  ctx.fillStyle=['#8a9a8a','#c4a86a','#c47a5a','#c43a3a'][emily.anger];
+  ctx.fillText(`EMILY: ${['calm','uneasy','angry','FURIOUS'][emily.anger]}`, 26, 60);
+  // objective board — pinned top right like a scrap of paper
+  {
+    const bw=252, bx=W-bw-14, by=14;
+    const objs = [
+      { done: servants[0].given, text: 'Get the key from ALBERT' },
+      { done: servants[1].given, text: 'Get the bolt from MARGARET' },
+      { done: servants[2].given, text: 'Get the chain from THOMAS' },
+      { done: won, text: alivePlayers().length>1 ? 'ALL reach the front door' : 'Reach the front door' },
+    ];
+    const bh = 34 + objs.length*22 + 8;
+    ctx.save();
+    ctx.translate(bx+bw/2, by+bh/2); ctx.rotate(0.012); ctx.translate(-(bx+bw/2), -(by+bh/2));
+    ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(bx+3,by+4,bw,bh);
+    ctx.fillStyle='#d8ccb0'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#b8a888'; ctx.fillRect(bx,by,bw,3);
+    // pin
+    ctx.fillStyle='#8a2f2f'; ctx.beginPath(); ctx.arc(bx+bw/2,by+8,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#3a2f22'; ctx.font='bold 13px Georgia'; ctx.textAlign='center';
+    ctx.fillText('— ESCAPE PLAN —', bx+bw/2, by+26);
+    ctx.font='13px Georgia'; ctx.textAlign='left';
+    objs.forEach((o,i)=>{
+      const oy = by+48+i*22;
+      ctx.strokeStyle='#5a4a35'; ctx.lineWidth=1.4;
+      ctx.strokeRect(bx+14, oy-10, 11, 11);
+      if(o.done){
+        ctx.strokeStyle='#7a2020'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(bx+15,oy-5); ctx.lineTo(bx+19,oy-1); ctx.lineTo(bx+27,oy-12); ctx.stroke();
+      }
+      ctx.fillStyle = o.done ? '#8a7a60' : '#3a2f22';
+      ctx.fillText(o.text, bx+34, oy);
+      if(o.done){
+        ctx.strokeStyle='#8a7a60'; ctx.lineWidth=1;
+        const tw=ctx.measureText(o.text).width;
+        ctx.beginPath(); ctx.moveTo(bx+34,oy-4); ctx.lineTo(bx+34+tw,oy-4); ctx.stroke();
+      }
+    });
+    ctx.restore();
+  }
+  // whisper
+  if (whisperT>0 && whisper){
+    ctx.globalAlpha = Math.min(1, whisperT);
+    ctx.fillStyle='#c47a8a'; ctx.font='italic 17px Georgia'; ctx.textAlign='center';
+    ctx.fillText(whisper, W/2 + Math.sin(time*40)*1.5, 90);
+    ctx.globalAlpha=1;
+  }
+  // dialogue box
+  if (dialog){
+    ctx.fillStyle='rgba(8,6,10,0.88)'; ctx.fillRect(120,H-140,W-240,110);
+    ctx.strokeStyle='#3a3448'; ctx.strokeRect(120,H-140,W-240,110);
+    ctx.fillStyle='#d0b878'; ctx.font='13px Georgia'; ctx.textAlign='left';
+    ctx.fillText(dialog.name, 140, H-115);
+    ctx.fillStyle='#c8c0b0'; ctx.font='16px Georgia';
+    const line = dialog.lines[dialog.i] || '';
+    const shown = line.slice(0, Math.floor(dialog.t*46));
+    ctx.fillText(shown, 140, H-84);
+    ctx.fillStyle='#666'; ctx.font='11px Georgia'; ctx.textAlign='right';
+    ctx.fillText('space — hurry', W-140, H-44);
+  }
+}
+
+let last=0, started=false;
+function begin(n){
+  if(started)return; started=true;
+  for(let i=0;i<players.length;i++) players[i].active = i<n;
+  initAudio();
+  document.getElementById('ui').classList.add('hidden');
+  last=performance.now(); requestAnimationFrame(loop);
+}
+for(let n=1;n<=4;n++)
+  document.getElementById('begin'+n).addEventListener('click',e=>{e.stopPropagation();begin(n);});
+addEventListener('keydown', e=>{
+  if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(e.key.toLowerCase())) e.preventDefault();
+});
+
+function loop(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  update(dt);
+  const ap=alivePlayers();
+  const cx=ap.reduce((s,p)=>s+p.x,0)/ap.length, cy=ap.reduce((s,p)=>s+p.y,0)/ap.length;
+  const sx=(Math.random()-0.5)*shake, sy=(Math.random()-0.5)*shake;
+  const camX=cx-W/2+sx, camY=cy-H/2+sy;
+  drawWorld(camX,camY);
+  drawLight(camX,camY);
+  // Emily proximity terror — the world reacts to her
+  {
+    const near = nearestPlayer(emily.x, emily.y);
+    const fear = Math.max(0, Math.min(1, 1 - near.d/420));
+    if (fear > 0.05 && !gameOver && !won){
+      // creeping red pulse at the screen edges
+      const pulse = 0.5 + Math.sin(time*7)*0.5;
+      const rg = ctx.createRadialGradient(W/2,H/2,H*0.34,W/2,H/2,H*0.72);
+      rg.addColorStop(0,'rgba(120,0,10,0)');
+      rg.addColorStop(1,`rgba(120,0,10,${0.28*fear*pulse})`);
+      ctx.fillStyle=rg; ctx.fillRect(0,0,W,H);
+      // static crawls in as she closes
+      ctx.globalAlpha = 0.10*fear;
+      for(let i=0;i<fear*220;i++){
+        ctx.fillStyle=Math.random()<0.5?'#fff':'#000';
+        ctx.fillRect(Math.random()*W,Math.random()*H,2,2);
+      }
+      ctx.globalAlpha=1;
+    }
+  }
+  drawHUD();
+  // vignette + grain
+  const v=ctx.createRadialGradient(W/2,H/2,H*0.32,W/2,H/2,H*0.78);
+  v.addColorStop(0,'rgba(0,0,0,0)'); v.addColorStop(1,'rgba(5,0,8,0.6)');
+  ctx.fillStyle=v; ctx.fillRect(0,0,W,H);
+  ctx.globalAlpha=0.035;
+  for(let i=0;i<50;i++){ctx.fillStyle=Math.random()<0.5?'#fff':'#000';ctx.fillRect(Math.random()*W,Math.random()*H,2,2);}
+  ctx.globalAlpha=1;
+
+  if(gameOver){
+    jumpT=Math.max(0,jumpT-dt);
+    if(jumpT>0){
+      ctx.fillStyle= jumpT%0.14<0.07 ? '#12000a':'#000'; ctx.fillRect(0,0,W,H);
+      const sc=1+(1.4-jumpT)*2.2;
+      ctx.save(); ctx.translate(W/2,H/2); ctx.scale(sc,sc);
+      // Emily's face, close
+      ctx.fillStyle='#efe9e4'; ctx.beginPath(); ctx.arc(0,0,70,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#241d1a'; ctx.beginPath(); ctx.arc(0,-22,70,Math.PI,Math.PI*2); ctx.fill();
+      ctx.fillRect(-70,-22,20,110); ctx.fillRect(50,-22,20,110);
+      ctx.shadowColor='#ff2222'; ctx.shadowBlur=30; ctx.fillStyle='#0a0a0a';
+      ctx.beginPath(); ctx.ellipse(-24,-8,11,16,0,0,Math.PI*2); ctx.ellipse(24,-8,11,16,0,0,Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.strokeStyle='#7a1a1a'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(0,34,26,0.1*Math.PI,0.9*Math.PI); ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.fillStyle='rgba(0,0,0,0.87)'; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle='#c47a8a'; ctx.font='40px Georgia'; ctx.textAlign='center';
+      ctx.fillText('"now you can stay forever."', W/2, H/2-20);
+      ctx.fillStyle='#777'; ctx.font='16px Georgia';
+      ctx.fillText(`${itemsGot}/3 locks — press R to wake up again`, W/2, H/2+26);
+      if(input['r'])location.reload();
+    }
+  }
+  if(won){
+    ctx.fillStyle='rgba(0,0,0,0.82)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#a5ffb8'; ctx.font='40px Georgia'; ctx.textAlign='center';
+    ctx.fillText('YOU ESCAPED', W/2, H/2-30);
+    ctx.fillStyle='#999'; ctx.font='16px Georgia';
+    ctx.fillText('behind you, faintly: "...come back soon."', W/2, H/2+14);
+    ctx.fillText(`escaped in ${Math.floor(time)}s — press R to play again`, W/2, H/2+44);
+    if(input['r'])location.reload();
+  }
+  requestAnimationFrame(loop);
+}
+})();
+</script>
+</body>
+</html>
