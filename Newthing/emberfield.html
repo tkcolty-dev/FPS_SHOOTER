@@ -1,0 +1,219 @@
+<title>Emberfield</title>
+<style>
+  :root{
+    --ground:#0b0710;
+    --ground-2:#140a1c;
+    --ink:#f6ecff;
+    --muted:#9a86b4;
+    --amber:#ffb347;
+    --magenta:#ff2d6f;
+    --edge:rgba(246,236,255,.14);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(120% 120% at 30% 10%, var(--ground-2), var(--ground) 70%);
+    color:var(--ink);
+    font-family:"Georgia","Times New Roman",serif;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  canvas{position:fixed;inset:0;display:block;touch-action:none}
+
+  .frame{
+    position:fixed;inset:0;
+    pointer-events:none;
+    box-shadow:inset 0 0 220px 40px rgba(0,0,0,.75);
+  }
+
+  .plate{
+    position:fixed;top:clamp(20px,4vw,44px);left:clamp(20px,4vw,44px);
+    pointer-events:none;z-index:3;
+    max-width:min(70vw,420px);
+  }
+  .eyebrow{
+    font-family:"Courier New",monospace;
+    text-transform:uppercase;letter-spacing:.42em;
+    font-size:11px;color:var(--muted);
+    padding-left:.2em;margin-bottom:14px;
+  }
+  h1{
+    font-weight:400;font-style:italic;
+    font-size:clamp(44px,8vw,88px);
+    line-height:.9;letter-spacing:-.02em;
+    text-wrap:balance;
+    background:linear-gradient(105deg,var(--amber),var(--magenta) 85%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 4px 30px rgba(255,45,111,.25));
+  }
+  .sub{
+    margin-top:18px;font-size:15px;line-height:1.55;color:var(--muted);
+    max-width:34ch;font-style:italic;
+  }
+
+  .hint{
+    position:fixed;bottom:clamp(18px,4vw,40px);left:50%;transform:translateX(-50%);
+    z-index:3;pointer-events:none;
+    font-family:"Courier New",monospace;
+    text-transform:uppercase;letter-spacing:.3em;font-size:11px;
+    color:var(--muted);
+    display:flex;gap:26px;align-items:center;
+    opacity:0;animation:rise 1.2s ease .6s forwards;
+    text-align:center;
+  }
+  .hint b{color:var(--ink);font-weight:400}
+  .hint span{white-space:nowrap}
+  @keyframes rise{from{opacity:0;transform:translate(-50%,14px)}to{opacity:.9;transform:translate(-50%,0)}}
+
+  @media (prefers-reduced-motion:reduce){
+    .hint{animation:none;opacity:.9}
+  }
+</style>
+
+<canvas id="c"></canvas>
+<div class="frame"></div>
+
+<div class="plate">
+  <div class="eyebrow">Generative field · no.1</div>
+  <h1>Emberfield</h1>
+  <p class="sub">Twelve thousand embers drifting on an invisible current. Draw your cursor through to bend the flow.</p>
+</div>
+
+<div class="hint">
+  <span><b>Move</b> to stir</span>
+  <span><b>Click</b> to ignite</span>
+  <span><b>Hold</b> to draw</span>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha:false });
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  let W, H, DPR;
+  function resize(){
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+    ctx.fillStyle = '#0b0710';
+    ctx.fillRect(0,0,W,H);
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // ---- palette ramp: amber -> magenta ----
+  const A = [255,179,71], B = [255,45,111];
+  function ramp(t){ // t 0..1
+    const r = A[0]+(B[0]-A[0])*t | 0;
+    const g = A[1]+(B[1]-A[1])*t | 0;
+    const b = A[2]+(B[2]-A[2])*t | 0;
+    return `rgba(${r},${g},${b},`;
+  }
+
+  // ---- flow field (cheap smooth pseudo-noise) ----
+  function field(x, y, t){
+    const a = Math.sin(x*0.0016 + Math.cos(y*0.0021 + t*0.6));
+    const b = Math.cos(y*0.0016 - Math.sin(x*0.0026 - t*0.4));
+    return (a + b) * 1.4;
+  }
+
+  const COUNT = innerWidth < 640 ? 5000 : 12000;
+  const px = new Float32Array(COUNT);
+  const py = new Float32Array(COUNT);
+  const pv = new Float32Array(COUNT); // life/speed for color
+  function seed(i){
+    px[i] = Math.random()*W;
+    py[i] = Math.random()*H;
+    pv[i] = Math.random();
+  }
+  for(let i=0;i<COUNT;i++) seed(i);
+
+  // ---- pointer ----
+  const ptr = { x:-1e4, y:-1e4, down:false, active:false };
+  function move(e){
+    const p = e.touches ? e.touches[0] : e;
+    ptr.x = p.clientX; ptr.y = p.clientY; ptr.active = true;
+  }
+  addEventListener('mousemove', move);
+  addEventListener('touchmove', e=>{ move(e); }, {passive:true});
+  addEventListener('mousedown', e=>{ ptr.down=true; burst(e.clientX,e.clientY); });
+  addEventListener('mouseup', ()=> ptr.down=false);
+  addEventListener('mouseleave', ()=>{ ptr.active=false; ptr.down=false; });
+  addEventListener('touchstart', e=>{ ptr.down=true; const p=e.touches[0]; burst(p.clientX,p.clientY); move(e); }, {passive:true});
+  addEventListener('touchend', ()=> ptr.down=false);
+
+  // ---- ignition rings ----
+  const rings = [];
+  function burst(x,y){
+    rings.push({x,y,r:0,a:1});
+    // shove nearby embers outward
+    for(let i=0;i<COUNT;i++){
+      const dx=px[i]-x, dy=py[i]-y, d=Math.hypot(dx,dy);
+      if(d<180){ const f=(1-d/180)*46; px[i]+=dx/d*f; py[i]+=dy/d*f; pv[i]=1; }
+    }
+  }
+
+  let t = 0;
+  function frame(){
+    t += reduce ? 0.0 : 0.016;
+
+    // trail fade
+    ctx.fillStyle = 'rgba(11,7,16,0.11)';
+    ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation = 'lighter';
+
+    const R = 150, R2 = R*R;
+    for(let i=0;i<COUNT;i++){
+      let x=px[i], y=py[i];
+      const ang = field(x,y,t);
+      let vx = Math.cos(ang)*1.15;
+      let vy = Math.sin(ang)*1.15;
+
+      // pointer bend
+      if(ptr.active){
+        const dx=x-ptr.x, dy=y-ptr.y, d2=dx*dx+dy*dy;
+        if(d2 < R2){
+          const d=Math.sqrt(d2)||1, f=(1-d/R);
+          // swirl + gentle push
+          vx += (-dy/d)*f*2.6 + (dx/d)*f*0.7;
+          vy += ( dx/d)*f*2.6 + (dy/d)*f*0.7;
+          pv[i] += f*0.06;
+        }
+      }
+
+      x+=vx; y+=vy;
+      // wrap
+      if(x<0)x+=W; else if(x>=W)x-=W;
+      if(y<0)y+=H; else if(y>=H)y-=H;
+      px[i]=x; py[i]=y;
+
+      let life = pv[i]; if(life>1)life=1; pv[i]=life*0.985;
+      const speed = Math.min(1, (Math.abs(vx)+Math.abs(vy))/4);
+      const tint = Math.min(1, speed*0.6 + life*0.9);
+      const alpha = 0.06 + life*0.5;
+      ctx.fillStyle = ramp(tint) + alpha + ')';
+      ctx.fillRect(x, y, 1.4, 1.4);
+    }
+
+    // rings
+    ctx.lineWidth = 2;
+    for(let k=rings.length-1;k>=0;k--){
+      const g=rings[k]; g.r += 6; g.a *= 0.94;
+      ctx.strokeStyle = `rgba(255,120,150,${g.a*0.6})`;
+      ctx.beginPath(); ctx.arc(g.x,g.y,g.r,0,Math.PI*2); ctx.stroke();
+      if(g.a<0.02) rings.splice(k,1);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+
+    // continuous draw while held
+    if(ptr.down && ptr.active && Math.random()<0.25) burst(ptr.x, ptr.y);
+
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+</script>

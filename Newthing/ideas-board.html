@@ -1,0 +1,281 @@
+<title>Six Directions — Website Concept Board</title>
+<style>
+  :root{
+    --ground:#0c0c11;
+    --panel:#141420;
+    --panel-2:#1b1b2b;
+    --ink:#f1f0f7;
+    --muted:#8f8ca8;
+    --edge:rgba(255,255,255,.08);
+    --edge-hi:rgba(255,255,255,.18);
+  }
+  @media (prefers-color-scheme:light){
+    :root{
+      --ground:#f2f1f5;--panel:#ffffff;--panel-2:#f7f6fb;
+      --ink:#16151d;--muted:#5f5c72;
+      --edge:rgba(20,18,35,.10);--edge-hi:rgba(20,18,35,.22);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0c0c11;--panel:#141420;--panel-2:#1b1b2b;
+    --ink:#f1f0f7;--muted:#8f8ca8;
+    --edge:rgba(255,255,255,.08);--edge-hi:rgba(255,255,255,.18);
+  }
+  :root[data-theme="light"]{
+    --ground:#f2f1f5;--panel:#ffffff;--panel-2:#f7f6fb;
+    --ink:#16151d;--muted:#5f5c72;
+    --edge:rgba(20,18,35,.10);--edge-hi:rgba(20,18,35,.22);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(90% 60% at 50% -10%, rgba(120,90,220,.10), transparent 60%),
+      var(--ground);
+    color:var(--ink);
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    line-height:1.5;-webkit-font-smoothing:antialiased;
+    padding:clamp(24px,5vw,72px) clamp(18px,5vw,64px) 80px;
+  }
+
+  header.masthead{max-width:1200px;margin:0 auto clamp(28px,4vw,52px)}
+  .kicker{
+    font-family:"Courier New",monospace;text-transform:uppercase;
+    letter-spacing:.4em;font-size:11px;color:var(--muted);margin-bottom:18px;
+  }
+  .masthead h1{
+    font-family:Georgia,"Times New Roman",serif;
+    font-weight:400;font-size:clamp(34px,6vw,64px);line-height:1.02;
+    letter-spacing:-.02em;text-wrap:balance;max-width:16ch;
+  }
+  .masthead h1 em{font-style:italic;color:var(--muted)}
+  .masthead p{
+    margin-top:18px;max-width:56ch;color:var(--muted);font-size:16px;
+  }
+
+  .grid{
+    max-width:1200px;margin:0 auto;
+    display:grid;gap:22px;
+    grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--edge);
+    border-radius:18px;overflow:hidden;
+    display:flex;flex-direction:column;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1), border-color .35s, box-shadow .35s;
+  }
+  .card:hover{
+    transform:translateY(-6px);
+    border-color:var(--edge-hi);
+    box-shadow:0 24px 60px -30px rgba(0,0,0,.7);
+  }
+
+  /* preview stage */
+  .stage{
+    position:relative;height:180px;overflow:hidden;
+    background:var(--panel-2);
+    border-bottom:1px solid var(--edge);
+  }
+  .body{padding:22px 22px 24px;display:flex;flex-direction:column;gap:12px;flex:1}
+  .cat{
+    font-family:"Courier New",monospace;text-transform:uppercase;
+    letter-spacing:.28em;font-size:10px;color:var(--muted);
+  }
+  .name{font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1}
+  .pitch{color:var(--muted);font-size:14.5px;flex:1}
+  .tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+  .tag{
+    font-size:11px;padding:4px 10px;border-radius:99px;
+    border:1px solid var(--edge);color:var(--muted);
+    font-family:"Courier New",monospace;letter-spacing:.04em;
+  }
+  .meta{
+    display:flex;align-items:center;gap:8px;margin-top:6px;
+    font-size:12px;color:var(--muted);
+  }
+  .dot{width:7px;height:7px;border-radius:99px;background:var(--acc)}
+  .name{color:var(--ink)}
+  .card:hover .name{color:var(--acc)}
+
+  @media (prefers-reduced-motion:reduce){
+    .stage *{animation:none !important}
+    .card{transition:none}
+  }
+
+  /* ============ PREVIEW 1 · PLAYDECK — arcade tile wall ============ */
+  .p-arcade{--acc:#5ee0ff}
+  .arc-grid{position:absolute;inset:20px;display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr);gap:9px}
+  .arc-grid i{border-radius:7px;background:linear-gradient(150deg,#243,#1a1a2e);border:1px solid rgba(94,224,255,.25);animation:arcPulse 2.4s ease-in-out infinite}
+  .arc-grid i:nth-child(1){animation-delay:0s}   .arc-grid i:nth-child(2){animation-delay:.15s}
+  .arc-grid i:nth-child(3){animation-delay:.3s}   .arc-grid i:nth-child(4){animation-delay:.45s}
+  .arc-grid i:nth-child(5){animation-delay:.6s}   .arc-grid i:nth-child(6){animation-delay:.75s}
+  .arc-grid i:nth-child(7){animation-delay:.9s}   .arc-grid i:nth-child(8){animation-delay:1.05s}
+  .arc-grid i:nth-child(9){animation-delay:1.2s}  .arc-grid i:nth-child(10){animation-delay:1.35s}
+  .arc-grid i:nth-child(11){animation-delay:1.5s} .arc-grid i:nth-child(12){animation-delay:1.65s}
+  @keyframes arcPulse{0%,100%{box-shadow:0 0 0 rgba(94,224,255,0);border-color:rgba(94,224,255,.18)}50%{box-shadow:0 0 18px rgba(94,224,255,.55);border-color:rgba(94,224,255,.9)}}
+
+  /* ============ PREVIEW 2 · AFTER DARK — flickering corridor ============ */
+  .p-horror{--acc:#ff4757}
+  .cor{position:absolute;inset:0;background:radial-gradient(60% 90% at 50% 60%,#241014,#080306 70%);overflow:hidden}
+  .cor::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.5) 0 2px,transparent 2px 4px);opacity:.35;animation:scan 6s linear infinite}
+  @keyframes scan{to{transform:translateY(4px)}}
+  .cor .door{position:absolute;left:50%;top:50%;width:52px;height:86px;transform:translate(-50%,-42%);background:linear-gradient(#3a0d12,#12050a);border:1px solid rgba(255,71,87,.4);box-shadow:0 0 40px rgba(255,71,87,.35)}
+  .cor .eye{position:absolute;left:50%;top:44%;width:8px;height:8px;border-radius:99px;transform:translateX(-50%);background:#ff4757;box-shadow:0 0 14px #ff4757;animation:blink 4s steps(1) infinite}
+  @keyframes blink{0%,92%,100%{opacity:1}94%,98%{opacity:0}}
+  .cor .flick{position:absolute;inset:0;background:#fff;mix-blend-mode:overlay;opacity:0;animation:flick 5s steps(1) infinite}
+  @keyframes flick{0%,97%,100%{opacity:0}97.5%{opacity:.5}98.5%{opacity:.1}}
+
+  /* ============ PREVIEW 3 · FIELD NOTES — flowing lines ============ */
+  .p-gen{--acc:#ff9d5c}
+  .flow{position:absolute;inset:0;background:#100810;overflow:hidden}
+  .flow span{position:absolute;left:-20%;width:140%;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,#ffb347,#ff2d6f,transparent);opacity:.7;
+    animation:wave 5s ease-in-out infinite}
+  .flow span:nth-child(1){top:30%;animation-delay:0s}
+  .flow span:nth-child(2){top:44%;animation-delay:.6s;opacity:.5}
+  .flow span:nth-child(3){top:58%;animation-delay:1.2s}
+  .flow span:nth-child(4){top:72%;animation-delay:1.8s;opacity:.45}
+  .flow span:nth-child(5){top:16%;animation-delay:2.4s;opacity:.4}
+  @keyframes wave{0%,100%{transform:translateY(0) scaleX(1)}50%{transform:translateY(-14px) scaleX(.96)}}
+
+  /* ============ PREVIEW 4 · SPELLBOOK — text becomes blocks ============ */
+  .p-build{--acc:#42e39b}
+  .spell{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:12px;padding:26px;background:linear-gradient(160deg,#0f1a16,#0a0f14)}
+  .spell .line{height:9px;border-radius:5px;background:rgba(66,227,155,.25);animation:type 3.5s ease-in-out infinite}
+  .spell .line:nth-child(1){width:78%}
+  .spell .line:nth-child(2){width:52%;animation-delay:.3s}
+  .spell .blocks{display:flex;gap:8px;margin-top:4px}
+  .spell .blocks b{width:34px;height:34px;border-radius:8px;background:linear-gradient(150deg,#42e39b,#1c8f66);box-shadow:0 6px 16px rgba(66,227,155,.35);animation:pop 3.5s ease-in-out infinite}
+  .spell .blocks b:nth-child(2){animation-delay:.2s}
+  .spell .blocks b:nth-child(3){animation-delay:.4s}
+  @keyframes type{0%,100%{opacity:.35}50%{opacity:.85}}
+  @keyframes pop{0%,40%{transform:translateY(8px) scale(.6);opacity:0}55%,100%{transform:none;opacity:1}}
+
+  /* ============ PREVIEW 5 · ROOT — CRT terminal ============ */
+  .p-term{--acc:#5cff8f}
+  .term{position:absolute;inset:0;background:#04120a;padding:18px 20px;font-family:"Courier New",monospace;font-size:12px;color:#5cff8f;overflow:hidden}
+  .term::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 2px,transparent 2px 3px);pointer-events:none}
+  .term .row{white-space:nowrap;overflow:hidden;width:0;animation:term 6s steps(30) infinite}
+  .term .row:nth-child(1){animation-delay:0s}
+  .term .row:nth-child(2){animation-delay:1.4s;opacity:.85}
+  .term .row:nth-child(3){animation-delay:2.8s;opacity:.7}
+  .term .cur{display:inline-block;width:7px;height:13px;background:#5cff8f;vertical-align:-2px;animation:cur 1s steps(1) infinite}
+  @keyframes term{0%{width:0}40%,100%{width:100%}}
+  @keyframes cur{0%,50%{opacity:1}51%,100%{opacity:0}}
+
+  /* ============ PREVIEW 6 · AURORA — ambient waves ============ */
+  .p-amb{--acc:#63e6d2}
+  .aur{position:absolute;inset:0;background:#0a1420;overflow:hidden}
+  .aur b{position:absolute;border-radius:50%;filter:blur(26px);opacity:.65;mix-blend-mode:screen;animation:drift 9s ease-in-out infinite}
+  .aur b:nth-child(1){width:180px;height:180px;left:6%;top:20%;background:#63e6d2}
+  .aur b:nth-child(2){width:150px;height:150px;left:46%;top:36%;background:#ff77c8;animation-delay:1.5s}
+  .aur b:nth-child(3){width:160px;height:160px;left:66%;top:8%;background:#7d8bff;animation-delay:3s}
+  @keyframes drift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(24px,18px) scale(1.12)}66%{transform:translate(-18px,10px) scale(.94)}}
+
+  footer{max-width:1200px;margin:44px auto 0;color:var(--muted);font-size:13px;text-align:center;font-family:"Courier New",monospace;letter-spacing:.08em}
+</style>
+
+<header class="masthead">
+  <div class="kicker">Studio board · pick by looking</div>
+  <h1>Six directions for a site <em>worth building.</em></h1>
+  <p>Not a to-do list — a set of visual moods. Each one is a real thing we could build together. Tell me which frame you keep looking at.</p>
+</header>
+
+<main class="grid">
+
+  <!-- 1 -->
+  <article class="card p-arcade">
+    <div class="stage"><div class="cor" style="display:none"></div>
+      <div class="arc-grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="body">
+      <div class="cat">Showcase</div>
+      <div class="name">Playdeck</div>
+      <p class="pitch">One neon arcade cabinet for every game you've made — THRESHOLD, Forever House, all of them — with live thumbnails and a click-to-play wall. Your work, finally in one place.</p>
+      <div class="tags"><span class="tag">portfolio</span><span class="tag">arcade</span><span class="tag">launch-hub</span></div>
+      <div class="meta"><span class="dot"></span> An afternoon · uses what you already have</div>
+    </div>
+  </article>
+
+  <!-- 2 -->
+  <article class="card p-horror">
+    <div class="stage">
+      <div class="cor"><div class="door"></div><div class="eye"></div><div class="flick"></div></div>
+    </div>
+    <div class="body">
+      <div class="cat">Experience</div>
+      <div class="name">After Dark</div>
+      <p class="pitch">A horror anthology site — a black corridor of doors, each opening into a short interactive dread. The homepage itself unsettles: flickering light, a blink you almost miss. Your THRESHOLD instinct as a whole website.</p>
+      <div class="tags"><span class="tag">horror</span><span class="tag">interactive</span><span class="tag">story</span></div>
+      <div class="meta"><span class="dot"></span> A weekend · strong signature look</div>
+    </div>
+  </article>
+
+  <!-- 3 -->
+  <article class="card p-gen">
+    <div class="stage">
+      <div class="flow"><span></span><span></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="body">
+      <div class="cat">Gallery</div>
+      <div class="name">Field Notes</div>
+      <p class="pitch">A living gallery of generative pieces like Emberfield — a numbered series you add to over time. Each one full-screen, interactive, shareable. A place that says "I make beautiful moving things."</p>
+      <div class="tags"><span class="tag">generative</span><span class="tag">canvas</span><span class="tag">series</span></div>
+      <div class="meta"><span class="dot"></span> Grows over time · Emberfield is no.1</div>
+    </div>
+  </article>
+
+  <!-- 4 -->
+  <article class="card p-build">
+    <div class="stage">
+      <div class="spell">
+        <div class="line"></div><div class="line"></div>
+        <div class="blocks"><b></b><b></b><b></b></div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="cat">Product</div>
+      <div class="name">Spellbook</div>
+      <p class="pitch">Type what you want, watch it get built live — your BlockForge bridge turned into a public site. Describe a game in a sentence, see it appear, share the link. The most "startup" of the six, and you've already built the hard part.</p>
+      <div class="tags"><span class="tag">AI-build</span><span class="tag">live</span><span class="tag">ambitious</span></div>
+      <div class="meta"><span class="dot"></span> The big swing · real market</div>
+    </div>
+  </article>
+
+  <!-- 5 -->
+  <article class="card p-term">
+    <div class="stage">
+      <div class="term">
+        <div class="row">&gt; whoami — game maker, tinkerer</div>
+        <div class="row">&gt; ls ./projects &nbsp; 14 worlds built</div>
+        <div class="row">&gt; open resume.txt<span class="cur"></span></div>
+      </div>
+    </div>
+    <div class="body">
+      <div class="cat">Personal</div>
+      <div class="name">//root</div>
+      <p class="pitch">A personal site that behaves like a terminal you can actually type into. Commands reveal your projects, your story, hidden games. Memorable, nerdy, unmistakably you — nothing like a template.</p>
+      <div class="tags"><span class="tag">retro</span><span class="tag">CRT</span><span class="tag">playable</span></div>
+      <div class="meta"><span class="dot"></span> An afternoon · high personality</div>
+    </div>
+  </article>
+
+  <!-- 6 -->
+  <article class="card p-amb">
+    <div class="stage">
+      <div class="aur"><b></b><b></b><b></b></div>
+    </div>
+    <div class="body">
+      <div class="cat">Toy</div>
+      <div class="name">Aurora</div>
+      <p class="pitch">A gallery of live wallpapers and ambient backdrops — soft, slow, hypnotic scenes you set as a browser tab or cast to a screen. Calm counterpart to your horror side. Genuinely nice to leave running.</p>
+      <div class="tags"><span class="tag">ambient</span><span class="tag">wallpaper</span><span class="tag">calm</span></div>
+      <div class="meta"><span class="dot"></span> An afternoon · low effort, high polish</div>
+    </div>
+  </article>
+
+</main>
+
+<footer>Hover a card · then tell me which one to build for real</footer>

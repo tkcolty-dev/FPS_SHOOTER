@@ -1,0 +1,11 @@
+applications:
+  - name: sprout
+    memory: 256M
+    disk_quota: 256M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node server.js
+    env:
+      NODE_ENV: production
+      OPTIMIZE_MEMORY: true

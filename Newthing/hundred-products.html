@@ -1,0 +1,385 @@
+<title>100 Products &mdash; Concept Board</title>
+<style>
+  :root{
+    --ground:#0b0b10;
+    --panel:#131320;
+    --panel-2:#0e0e18;
+    --ink:#f2f1f8;
+    --muted:#8b88a6;
+    --edge:rgba(255,255,255,.08);
+    --edge-hi:rgba(255,255,255,.2);
+    --accent:#8a7dff;
+  }
+  @media (prefers-color-scheme:light){
+    :root{--ground:#eeedf3;--panel:#ffffff;--panel-2:#0e0e18;
+      --ink:#15141d;--muted:#605d75;--edge:rgba(18,16,32,.1);--edge-hi:rgba(18,16,32,.24);}
+  }
+  :root[data-theme="dark"]{--ground:#0b0b10;--panel:#131320;--panel-2:#0e0e18;
+    --ink:#f2f1f8;--muted:#8b88a6;--edge:rgba(255,255,255,.08);--edge-hi:rgba(255,255,255,.2);}
+  :root[data-theme="light"]{--ground:#eeedf3;--panel:#ffffff;--panel-2:#0e0e18;
+    --ink:#15141d;--muted:#605d75;--edge:rgba(18,16,32,.1);--edge-hi:rgba(18,16,32,.24);}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(120% 70% at 50% -10%,rgba(138,125,255,.12),transparent 55%),var(--ground);
+    color:var(--ink);font-family:"Helvetica Neue",Arial,sans-serif;line-height:1.5;
+    -webkit-font-smoothing:antialiased;padding-bottom:80px;
+  }
+  .wrap{max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px)}
+
+  header.masthead{padding:clamp(30px,6vw,72px) 0 clamp(20px,3vw,30px)}
+  .kick{font-family:"Courier New",monospace;text-transform:uppercase;letter-spacing:.42em;
+    font-size:11px;color:var(--muted);margin-bottom:16px}
+  .masthead h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(38px,7vw,76px);
+    line-height:.98;letter-spacing:-.02em;text-wrap:balance;max-width:15ch}
+  .masthead h1 em{font-style:italic;
+    background:linear-gradient(100deg,#8a7dff,#ff7bc8);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .masthead p{margin-top:18px;max-width:60ch;color:var(--muted);font-size:16px}
+
+  /* filter bar */
+  .bar{position:sticky;top:0;z-index:20;padding:14px 0;margin-bottom:22px;
+    background:color-mix(in srgb,var(--ground) 82%,transparent);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--edge)}
+  .bar-inner{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .chip{cursor:pointer;border:1px solid var(--edge);background:transparent;color:var(--muted);
+    font:inherit;font-size:12.5px;padding:7px 14px;border-radius:99px;transition:.2s;white-space:nowrap}
+  .chip:hover{border-color:var(--edge-hi);color:var(--ink)}
+  .chip.on{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+  .count{margin-left:auto;font-family:"Courier New",monospace;font-size:12px;color:var(--muted);
+    letter-spacing:.1em}
+
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(268px,1fr))}
+
+  .card{background:var(--panel);border:1px solid var(--edge);border-radius:16px;overflow:hidden;
+    display:flex;flex-direction:column;transition:transform .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s}
+  .card:hover{transform:translateY(-5px);border-color:var(--edge-hi);box-shadow:0 22px 50px -28px rgba(0,0,0,.75)}
+  .card.hide{display:none}
+  .stage{position:relative;height:150px;background:#000;border-bottom:1px solid var(--edge)}
+  .stage canvas{display:block;width:100%;height:100%}
+  .num{position:absolute;top:9px;left:11px;font-family:"Courier New",monospace;font-size:10px;
+    letter-spacing:.12em;color:rgba(255,255,255,.55);z-index:2;text-shadow:0 1px 3px #000}
+  .body{padding:16px 17px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .ey{font-family:"Courier New",monospace;text-transform:uppercase;letter-spacing:.24em;
+    font-size:9.5px;color:var(--muted)}
+  .nm{font-size:19px;font-weight:700;letter-spacing:-.01em;line-height:1.05}
+  .tg{color:var(--muted);font-size:13px;flex:1}
+  .card:hover .nm{color:var(--accent)}
+
+  footer{text-align:center;color:var(--muted);font-size:13px;margin-top:48px;
+    font-family:"Courier New",monospace;letter-spacing:.08em}
+
+  @media (prefers-reduced-motion:reduce){.card{transition:none}}
+</style>
+
+<header class="masthead wrap">
+  <div class="kick">Concept board &middot; 100 products &middot; 1 studio</div>
+  <h1>A hundred things <em>worth building.</em></h1>
+  <p>Every card is a real product idea with a live display built for it &mdash; games, tools, AI, ambient toys. Filter by lane, then tell me which one to make for real.</p>
+</header>
+
+<div class="bar"><div class="wrap"><div class="bar-inner" id="chips"></div></div></div>
+
+<main class="wrap"><div class="grid" id="grid"></div></main>
+<footer class="wrap">Hover the screens &middot; pick one &middot; we build it next</footer>
+
+<script>
+(() => {
+  const R = matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  // ---------- product data: [name, category, tagline, engine, hue] ----------
+  const CATS = ["Games","Creative","AI","Health","Money","Social","Learning","Dev","Home","Ambient"];
+  const P = [
+    // Games
+    ["Dungeon of the Hour","Games","A daily roguelike &mdash; everyone plays the same dungeon, once.","maze",22],
+    ["Ghostwriter","Games","Co-op horror where the monster is typed live by a friend.","terminal",0],
+    ["Orbital","Games","Build a solar system, then watch it beautifully collide.","orbits",265],
+    ["Blockfall","Games","A physics tower you speak into existence, block by block.","iso",150],
+    ["Neon Reflex","Games","One button, infinite ladder, pure reaction time.","gridpulse",190],
+    ["Fathom","Games","Descend an endless ocean as the pressure keeps rising.","ripple",205],
+    ["Duelwords","Games","Real-time word duels against a stranger.","bubbles",300],
+    ["Pixel Pilgrims","Games","A tiny colony you nudge but never fully control.","constellation",115],
+    ["Static","Games","A horror page that quietly watches your cursor.","rain",0],
+    ["Kaiju Sandbox","Games","Wreck a city. That's the whole game. It rules.","iso",30],
+    // Creative
+    ["Emberfield Studio","Creative","Make generative art, export it as a living loop.","flow",330],
+    ["Loopcraft","Creative","Hum a melody, get back a finished track.","wave",280],
+    ["Palette S&eacute;ance","Creative","Summon a color palette out of any photo.","spectrum",200],
+    ["Vectorize","Creative","Rough sketch in, clean crisp SVG out.","mesh",170],
+    ["Typeface Lab","Creative","Pair fonts by vibe, not by guessing.","terminal",220],
+    ["Moodboard Live","Creative","Collaborative moodboards that update in real time.","mesh",320],
+    ["Frame","Creative","Drop a screenshot, get a gorgeous mockup.","gridpulse",210],
+    ["Riff","Creative","A beat maker that lives in a browser tab.","wave",20],
+    ["Glimmer","Creative","Generate animated gradients you'll actually use.","spectrum",290],
+    ["Storyboard","Creative","Turn a prompt into comic panels.","iso",45],
+    // AI
+    ["Spellbook","AI","Describe an app, watch it get built live in front of you.","iso",150],
+    ["Second Read","AI","An editor whose only job is to argue against your draft.","constellation",260],
+    ["Recall","AI","Ask your own notes anything, get real answers.","constellation",190],
+    ["Dubbing Booth","AI","Revoice any clip &mdash; in your own voice.","wave",340],
+    ["Ghost Editor","AI","Rewrite your words in any author's style.","terminal",120],
+    ["Lens","AI","Point your camera at the world, get the answer.","ripple",200],
+    ["Councils","AI","A panel of AI advisors debates your decision.","constellation",40],
+    ["Muse","AI","An endless engine of writing prompts that fit you.","flow",300],
+    ["Tabula","AI","Paste messy text, get a clean structured table.","bars",170],
+    ["Oracle","AI","AI fortune-telling, tongue firmly in cheek.","starfield",275],
+    // Health
+    ["Breathe","Health","A screen that paces your breath until you slow down.","ripple",175],
+    ["Pulse","Health","Read your heart rate straight from the webcam.","pulse",0],
+    ["Plate","Health","Snap a meal, know the macros in a second.","bars",100],
+    ["Nightshift","Health","A wind-down ritual with a soundscape to match.","petals",250],
+    ["Streaks","Health","A habit tracker that's genuinely fun to keep.","gridpulse",140],
+    ["Hydrate","Health","A water reminder you won't want to mute.","bubbles",195],
+    ["Mood Ring","Health","Log your mood, watch the patterns surface.","spectrum",310],
+    ["Stretch","Health","Micro-workouts for people stuck at a desk.","pulse",30],
+    ["Sleep Story","Health","Generative bedtime stories, never the same twice.","petals",260],
+    ["Focus Garden","Health","Grow a little plant for every hour you focus.","helix",130],
+    // Money
+    ["Tally","Money","Split group expenses with zero mental math.","bars",150],
+    ["Receipt Ghost","Money","Photograph a receipt, it files itself.","bars",200],
+    ["Runway","Money","See exactly how long your cash actually lasts.","bars",20],
+    ["Invoice/30","Money","Send a clean invoice in thirty seconds.","terminal",210],
+    ["Standup","Money","Async team check-ins without the meeting.","constellation",255],
+    ["Priced","Money","An instant pricing calculator for makers.","gridpulse",160],
+    ["Coldstart","Money","Cold emails that don't read like cold emails.","bubbles",280],
+    ["Deal Desk","Money","Track leads for your side project, simply.","orbits",190],
+    ["Tipjar","Money","One link, get paid, skip the fee drama.","ripple",135],
+    ["Timeboxed","Money","Time-blocking you can actually see.","gridpulse",35],
+    // Social
+    ["Campfire","Social","A tiny private feed with no algorithm at all.","bubbles",25],
+    ["Two Cents","Social","One daily question, answered by your friends.","bars",300],
+    ["Guildhall","Social","A home base for the players of your game.","constellation",120],
+    ["Postcards","Social","Send a digital postcard that feels real.","mesh",40],
+    ["Overheard","Social","Anonymous notes pinned to places near you.","rain",180],
+    ["Duet","Social","Build a playlist together, in real time.","wave",330],
+    ["Roll Call","Social","RSVPs that gently shame the flakers.","gridpulse",210],
+    ["Threadbare","Social","Long, slow group letters worth writing.","terminal",35],
+    ["Constellation","Social","A map of how all your friends connect.","constellation",265],
+    ["Nudge","Social","Send a friend a quiet 'thinking of you.'","ripple",340],
+    // Learning
+    ["Drill","Learning","Spaced repetition that adapts as you go.","helix",200],
+    ["Explainer","Learning","Any topic, rebuilt as an interactive diagram.","constellation",160],
+    ["Codewalk","Learning","Learn to code by fixing tiny real bugs.","terminal",130],
+    ["Atlas","Learning","Explore history as a map you can zoom through.","starfield",40],
+    ["Fluent","Learning","Learn a language through real conversations.","bubbles",290],
+    ["Proof","Learning","Math you understand by dragging it around.","iso",210],
+    ["Field Guide","Learning","Identify anything you point a camera at.","mesh",110],
+    ["Metronome","Learning","A practice tracker built for musicians.","wave",20],
+    ["Flashmob","Learning","Build quiz decks together with friends.","gridpulse",300],
+    ["Curioso","Learning","A daily 'did you know' you'll actually remember.","starfield",265],
+    // Dev
+    ["Bridge","Dev","Tell Claude, see it appear live in your editor.","terminal",150],
+    ["Regexplain","Dev","Watch, visually, what a regex really matches.","rain",120],
+    ["Cronwatch","Dev","All your scheduled jobs, at a single glance.","orbits",200],
+    ["Diffscope","Dev","Code diffs that are actually pleasant to read.","terminal",30],
+    ["Statuspage/60","Dev","A real status page, live in a minute.","gridpulse",140],
+    ["Ping","Dev","Uptime monitoring for your hobby projects.","pulse",0],
+    ["Snippet","Dev","A searchable vault for your code snippets.","iso",210],
+    ["Mockbird","Dev","Spin up a fake API in one click.","constellation",280],
+    ["Contrast","Dev","Test any UI for color accessibility, fast.","spectrum",190],
+    ["Deploybutton","Dev","One button. Your project is now live.","ripple",135],
+    // Home
+    ["Pantry","Home","Tell it what's in the fridge, get dinner.","mesh",100],
+    ["Tote","Home","Offline grocery lists you can share as a link.","gridpulse",150],
+    ["Choreboard","Home","Family chores handled without the nagging.","bars",40],
+    ["Leftovers","Home","Plan meals around what's about to expire.","bars",30],
+    ["Fixit","Home","Step-by-step guides for fixing stuff at home.","iso",210],
+    ["Restock","Home","Your staples reorder themselves on time.","orbits",190],
+    ["Doorbell","Home","A shared noticeboard for the whole house.","bubbles",280],
+    ["Plantcare","Home","Know exactly when to water each plant.","helix",130],
+    ["Movein","Home","A moving checklist that adapts to your place.","gridpulse",265],
+    ["Weathermood","Home","The forecast, rendered as a piece of art.","mesh",200],
+    // Ambient
+    ["Aurora","Ambient","A gallery of slow, hypnotic live wallpapers.","mesh",180],
+    ["Rainroom","Ambient","A window with rain on it, forever.","rain",210],
+    ["Lofi Window","Ambient","A view and a beat to work the day away to.","wave",270],
+    ["Starmap Now","Ambient","The exact sky above you, right this moment.","starfield",250],
+    ["Zen Garden","Ambient","Rake an endless field of quiet sand.","ripple",35],
+    ["Fireplace","Ambient","A crackling fire that lives in a tab.","flow",20],
+    ["Deep","Ambient","A slow, calming descent into the abyss.","ripple",220],
+    ["Clockwork","Ambient","A generative clock you can't stop watching.","orbits",160],
+    ["Confetti Cannon","Ambient","A single button whose only job is delight.","petals",320],
+    ["The Void","Ambient","A page that, somehow, stares right back.","rain",0]
+  ];
+
+  // ---------- engines ----------
+  const TAU = Math.PI*2, rnd = Math.random;
+  function bg(c,w,h,hue,a){ c.fillStyle=`hsla(${hue},50%,4%,${a})`; c.fillRect(0,0,w,h); }
+  function acc(hue,l=60,s=90,a=1){ return `hsla(${hue},${s}%,${l}%,${a})`; }
+
+  const E = {
+    flow:{ init(w,h){const p=[];for(let i=0;i<46;i++)p.push({x:rnd()*w,y:rnd()*h});return {p};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.14);
+        for(const q of s.p){ const a=Math.sin(q.x*0.02+Math.cos(q.y*0.025+t))+Math.cos(q.y*0.02-t*0.7);
+          q.x+=Math.cos(a)*1.3; q.y+=Math.sin(a)*1.3;
+          if(q.x<0)q.x+=w;else if(q.x>w)q.x-=w; if(q.y<0)q.y+=h;else if(q.y>h)q.y-=h;
+          c.fillStyle=acc(hue,62,95,.85); c.fillRect(q.x,q.y,1.6,1.6);} } },
+
+    rain:{ init(w){const d=[];const n=Math.floor(w/12);for(let i=0;i<n;i++)d.push({x:i*12+6,y:rnd()*-200,v:2+rnd()*3,l:20+rnd()*40});return {d};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.22);
+        for(const p of s.d){ const g=c.createLinearGradient(0,p.y,0,p.y+p.l);
+          g.addColorStop(0,acc(hue,70,90,0)); g.addColorStop(1,acc(hue,70,95,.9));
+          c.strokeStyle=g; c.lineWidth=1.4; c.beginPath(); c.moveTo(p.x,p.y); c.lineTo(p.x,p.y+p.l); c.stroke();
+          p.y+=p.v; if(p.y>h)p.y=-p.l-rnd()*80; } } },
+
+    starfield:{ init(){const st=[];for(let i=0;i<70;i++)st.push({a:rnd()*TAU,r:rnd(),sp:.4+rnd()*1.4});return {st};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.28); const cx=w/2,cy=h/2;
+        for(const p of s.st){ p.r+=p.sp*0.01; if(p.r>1){p.r=0;p.a=rnd()*TAU;}
+          const d=p.r*p.r*Math.max(w,h)*0.75; const x=cx+Math.cos(p.a)*d,y=cy+Math.sin(p.a)*d;
+          const x2=cx+Math.cos(p.a)*(d-6*p.r*p.r),y2=cy+Math.sin(p.a)*(d-6*p.r*p.r);
+          c.strokeStyle=acc(hue,80,90,p.r); c.lineWidth=1+p.r*1.6; c.beginPath(); c.moveTo(x,y); c.lineTo(x2,y2); c.stroke(); } } },
+
+    terminal:{ init(){return {lines:["> boot --project","> loading modules ...","> ready. type help","> _"]};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); c.font='12px "Courier New",monospace'; c.textBaseline='top';
+        const step=Math.floor(t*8);
+        for(let i=0;i<s.lines.length;i++){ const full=s.lines[i]; const rev=Math.max(0,Math.min(full.length,step-i*8));
+          c.fillStyle=acc(hue,i===3?80:65,90,i===3?1:.8-i*0.12); c.fillText(full.slice(0,rev),14,18+i*22);
+          if(i===3&&rev>=full.length&&Math.floor(t*2)%2){ c.fillRect(14+c.measureText(full).width+2,18+i*22,7,13);} } } },
+
+    orbits:{ init(){const o=[];for(let i=0;i<5;i++)o.push({r:18+i*13,a:rnd()*TAU,sp:.5+rnd()*1.2,sz:2+rnd()*2});return {o};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.2); const cx=w/2,cy=h/2;
+        c.fillStyle=acc(hue,72,95,1); c.beginPath(); c.arc(cx,cy,3.5,0,TAU); c.fill();
+        for(const p of s.o){ p.a+=p.sp*0.012; c.strokeStyle=acc(hue,55,60,.18); c.lineWidth=1;
+          c.beginPath(); c.arc(cx,cy,p.r,0,TAU); c.stroke();
+          const x=cx+Math.cos(p.a)*p.r,y=cy+Math.sin(p.a)*p.r;
+          c.fillStyle=acc(hue,68,90,1); c.beginPath(); c.arc(x,y,p.sz,0,TAU); c.fill(); } } },
+
+    iso:{ init(){return {};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); const cx=w/2,cy=h*0.62,tw=26,th=13;
+        const cube=(gx,gy,gz)=>{ const x=cx+(gx-gy)*tw, y=cy+(gx+gy)*th-gz*th*2;
+          c.beginPath(); c.moveTo(x,y-th); c.lineTo(x+tw,y); c.lineTo(x,y+th); c.lineTo(x-tw,y); c.closePath();
+          c.fillStyle=acc(hue,64,90,1); c.fill();
+          c.beginPath(); c.moveTo(x-tw,y); c.lineTo(x,y+th); c.lineTo(x,y+th+th*2); c.lineTo(x-tw,y+th*2); c.closePath();
+          c.fillStyle=acc(hue,40,80,1); c.fill();
+          c.beginPath(); c.moveTo(x+tw,y); c.lineTo(x,y+th); c.lineTo(x,y+th+th*2); c.lineTo(x+tw,y+th*2); c.closePath();
+          c.fillStyle=acc(hue,52,85,1); c.fill(); };
+        const layers=[[[0,0]],[[0,0],[1,0],[0,1]]];
+        const rise=(Math.sin(t*1.4)*0.5+0.5);
+        cube(0,0,0);
+        cube(1,0,0.02*0); cube(0,1,0);
+        cube(1,1, rise*1.2); } },
+
+    gridpulse:{ init(w,h){return {cols:Math.max(4,Math.floor(w/34)),rows:Math.max(3,Math.floor(h/34))};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); const gap=6, cw=(w-gap*(s.cols+1))/s.cols, ch=(h-gap*(s.rows+1))/s.rows;
+        for(let y=0;y<s.rows;y++)for(let x=0;x<s.cols;x++){ const d=Math.hypot(x-s.cols/2,y-s.rows/2);
+          const b=Math.sin(t*2-d*0.9)*0.5+0.5; const px=gap+x*(cw+gap),py=gap+y*(ch+gap);
+          c.fillStyle=acc(hue,20+b*45,70,.25+b*0.75); roundRect(c,px,py,cw,ch,5); c.fill(); } } },
+
+    ripple:{ init(){return {};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.12); const cx=w/2,cy=h/2,max=Math.hypot(w,h)/2;
+        for(let k=0;k<5;k++){ let r=((t*40+k*max/5)%max); const a=1-r/max;
+          c.strokeStyle=acc(hue,68,85,a*0.8); c.lineWidth=2; c.beginPath(); c.arc(cx,cy,r,0,TAU); c.stroke(); } } },
+
+    bubbles:{ init(w,h){const b=[];for(let i=0;i<22;i++)b.push({x:rnd()*w,y:rnd()*h,r:3+rnd()*10,v:.3+rnd()*.9});return {b};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.16);
+        for(const p of s.b){ p.y-=p.v; p.x+=Math.sin(t+p.y*0.05)*0.4; if(p.y<-p.r){p.y=h+p.r;p.x=rnd()*w;}
+          c.strokeStyle=acc(hue,70,85,.7); c.lineWidth=1.3; c.beginPath(); c.arc(p.x,p.y,p.r,0,TAU); c.stroke();
+          c.fillStyle=acc(hue,70,85,.12); c.fill(); } } },
+
+    constellation:{ init(w,h){const n=[];for(let i=0;i<20;i++)n.push({x:rnd()*w,y:rnd()*h,vx:(rnd()-.5)*.5,vy:(rnd()-.5)*.5});return {n};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1);
+        for(const p of s.n){ p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>w)p.vx*=-1; if(p.y<0||p.y>h)p.vy*=-1; }
+        for(let i=0;i<s.n.length;i++)for(let j=i+1;j<s.n.length;j++){ const a=s.n[i],b=s.n[j];
+          const d=Math.hypot(a.x-b.x,a.y-b.y); if(d<62){ c.strokeStyle=acc(hue,65,80,(1-d/62)*0.5); c.lineWidth=1;
+            c.beginPath(); c.moveTo(a.x,a.y); c.lineTo(b.x,b.y); c.stroke(); } }
+        for(const p of s.n){ c.fillStyle=acc(hue,72,90,1); c.beginPath(); c.arc(p.x,p.y,2,0,TAU); c.fill(); } } },
+
+    wave:{ init(w){return {bars:Math.floor(w/9)};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); const bw=w/s.bars;
+        for(let i=0;i<s.bars;i++){ const v=Math.abs(Math.sin(i*0.4+t*3)*Math.cos(i*0.13-t*1.5));
+          const bh=8+v*(h*0.7); const x=i*bw+bw*0.2;
+          const g=c.createLinearGradient(0,h,0,h-bh); g.addColorStop(0,acc(hue,45,80,.6)); g.addColorStop(1,acc(hue,70,90,1));
+          c.fillStyle=g; roundRect(c,x,h/2-bh/2,bw*0.6,bh,2); c.fill(); } } },
+
+    spectrum:{ init(){return {};},
+      draw(c,w,h,t,s,hue){ const n=40,bw=w/n;
+        for(let i=0;i<n;i++){ const hh=hue+i*3+Math.sin(t+i*0.2)*30;
+          c.fillStyle=`hsl(${hh},75%,${45+Math.sin(t*2+i*0.3)*12}%)`; c.fillRect(i*bw,0,bw+1,h); } } },
+
+    mesh:{ init(w,h){const b=[];for(let i=0;i<3;i++)b.push({x:rnd()*w,y:rnd()*h,ph:rnd()*TAU});return {b};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); c.globalCompositeOperation='screen';
+        const cols=[hue,hue+40,hue-40];
+        s.b.forEach((p,i)=>{ const x=w/2+Math.cos(t*0.6+p.ph)*w*0.32, y=h/2+Math.sin(t*0.5+p.ph)*h*0.34;
+          const g=c.createRadialGradient(x,y,0,x,y,80); g.addColorStop(0,`hsla(${cols[i]},80%,60%,.9)`); g.addColorStop(1,`hsla(${cols[i]},80%,60%,0)`);
+          c.fillStyle=g; c.fillRect(0,0,w,h); }); c.globalCompositeOperation='source-over'; } },
+
+    bars:{ init(){const v=[];for(let i=0;i<6;i++)v.push(rnd());return {v,tp:0};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); const n=s.v.length,gap=10,bw=(w-gap*(n+1))/n;
+        c.strokeStyle=acc(hue,50,40,.4); c.lineWidth=1; c.beginPath(); c.moveTo(0,h-18); c.lineTo(w,h-18); c.stroke();
+        for(let i=0;i<n;i++){ const tgt=Math.abs(Math.sin(i*1.3+t*0.9))*0.9+0.1; s.v[i]+=(tgt-s.v[i])*0.06;
+          const bh=(h-30)*s.v[i]; const x=gap+i*(bw+gap);
+          const g=c.createLinearGradient(0,h-18,0,h-18-bh); g.addColorStop(0,acc(hue,50,75,.7)); g.addColorStop(1,acc(hue,72,90,1));
+          c.fillStyle=g; roundRect(c,x,h-18-bh,bw,bh,4); c.fill(); } } },
+
+    pulse:{ init(){return {x:0,pts:[]};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.1); const y=h/2;
+        s.x+=2.5; if(s.x>w)s.x=0;
+        let spike=0; const ph=(s.x%70)/70; if(ph>0.4&&ph<0.5)spike=Math.sin((ph-0.4)*31.4)* (h*0.32);
+        s.pts.push({x:s.x,y:y-spike}); if(s.pts.length>w/2)s.pts.shift();
+        c.strokeStyle=acc(hue,70,90,1); c.lineWidth=2; c.beginPath();
+        s.pts.forEach((p,i)=>{ if(i===0||p.x<s.pts[i-1].x)c.moveTo(p.x,p.y); else c.lineTo(p.x,p.y);}); c.stroke();
+        const last=s.pts[s.pts.length-1]; if(last){ c.fillStyle=acc(hue,80,95,1); c.beginPath(); c.arc(last.x,last.y,3,0,TAU); c.fill(); } } },
+
+    petals:{ init(w,h){const p=[];for(let i=0;i<26;i++)p.push({x:rnd()*w,y:rnd()*h,r:2+rnd()*4,v:.3+rnd()*.8,ph:rnd()*TAU});return {p};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,.12);
+        for(const q of s.p){ q.y+=q.v; q.x+=Math.sin(t+q.ph)*0.6; if(q.y>h){q.y=-q.r;q.x=rnd()*w;}
+          c.fillStyle=acc(hue,70,80,.7); c.beginPath(); c.arc(q.x,q.y,q.r,0,TAU); c.fill(); } } },
+
+    helix:{ init(){return {};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); const cx=w/2,amp=w*0.22,n=26;
+        for(let i=0;i<n;i++){ const y=i/n*h; const a=i*0.5+t*2;
+          const x1=cx+Math.sin(a)*amp, x2=cx+Math.sin(a+Math.PI)*amp; const z=Math.cos(a);
+          if(z>0){ c.strokeStyle=acc(hue,50,60,.3); c.lineWidth=1; c.beginPath(); c.moveTo(x1,y); c.lineTo(x2,y); c.stroke(); }
+          c.fillStyle=acc(hue,68,85,.5+Math.cos(a)*0.4); c.beginPath(); c.arc(x1,y,3,0,TAU); c.fill();
+          c.fillStyle=acc(hue,68,85,.5+Math.cos(a+Math.PI)*0.4); c.beginPath(); c.arc(x2,y,3,0,TAU); c.fill(); } } },
+
+    maze:{ init(w,h){const cs=18,cols=Math.floor(w/cs),rows=Math.floor(h/cs),cells=[];
+        for(let i=0;i<cols*rows;i++)cells.push(rnd()>0.5); return {cs,cols,rows,cells};},
+      draw(c,w,h,t,s,hue){ bg(c,w,h,hue,1); const {cs,cols,rows,cells}=s;
+        c.strokeStyle=acc(hue,40,50,.3); c.lineWidth=1.5; c.lineCap='round';
+        for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){ const i=y*cols+x; const px=x*cs+cs/2,py=y*cs+cs/2;
+          c.beginPath(); if(cells[i]){c.moveTo(px-cs/2,py-cs/2);c.lineTo(px+cs/2,py+cs/2);} else {c.moveTo(px+cs/2,py-cs/2);c.lineTo(px-cs/2,py+cs/2);} c.stroke(); }
+        const head=Math.floor(t*6)%(cols*rows); const hx=(head%cols)*cs+cs/2,hy=Math.floor(head/cols)*cs+cs/2;
+        c.fillStyle=acc(hue,80,95,1); c.shadowColor=acc(hue,80,90,1); c.shadowBlur=12; c.beginPath(); c.arc(hx,hy,4,0,TAU); c.fill(); c.shadowBlur=0; } }
+  };
+  function roundRect(c,x,y,w,h,r){ r=Math.min(r,w/2,h/2); c.beginPath(); c.moveTo(x+r,y);
+    c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+  // ---------- build DOM ----------
+  const grid=document.getElementById('grid'); const live=[];
+  P.forEach((p,i)=>{ const [name,cat,tag,eng,hue]=p;
+    const card=document.createElement('article'); card.className='card'; card.dataset.cat=cat;
+    card.innerHTML=`<div class="stage"><span class="num">${String(i+1).padStart(3,'0')}</span><canvas></canvas></div>
+      <div class="body"><div class="ey">${cat}</div><div class="nm">${name}</div><div class="tg">${tag}</div></div>`;
+    grid.appendChild(card);
+    const cv=card.querySelector('canvas'); const ctx=cv.getContext('2d');
+    live.push({card,cv,ctx,eng,hue,state:null,vis:false,w:0,h:0});
+  });
+
+  function sizeAll(){ const DPR=Math.min(devicePixelRatio||1,1.5);
+    for(const o of live){ const r=o.cv.getBoundingClientRect(); if(!r.width)continue;
+      o.w=r.width; o.h=r.height; o.cv.width=r.width*DPR; o.cv.height=r.height*DPR; o.ctx.setTransform(DPR,0,0,DPR,0,0);
+      o.state=E[o.eng].init(o.w,o.h); } }
+  addEventListener('resize',()=>{clearTimeout(window._rz);window._rz=setTimeout(sizeAll,150);});
+
+  const io=new IntersectionObserver(es=>{ for(const e of es){ const o=live[+e.target.dataset.i];
+    if(o) o.vis=e.isIntersecting; } },{rootMargin:'120px'});
+  live.forEach((o,i)=>{o.card.dataset.i=i; io.observe(o.card);});
+
+  let t=0; function loop(){ t+=R?0:0.016;
+    for(const o of live){ if(!o.vis||!o.state)continue; try{E[o.eng].draw(o.ctx,o.w,o.h,t,o.state,o.hue);}catch(_){} }
+    requestAnimationFrame(loop); }
+
+  // ---------- filters ----------
+  const chips=document.getElementById('chips'); let active='All';
+  const mk=(label)=>{ const b=document.createElement('button'); b.className='chip'+(label==='All'?' on':''); b.textContent=label;
+    b.onclick=()=>{ active=label; [...chips.children].forEach(c=>c.classList.toggle('on',c.textContent===label));
+      let n=0; for(const o of live){ const show=label==='All'||o.card.dataset.cat===label; o.card.classList.toggle('hide',!show); if(show)n++; }
+      cnt.textContent=n+' / 100'; }; chips.appendChild(b); };
+  mk('All'); CATS.forEach(mk);
+  const cnt=document.createElement('span'); cnt.className='count'; cnt.textContent='100 / 100'; chips.appendChild(cnt);
+
+  // go
+  requestAnimationFrame(()=>{ sizeAll(); loop(); });
+})();
+</script>

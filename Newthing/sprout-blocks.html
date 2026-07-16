@@ -1,0 +1,666 @@
+<meta charset="utf-8">
+<title>Sprout — type the blocks</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{
+  --bg:#f5f6fb; --panel:#ffffff; --panel-2:#f7f8fc;
+  --ink:#14172a; --muted:#6b7285; --line:#eaecf3;
+  --accent:#19c37d; --accent-d:#12a869; --violet:#7c5cff; --pink:#ff5c93; --amber:#ffb020; --blue:#3b9dff;
+  --stage:#0d1020; --stage-2:#151a30;
+  --shadow:0 1px 2px rgba(20,23,42,.04), 0 8px 24px -12px rgba(20,23,42,.14);
+  --shadow-lg:0 2px 6px rgba(20,23,42,.05), 0 30px 60px -24px rgba(20,23,42,.28);
+  --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",system-ui,sans-serif;
+  --r:20px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#080a12;--panel:#12141f;--panel-2:#171a27;--ink:#eef1f8;--muted:#98a0b4;--line:#232838;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 6px rgba(0,0,0,.4),0 40px 70px -30px rgba(0,0,0,.8);}
+}
+:root[data-theme="dark"]{--bg:#080a12;--panel:#12141f;--panel-2:#171a27;--ink:#eef1f8;--muted:#98a0b4;--line:#232838;--shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);--shadow-lg:0 2px 6px rgba(0,0,0,.4),0 40px 70px -30px rgba(0,0,0,.8);}
+:root[data-theme="light"]{--bg:#f5f6fb;--panel:#fff;--panel-2:#f7f8fc;--ink:#14172a;--muted:#6b7285;--line:#eaecf3;--shadow:0 1px 2px rgba(20,23,42,.04),0 8px 24px -12px rgba(20,23,42,.14);--shadow-lg:0 2px 6px rgba(20,23,42,.05),0 30px 60px -24px rgba(20,23,42,.28);}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+  font-feature-settings:"cv02","cv03","cv04";overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit;font-weight:600}
+canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
+
+.app{height:100%;display:flex;flex-direction:column;padding:0 clamp(12px,2.2vw,22px)}
+
+/* header */
+.head{display:flex;align-items:center;gap:14px;padding:14px 2px 10px;flex:none}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:19px;letter-spacing:-.02em}
+.logo svg{width:28px;height:28px}
+.logo b{background:linear-gradient(120deg,var(--accent-d),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.dots{display:flex;gap:7px;margin-left:auto}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);transition:.3s}
+.dot.on{background:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+.dot.fin{background:var(--accent)}
+
+/* main 3-column grid — fills the viewport */
+.main{flex:1;min-height:0;display:grid;grid-template-columns:212px minmax(280px,1fr) minmax(320px,1.15fr);
+  gap:14px;padding-bottom:14px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.cardhead{padding:12px 14px 10px;flex:none}
+.eyebrow{font:600 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+/* palette */
+.pal{overflow-y:auto;padding:0 10px 12px;display:flex;flex-direction:column;gap:5px}
+.palgroup{font:700 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  padding:12px 4px 4px}
+.block{display:block;width:100%;text-align:left;border-radius:12px;padding:8px 10px;color:#fff;
+  transition:transform .12s, filter .12s;box-shadow:0 2px 0 rgba(0,0,0,.16);cursor:pointer}
+.block:hover{transform:translateY(-1px) scale(1.015);filter:brightness(1.07)}
+.block:active{transform:translateY(1px) scale(.99)}
+.block .syn{font:700 12.5px/1.35 var(--mono)}
+.block .desc{font:600 10.5px/1.3 var(--sans);opacity:.82;margin-top:2px}
+.block.new{outline:2.5px solid var(--ink);outline-offset:2px}
+.block.motion{background:var(--blue)} .block.pen{background:var(--accent)}
+.block.looks{background:var(--violet)} .block.control{background:var(--amber);color:#3d2c00}
+.palnote{font:600 11px/1.45 var(--sans);color:var(--muted);padding:10px 4px 2px}
+
+/* editor */
+.edit{flex:1;min-height:0;display:flex;background:var(--stage);margin:0 12px 0;border-radius:14px;overflow:hidden}
+.gut{flex:none;overflow:hidden;background:rgba(0,0,0,.2);padding:12px 0;width:38px}
+.gut i{display:block;font:400 13px/22px var(--mono);color:#4b5474;text-align:right;
+  padding-right:9px;font-style:normal}
+.gut i.cur{color:var(--accent);font-weight:700}
+.codebox{position:relative;flex:1;min-width:0}
+#hl,#ta{margin:0;padding:12px 14px;font:400 13px/22px var(--mono);white-space:pre;border:0;tab-size:2}
+#hl{position:absolute;inset:0;overflow:hidden;pointer-events:none;color:#dfe5f5}
+#ta{position:absolute;inset:0;background:transparent;color:transparent;caret-color:var(--accent);
+  resize:none;outline:none;overflow:auto}
+#ta::selection{background:rgba(25,195,125,.3)}
+.runline{position:absolute;left:0;right:0;height:22px;background:rgba(25,195,125,.13);
+  border-left:2px solid var(--accent);display:none;pointer-events:none}
+.k-cmd{color:#7fd7ff} .k-num{color:#ffc86b} .k-str{color:#8ef0b6} .k-com{color:#5b6482;font-style:italic}
+.k-rep{color:#ffb020;font-weight:700} .k-brace{color:#98a0b4}
+
+.bar{display:flex;gap:8px;padding:12px;flex:none;align-items:center}
+.btn{border-radius:12px;padding:10px 14px;font-size:13.5px;font-weight:800;background:var(--panel-2);
+  border:1px solid var(--line);transition:transform .12s,filter .12s}
+.btn:hover{transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.btn.go{background:var(--accent);color:#04120c;border-color:transparent;flex:1;box-shadow:0 2px 0 var(--accent-d)}
+.btn.stop{background:var(--pink);color:#fff;border-color:transparent}
+.err{margin:0 12px 12px;padding:9px 12px;border-radius:12px;background:color-mix(in srgb,var(--pink) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--pink) 40%,transparent);font:600 12px/1.45 var(--sans);color:var(--pink);display:none}
+.err b{font-family:var(--mono)}
+/* same box, friendlier voice: you ran fine, you just missed the lesson */
+.err.tip{background:color-mix(in srgb,var(--amber) 14%,transparent);
+  border-color:color-mix(in srgb,var(--amber) 45%,transparent);color:var(--ink)}
+
+/* stage */
+.stagewrap{position:relative;flex:1;min-height:0;margin:0 12px;border-radius:14px;overflow:hidden;background:var(--stage)}
+#stage{position:absolute;inset:0;width:100%;height:100%;display:block}
+.goalline{position:absolute;top:10px;left:12px;font:600 10px/1 var(--mono);letter-spacing:.12em;
+  text-transform:uppercase;color:#7a8199;z-index:2}
+.goalline em{color:var(--accent);font-style:normal}
+
+/* mission */
+.mis{padding:12px 14px 0;flex:none}
+.mis h2{font-size:17px;letter-spacing:-.02em;margin-bottom:5px}
+.mis p{font:500 12.5px/1.5 var(--sans);color:var(--muted)}
+.mis p b{color:var(--ink);font-family:var(--mono);font-size:12px;font-weight:700}
+.hintbox{display:none;margin:9px 0 0;padding:9px 11px;border-radius:11px;background:color-mix(in srgb,var(--amber) 13%,transparent);
+  font:600 12px/1.5 var(--sans);color:var(--ink)}
+.hintbox.show{display:block}
+.hintbox b{font-family:var(--mono)}
+.misbar{display:flex;gap:8px;align-items:center;padding:12px 14px;flex:none}
+.linky{background:none;border:none;font-size:12.5px;font-weight:700;color:var(--muted);padding:6px 2px}
+.linky:hover{color:var(--ink)}
+.btn.next{background:var(--ink);color:var(--bg);border-color:transparent;margin-left:auto}
+.win{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;
+  opacity:0;transition:.3s;z-index:3}
+.win.show{opacity:1}
+.win .tag{background:var(--accent);color:#04120c;font-weight:800;font-size:15px;padding:9px 16px;border-radius:999px;
+  box-shadow:0 10px 30px -8px rgba(25,195,125,.7);transform:scale(.9);transition:.3s}
+.win.show .tag{transform:scale(1)}
+
+@media (max-width:1080px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .main{grid-template-columns:1fr;grid-auto-rows:auto}
+  .pal{flex-direction:row;flex-wrap:wrap;overflow:visible}
+  .palgroup{width:100%}
+  .block{width:auto;flex:1 1 150px}
+  .edit{height:300px}
+  .stagewrap{height:340px}
+  .palnote{display:none}
+}
+</style>
+
+<canvas id="fx"></canvas>
+<div class="app">
+  <div class="head">
+    <div class="logo" id="logo"></div>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <div class="main">
+    <!-- PALETTE -->
+    <section class="card">
+      <div class="cardhead"><div class="eyebrow">Blocks — click or type</div></div>
+      <div class="pal" id="pal"></div>
+    </section>
+
+    <!-- EDITOR -->
+    <section class="card">
+      <div class="cardhead"><div class="eyebrow">Your code</div></div>
+      <div class="edit">
+        <div class="gut" id="gut"></div>
+        <div class="codebox">
+          <div class="runline" id="runline"></div>
+          <pre id="hl"></pre>
+          <textarea id="ta" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off"></textarea>
+        </div>
+      </div>
+      <div class="err" id="err"></div>
+      <div class="bar">
+        <button class="btn go" id="runBtn">▶ Run</button>
+        <button class="btn stop" id="stopBtn" style="display:none">■ Stop</button>
+        <button class="btn" id="resetBtn">↺ Reset</button>
+      </div>
+    </section>
+
+    <!-- STAGE + MISSION -->
+    <section class="card">
+      <div class="mis">
+        <h2 id="misTitle"></h2>
+        <p id="misBlurb"></p>
+        <div class="hintbox" id="hintbox"></div>
+      </div>
+      <div class="misbar">
+        <button class="linky" id="hintBtn">💡 Show me how</button>
+        <button class="btn next" id="nextBtn" disabled>Next →</button>
+      </div>
+      <div class="stagewrap">
+        <div class="goalline" id="goalline"></div>
+        <canvas id="stage"></canvas>
+        <div class="win" id="win"><div class="tag" id="winTag">Nice! ✨</div></div>
+      </div>
+      <div style="height:12px;flex:none"></div>
+    </section>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+const LEAF='<svg viewBox="0 0 100 100"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34e39b"/><stop offset="1" stop-color="#12a869"/></linearGradient></defs><path d="M50 88 C50 55 60 30 84 16 C86 52 74 82 50 88 Z" fill="url(#lg)"/><path d="M50 88 C50 55 40 30 16 16 C14 52 26 82 50 88 Z" fill="url(#lg)" opacity=".78"/><line x1="50" y1="88" x2="50" y2="44" stroke="#0a5c3a" stroke-width="3" stroke-linecap="round"/></svg>';
+$('#logo').innerHTML=LEAF+'<b>Sprout</b>';
+
+const COLORS={red:'#ff5c5c',blue:'#3b9dff',green:'#19c37d',yellow:'#ffb020',pink:'#ff5c93',
+  purple:'#7c5cff',orange:'#ff8a3d',white:'#eef1f8',black:'#141a2e'};
+
+/* ---------- the blocks ---------- */
+const BLOCKS=[
+  {cat:'motion',  name:'move',    insert:'move(100)',     desc:'walk forward 100 steps'},
+  {cat:'motion',  name:'turn',    insert:'turn(90)',      desc:'turn right a quarter'},
+  {cat:'motion',  name:'goto',    insert:'goto(0, 0)',    desc:'jump to a spot'},
+  {cat:'pen',     name:'penDown', insert:'penDown()',     desc:'start drawing'},
+  {cat:'pen',     name:'penUp',   insert:'penUp()',       desc:'stop drawing'},
+  {cat:'pen',     name:'color',   insert:'color("blue")', desc:'change the pen colour'},
+  {cat:'pen',     name:'size',    insert:'size(6)',       desc:'how thick the line is'},
+  {cat:'looks',   name:'say',     insert:'say("Hi!")',    desc:'pop a speech bubble'},
+  {cat:'control', name:'wait',    insert:'wait(1)',       desc:'pause for 1 second'},
+  {cat:'control', name:'repeat',  insert:'repeat 4 {\n  \n}', desc:'do it all again'}
+];
+const GROUPS=[['motion','Motion'],['pen','Pen'],['looks','Looks'],['control','Control']];
+const CMDS=new Set(BLOCKS.map(b=>b.name));
+
+/* ---------- missions: one new block each ---------- */
+const near=(S,x,y,r)=>Math.hypot(S.x-x,S.y-y)<=r;
+const MIS=[
+  { teach:'move', title:'Walk to the flag',
+    blurb:'Every block is a word you <b>type</b>. <b>move(100)</b> walks forward 100 steps. Type one, press Run, and watch it happen.',
+    goal:'GET TO THE FLAG', start:{x:-190,y:0,dir:90}, flag:{x:60,y:0},
+    starter:'// type a move block below, then press Run\n',
+    hint:'The flag is 250 steps to the right. Try <b>move(250)</b>.',
+    check:c=>near(c.S,60,0,36),
+    nudge:c=>c.S.x<24?'Good start! The flag is further right — put a bigger number in <b>move()</b>.'
+             :'Whoa, too far! Try a smaller number in <b>move()</b>.' },
+
+  { teach:'turn', title:'Around the corner',
+    blurb:'<b>turn(90)</b> spins Sprout a quarter turn to the right. Put moves and turns together to go anywhere.',
+    goal:'ROUND THE CORNER TO THE FLAG', start:{x:-190,y:90,dir:90}, flag:{x:60,y:-70},
+    starter:'move(250)\n// now turn, then move again\n',
+    hint:'<b>move(250)</b>, then <b>turn(90)</b> to face down, then <b>move(160)</b>.',
+    check:c=>near(c.S,60,-70,36) },
+
+  { teach:'penDown', title:'Leave a trail',
+    blurb:'<b>penDown()</b> makes Sprout draw a line as it walks. <b>penUp()</b> lifts the pen up again.',
+    goal:'DRAW A LINE TO THE FLAG', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
+    starter:'// draw a line all the way to the flag\n',
+    hint:'<b>penDown()</b> first, then <b>move(360)</b>.',
+    check:c=>near(c.S,170,0,36)&&c.trail.length>0,
+    nudge:c=>near(c.S,170,0,36)&&!c.trail.length
+      ?'You reached the flag — but left no trail. Add <b>penDown()</b> before you move.':null },
+
+  { teach:'repeat', title:'Draw a square',
+    blurb:'<b>repeat 4 { }</b> runs the blocks inside it four times. Four sides and four turns — that is a whole square from two blocks.',
+    goal:'DRAW A SQUARE', start:{x:-70,y:70,dir:90}, flag:null,
+    starter:'penDown()\nrepeat 4 {\n  \n}\n',
+    hint:'Inside the repeat, put <b>move(140)</b> then <b>turn(90)</b>.',
+    check:c=>c.usedRepeat&&c.trail.length>=4&&near(c.S,-70,70,26),
+    nudge:c=>!c.usedRepeat&&c.trail.length>=4&&near(c.S,-70,70,26)
+      ?'That is a perfect square! 🎉 Now do it with <b>repeat 4 { }</b> — same shape, half the typing.':null },
+
+  { teach:'color', title:'Make it blue',
+    blurb:'<b>color("blue")</b> changes the pen. Words go inside quotes. Try red or pink too — but the goal is a blue square.',
+    goal:'DRAW IT IN BLUE', start:{x:-70,y:70,dir:90}, flag:null,
+    starter:'penDown()\nrepeat 4 {\n  move(140)\n  turn(90)\n}\n',
+    hint:'Add <b>color("blue")</b> at the very top, before you start drawing.',
+    check:c=>c.trail.length>=4&&c.trail.every(s=>s.c===COLORS.blue),
+    nudge:c=>c.trail.length>=4&&!c.trail.every(s=>s.c===COLORS.blue)
+      ?'Nice square — now put <b>color("blue")</b> at the top, before the pen goes down.':null },
+
+  { teach:'say', title:'Say hello',
+    blurb:'<b>say("Hi!")</b> pops a speech bubble. That is six blocks you can type from memory — you are writing real code now.',
+    goal:'MAKE SPROUT TALK', start:{x:0,y:-30,dir:90}, flag:null,
+    starter:'// make Sprout say something\n',
+    hint:'Type <b>say("Hi!")</b> — your words go inside the quotes.',
+    check:c=>c.said },
+
+  { teach:null, title:'Free play 🎨',
+    blurb:'No goal here — every block is yours. Stack them up, change the numbers, and see what you can make.',
+    goal:'MAKE ANYTHING', start:{x:0,y:0,dir:90}, flag:null,
+    starter:'color("purple")\nsize(3)\npenDown()\nrepeat 36 {\n  move(120)\n  turn(100)\n}\nsay("I made this!")\n',
+    hint:'Try changing <b>turn(100)</b> to another number and run it again.',
+    check:()=>false }
+];
+
+/* ---------- editor ---------- */
+const ta=$('#ta'), hl=$('#hl'), gut=$('#gut');
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function highlight(src){
+  return src.split('\n').map(line=>{
+    const ci=line.indexOf('//');
+    let code=ci>=0?line.slice(0,ci):line, com=ci>=0?line.slice(ci):'';
+    let out=esc(code)
+      .replace(/(&quot;[^&]*?&quot;|"[^"]*")/g,'<span class="k-str">$1</span>')
+      .replace(/\b(repeat)\b/g,'<span class="k-rep">$1</span>')
+      .replace(/\b([a-zA-Z]+)(?=\s*\()/g,(m,w)=>CMDS.has(w)?`<span class="k-cmd">${w}</span>`:w)
+      .replace(/(?<![\w"])(-?\d+(?:\.\d+)?)(?![\w"])/g,'<span class="k-num">$1</span>')
+      .replace(/([{}])/g,'<span class="k-brace">$1</span>');
+    if(com) out+=`<span class="k-com">${esc(com)}</span>`;
+    return out||' ';
+  }).join('\n');
+}
+function syncEditor(){
+  hl.innerHTML=highlight(ta.value);
+  const n=ta.value.split('\n').length;
+  let g='';for(let i=1;i<=n;i++)g+=`<i data-l="${i-1}">${i}</i>`;
+  gut.innerHTML=g;
+  gut.scrollTop=ta.scrollTop; hl.scrollTop=ta.scrollTop; hl.scrollLeft=ta.scrollLeft;
+}
+ta.addEventListener('input',()=>{syncEditor();clearErr();});
+ta.addEventListener('scroll',()=>{gut.scrollTop=ta.scrollTop;hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;positionRunline();});
+ta.addEventListener('keydown',e=>{
+  if(e.key==='Tab'){e.preventDefault();insertAtCaret('  ');}
+  if(e.key==='Enter'){ // keep the indent of the line you're on
+    const p=ta.selectionStart, upto=ta.value.slice(0,p), cur=upto.slice(upto.lastIndexOf('\n')+1);
+    const ind=(cur.match(/^\s*/)||[''])[0];
+    const extra=/\{\s*$/.test(cur)?'  ':'';
+    e.preventDefault(); insertAtCaret('\n'+ind+extra);
+  }
+});
+function insertAtCaret(t){
+  const s=ta.selectionStart,e=ta.selectionEnd;
+  ta.value=ta.value.slice(0,s)+t+ta.value.slice(e);
+  ta.selectionStart=ta.selectionEnd=s+t.length;
+  syncEditor(); clearErr(); ta.focus();
+}
+function insertBlock(txt){
+  // drop it on its own line, below the caret's line
+  const p=ta.selectionStart, before=ta.value.slice(0,p);
+  const atLineStart=before==='' || before.endsWith('\n');
+  const ind=(before.slice(before.lastIndexOf('\n')+1).match(/^\s*/)||[''])[0];
+  insertAtCaret((atLineStart?'':'\n'+ind)+txt);
+}
+
+/* ---------- palette ---------- */
+function renderPal(){
+  const el=$('#pal'); el.innerHTML='';
+  const teach=MIS[mi].teach;
+  GROUPS.forEach(([cat,label])=>{
+    const h=document.createElement('div'); h.className='palgroup'; h.textContent=label; el.appendChild(h);
+    BLOCKS.filter(b=>b.cat===cat).forEach(b=>{
+      const btn=document.createElement('button');
+      btn.className='block '+cat+(b.name===teach?' new':'');
+      btn.innerHTML=`<div class="syn">${esc(b.insert.replace(/\n\s*/g,' '))}</div><div class="desc">${b.desc}</div>`;
+      btn.onclick=()=>insertBlock(b.insert);
+      el.appendChild(btn);
+    });
+  });
+  const note=document.createElement('div'); note.className='palnote';
+  note.textContent='Clicking drops a block in — but typing it yourself is how it sticks.';
+  el.appendChild(note);
+}
+
+/* ---------- parser ---------- */
+function parse(src){
+  const lines=src.split('\n'); const root=[]; const stack=[root];
+  for(let i=0;i<lines.length;i++){
+    let ln=lines[i].replace(/\/\/.*$/,'').trim();
+    if(!ln) continue;
+    let m;
+    if(m=ln.match(/^repeat\s*\(?\s*(\d+)\s*\)?\s*\{$/)){
+      const node={type:'repeat',n:+m[1],body:[],line:i};
+      stack[stack.length-1].push(node); stack.push(node.body); continue;
+    }
+    if(/^\}$/.test(ln)){
+      if(stack.length>1) stack.pop();
+      else throw {line:i,msg:'There is a <b>}</b> here with no <b>repeat</b> to close.'};
+      continue;
+    }
+    if(m=ln.match(/^([a-zA-Z][a-zA-Z0-9]*)\s*\((.*)\)$/)){
+      const name=m[1];
+      if(!CMDS.has(name)) throw {line:i,msg:`I don't know a block called <b>${esc(name)}</b>.${suggest(name)}`};
+      stack[stack.length-1].push({type:'cmd',name,args:parseArgs(m[2].trim(),i),line:i});
+      continue;
+    }
+    if(/^repeat\b/.test(ln)) throw {line:i,msg:'A repeat looks like <b>repeat 4 {</b> — with a number and a <b>{</b>.'};
+    if(/^[a-zA-Z][a-zA-Z0-9]*$/.test(ln)) throw {line:i,msg:`Blocks need brackets — try <b>${esc(ln)}()</b>.`};
+    throw {line:i,msg:`I can't read <b>${esc(ln)}</b>. Blocks look like <b>move(100)</b>.`};
+  }
+  if(stack.length>1) throw {line:lines.length-1,msg:'A <b>repeat</b> is missing its closing <b>}</b>.'};
+  return root;
+}
+function suggest(name){
+  const l=name.toLowerCase();
+  const hit=[...CMDS].find(c=>c.toLowerCase()===l||c.toLowerCase().startsWith(l.slice(0,3)));
+  return hit?` Did you mean <b>${hit}</b>?`:'';
+}
+function parseArgs(s,line){
+  if(!s) return [];
+  return s.split(',').map(a=>{
+    a=a.trim();
+    if(/^-?\d+(\.\d+)?$/.test(a)) return +a;
+    if(/^"[^"]*"$/.test(a)||/^'[^']*'$/.test(a)) return a.slice(1,-1);
+    if(a==='true') return true;
+    if(a==='false') return false;
+    if(/^[a-zA-Z]+$/.test(a)) throw {line,msg:`Words need quotes around them — try <b>"${esc(a)}"</b>.`};
+    throw {line,msg:`<b>${esc(a)}</b> isn't a number or a "word".`};
+  });
+}
+const MAXSTEPS=1600;
+function flatten(nodes,out,depth){
+  out=out||[]; depth=depth||0;
+  for(const n of nodes){
+    if(n.type==='repeat'){
+      if(depth>5) throw {line:n.line,msg:'That is a lot of repeats inside repeats!'};
+      for(let i=0;i<n.n;i++){
+        flatten(n.body,out,depth+1);
+        if(out.length>MAXSTEPS) throw {line:n.line,msg:'That repeats too many times — try a smaller number.'};
+      }
+    } else out.push(n);
+  }
+  return out;
+}
+
+/* ---------- stage ---------- */
+const LW=560, LH=420;
+const cv=$('#stage'), cx=cv.getContext('2d');
+let S, trail=[], flag=null, said=false, usedRepeat=false, activeLine=-1;
+function resetState(){
+  const st=MIS[mi].start;
+  S={x:st.x,y:st.y,dir:st.dir,pen:false,color:COLORS.green,width:6,say:''};
+  trail=[]; said=false; usedRepeat=false; activeLine=-1;
+  flag=MIS[mi].flag; setRunline(-1);
+}
+function paint(){
+  const r=cv.getBoundingClientRect(); const d=Math.min(devicePixelRatio||1,2);
+  if(cv.width!==Math.round(r.width*d)||cv.height!==Math.round(r.height*d)){
+    cv.width=Math.round(r.width*d); cv.height=Math.round(r.height*d);
+  }
+  cx.setTransform(d,0,0,d,0,0);
+  cx.clearRect(0,0,r.width,r.height);
+  // grid
+  cx.strokeStyle='rgba(255,255,255,.035)'; cx.lineWidth=1;
+  for(let x=0;x<r.width;x+=28){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,r.height);cx.stroke();}
+  for(let y=0;y<r.height;y+=28){cx.beginPath();cx.moveTo(0,y);cx.lineTo(r.width,y);cx.stroke();}
+  const s=Math.min(r.width/LW,r.height/LH);
+  cx.save(); cx.translate(r.width/2,r.height/2); cx.scale(s,s);
+  const t=performance.now()/1000;
+  if(flag) drawFlag(flag.x,flag.y,t);
+  // trail
+  cx.lineCap='round'; cx.lineJoin='round';
+  trail.forEach(g=>{ cx.strokeStyle=g.c; cx.lineWidth=g.w;
+    cx.beginPath(); cx.moveTo(g.x1,-g.y1); cx.lineTo(g.x2,-g.y2); cx.stroke(); });
+  drawSprite(S.x,-S.y,S.dir);
+  if(S.say) drawBubble(S.x,-S.y,S.say);
+  cx.restore();
+  requestAnimationFrame(paint);
+}
+function drawFlag(x,y,t){
+  const py=-y, pulse=1+Math.sin(t*3)*.12;
+  cx.strokeStyle='rgba(25,195,125,.5)'; cx.lineWidth=2;
+  cx.beginPath(); cx.arc(x,py,26*pulse,0,7); cx.stroke();
+  cx.strokeStyle='#8892aa'; cx.lineWidth=3; cx.beginPath();
+  cx.moveTo(x,py+14); cx.lineTo(x,py-24); cx.stroke();
+  cx.fillStyle=COLORS.pink; cx.beginPath();
+  cx.moveTo(x,py-24); cx.lineTo(x+24,py-16); cx.lineTo(x,py-8); cx.closePath(); cx.fill();
+}
+function drawSprite(x,y,dir){
+  cx.save(); cx.translate(x,y); cx.rotate(dir*Math.PI/180);
+  cx.fillStyle='rgba(0,0,0,.3)'; cx.beginPath(); cx.ellipse(0,4,13,13,0,0,7); cx.fill();
+  const g=cx.createLinearGradient(-12,-16,12,14); g.addColorStop(0,'#34e39b'); g.addColorStop(1,'#12a869');
+  cx.fillStyle=g; cx.beginPath();
+  cx.moveTo(0,-18); cx.quadraticCurveTo(13,-2,11,13);
+  cx.quadraticCurveTo(0,18,-11,13); cx.quadraticCurveTo(-13,-2,0,-18); cx.fill();
+  cx.fillStyle='#0a5c3a'; cx.beginPath(); cx.arc(-4,-4,2.4,0,7); cx.arc(4,-4,2.4,0,7); cx.fill();
+  cx.restore();
+}
+function drawBubble(x,y,txt){
+  cx.font='600 14px '+"-apple-system,system-ui,sans-serif";
+  const w=Math.min(180,cx.measureText(txt).width+22), h=30, bx=x+16, by=y-40;
+  cx.fillStyle='#fff'; cx.strokeStyle='rgba(0,0,0,.1)';
+  cx.beginPath(); cx.roundRect(bx,by,w,h,12); cx.fill();
+  cx.beginPath(); cx.moveTo(bx+8,by+h); cx.lineTo(bx+4,by+h+9); cx.lineTo(bx+20,by+h); cx.closePath(); cx.fill();
+  cx.fillStyle='#14172a'; cx.textAlign='left'; cx.textBaseline='middle';
+  cx.fillText(txt.slice(0,22),bx+11,by+h/2);
+}
+
+/* ---------- runner ---------- */
+let running=false;
+function tween(ms,fn){
+  return new Promise(res=>{
+    if(ms<=0){fn(1);return res();}
+    const t0=performance.now();
+    (function f(){
+      if(!running){fn(1);return res();}
+      const p=Math.min(1,(performance.now()-t0)/ms);
+      fn(p);
+      if(p<1) requestAnimationFrame(f); else res();
+    })();
+  });
+}
+function needNum(st,v,eg){
+  if(typeof v!=='number') throw {line:st.line,msg:`<b>${st.name}</b> needs a number, like <b>${eg}</b>.`};
+}
+async function doStep(st){
+  const a=st.args;
+  switch(st.name){
+    case 'move':{
+      needNum(st,a[0],'move(100)');
+      const n=Math.max(-600,Math.min(600,a[0]));
+      const rad=S.dir*Math.PI/180, dx=Math.sin(rad)*n, dy=Math.cos(rad)*n;
+      const x0=S.x,y0=S.y;
+      let seg=null;
+      if(S.pen){ seg={x1:x0,y1:y0,x2:x0,y2:y0,c:S.color,w:S.width}; trail.push(seg); }
+      await tween(Math.min(700,Math.abs(n)*3.2+90),p=>{
+        S.x=x0+dx*p; S.y=y0+dy*p; if(seg){seg.x2=S.x;seg.y2=S.y;}
+      });
+      break;
+    }
+    case 'turn':{
+      needNum(st,a[0],'turn(90)');
+      const d0=S.dir, dd=a[0];
+      await tween(Math.min(500,Math.abs(dd)*2.6+80),p=>{S.dir=d0+dd*p;});
+      S.dir=((d0+dd)%360+360)%360;
+      break;
+    }
+    case 'goto':{
+      needNum(st,a[0],'goto(0, 0)'); needNum(st,a[1],'goto(0, 0)');
+      const x0=S.x,y0=S.y,x1=a[0],y1=a[1];
+      let seg=null;
+      if(S.pen){ seg={x1:x0,y1:y0,x2:x0,y2:y0,c:S.color,w:S.width}; trail.push(seg); }
+      await tween(320,p=>{S.x=x0+(x1-x0)*p;S.y=y0+(y1-y0)*p;if(seg){seg.x2=S.x;seg.y2=S.y;}});
+      break;
+    }
+    case 'penDown': S.pen=true; await tween(90,()=>{}); break;
+    case 'penUp':   S.pen=false; await tween(90,()=>{}); break;
+    case 'color':{
+      const c=a[0];
+      if(typeof c!=='string') throw {line:st.line,msg:'<b>color</b> needs a colour in quotes, like <b>color("blue")</b>.'};
+      const hex=COLORS[c.toLowerCase()]||(/^#[0-9a-f]{3,8}$/i.test(c)?c:null);
+      if(!hex) throw {line:st.line,msg:`I don't have the colour <b>${esc(c)}</b>. Try ${Object.keys(COLORS).slice(0,6).map(k=>'<b>'+k+'</b>').join(', ')}.`};
+      S.color=hex; await tween(90,()=>{}); break;
+    }
+    case 'size':{
+      needNum(st,a[0],'size(6)');
+      S.width=Math.max(1,Math.min(40,a[0])); await tween(90,()=>{}); break;
+    }
+    case 'say':{
+      const t=a[0];
+      if(typeof t!=='string'&&typeof t!=='number') throw {line:st.line,msg:'<b>say</b> needs words in quotes, like <b>say("Hi!")</b>.'};
+      S.say=String(t); said=true; await tween(700,()=>{}); break;
+    }
+    case 'wait':{
+      needNum(st,a[0],'wait(1)');
+      await tween(Math.min(3000,Math.max(0,a[0])*1000),()=>{}); break;
+    }
+  }
+}
+async function run(){
+  if(running) return;
+  clearErr(); $('#win').classList.remove('show');
+  let steps, hadRepeat;
+  try{
+    const ast=parse(ta.value);
+    hadRepeat=ast.some(function look(n){ return n.type==='repeat'||(n.body&&n.body.some(look)); });
+    steps=flatten(ast);
+  }catch(e){ showErr(e); return; }
+  if(!steps.length){ showErr({msg:'No blocks yet — click one on the left, or type <b>move(100)</b>.'}); return; }
+
+  resetState();            // clears usedRepeat, so set it after
+  usedRepeat=hadRepeat;
+  running=true; setRunUI(true);
+  try{
+    for(const st of steps){
+      if(!running) break;
+      setRunline(st.line);
+      await doStep(st);
+    }
+  }catch(e){ running=false; setRunUI(false); setRunline(-1); showErr(e); return; }
+  const finished=running;
+  running=false; setRunUI(false); setRunline(-1);
+  if(finished) checkGoal();
+}
+function stop(){ running=false; setRunUI(false); setRunline(-1); }
+function setRunUI(on){
+  $('#runBtn').style.display=on?'none':'block';
+  $('#stopBtn').style.display=on?'block':'none';
+}
+function setRunline(l){
+  activeLine=l;
+  $$('#gut i').forEach(i=>i.classList.toggle('cur',+i.dataset.l===l));
+  positionRunline();
+}
+function positionRunline(){
+  const el=$('#runline');
+  if(activeLine<0){el.style.display='none';return;}
+  el.style.display='block';
+  el.style.top=(12+activeLine*22-ta.scrollTop)+'px';
+}
+function showErr(e){
+  const el=$('#err'); el.className='err';
+  el.innerHTML=(e.line!=null?`<b>Line ${e.line+1}</b> — `:'')+(e.msg||'Something went wrong.');
+  el.style.display='block';
+  if(e.line!=null) setRunline(e.line);
+}
+function showTip(msg){
+  const el=$('#err'); el.className='err tip'; el.innerHTML=msg; el.style.display='block';
+}
+function clearErr(){ $('#err').style.display='none'; if(!running) setRunline(-1); }
+
+/* ---------- goal ---------- */
+function checkGoal(){
+  const c={S,trail,said,usedRepeat,src:ta.value};
+  if(!MIS[mi].check(c)){
+    const n=MIS[mi].nudge&&MIS[mi].nudge(c);   // ran fine, just missed the point
+    if(n) showTip(n);
+    return;
+  }
+  $('#win').classList.add('show');
+  $('#winTag').textContent=pick(['Nice! ✨','You got it! 🎉','Yes! 🌱','That is code! ✅']);
+  $('#nextBtn').disabled=false;
+  burst();
+}
+
+/* ---------- missions ---------- */
+let mi=0;
+function loadMission(){
+  const m=MIS[mi];
+  $('#misTitle').textContent=m.title;
+  $('#misBlurb').innerHTML=m.blurb;
+  $('#goalline').innerHTML=`<em>● live</em> · ${m.goal}`;
+  $('#hintbox').innerHTML=m.hint; $('#hintbox').classList.remove('show');
+  $('#nextBtn').disabled=true;
+  $('#nextBtn').textContent=(mi===MIS.length-1?'Start over ↺':'Next →');
+  $('#win').classList.remove('show');
+  ta.value=m.starter;
+  ta.selectionStart=ta.selectionEnd=ta.value.length;
+  syncEditor(); clearErr(); resetState(); renderPal(); renderDots();
+}
+function renderDots(){
+  const el=$('#dots'); el.innerHTML='';
+  MIS.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='dot'+(i<mi?' fin':i===mi?' on':'');
+    el.appendChild(d);
+  });
+}
+$('#runBtn').onclick=run;
+$('#stopBtn').onclick=stop;
+$('#resetBtn').onclick=()=>{stop();ta.value=MIS[mi].starter;syncEditor();clearErr();resetState();$('#win').classList.remove('show');};
+$('#hintBtn').onclick=()=>$('#hintbox').classList.toggle('show');
+$('#nextBtn').onclick=()=>{ stop(); mi=(mi+1)%MIS.length; loadMission(); };
+
+/* ---------- confetti ---------- */
+const fx=$('#fx'), fxc=fx.getContext('2d');
+const PC=['#19c37d','#7c5cff','#ff5c93','#ffb020','#3b9dff'];
+let bits=[], fxOn=false;
+function burst(){
+  fx.style.display='block'; fx.width=innerWidth; fx.height=innerHeight;
+  const r=$('.stagewrap').getBoundingClientRect(), ox=r.left+r.width/2, oy=r.top+r.height/2;
+  for(let i=0;i<70;i++) bits.push({x:ox+(Math.random()-.5)*160,y:oy,vx:(Math.random()-.5)*10,
+    vy:-Math.random()*11-3,g:.32,c:PC[i%PC.length],r:Math.random()*5+3,rot:Math.random()*7,
+    vr:(Math.random()-.5)*.5,life:80});
+  if(!fxOn) fxLoop();
+}
+function fxLoop(){
+  fxOn=true; fxc.clearRect(0,0,fx.width,fx.height);
+  bits=bits.filter(b=>b.life>0);
+  bits.forEach(b=>{
+    b.vy+=b.g; b.x+=b.vx; b.y+=b.vy; b.rot+=b.vr; b.life--;
+    fxc.save(); fxc.translate(b.x,b.y); fxc.rotate(b.rot); fxc.fillStyle=b.c;
+    fxc.globalAlpha=Math.min(1,b.life/26);
+    fxc.fillRect(-b.r,-b.r/2,b.r*2,b.r); fxc.restore();
+  });
+  if(bits.length) requestAnimationFrame(fxLoop);
+  else { fxOn=false; fx.style.display='none'; }
+}
+
+/* ---------- go ---------- */
+loadMission();
+paint();
+</script>

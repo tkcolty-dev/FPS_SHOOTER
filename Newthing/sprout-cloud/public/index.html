@@ -1,0 +1,1148 @@
+<meta charset="utf-8">
+<title>Sprout — type the blocks</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f6fb; --panel:#ffffff; --panel-2:#f7f8fc;
+  --ink:#14172a; --muted:#6b7285; --line:#e9ebf3;
+  --accent:#19c37d; --accent-d:#0f9c62; --violet:#7c5cff; --pink:#ff5c93; --amber:#ffb020; --blue:#3b9dff;
+  --stage:#0d1020;
+  --shadow:0 1px 2px rgba(20,23,42,.04), 0 8px 24px -12px rgba(20,23,42,.14);
+  --shadow-lg:0 2px 6px rgba(20,23,42,.05), 0 30px 60px -24px rgba(20,23,42,.28);
+  /* soft chrome, exact code — the type system says what the product believes */
+  --display:"Fredoka",ui-rounded,"SF Pro Rounded",system-ui,sans-serif;
+  --sans:"Nunito",ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --r:20px;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#080a12;--panel:#12141f;--panel-2:#171a27;--ink:#eef1f8;--muted:#98a0b4;--line:#232838;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 6px rgba(0,0,0,.4),0 40px 70px -30px rgba(0,0,0,.8);}
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:600;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility;
+  overflow:hidden}
+button{font-family:inherit;cursor:pointer;border:none;color:inherit;font-weight:700}
+:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px;border-radius:6px}
+canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
+
+.app{height:100%;display:flex;flex-direction:column;padding:0 clamp(12px,2.2vw,22px)}
+.head{display:flex;align-items:center;gap:12px;padding:13px 2px 10px;flex:none}
+
+/* logo: seedling whose stem is a pen stroke, next to a plain wordmark */
+.logo{display:flex;align-items:center;gap:9px}
+.logo svg{width:30px;height:30px;filter:drop-shadow(0 3px 10px rgba(25,195,125,.4))}
+.logo .word{font-family:var(--display);font-weight:600;font-size:21px;letter-spacing:-.03em;color:var(--ink)}
+.headsp{flex:1}
+
+.segs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:3px;
+  box-shadow:var(--shadow);gap:2px}
+.seg{border-radius:9px;padding:6px 11px;font-size:12.5px;font-weight:700;color:var(--muted);background:none;
+  font-family:var(--sans);white-space:nowrap}
+.seg.on{background:var(--ink);color:var(--bg)}
+.seg:hover:not(.on){color:var(--ink)}
+.dots{display:flex;gap:5px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.3s}
+.dot.on{background:var(--accent);box-shadow:0 0 0 3.5px color-mix(in srgb,var(--accent) 20%,transparent)}
+.dot.fin{background:var(--accent)}
+.togbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:8px 13px;font-size:12.5px;font-weight:700;box-shadow:var(--shadow);white-space:nowrap}
+.togbtn:hover{border-color:var(--accent)}
+.roomchip{display:none;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:7px 11px;font-size:12.5px;font-weight:700;box-shadow:var(--shadow)}
+.roomchip.on{display:flex}
+.roomchip .code{font-family:var(--mono);font-weight:700;color:var(--accent);letter-spacing:.04em}
+
+.main{flex:1;min-height:0;display:grid;grid-template-columns:212px minmax(280px,1fr) minmax(330px,1.15fr);
+  gap:13px;padding-bottom:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.cardhead{padding:12px 14px 8px;flex:none;display:flex;align-items:baseline;gap:7px}
+.eyebrow{font-family:var(--mono);font-weight:700;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+.pal{overflow-y:auto;padding:0 10px 12px;display:flex;flex-direction:column;gap:5px}
+.palgroup{font-family:var(--mono);font-weight:700;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--muted);padding:11px 4px 3px}
+.block{display:block;width:100%;text-align:left;border-radius:12px;padding:9px 11px;color:#fff;
+  transition:transform .12s, filter .12s;box-shadow:0 2px 0 rgba(0,0,0,.16)}
+.block:hover{transform:translateY(-1px) scale(1.015);filter:brightness(1.07)}
+.block:active{transform:translateY(1px) scale(.99)}
+.block .syn{font-family:var(--mono);font-weight:700;font-size:12px;line-height:1.4}
+.block .desc{font-size:10.5px;font-weight:700;line-height:1.3;opacity:.85;margin-top:1px}
+.block.new{outline:2.5px solid var(--ink);outline-offset:2px}
+.block.motion{background:var(--blue)} .block.pen{background:var(--accent)}
+.block.looks{background:var(--violet)} .block.control{background:var(--amber);color:#3d2c00}
+
+.edit{flex:1;min-height:0;display:flex;background:var(--stage);margin:0 12px;border-radius:14px;overflow:hidden}
+.gut{flex:none;overflow:hidden;background:rgba(0,0,0,.2);padding:12px 0;width:36px}
+.gut i{display:block;font-family:var(--mono);font-weight:400;font-size:12px;line-height:22px;color:#4b5474;
+  text-align:right;padding-right:8px;font-style:normal}
+.gut i.cur{color:var(--accent);font-weight:700}
+.codebox{position:relative;flex:1;min-width:0}
+#hl,#ta{margin:0;padding:12px 14px;font-family:var(--mono);font-weight:400;font-size:12.5px;line-height:22px;
+  white-space:pre;border:0;tab-size:2}
+#hl{position:absolute;inset:0;overflow:hidden;pointer-events:none;color:#dfe5f5}
+#ta{position:absolute;inset:0;background:transparent;color:transparent;caret-color:var(--accent);
+  resize:none;outline:none;overflow:auto}
+#ta::selection{background:rgba(25,195,125,.3)}
+.runline{position:absolute;left:0;right:0;height:22px;background:rgba(25,195,125,.13);
+  border-left:2px solid var(--accent);display:none;pointer-events:none}
+.k-cmd{color:#7fd7ff} .k-num{color:#ffc86b} .k-str{color:#8ef0b6} .k-com{color:#5b6482;font-style:italic}
+.k-kw{color:#ffb020;font-weight:700} .k-brace{color:#98a0b4}
+
+.bar{display:flex;gap:8px;padding:12px;flex:none;align-items:center}
+.btn{border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;background:var(--panel-2);
+  border:1px solid var(--line);transition:transform .12s,filter .12s}
+.btn:hover{transform:translateY(-1px)}
+.btn:disabled{opacity:.45;cursor:default;transform:none}
+.btn.go{background:var(--accent);color:#04120c;border-color:transparent;flex:1;box-shadow:0 2px 0 var(--accent-d)}
+.btn.stop{background:var(--pink);color:#fff;border-color:transparent}
+.btn.next{background:var(--ink);color:var(--bg);border-color:transparent;margin-left:auto}
+.err{margin:0 12px 12px;padding:9px 12px;border-radius:12px;background:color-mix(in srgb,var(--pink) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--pink) 40%,transparent);font-size:12px;line-height:1.45;color:var(--pink);display:none}
+.err b{font-family:var(--mono);font-weight:700}
+.err.tip{background:color-mix(in srgb,var(--amber) 14%,transparent);
+  border-color:color-mix(in srgb,var(--amber) 45%,transparent);color:var(--ink)}
+
+.stagewrap{position:relative;flex:1;min-height:0;margin:0 12px;border-radius:14px;overflow:hidden;background:var(--stage)}
+#stage{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+.goalline{position:absolute;top:10px;left:12px;font-family:var(--mono);font-weight:700;font-size:9.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:#7a8199;z-index:2;pointer-events:none}
+.goalline em{color:var(--accent);font-style:normal}
+/* the measure readout — hover the stage and it tells you the blocks to type */
+.hud{position:absolute;top:8px;right:10px;z-index:2;pointer-events:none;text-align:right;
+  font-family:var(--mono);font-size:10.5px;line-height:1.6;color:#8b93ab;opacity:0;transition:opacity .16s}
+.hud.on{opacity:1}
+.hud .xy{color:#dfe5f5;font-weight:500}
+.hud .tell{display:inline-block;margin-top:4px;background:rgba(25,195,125,.16);border:1px solid rgba(25,195,125,.4);
+  color:#8ef0b6;border-radius:7px;padding:3px 7px;font-weight:700}
+.win{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:.3s;z-index:3}
+.win.show{opacity:1}
+.win .tag{background:var(--accent);color:#04120c;font-family:var(--display);font-weight:600;font-size:16px;
+  padding:9px 17px;border-radius:999px;box-shadow:0 10px 30px -8px rgba(25,195,125,.7);transform:scale(.9);transition:.3s}
+.win.show .tag{transform:scale(1)}
+
+.mis{padding:12px 14px 0;flex:none}
+.mis h2{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:-.02em;margin-bottom:4px}
+.mis p{font-size:12.5px;line-height:1.55;color:var(--muted);font-weight:600}
+.mis p b,.hintbox b{color:var(--ink);font-family:var(--mono);font-size:11.5px;font-weight:700}
+.hintbox{display:none;margin:9px 0 0;padding:9px 11px;border-radius:11px;
+  background:color-mix(in srgb,var(--amber) 13%,transparent);font-size:12px;line-height:1.5;color:var(--ink);font-weight:700}
+.hintbox.show{display:block}
+.misbar{display:flex;gap:8px;align-items:center;padding:11px 14px;flex:none}
+.linky{background:none;border:none;font-size:12px;font-weight:700;color:var(--muted);padding:6px 2px}
+.linky:hover{color:var(--ink)}
+
+.together{display:none;padding:12px 14px 0;flex:none}
+.together.on{display:block}
+.mis.off,.misbar.off{display:none}
+.bigcode{font-family:var(--mono);font-weight:700;font-size:25px;letter-spacing:.08em;color:var(--accent)}
+.peers{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.peer{display:flex;align-items:center;gap:5px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:999px;padding:4px 10px 4px 5px;font-size:11.5px;font-weight:700}
+.peer .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:12px}
+
+.modal{position:fixed;inset:0;background:rgba(8,10,18,.55);backdrop-filter:blur(6px);z-index:70;
+  display:none;align-items:center;justify-content:center;padding:20px}
+.modal.on{display:flex}
+.sheet{background:var(--panel);border-radius:24px;box-shadow:var(--shadow-lg);padding:24px;width:min(420px,100%);
+  max-height:100%;overflow-y:auto}
+.sheet h2{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.02em;margin-bottom:5px}
+.sheet .sub{font-size:12.5px;line-height:1.55;color:var(--muted);margin-bottom:14px;font-weight:600}
+.lab{font-family:var(--mono);font-weight:700;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--muted);margin:14px 0 7px}
+.inp{width:100%;border:1px solid var(--line);background:var(--panel-2);border-radius:13px;padding:12px 13px;
+  font-family:var(--sans);font-weight:700;font-size:15px;color:var(--ink);outline:none}
+.inp:focus{border-color:var(--accent)}
+.inp.code{font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--line);background:var(--panel-2);border-radius:12px;width:40px;height:40px;
+  display:grid;place-items:center;font-size:19px}
+.chip.sel{border-color:var(--ink);border-width:2px}
+.chip.sw{border-radius:50%}
+.chip.sw.sel{outline:2.5px solid var(--ink);outline-offset:2px;border-color:transparent}
+.mrow{display:flex;gap:8px;margin-top:16px}
+.mrow .btn{flex:1}
+.msg{font-size:11.5px;line-height:1.4;color:var(--pink);margin-top:10px;min-height:16px;font-weight:700}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:1080px){
+  body{overflow:auto}
+  .app{height:auto;min-height:100%}
+  .main{grid-template-columns:1fr}
+  .pal{flex-direction:row;flex-wrap:wrap;overflow:visible}
+  .palgroup{width:100%}
+  .block{width:auto;flex:1 1 150px}
+  .edit{height:290px}
+  .stagewrap{height:330px}
+  .head{flex-wrap:wrap}
+}
+</style>
+
+<canvas id="fx"></canvas>
+<div class="app">
+  <div class="head">
+    <div class="logo" id="logo"></div>
+    <div class="headsp"></div>
+    <div class="segs" id="langs"></div>
+    <div class="roomchip" id="roomchip">
+      <span class="code" id="roomCode"></span>
+      <span id="roomWho"></span>
+      <button class="linky" id="leaveBtn" style="padding:0 0 0 2px">Leave</button>
+    </div>
+    <div class="dots" id="dots"></div>
+    <button class="togbtn" id="togBtn"><span>👥</span><span>Play together</span></button>
+  </div>
+
+  <div class="main">
+    <section class="card">
+      <div class="cardhead"><div class="eyebrow">Blocks</div></div>
+      <div class="pal" id="pal"></div>
+    </section>
+
+    <section class="card">
+      <div class="cardhead"><div class="eyebrow">Your code</div><div class="eyebrow" id="langTag" style="margin-left:auto"></div></div>
+      <div class="edit">
+        <div class="gut" id="gut"></div>
+        <div class="codebox">
+          <div class="runline" id="runline"></div>
+          <pre id="hl"></pre>
+          <textarea id="ta" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off"></textarea>
+        </div>
+      </div>
+      <div class="err" id="err"></div>
+      <div class="bar">
+        <button class="btn go" id="runBtn">▶ Run</button>
+        <button class="btn stop" id="stopBtn" style="display:none">■ Stop</button>
+        <button class="btn" id="resetBtn">↺ Reset</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="mis" id="misPanel">
+        <h2 id="misTitle"></h2>
+        <p id="misBlurb"></p>
+        <div class="hintbox" id="hintbox"></div>
+      </div>
+      <div class="misbar" id="misBar">
+        <button class="linky" id="hintBtn">💡 Show me how</button>
+        <button class="btn next" id="nextBtn" disabled>Next →</button>
+      </div>
+
+      <div class="together" id="togPanel">
+        <div class="eyebrow" style="margin-bottom:6px">Drawing together — room</div>
+        <div class="bigcode" id="togCode">—</div>
+        <p style="font-size:12px;line-height:1.5;color:var(--muted);margin-top:7px;font-weight:600">
+          Anyone who types this code draws on the same picture.</p>
+        <div class="peers" id="togPeers"></div>
+        <div style="display:flex;gap:8px;margin:12px 0 2px">
+          <button class="btn" id="clearAll" style="flex:1">🧹 Clear the picture</button>
+        </div>
+      </div>
+
+      <div class="stagewrap">
+        <div class="goalline" id="goalline"></div>
+        <div class="hud" id="hud"></div>
+        <canvas id="stage"></canvas>
+        <div class="win" id="win"><div class="tag" id="winTag">Nice!</div></div>
+      </div>
+      <div style="height:12px;flex:none"></div>
+    </section>
+  </div>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2>Draw together</h2>
+    <div class="sub">Two devices, one picture. Make a room and share the code — or type a friend's code to join them.</div>
+    <div class="lab">Your name</div>
+    <input class="inp" id="mName" maxlength="14" placeholder="Ana">
+    <div class="lab">You are</div>
+    <div class="chips" id="mAv"></div>
+    <div class="lab">Your colour</div>
+    <div class="chips" id="mColor"></div>
+    <div class="mrow"><button class="btn go" id="mCreate">Make a room</button></div>
+    <div class="lab">Or join a friend</div>
+    <div style="display:flex;gap:8px">
+      <input class="inp code" id="mCode" maxlength="10" placeholder="LEAF42" style="flex:1">
+      <button class="btn" id="mJoin">Join</button>
+    </div>
+    <div class="msg" id="mMsg"></div>
+    <div class="mrow"><button class="btn" id="mCancel">Cancel</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* the stem is a round-capped pen stroke — the same mark the sprite draws with */
+$('#logo').innerHTML=`<svg viewBox="0 0 64 64" aria-hidden="true">
+  <defs>
+    <linearGradient id="lfa" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#0f9c62"/><stop offset="1" stop-color="#45f2ad"/></linearGradient>
+    <linearGradient id="lfb" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#0b7d4e"/><stop offset="1" stop-color="#22cf88"/></linearGradient>
+  </defs>
+  <path d="M32 59 C32 47 32 40 32 31" stroke="#0a6b45" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+  <path d="M31.5 45 C31.5 34 23 23.5 8.5 21.5 C8.5 37 17 46.5 31.5 45 Z" fill="url(#lfb)"/>
+  <path d="M32.5 39 C32.5 23 43 10.5 57.5 8 C57.5 26 46.5 38.5 32.5 39 Z" fill="url(#lfa)"/>
+  <path d="M39 30.5 C43.5 22.5 49 16.5 54 13" stroke="rgba(255,255,255,.5)" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+</svg><span class="word">Sprout</span>`;
+
+const COLORS={red:'#ff5c5c',blue:'#3b9dff',green:'#19c37d',yellow:'#ffb020',pink:'#ff5c93',
+  purple:'#7c5cff',orange:'#ff8a3d',white:'#eef1f8',black:'#141a2e'};
+const AVS=['🦊','🐼','🐨','🦄','🐸','🐙','🦁','🐧'];
+const PCOLORS=['#19c37d','#3b9dff','#ff5c93','#7c5cff','#ffb020','#ff8a3d'];
+
+/* ---------- languages ----------
+   Same blocks everywhere; only the loop, the comment mark and the block
+   shape change. Sprout is the training-wheels syntax; the other two are
+   exactly what you would type in a real file. */
+function mkLoop(open,close,indent){
+  return (n,body,v)=>{
+    const lines=body.join('\n').split('\n').map(l=>l?indent+l:indent).join('\n');
+    return open(n,v||'i')+'\n'+lines+(close?'\n'+close:'');
+  };
+}
+const LANGS={
+  sprout:{ id:'sprout', label:'Sprout', com:'//', kind:'brace', indent:'  ',
+    kw:['repeat'], opens:/\{\s*$/,
+    loopRe:/^repeat\s*\(?\s*(\d+)\s*\)?\s*\{$/, loopN:m=>+m[1],
+    loopEmpty:'repeat 4 {\n  \n}',
+    loop:mkLoop(n=>`repeat ${n} {`,'}','  '),
+    say:n=>`<b>repeat ${n} { }</b>`,
+    badLoop:'A loop looks like <b>repeat 4 {</b> — a number and a <b>{</b>.' },
+  js:{ id:'js', label:'JavaScript', com:'//', kind:'brace', indent:'  ',
+    kw:['for','let','var','const'], opens:/\{\s*$/,
+    loopRe:/^for\s*\(\s*(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\)\s*\{$/,
+    loopN:m=>+m[2],
+    loopEmpty:'for (let i = 0; i < 4; i++) {\n  \n}',
+    loop:mkLoop((n,v)=>`for (let ${v} = 0; ${v} < ${n}; ${v}++) {`,'}','  '),
+    say:n=>`<b>for (let i = 0; i < ${n}; i++) { }</b>`,
+    badLoop:'A JavaScript loop looks like <b>for (let i = 0; i < 4; i++) {</b>.' },
+  py:{ id:'py', label:'Python', com:'#', kind:'indent', indent:'    ',
+    kw:['for','in','range'], opens:/:\s*$/,
+    loopRe:/^for\s+([a-zA-Z_]\w*)\s+in\s+range\s*\(\s*(\d+)\s*\)\s*:$/,
+    loopN:m=>+m[2],
+    loopEmpty:'for i in range(4):\n    ',
+    loop:mkLoop((n,v)=>`for ${v} in range(${n}):`,'','    '),
+    say:n=>`<b>for i in range(${n}):</b>`,
+    badLoop:'A Python loop looks like <b>for i in range(4):</b> — and the lines inside must be indented.' }
+};
+let L=LANGS[localStorage.getItem('sprout.lang')||'sprout']||LANGS.sprout;
+
+/* ---------- blocks ---------- */
+const BLOCKS=[
+  {cat:'motion',  name:'move',    ins:'move(100)',     desc:'walk forward'},
+  {cat:'motion',  name:'turn',    ins:'turn(90)',      desc:'turn right'},
+  {cat:'motion',  name:'goto',    ins:'goto(0, 0)',    desc:'jump to a spot'},
+  {cat:'pen',     name:'penDown', ins:'penDown()',     desc:'start drawing'},
+  {cat:'pen',     name:'penUp',   ins:'penUp()',       desc:'stop drawing'},
+  {cat:'pen',     name:'color',   ins:'color("blue")', desc:'pick a colour'},
+  {cat:'pen',     name:'size',    ins:'size(6)',       desc:'line thickness'},
+  {cat:'pen',     name:'dot',     ins:'dot(16)',       desc:'stamp a dot'},
+  {cat:'looks',   name:'say',     ins:'say("Hi!")',    desc:'say something'},
+  {cat:'control', name:'wait',    ins:'wait(1)',       desc:'pause'},
+  {cat:'control', name:'loop',    ins:()=>L.loopEmpty, desc:'do it again'}
+];
+const GROUPS=[['motion','Motion'],['pen','Pen'],['looks','Looks'],['control','Control']];
+const CMDS=new Set(BLOCKS.filter(b=>b.name!=='loop').map(b=>b.name));
+
+/* ---------- missions ---------- */
+const near=(S,x,y,r)=>Math.hypot(S.x-x,S.y-y)<=r;
+const dots=t=>t.filter(s=>s.x1===s.x2&&s.y1===s.y2).length;
+const lines=t=>t.filter(s=>s.x1!==s.x2||s.y1!==s.y2).length;
+const allRed=t=>lines(t)>0&&t.every(s=>s.c===COLORS.red);
+const MIS=[
+  { teach:'move', title:'Walk to the flag',
+    blurb:'Blocks are words you <b>type</b>. <b>move(100)</b> walks forward.',
+    goal:'REACH THE FLAG', start:{x:-190,y:0,dir:90}, flag:{x:60,y:0},
+    starter:L=>`${L.com} type a move block, then press Run\n`,
+    hint:'Hover the flag — it tells you how far. Then <b>move(250)</b>.',
+    check:c=>near(c.S,60,0,36),
+    nudge:c=>c.S.x<24?'Nearly! The flag is further — try a bigger number in <b>move()</b>.'
+             :'Too far! Try a smaller number in <b>move()</b>.' },
+
+  { teach:'turn', title:'Around the corner',
+    blurb:'<b>turn(90)</b> makes a quarter turn to the right.',
+    goal:'REACH THE FLAG', start:{x:-190,y:90,dir:90}, flag:{x:60,y:-70},
+    starter:L=>`move(250)\n${L.com} now turn, then move again\n`,
+    hint:'<b>move(250)</b>, then <b>turn(90)</b>, then <b>move(160)</b>.',
+    check:c=>near(c.S,60,-70,36),
+    nudge:()=>'Not there yet — turn first, then move again.' },
+
+  { teach:'penDown', title:'Leave a trail',
+    blurb:'<b>penDown()</b> draws a line as you walk.',
+    goal:'DRAW A LINE TO THE FLAG', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
+    starter:L=>`${L.com} draw a line to the flag\n`,
+    hint:'<b>penDown()</b> first, then <b>move(360)</b>.',
+    check:c=>near(c.S,170,0,36)&&lines(c.trail)>0,
+    nudge:c=>near(c.S,170,0,36)&&!lines(c.trail)
+      ?'You got there — but drew nothing. Add <b>penDown()</b> first.':null },
+
+  { teach:'color', title:'Paint it red',
+    blurb:'<b>color("red")</b> changes the pen. Words go in quotes.',
+    goal:'DRAW A RED LINE', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
+    starter:()=>'penDown()\nmove(360)\n',
+    hint:'Put <b>color("red")</b> at the very top.',
+    check:c=>near(c.S,170,0,36)&&allRed(c.trail),
+    nudge:c=>lines(c.trail)&&!allRed(c.trail)
+      ?'Nice line — now add <b>color("red")</b> above <b>penDown()</b>.':null },
+
+  { teach:'size', title:'Make it fat',
+    blurb:'<b>size(20)</b> makes a thick, chunky line.',
+    goal:'DRAW A THICK LINE', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
+    starter:()=>'penDown()\nmove(360)\n',
+    hint:'Put <b>size(20)</b> at the top.',
+    check:c=>near(c.S,170,0,36)&&lines(c.trail)>0&&c.trail.every(s=>s.w>=15),
+    nudge:c=>lines(c.trail)&&!c.trail.every(s=>s.w>=15)
+      ?'Still skinny — add <b>size(20)</b> at the top.':null },
+
+  { teach:'loop', title:'Draw a square',
+    blurb:L=>`${L.say(4)} runs the blocks inside it four times.`,
+    goal:'DRAW A SQUARE', start:{x:-70,y:70,dir:90}, flag:null,
+    starter:L=>`penDown()\n${L.loopEmpty}\n`,
+    hint:'Inside the loop: <b>move(140)</b> then <b>turn(90)</b>.',
+    check:c=>c.usedLoop&&lines(c.trail)>=4&&near(c.S,-70,70,26),
+    nudge:c=>!c.usedLoop&&lines(c.trail)>=4&&near(c.S,-70,70,26)
+      ?'A perfect square! Now do it with a loop — same shape, half the typing.':null },
+
+  { teach:'loop', title:'Now a triangle',
+    blurb:'Same loop, different numbers. A triangle has <b>3</b> sides and turns of <b>120</b>.',
+    goal:'DRAW A TRIANGLE', start:{x:-70,y:60,dir:90}, flag:null,
+    starter:L=>`penDown()\n${L.loop(4,['move(140)','turn(90)'])}\n`,
+    hint:'Change the 4 to <b>3</b>, and <b>turn(90)</b> to <b>turn(120)</b>.',
+    check:c=>c.usedLoop&&lines(c.trail)===3&&near(c.S,-70,60,26),
+    nudge:c=>lines(c.trail)===4?'That is still a square — a triangle loops <b>3</b> times and turns <b>120</b>.':null },
+
+  { teach:'penUp', title:'Dotty line',
+    blurb:'<b>penUp()</b> lifts the pen. Down, up, down, up — dashes!',
+    goal:'DRAW A DASHED LINE', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
+    starter:L=>`${L.loop(6,['penDown()','move(30)',''])}\n`,
+    hint:'Inside the loop, after <b>move(30)</b>: <b>penUp()</b> then <b>move(30)</b>.',
+    check:c=>c.usedPenUp&&lines(c.trail)>=4&&near(c.S,170,0,44),
+    nudge:c=>!c.usedPenUp?'One long line! Add <b>penUp()</b> and another <b>move(30)</b> to skip a gap.':null },
+
+  { teach:'dot', title:'Bead necklace',
+    blurb:'<b>dot(16)</b> stamps a dot right where you stand — pen up or down.',
+    goal:'LEAVE A TRAIL OF BEADS', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
+    starter:L=>`color("pink")\n${L.loop(8,['move(45)'])}\n`,
+    hint:'Put <b>dot(16)</b> inside the loop, before the move.',
+    check:c=>dots(c.trail)>=6&&near(c.S,170,0,44),
+    nudge:c=>near(c.S,170,0,44)&&!dots(c.trail)
+      ?'You walked the path — now add <b>dot(16)</b> inside the loop to drop beads.':null },
+
+  { teach:'say', title:'Say hello',
+    blurb:'<b>say("Hi!")</b> pops a speech bubble.',
+    goal:'MAKE SPROUT TALK', start:{x:0,y:-30,dir:90}, flag:null,
+    starter:L=>`${L.com} make Sprout say something\n`,
+    hint:'Type <b>say("Hi!")</b> — your words go in the quotes.',
+    check:c=>c.sayCount>0 },
+
+  { teach:'wait', title:'Say two things',
+    blurb:'<b>wait(1)</b> pauses for a second — so the first thing can be read.',
+    goal:'SAY TWO THINGS', start:{x:0,y:-30,dir:90}, flag:null,
+    starter:L=>`say("Hi!")\n${L.com} wait, then say something else\n`,
+    hint:'<b>say("Hi!")</b>, then <b>wait(1)</b>, then <b>say("Bye!")</b>.',
+    check:c=>c.sayCount>=2&&c.usedWait,
+    nudge:c=>c.sayCount>=2&&!c.usedWait?'Too fast to read! Put <b>wait(1)</b> between them.':null },
+
+  { teach:'goto', title:'Jump home',
+    blurb:'<b>goto(0, 0)</b> jumps straight to a spot. The middle is 0, 0.',
+    goal:'JUMP TO THE MIDDLE', start:{x:-190,y:90,dir:90}, flag:{x:0,y:0},
+    starter:L=>`${L.com} jump to the middle\n`,
+    hint:'Type <b>goto(0, 0)</b>. Hover the stage to read any spot.',
+    check:c=>c.usedGoto&&near(c.S,0,0,22) },
+
+  { teach:null, title:'Draw a star',
+    blurb:'Five moves, turns of 144. Small number, big shape.',
+    goal:'DRAW A STAR', start:{x:-85,y:20,dir:90}, flag:null,
+    starter:L=>`color("yellow")\nsize(3)\npenDown()\n${L.loop(5,['move(170)',''])}\n`,
+    hint:'Inside the loop, after the move: <b>turn(144)</b>.',
+    check:c=>c.usedLoop&&lines(c.trail)>=5&&near(c.S,-85,20,30),
+    nudge:c=>lines(c.trail)>=5?'Close! A star turns <b>144</b> each time.':null },
+
+  { teach:null, title:'A loop inside a loop',
+    blurb:'Put a loop <em>inside</em> another one and a square becomes a flower.',
+    goal:'DRAW A FLOWER', start:{x:0,y:0,dir:90}, flag:null,
+    starter:L=>`penDown()\ncolor("purple")\n${L.loop(6,['','turn(60)'])}\n`,
+    hint:L=>`Inside the big loop, put ${L.say(4)} with <b>move(80)</b> and <b>turn(90)</b>.`,
+    check:c=>c.usedLoop&&lines(c.trail)>=20&&near(c.S,0,0,30),
+    nudge:c=>lines(c.trail)>=4&&lines(c.trail)<20
+      ?'One square so far — put that loop inside the big loop to spin it around.':null },
+
+  { teach:null, title:'Free play',
+    blurb:'No goal — every block is yours. Change the numbers and see what happens.',
+    goal:'MAKE ANYTHING', start:{x:0,y:0,dir:90}, flag:null,
+    starter:L=>`color("purple")\nsize(3)\npenDown()\n${L.loop(36,['move(120)','turn(100)'])}\nsay("I made this!")\n`,
+    hint:'Try changing <b>turn(100)</b> to another number.',
+    check:()=>false }
+];
+const T=(v)=>typeof v==='function'?v(L):v;
+
+/* ---------- editor ---------- */
+const ta=$('#ta'), hl=$('#hl'), gut=$('#gut');
+function highlight(src){
+  const comRe=L.com==='#'?/#/:/\/\//;
+  const kwRe=new RegExp('\\b('+L.kw.join('|')+')\\b','g');
+  return src.split('\n').map(line=>{
+    const m=line.match(comRe);
+    const ci=m?m.index:-1;
+    let code=ci>=0?line.slice(0,ci):line, com=ci>=0?line.slice(ci):'';
+    let out=esc(code)
+      .replace(/(&quot;[^&]*?&quot;|"[^"]*")/g,'<span class="k-str">$1</span>')
+      .replace(kwRe,'<span class="k-kw">$1</span>')
+      .replace(/\b([a-zA-Z]\w*)(?=\s*\()/g,(mm,w)=>CMDS.has(w)?`<span class="k-cmd">${w}</span>`:w)
+      .replace(/(?<![\w"#-])(\d+(?:\.\d+)?)(?![\w"])/g,'<span class="k-num">$1</span>')
+      .replace(/([{}:;])/g,'<span class="k-brace">$1</span>');
+    if(com) out+=`<span class="k-com">${esc(com)}</span>`;
+    return out||' ';
+  }).join('\n');
+}
+function syncEditor(){
+  hl.innerHTML=highlight(ta.value);
+  const n=ta.value.split('\n').length;
+  let g='';for(let i=1;i<=n;i++)g+=`<i data-l="${i-1}">${i}</i>`;
+  gut.innerHTML=g;
+  gut.scrollTop=ta.scrollTop; hl.scrollTop=ta.scrollTop; hl.scrollLeft=ta.scrollLeft;
+}
+ta.addEventListener('input',()=>{syncEditor();clearErr();});
+ta.addEventListener('scroll',()=>{gut.scrollTop=ta.scrollTop;hl.scrollTop=ta.scrollTop;hl.scrollLeft=ta.scrollLeft;positionRunline();});
+
+/* brackets and quotes close themselves — a missing ) is the commonest way to get stuck */
+const PAIRS={'(':')','[':']','{':'}','"':'"',"'":"'"};
+const CLOSERS=new Set([')',']','}','"',"'"]);
+ta.addEventListener('keydown',e=>{
+  const s=ta.selectionStart, en=ta.selectionEnd, v=ta.value;
+  if(e.key==='Tab'){ e.preventDefault(); return insertAtCaret(L.indent); }
+  if(e.key==='Enter'){
+    const upto=v.slice(0,s), cur=upto.slice(upto.lastIndexOf('\n')+1);
+    const ind=(cur.match(/^\s*/)||[''])[0];
+    const extra=L.opens.test(cur)?L.indent:'';
+    e.preventDefault(); return insertAtCaret('\n'+ind+extra);
+  }
+  // typing the closer that's already there just steps over it
+  if(s===en && CLOSERS.has(e.key) && v[s]===e.key && !e.metaKey && !e.ctrlKey){
+    e.preventDefault(); ta.selectionStart=ta.selectionEnd=s+1; return;
+  }
+  if(PAIRS[e.key] && !e.metaKey && !e.ctrlKey){
+    const close=PAIRS[e.key];
+    // don't auto-pair a quote when sitting against a word
+    if(s===en && (e.key==='"'||e.key==="'") && /[\w"']/.test(v[s]||'')) return;
+    e.preventDefault();
+    ta.value=v.slice(0,s)+e.key+v.slice(s,en)+close+v.slice(en);
+    ta.selectionStart=s+1; ta.selectionEnd=en+1;
+    syncEditor(); clearErr(); return;
+  }
+  if(e.key==='Backspace' && s===en && PAIRS[v[s-1]]===v[s]){
+    e.preventDefault();
+    ta.value=v.slice(0,s-1)+v.slice(s+1);
+    ta.selectionStart=ta.selectionEnd=s-1;
+    syncEditor(); clearErr(); return;
+  }
+});
+function insertAtCaret(t){
+  const s=ta.selectionStart,e=ta.selectionEnd;
+  ta.value=ta.value.slice(0,s)+t+ta.value.slice(e);
+  ta.selectionStart=ta.selectionEnd=s+t.length;
+  syncEditor(); clearErr(); ta.focus();
+}
+function insertBlock(txt){
+  const p=ta.selectionStart, before=ta.value.slice(0,p);
+  const atLineStart=before===''||before.endsWith('\n');
+  const ind=(before.slice(before.lastIndexOf('\n')+1).match(/^\s*/)||[''])[0];
+  const body=txt.split('\n').map((l,i)=>i?ind+l:l).join('\n');
+  insertAtCaret((atLineStart?'':'\n'+ind)+body);
+}
+function renderPal(){
+  const el=$('#pal'); el.innerHTML='';
+  const teach=mode==='solo'?MIS[mi].teach:null;
+  GROUPS.forEach(([cat,label])=>{
+    const h=document.createElement('div'); h.className='palgroup'; h.textContent=label; el.appendChild(h);
+    BLOCKS.filter(b=>b.cat===cat).forEach(b=>{
+      const ins=typeof b.ins==='function'?b.ins():b.ins;
+      const btn=document.createElement('button');
+      btn.className='block '+cat+(b.name===teach?' new':'');
+      btn.innerHTML=`<div class="syn">${esc(ins.replace(/\n\s*/g,' ').trim())}</div><div class="desc">${b.desc}</div>`;
+      btn.onclick=()=>insertBlock(ins);
+      el.appendChild(btn);
+    });
+  });
+}
+function renderLangs(){
+  const el=$('#langs'); el.innerHTML='';
+  Object.values(LANGS).forEach(x=>{
+    const b=document.createElement('button');
+    b.className='seg'+(x.id===L.id?' on':''); b.textContent=x.label;
+    b.onclick=()=>setLang(x.id);
+    el.appendChild(b);
+  });
+  $('#langTag').textContent=L.id==='sprout'?'training wheels':'real '+L.label;
+}
+function setLang(id){
+  if(LANGS[id]===L) return;
+  L=LANGS[id]; localStorage.setItem('sprout.lang',id);
+  renderLangs(); renderPal();
+  if(mode==='together'){ ta.value=togetherStarter(); syncEditor(); }
+  else loadMission();
+}
+
+/* ---------- parser ---------- */
+function parse(src){
+  return L.kind==='indent'?parseIndent(src):parseBrace(src);
+}
+function stripCom(line){
+  const i=L.com==='#'?line.indexOf('#'):line.indexOf('//');
+  return i>=0?line.slice(0,i):line;
+}
+function readCmd(ln,i){
+  const m=ln.match(/^([a-zA-Z][a-zA-Z0-9]*)\s*\((.*)\)$/);
+  if(!m) return null;
+  if(!CMDS.has(m[1])) throw {line:i,msg:`I don't know a block called <b>${esc(m[1])}</b>.${suggest(m[1])}`};
+  return {type:'cmd',name:m[1],args:parseArgs(m[2].trim(),i),line:i};
+}
+function unreadable(ln,i){
+  if(/^(repeat|for)\b/.test(ln)) throw {line:i,msg:L.badLoop};
+  if(/^[a-zA-Z][a-zA-Z0-9]*$/.test(ln)) throw {line:i,msg:`Blocks need brackets — try <b>${esc(ln)}()</b>.`};
+  throw {line:i,msg:`I can't read <b>${esc(ln)}</b>. Blocks look like <b>move(100)</b>.`};
+}
+function parseBrace(src){
+  const src2=src.split('\n'); const root=[]; const stack=[root];
+  for(let i=0;i<src2.length;i++){
+    let ln=stripCom(src2[i]).trim().replace(/;$/,'');
+    if(!ln) continue;
+    const lm=ln.match(L.loopRe);
+    if(lm){ const node={type:'loop',n:L.loopN(lm),body:[],line:i};
+      stack[stack.length-1].push(node); stack.push(node.body); continue; }
+    if(ln==='}'){
+      if(stack.length>1) stack.pop();
+      else throw {line:i,msg:'There is a <b>}</b> here with no loop to close.'};
+      continue;
+    }
+    const c=readCmd(ln,i); if(c){ stack[stack.length-1].push(c); continue; }
+    unreadable(ln,i);
+  }
+  if(stack.length>1) throw {line:src2.length-1,msg:'A loop is missing its closing <b>}</b>.'};
+  return root;
+}
+function parseIndent(src){
+  const raw=src.split('\n'); const root=[]; const stack=[{ind:-1,body:root,line:-1}];
+  for(let i=0;i<raw.length;i++){
+    const noc=stripCom(raw[i]);
+    if(!noc.trim()) continue;
+    if(/\t/.test(noc.match(/^\s*/)[0])) throw {line:i,msg:'Use spaces to indent, not tabs.'};
+    const ind=noc.match(/^ */)[0].length;
+    const ln=noc.trim().replace(/;$/,'');
+    while(stack.length>1 && ind<=stack[stack.length-1].ind) stack.pop();
+    const lm=ln.match(L.loopRe);
+    if(lm){ const node={type:'loop',n:L.loopN(lm),body:[],line:i};
+      stack[stack.length-1].body.push(node); stack.push({ind,body:node.body,line:i}); continue; }
+    if(ln==='}') throw {line:i,msg:'Python has no <b>}</b> — indent the lines inside the loop instead.'};
+    const c=readCmd(ln,i); if(c){ stack[stack.length-1].body.push(c); continue; }
+    unreadable(ln,i);
+  }
+  const empty=findEmptyLoop(root);
+  if(empty!=null) throw {line:empty,msg:'Nothing is indented under this loop, so it has nothing to repeat.'};
+  return root;
+}
+function findEmptyLoop(nodes){
+  for(const n of nodes){
+    if(n.type==='loop'){
+      if(!n.body.length) return n.line;
+      const d=findEmptyLoop(n.body); if(d!=null) return d;
+    }
+  }
+  return null;
+}
+function suggest(name){
+  const l=name.toLowerCase();
+  const hit=[...CMDS].find(c=>c.toLowerCase()===l||c.toLowerCase().startsWith(l.slice(0,3)));
+  return hit?` Did you mean <b>${hit}</b>?`:'';
+}
+function parseArgs(s,line){
+  if(!s) return [];
+  return s.split(',').map(a=>{
+    a=a.trim();
+    if(/^-?\d+(\.\d+)?$/.test(a)) return +a;
+    if(/^"[^"]*"$/.test(a)||/^'[^']*'$/.test(a)) return a.slice(1,-1);
+    if(a==='true'||a==='True') return true;
+    if(a==='false'||a==='False') return false;
+    if(/^[a-zA-Z ]+$/.test(a)) throw {line,msg:`Words need quotes — try <b>"${esc(a)}"</b>.`};
+    throw {line,msg:`<b>${esc(a)}</b> isn't a number or a "word".`};
+  });
+}
+const MAXSTEPS=1600;
+function flatten(nodes,out,depth){
+  out=out||[]; depth=depth||0;
+  for(const n of nodes){
+    if(n.type==='loop'){
+      if(depth>5) throw {line:n.line,msg:'That is a lot of loops inside loops!'};
+      for(let i=0;i<n.n;i++){
+        flatten(n.body,out,depth+1);
+        if(out.length>MAXSTEPS) throw {line:n.line,msg:'That repeats too many times — try a smaller number.'};
+      }
+    } else out.push(n);
+  }
+  return out;
+}
+const anyLoop=nodes=>nodes.some(function look(n){ return n.type==='loop'||(n.body&&n.body.some(look)); });
+
+/* ---------- stage ---------- */
+const LW=560, LH=420;
+const cv=$('#stage'), cx=cv.getContext('2d');
+let S, trail=[], flag=null, activeLine=-1;
+let usedLoop=false, usedPenUp=false, usedGoto=false, usedWait=false, sayCount=0;
+let mode='solo', mi=0;
+const peers=new Map();
+let meInfo={name:'You',av:'🦊',color:'#19c37d'};
+let spawn={x:0,y:0,dir:90};
+function pickSpawn(){
+  spawn={x:Math.round(-150+Math.random()*300),y:Math.round(-90+Math.random()*180),dir:90};
+  return spawn;
+}
+function resetSprite(){
+  const st=mode==='solo'?MIS[mi].start:spawn;
+  S={x:st.x,y:st.y,dir:st.dir,pen:false,color:COLORS.green,width:6,say:''};
+}
+function resetState(){
+  resetSprite();
+  trail=[]; sayCount=0; usedLoop=usedPenUp=usedGoto=usedWait=false;
+  activeLine=-1; flag=mode==='solo'?MIS[mi].flag:null; setRunline(-1);
+}
+
+/* hover measure — the stage answers "what number do I type?" */
+const hover={on:false,x:0,y:0};
+function toLogical(ev){
+  const r=cv.getBoundingClientRect(), s=Math.min(r.width/LW,r.height/LH);
+  return { x:(ev.clientX-r.left-r.width/2)/s, y:-((ev.clientY-r.top-r.height/2)/s) };
+}
+cv.addEventListener('pointermove',ev=>{ const p=toLogical(ev); hover.on=true; hover.x=p.x; hover.y=p.y; });
+cv.addEventListener('pointerleave',()=>{ hover.on=false; $('#hud').classList.remove('on'); });
+function bearing(){
+  const dx=hover.x-S.x, dy=hover.y-S.y;
+  const dist=Math.round(Math.hypot(dx,dy));
+  const ang=Math.atan2(dx,dy)*180/Math.PI;
+  let d=((ang-S.dir)%360+540)%360-180;
+  return {dist,turn:Math.round(d)};
+}
+let lastHud='';
+function updateHud(){
+  const hud=$('#hud');
+  if(!hover.on||!S){ return; }
+  hud.classList.add('on');
+  const b=bearing();
+  const tell=b.turn===0?`move(${b.dist})`:`turn(${b.turn}) then move(${b.dist})`;
+  const html=`<span class="xy">x ${Math.round(hover.x)} &nbsp; y ${Math.round(hover.y)}</span><br>`+
+    `${b.dist} steps away<br><span class="tell">${tell}</span>`;
+  if(html!==lastHud){ hud.innerHTML=html; lastHud=html; }
+}
+function paint(){
+  const r=cv.getBoundingClientRect(), d=Math.min(devicePixelRatio||1,2);
+  if(cv.width!==Math.round(r.width*d)||cv.height!==Math.round(r.height*d)){
+    cv.width=Math.round(r.width*d); cv.height=Math.round(r.height*d);
+  }
+  cx.setTransform(d,0,0,d,0,0);
+  cx.clearRect(0,0,r.width,r.height);
+  cx.strokeStyle='rgba(255,255,255,.035)'; cx.lineWidth=1;
+  for(let x=0;x<r.width;x+=28){cx.beginPath();cx.moveTo(x,0);cx.lineTo(x,r.height);cx.stroke();}
+  for(let y=0;y<r.height;y+=28){cx.beginPath();cx.moveTo(0,y);cx.lineTo(r.width,y);cx.stroke();}
+  const s=Math.min(r.width/LW,r.height/LH);
+  cx.save(); cx.translate(r.width/2,r.height/2); cx.scale(s,s);
+  if(flag) drawFlag(flag.x,flag.y,performance.now()/1000);
+  cx.lineCap='round'; cx.lineJoin='round';
+  for(const g of trail){ cx.strokeStyle=g.c; cx.lineWidth=g.w;
+    cx.beginPath(); cx.moveTo(g.x1,-g.y1); cx.lineTo(g.x2,-g.y2); cx.stroke(); }
+  if(hover.on&&S) drawMeasure();
+  for(const p of peers.values()) drawSprite(p.x,-p.y,p.dir,p.color,p.name);
+  if(S) drawSprite(S.x,-S.y,S.dir,null,null);
+  if(S&&S.say) drawBubble(S.x,-S.y,S.say);
+  cx.restore();
+  updateHud();
+  requestAnimationFrame(paint);
+}
+function drawMeasure(){
+  const b=bearing();
+  cx.save();
+  cx.setLineDash([5,6]); cx.strokeStyle='rgba(255,255,255,.28)'; cx.lineWidth=1.5;
+  cx.beginPath(); cx.moveTo(S.x,-S.y); cx.lineTo(hover.x,-hover.y); cx.stroke();
+  cx.setLineDash([]);
+  cx.strokeStyle='rgba(25,195,125,.9)'; cx.lineWidth=1.5;
+  cx.beginPath();
+  cx.moveTo(hover.x-9,-hover.y); cx.lineTo(hover.x+9,-hover.y);
+  cx.moveTo(hover.x,-hover.y-9); cx.lineTo(hover.x,-hover.y+9);
+  cx.stroke();
+  cx.beginPath(); cx.arc(hover.x,-hover.y,3.5,0,7); cx.stroke();
+  if(b.dist>26){
+    const mx=(S.x+hover.x)/2, my=(-S.y-hover.y)/2;
+    cx.font='700 11px "JetBrains Mono",monospace'; cx.textAlign='center'; cx.textBaseline='middle';
+    const w=cx.measureText(b.dist).width+10;
+    cx.fillStyle='rgba(13,16,32,.9)';
+    cx.beginPath(); cx.roundRect(mx-w/2,my-8,w,16,5); cx.fill();
+    cx.fillStyle='#8ef0b6'; cx.fillText(b.dist,mx,my);
+  }
+  cx.restore();
+}
+function drawFlag(x,y,t){
+  const py=-y, pulse=1+Math.sin(t*3)*.12;
+  cx.strokeStyle='rgba(25,195,125,.5)'; cx.lineWidth=2;
+  cx.beginPath(); cx.arc(x,py,26*pulse,0,7); cx.stroke();
+  cx.strokeStyle='#8892aa'; cx.lineWidth=3;
+  cx.beginPath(); cx.moveTo(x,py+14); cx.lineTo(x,py-24); cx.stroke();
+  cx.fillStyle=COLORS.pink; cx.beginPath();
+  cx.moveTo(x,py-24); cx.lineTo(x+24,py-16); cx.lineTo(x,py-8); cx.closePath(); cx.fill();
+}
+function drawSprite(x,y,dir,tint,label){
+  cx.save(); cx.translate(x,y);
+  if(label){
+    cx.font='700 11px "Nunito",system-ui,sans-serif'; cx.textAlign='center';
+    cx.fillStyle='rgba(255,255,255,.55)'; cx.fillText(label,0,-26);
+  }
+  cx.rotate(dir*Math.PI/180);
+  cx.fillStyle='rgba(0,0,0,.3)'; cx.beginPath(); cx.ellipse(0,4,13,13,0,0,7); cx.fill();
+  let g;
+  if(tint) g=tint;
+  else { g=cx.createLinearGradient(-12,-16,12,14); g.addColorStop(0,'#45f2ad'); g.addColorStop(1,'#0f9c62'); }
+  cx.fillStyle=g; cx.beginPath();
+  cx.moveTo(0,-18); cx.quadraticCurveTo(13,-2,11,13);
+  cx.quadraticCurveTo(0,18,-11,13); cx.quadraticCurveTo(-13,-2,0,-18); cx.fill();
+  cx.fillStyle='rgba(0,0,0,.55)'; cx.beginPath(); cx.arc(-4,-4,2.4,0,7); cx.arc(4,-4,2.4,0,7); cx.fill();
+  cx.restore();
+}
+function drawBubble(x,y,txt){
+  cx.font='700 14px "Nunito",system-ui,sans-serif';
+  const w=Math.min(180,cx.measureText(txt).width+22), h=30, bx=x+16, by=y-40;
+  cx.fillStyle='#fff';
+  cx.beginPath(); cx.roundRect(bx,by,w,h,12); cx.fill();
+  cx.beginPath(); cx.moveTo(bx+8,by+h); cx.lineTo(bx+4,by+h+9); cx.lineTo(bx+20,by+h); cx.closePath(); cx.fill();
+  cx.fillStyle='#14172a'; cx.textAlign='left'; cx.textBaseline='middle';
+  cx.fillText(txt.slice(0,22),bx+11,by+h/2);
+}
+
+/* ---------- net ---------- */
+const net={
+  ws:null, id:null, room:null, lastPos:0,
+  open(opts,onFail){
+    const proto=location.protocol==='https:'?'wss':'ws';
+    let ws;
+    try{ ws=new WebSocket(`${proto}://${location.host}/ws`); }
+    catch(e){ return onFail('Could not connect.'); }
+    this.ws=ws;
+    ws.onopen=()=>ws.send(JSON.stringify(Object.assign({t:'join'},opts)));
+    ws.onerror=()=>onFail('Could not reach the room server.');
+    ws.onclose=()=>{ if(mode==='together') leaveRoom(true); };
+    ws.onmessage=ev=>{
+      let m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(m.t==='welcome'){
+        net.id=m.id; net.room=m.room;
+        peers.clear(); (m.peers||[]).forEach(p=>peers.set(p.id,p));
+        trail=(m.trail||[]).slice();
+        enterRoom(m.room);
+      }
+      else if(m.t==='noroom') onFail(`No room called ${esc(m.room)}. Check the code?`);
+      else if(m.t==='full') onFail('That room is full.');
+      else if(m.t==='joined') peers.set(m.p.id,m.p);
+      else if(m.t==='left') peers.delete(m.id);
+      else if(m.t==='seg') trail.push(m.s);
+      else if(m.t==='pos'){ const p=peers.get(m.id); if(p){p.x=m.x;p.y=m.y;p.dir=m.dir;} }
+      else if(m.t==='clear') trail=[];
+      if(mode==='together') renderPeers();
+    };
+  },
+  send(m){ if(this.ws&&this.ws.readyState===1) this.ws.send(JSON.stringify(m)); },
+  pos(){
+    const now=performance.now();
+    if(now-this.lastPos<90) return;
+    this.lastPos=now;
+    this.send({t:'pos',x:S.x,y:S.y,dir:S.dir});
+  },
+  close(){ if(this.ws){ const w=this.ws; this.ws=null; w.onclose=null; try{w.close();}catch(e){} } }
+};
+const shared=()=>mode==='together';
+function pushSeg(seg){ if(shared()) net.send({t:'seg',s:{x1:seg.x1,y1:seg.y1,x2:seg.x2,y2:seg.y2,c:seg.c,w:seg.w}}); }
+
+/* ---------- runner ---------- */
+let running=false;
+function tween(ms,fn){
+  return new Promise(res=>{
+    if(ms<=0){fn(1);return res();}
+    const t0=performance.now();
+    (function f(){
+      if(!running){fn(1);return res();}
+      const p=Math.min(1,(performance.now()-t0)/ms);
+      fn(p);
+      if(p<1) requestAnimationFrame(f); else res();
+    })();
+  });
+}
+function needNum(st,v,eg){
+  if(typeof v!=='number') throw {line:st.line,msg:`<b>${st.name}</b> needs a number, like <b>${eg}</b>.`};
+}
+async function doStep(st){
+  const a=st.args;
+  switch(st.name){
+    case 'move':{
+      needNum(st,a[0],'move(100)');
+      const n=Math.max(-600,Math.min(600,a[0]));
+      const rad=S.dir*Math.PI/180, dx=Math.sin(rad)*n, dy=Math.cos(rad)*n;
+      const x0=S.x,y0=S.y;
+      let seg=null;
+      if(S.pen){ seg={x1:x0,y1:y0,x2:x0,y2:y0,c:S.color,w:S.width}; trail.push(seg); }
+      await tween(Math.min(700,Math.abs(n)*3.2+90),p=>{
+        S.x=x0+dx*p; S.y=y0+dy*p;
+        if(seg){seg.x2=S.x;seg.y2=S.y;}
+        if(shared()) net.pos();
+      });
+      if(seg) pushSeg(seg);
+      break;
+    }
+    case 'turn':{
+      needNum(st,a[0],'turn(90)');
+      const d0=S.dir, dd=a[0];
+      await tween(Math.min(500,Math.abs(dd)*2.6+80),p=>{ S.dir=d0+dd*p; if(shared()) net.pos(); });
+      S.dir=((d0+dd)%360+360)%360;
+      if(shared()) net.send({t:'pos',x:S.x,y:S.y,dir:S.dir});
+      break;
+    }
+    case 'goto':{
+      needNum(st,a[0],'goto(0, 0)'); needNum(st,a[1],'goto(0, 0)');
+      usedGoto=true;
+      const x0=S.x,y0=S.y,x1=a[0],y1=a[1];
+      let seg=null;
+      if(S.pen){ seg={x1:x0,y1:y0,x2:x0,y2:y0,c:S.color,w:S.width}; trail.push(seg); }
+      await tween(320,p=>{ S.x=x0+(x1-x0)*p; S.y=y0+(y1-y0)*p; if(seg){seg.x2=S.x;seg.y2=S.y;} if(shared()) net.pos(); });
+      if(seg) pushSeg(seg);
+      break;
+    }
+    case 'dot':{
+      needNum(st,a[0],'dot(16)');
+      const r=Math.max(2,Math.min(40,a[0]));
+      const seg={x1:S.x,y1:S.y,x2:S.x,y2:S.y,c:S.color,w:r};  // zero-length + round cap = a dot
+      trail.push(seg); pushSeg(seg);
+      await tween(90,()=>{}); break;
+    }
+    case 'penDown': S.pen=true; await tween(80,()=>{}); break;
+    case 'penUp':   S.pen=false; usedPenUp=true; await tween(80,()=>{}); break;
+    case 'color':{
+      const c=a[0];
+      if(typeof c!=='string') throw {line:st.line,msg:'<b>color</b> needs a colour in quotes, like <b>color("blue")</b>.'};
+      const hex=COLORS[c.toLowerCase()]||(/^#[0-9a-f]{3,8}$/i.test(c)?c:null);
+      if(!hex) throw {line:st.line,msg:`No colour called <b>${esc(c)}</b>. Try ${Object.keys(COLORS).slice(0,6).map(k=>'<b>'+k+'</b>').join(', ')}.`};
+      S.color=hex; await tween(80,()=>{}); break;
+    }
+    case 'size':{
+      needNum(st,a[0],'size(6)');
+      S.width=Math.max(1,Math.min(40,a[0])); await tween(80,()=>{}); break;
+    }
+    case 'say':{
+      const t=a[0];
+      if(typeof t!=='string'&&typeof t!=='number') throw {line:st.line,msg:'<b>say</b> needs words in quotes, like <b>say("Hi!")</b>.'};
+      S.say=String(t); sayCount++; await tween(700,()=>{}); break;
+    }
+    case 'wait':{
+      needNum(st,a[0],'wait(1)');
+      usedWait=true;
+      await tween(Math.min(3000,Math.max(0,a[0])*1000),()=>{}); break;
+    }
+  }
+}
+async function run(){
+  if(running) return;
+  clearErr(); $('#win').classList.remove('show');
+  let steps, hadLoop;
+  try{
+    const ast=parse(ta.value);
+    hadLoop=anyLoop(ast);
+    steps=flatten(ast);
+  }catch(e){ showErr(e); return; }
+  if(!steps.length){ showErr({msg:'No blocks yet — click one on the left, or type <b>move(100)</b>.'}); return; }
+
+  if(shared()){
+    sayCount=0; usedPenUp=usedGoto=usedWait=false; S.pen=false; S.say='';
+  } else resetState();
+  usedLoop=hadLoop;
+  running=true; setRunUI(true);
+  try{
+    for(const st of steps){
+      if(!running) break;
+      setRunline(st.line);
+      await doStep(st);
+    }
+  }catch(e){ running=false; setRunUI(false); setRunline(-1); showErr(e); return; }
+  const finished=running;
+  running=false; setRunUI(false); setRunline(-1);
+  if(finished&&!shared()) checkGoal();
+}
+function stop(){ running=false; setRunUI(false); setRunline(-1); }
+function setRunUI(on){
+  $('#runBtn').style.display=on?'none':'block';
+  $('#stopBtn').style.display=on?'block':'none';
+}
+function setRunline(l){
+  activeLine=l;
+  $$('#gut i').forEach(i=>i.classList.toggle('cur',+i.dataset.l===l));
+  positionRunline();
+}
+function positionRunline(){
+  const el=$('#runline');
+  if(activeLine<0){el.style.display='none';return;}
+  el.style.display='block';
+  el.style.top=(12+activeLine*22-ta.scrollTop)+'px';
+}
+function showErr(e){
+  const el=$('#err'); el.className='err';
+  el.innerHTML=(e.line!=null?`<b>Line ${e.line+1}</b> — `:'')+(e.msg||'Something went wrong.');
+  el.style.display='block';
+  if(e.line!=null) setRunline(e.line);
+}
+function showTip(msg){ const el=$('#err'); el.className='err tip'; el.innerHTML=msg; el.style.display='block'; }
+function clearErr(){ $('#err').style.display='none'; if(!running) setRunline(-1); }
+
+function checkGoal(){
+  const c={S,trail,sayCount,usedLoop,usedPenUp,usedGoto,usedWait,src:ta.value};
+  if(!MIS[mi].check(c)){
+    const n=MIS[mi].nudge&&MIS[mi].nudge(c);
+    if(n) showTip(n);
+    return;
+  }
+  $('#win').classList.add('show');
+  $('#winTag').textContent=pick(['Nice!','You got it!','Yes!','That is code!']);
+  $('#nextBtn').disabled=false;
+  burst();
+}
+
+/* ---------- screens ---------- */
+function loadMission(){
+  const m=MIS[mi];
+  $('#misTitle').textContent=m.title;
+  $('#misBlurb').innerHTML=T(m.blurb);
+  $('#goalline').innerHTML=`<em>● live</em> · ${m.goal}`;
+  $('#hintbox').innerHTML=T(m.hint); $('#hintbox').classList.remove('show');
+  $('#nextBtn').disabled=true;
+  $('#nextBtn').textContent=(mi===MIS.length-1?'Start over ↺':'Next →');
+  $('#win').classList.remove('show');
+  ta.value=T(m.starter);
+  ta.selectionStart=ta.selectionEnd=ta.value.length;
+  syncEditor(); clearErr(); resetState(); renderPal(); renderDots();
+}
+function renderDots(){
+  const el=$('#dots'); el.innerHTML='';
+  if(mode!=='solo') return;
+  MIS.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='dot'+(i<mi?' fin':i===mi?' on':'');
+    el.appendChild(d);
+  });
+}
+function renderPeers(){
+  const el=$('#togPeers'); el.innerHTML='';
+  const all=[{id:0,name:meInfo.name+' (you)',av:meInfo.av,color:meInfo.color},...peers.values()];
+  all.forEach(p=>{
+    const d=document.createElement('div'); d.className='peer';
+    d.innerHTML=`<span class="av" style="background:${p.color}22">${p.av}</span>${esc(p.name)}`;
+    el.appendChild(d);
+  });
+  $('#roomWho').textContent=all.map(p=>p.av).join('');
+}
+function togetherStarter(){
+  const name={'#19c37d':'green','#3b9dff':'blue','#ff5c93':'pink','#7c5cff':'purple','#ffb020':'yellow','#ff8a3d':'orange'}[meInfo.color]||'green';
+  return `${L.com} draw something — everyone sees it\ncolor("${name}")\npenDown()\n${L.loop(4,['move(120)','turn(90)'])}\n`;
+}
+function enterRoom(code){
+  mode='together';
+  $('#misPanel').classList.add('off'); $('#misBar').classList.add('off');
+  $('#togPanel').classList.add('on');
+  $('#roomchip').classList.add('on'); $('#roomCode').textContent=code;
+  $('#togCode').textContent=code;
+  $('#togBtn').style.display='none';
+  $('#goalline').innerHTML='<em>● live</em> · DRAWING TOGETHER';
+  $('#modal').classList.remove('on');
+  $('#dots').innerHTML='';
+  flag=null; resetSprite(); renderPal(); renderPeers();
+  ta.value=togetherStarter(); syncEditor();
+  net.send({t:'pos',x:S.x,y:S.y,dir:S.dir});
+}
+function leaveRoom(dropped){
+  net.close(); peers.clear(); mode='solo';
+  $('#misPanel').classList.remove('off'); $('#misBar').classList.remove('off');
+  $('#togPanel').classList.remove('on');
+  $('#roomchip').classList.remove('on');
+  $('#togBtn').style.display='';
+  loadMission();
+  if(dropped) showTip('The room closed — you are back in solo play.');
+}
+$('#runBtn').onclick=run;
+$('#stopBtn').onclick=stop;
+$('#resetBtn').onclick=()=>{
+  stop();
+  if(shared()){ resetSprite(); net.send({t:'pos',x:S.x,y:S.y,dir:S.dir}); }
+  else { ta.value=T(MIS[mi].starter); syncEditor(); resetState(); $('#win').classList.remove('show'); }
+  clearErr();
+};
+$('#hintBtn').onclick=()=>$('#hintbox').classList.toggle('show');
+$('#nextBtn').onclick=()=>{ stop(); mi=(mi+1)%MIS.length; loadMission(); };
+$('#clearAll').onclick=()=>{ trail=[]; net.send({t:'clear'}); };
+$('#leaveBtn').onclick=()=>leaveRoom(false);
+
+/* ---------- join modal ---------- */
+let selAv=AVS[0], selColor=PCOLORS[0];
+function buildModal(){
+  const av=$('#mAv'); av.innerHTML='';
+  AVS.forEach(a=>{ const b=document.createElement('button'); b.className='chip'+(a===selAv?' sel':'');
+    b.textContent=a; b.onclick=()=>{selAv=a;buildModal();}; av.appendChild(b); });
+  const co=$('#mColor'); co.innerHTML='';
+  PCOLORS.forEach(c=>{ const b=document.createElement('button'); b.className='chip sw'+(c===selColor?' sel':'');
+    b.style.background=c; b.onclick=()=>{selColor=c;buildModal();}; co.appendChild(b); });
+}
+function joinOpts(extra){
+  meInfo={name:($('#mName').value||'Player').slice(0,14),av:selAv,color:selColor};
+  const sp=pickSpawn();
+  return Object.assign({name:meInfo.name,av:meInfo.av,color:meInfo.color,x:sp.x,y:sp.y,dir:sp.dir},extra);
+}
+const fail=m=>{ $('#mMsg').textContent=m; net.close(); };
+$('#togBtn').onclick=()=>{ $('#mMsg').textContent=''; buildModal(); $('#modal').classList.add('on'); $('#mName').focus(); };
+$('#mCancel').onclick=()=>{ $('#modal').classList.remove('on'); net.close(); };
+$('#mCreate').onclick=()=>{ $('#mMsg').textContent='Making a room…'; net.open(joinOpts({make:true}),fail); };
+$('#mJoin').onclick=()=>{
+  const code=$('#mCode').value.trim().toUpperCase();
+  if(!code) return $('#mMsg').textContent='Type your friend\'s code first.';
+  $('#mMsg').textContent='Joining…'; net.open(joinOpts({room:code}),fail);
+};
+$('#mCode').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#mJoin').click(); });
+
+/* ---------- confetti ---------- */
+const fx=$('#fx'), fxc=fx.getContext('2d');
+const PC=['#19c37d','#7c5cff','#ff5c93','#ffb020','#3b9dff'];
+let bits=[], fxOn=false;
+function burst(){
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  fx.style.display='block'; fx.width=innerWidth; fx.height=innerHeight;
+  const r=$('.stagewrap').getBoundingClientRect(), ox=r.left+r.width/2, oy=r.top+r.height/2;
+  for(let i=0;i<70;i++) bits.push({x:ox+(Math.random()-.5)*160,y:oy,vx:(Math.random()-.5)*10,
+    vy:-Math.random()*11-3,g:.32,c:PC[i%PC.length],r:Math.random()*5+3,rot:Math.random()*7,
+    vr:(Math.random()-.5)*.5,life:80});
+  if(!fxOn) fxLoop();
+}
+function fxLoop(){
+  fxOn=true; fxc.clearRect(0,0,fx.width,fx.height);
+  bits=bits.filter(b=>b.life>0);
+  bits.forEach(b=>{
+    b.vy+=b.g; b.x+=b.vx; b.y+=b.vy; b.rot+=b.vr; b.life--;
+    fxc.save(); fxc.translate(b.x,b.y); fxc.rotate(b.rot); fxc.fillStyle=b.c;
+    fxc.globalAlpha=Math.min(1,b.life/26);
+    fxc.fillRect(-b.r,-b.r/2,b.r*2,b.r); fxc.restore();
+  });
+  if(bits.length) requestAnimationFrame(fxLoop);
+  else { fxOn=false; fx.style.display='none'; }
+}
+
+renderLangs();
+loadMission();
+paint();
+</script>
