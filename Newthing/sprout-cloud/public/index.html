@@ -78,6 +78,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
 .block.new{outline:2.5px solid var(--ink);outline-offset:2px}
 .block.motion{background:var(--blue)} .block.pen{background:var(--accent)}
 .block.looks{background:var(--violet)} .block.control{background:var(--amber);color:#3d2c00}
+.block.data{background:#ff8a3d;color:#3a1d00}
 
 .edit{flex:1;min-height:0;display:flex;background:var(--stage);margin:0 12px;border-radius:14px;overflow:hidden}
 .gut{flex:none;overflow:hidden;background:rgba(0,0,0,.2);padding:12px 0;width:36px}
@@ -313,12 +314,14 @@ function mkLoop(open,close,indent){
 }
 const LANGS={
   sprout:{ id:'sprout', label:'Sprout', com:'//', kind:'brace', indent:'  ',
-    kw:['repeat'], opens:/\{\s*$/,
+    kw:['repeat','set'], opens:/\{\s*$/,
     loopRe:/^repeat\s*\(?\s*(\d+)\s*\)?\s*\{$/, loopN:m=>+m[1],
     loopEmpty:'repeat 4 {\n  \n}',
     loop:mkLoop(n=>`repeat ${n} {`,'}','  '),
     say:n=>`<b>repeat ${n} { }</b>`,
-    badLoop:'A loop looks like <b>repeat 4 {</b> — a number and a <b>{</b>.' },
+    badLoop:'A loop looks like <b>repeat 4 {</b> — a number and a <b>{</b>.',
+    declRe:/^set\s+([a-zA-Z_]\w*)\s*=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+    declStmt:(n,v)=>`set ${n} = ${v}`, setStmt:(n,v)=>`set ${n} = ${v}` },
   js:{ id:'js', label:'JavaScript', com:'//', kind:'brace', indent:'  ',
     kw:['for','let','var','const'], opens:/\{\s*$/,
     loopRe:/^for\s*\(\s*(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\)\s*\{$/,
@@ -326,7 +329,9 @@ const LANGS={
     loopEmpty:'for (let i = 0; i < 4; i++) {\n  \n}',
     loop:mkLoop((n,v)=>`for (let ${v} = 0; ${v} < ${n}; ${v}++) {`,'}','  '),
     say:n=>`<b>for (let i = 0; i < ${n}; i++) { }</b>`,
-    badLoop:'A JavaScript loop looks like <b>for (let i = 0; i < 4; i++) {</b>.' },
+    badLoop:'A JavaScript loop looks like <b>for (let i = 0; i < 4; i++) {</b>.',
+    declRe:/^(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+    declStmt:(n,v)=>`let ${n} = ${v}`, setStmt:(n,v)=>`${n} = ${v}` },
   py:{ id:'py', label:'Python', com:'#', kind:'indent', indent:'    ',
     kw:['for','in','range'], opens:/:\s*$/,
     loopRe:/^for\s+([a-zA-Z_]\w*)\s+in\s+range\s*\(\s*(\d+)\s*\)\s*:$/,
@@ -334,8 +339,15 @@ const LANGS={
     loopEmpty:'for i in range(4):\n    ',
     loop:mkLoop((n,v)=>`for ${v} in range(${n}):`,'','    '),
     say:n=>`<b>for i in range(${n}):</b>`,
-    badLoop:'A Python loop looks like <b>for i in range(4):</b> — and the lines inside must be indented.' }
+    badLoop:'A Python loop looks like <b>for i in range(4):</b> — and the lines inside must be indented.',
+    declRe:null, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,   // Python makes no distinction
+    declStmt:(n,v)=>`${n} = ${v}`, setStmt:(n,v)=>`${n} = ${v}` }
 };
+// palette snippets are just the statement builders with example values
+Object.values(LANGS).forEach(x=>{
+  x.declIns=x.declStmt('side','140');
+  x.assignIns=x.setStmt('side','side + 10');
+});
 let L=LANGS[localStorage.getItem('sprout.lang')||'sprout']||LANGS.sprout;
 
 /* ---------- blocks ---------- */
@@ -350,10 +362,15 @@ const BLOCKS=[
   {cat:'pen',     name:'dot',     ins:'dot(16)',       desc:'stamp a dot'},
   {cat:'looks',   name:'say',     ins:'say("Hi!")',    desc:'say something'},
   {cat:'control', name:'wait',    ins:'wait(1)',       desc:'pause'},
-  {cat:'control', name:'loop',    ins:()=>L.loopEmpty, desc:'do it again'}
+  {cat:'control', name:'loop',    ins:()=>L.loopEmpty, desc:'do it again'},
+  {cat:'data',    name:'let',     ins:()=>L.declIns,   desc:'make a number'},
+  {cat:'data',    name:'change',  ins:()=>L.assignIns, desc:'change it'},
+  {cat:'data',    name:'random',  ins:'random(1, 10)', desc:'a surprise number', inline:true}
 ];
-const GROUPS=[['motion','Motion'],['pen','Pen'],['looks','Looks'],['control','Control']];
-const CMDS=new Set(BLOCKS.filter(b=>b.name!=='loop').map(b=>b.name));
+const GROUPS=[['motion','Motion'],['pen','Pen'],['looks','Looks'],['control','Control'],['data','Numbers']];
+const NOTCMD=new Set(['loop','let','change','random']);
+const CMDS=new Set(BLOCKS.filter(b=>!NOTCMD.has(b.name)).map(b=>b.name));
+const HLNAMES=new Set([...CMDS,'random']);
 
 /* ---------- missions ---------- */
 const near=(S,x,y,r)=>Math.hypot(S.x-x,S.y-y)<=r;
@@ -469,6 +486,33 @@ const MIS=[
     check:c=>c.usedLoop&&lines(c.trail)>=5&&near(c.S,-85,20,30),
     nudge:c=>lines(c.trail)>=5?'Close! A star turns <b>144</b> each time.':null },
 
+  { teach:'let', title:'Name a number',
+    blurb:L=>`<b>${L.declIns}</b> makes a box called <em>side</em> with 140 in it. Use the name instead of the number.`,
+    goal:'DRAW IT WITH A NAMED NUMBER', start:{x:-70,y:70,dir:90}, flag:null,
+    starter:L=>`penDown()\n${L.loop(4,['move(140)','turn(90)'])}\n`,
+    hint:L=>`Put <b>${L.declIns}</b> at the top, then use <b>move(side)</b> instead of 140.`,
+    check:c=>c.usedVar&&c.usedVarRead&&lines(c.trail)>=4&&near(c.S,-70,70,26),
+    nudge:c=>c.usedVar&&!c.usedVarRead
+      ?'The box is made — now use it. Put <b>side</b> inside <b>move()</b> instead of the number.'
+      :(lines(c.trail)>=4?'Same square — now name the number and use the name.':null) },
+
+  { teach:'change', title:'Make it grow',
+    blurb:L=>`Change the number <em>inside</em> the loop — <b>${L.setStmt('step','step + 3')}</b> — and each side comes out longer than the last.`,
+    goal:'DRAW A SPIRAL', start:{x:-10,y:10,dir:90}, flag:null,
+    starter:L=>`${L.declStmt('step','4')}\npenDown()\ncolor("blue")\n${L.loop(44,['move(step)','turn(91)'])}\n`,
+    hint:L=>`Inside the loop, after the turn, add <b>${L.setStmt('step','step + 3')}</b>.`,
+    check:c=>c.usedGrow&&lines(c.trail)>=25,
+    nudge:c=>lines(c.trail)>=25&&!c.usedGrow
+      ?`Every side is the same length — the step never changes. Add <b>${L.setStmt('step','step + 3')}</b> inside the loop.`:null },
+
+  { teach:'random', title:'Roll the dice',
+    blurb:'<b>random(1, 10)</b> picks a different number every single run. Put it where a number goes.',
+    goal:'DRAW SOMETHING DIFFERENT EACH RUN', start:{x:0,y:0,dir:90}, flag:null,
+    starter:L=>`penDown()\ncolor("pink")\n${L.loop(24,['move(60)','turn(90)'])}\n`,
+    hint:'Try <b>move(random(20, 80))</b> and <b>turn(random(0, 360))</b>. Run it twice.',
+    check:c=>c.usedRandom&&lines(c.trail)>=10,
+    nudge:c=>lines(c.trail)>=10?'Same picture every time — swap a number for <b>random(20, 80)</b>.':null },
+
   { teach:null, title:'A loop inside a loop',
     blurb:'Put a loop <em>inside</em> another one and a square becomes a flower.',
     goal:'DRAW A FLOWER', start:{x:0,y:0,dir:90}, flag:null,
@@ -499,7 +543,7 @@ function highlight(src){
     let out=esc(code)
       .replace(/(&quot;[^&]*?&quot;|"[^"]*")/g,'<span class="k-str">$1</span>')
       .replace(kwRe,'<span class="k-kw">$1</span>')
-      .replace(/\b([a-zA-Z]\w*)(?=\s*\()/g,(mm,w)=>CMDS.has(w)?`<span class="k-cmd">${w}</span>`:w)
+      .replace(/\b([a-zA-Z]\w*)(?=\s*\()/g,(mm,w)=>HLNAMES.has(w)?`<span class="k-cmd">${w}</span>`:w)
       .replace(/(?<![\w"#-])(\d+(?:\.\d+)?)(?![\w"])/g,'<span class="k-num">$1</span>')
       .replace(/([{}:;])/g,'<span class="k-brace">$1</span>');
     if(com) out+=`<span class="k-com">${esc(com)}</span>`;
@@ -571,7 +615,7 @@ function renderPal(){
       const btn=document.createElement('button');
       btn.className='block '+cat+(b.name===teach?' new':'');
       btn.innerHTML=`<div class="syn">${esc(ins.replace(/\n\s*/g,' ').trim())}</div><div class="desc">${b.desc}</div>`;
-      btn.onclick=()=>insertBlock(ins);
+      btn.onclick=()=>b.inline?insertAtCaret(ins):insertBlock(ins);   // random() goes inside a bracket
       el.appendChild(btn);
     });
   });
@@ -608,6 +652,13 @@ function readCmd(ln,i){
   if(!CMDS.has(m[1])) throw {line:i,msg:`I don't know a block called <b>${esc(m[1])}</b>.${suggest(m[1])}`};
   return {type:'cmd',name:m[1],args:parseArgs(m[2].trim(),i),line:i};
 }
+function readSet(ln,i){
+  let m=L.declRe&&ln.match(L.declRe);
+  if(!m) m=ln.match(L.assignRe);
+  if(!m) return null;
+  const name=m[1], expr=parseExpr(lexExpr(m[2].trim(),i),i);
+  return {type:'set',name,expr,self:exprUses(expr,name),line:i};
+}
 function unreadable(ln,i){
   if(/^(repeat|for)\b/.test(ln)) throw {line:i,msg:L.badLoop};
   if(/^[a-zA-Z][a-zA-Z0-9]*$/.test(ln)) throw {line:i,msg:`Blocks need brackets — try <b>${esc(ln)}()</b>.`};
@@ -627,6 +678,7 @@ function parseBrace(src){
       continue;
     }
     const c=readCmd(ln,i); if(c){ stack[stack.length-1].push(c); continue; }
+    const v=readSet(ln,i); if(v){ stack[stack.length-1].push(v); continue; }
     unreadable(ln,i);
   }
   if(stack.length>1) throw {line:src2.length-1,msg:'A loop is missing its closing <b>}</b>.'};
@@ -646,6 +698,7 @@ function parseIndent(src){
       stack[stack.length-1].body.push(node); stack.push({ind,body:node.body,line:i}); continue; }
     if(ln==='}') throw {line:i,msg:'Python has no <b>}</b> — indent the lines inside the loop instead.'};
     const c=readCmd(ln,i); if(c){ stack[stack.length-1].body.push(c); continue; }
+    const v=readSet(ln,i); if(v){ stack[stack.length-1].body.push(v); continue; }
     unreadable(ln,i);
   }
   const empty=findEmptyLoop(root);
@@ -666,17 +719,122 @@ function suggest(name){
   const hit=[...CMDS].find(c=>c.toLowerCase()===l||c.toLowerCase().startsWith(l.slice(0,3)));
   return hit?` Did you mean <b>${hit}</b>?`:'';
 }
+/* Arguments are little expressions, so move(side * 2) and turn(random(0, 360))
+   both work. Split on top-level commas only — random(1, 10) has its own. */
+function splitTop(s,line){
+  const out=[]; let d=0,q=null,cur='';
+  for(const c of s){
+    if(q){ cur+=c; if(c===q) q=null; continue; }
+    if(c==='"'||c==="'"){ q=c; cur+=c; continue; }
+    if(c==='(') d++;
+    if(c===')'){ d--; if(d<0) throw {line,msg:'There is a <b>)</b> too many here.'}; }
+    if(c===','&&d===0){ out.push(cur); cur=''; continue; }
+    cur+=c;
+  }
+  if(d>0) throw {line,msg:'A <b>)</b> is missing.'};
+  out.push(cur);
+  return out;
+}
+function lexExpr(s,line){
+  const t=[]; let i=0;
+  while(i<s.length){
+    const c=s[i];
+    if(/\s/.test(c)){ i++; continue; }
+    if(/[0-9.]/.test(c)){ let j=i; while(j<s.length&&/[0-9.]/.test(s[j])) j++;
+      t.push({k:'num',v:parseFloat(s.slice(i,j))}); i=j; continue; }
+    if(/[a-zA-Z_]/.test(c)){ let j=i; while(j<s.length&&/\w/.test(s[j])) j++;
+      t.push({k:'id',v:s.slice(i,j)}); i=j; continue; }
+    if('+-*/(),'.includes(c)){ t.push({k:c}); i++; continue; }
+    throw {line,msg:`I can't read <b>${esc(c)}</b> here.`};
+  }
+  return t;
+}
+function parseExpr(tok,line){
+  let p=0;
+  const peek=()=>tok[p];
+  const eat=k=>(tok[p]&&tok[p].k===k)?tok[p++]:null;
+  function expr(){ let n=term(); while(peek()&&(peek().k==='+'||peek().k==='-')){ const op=tok[p++].k; n={k:'bin',op,a:n,b:term()}; } return n; }
+  function term(){ let n=unary(); while(peek()&&(peek().k==='*'||peek().k==='/')){ const op=tok[p++].k; n={k:'bin',op,a:n,b:unary()}; } return n; }
+  function unary(){ if(peek()&&peek().k==='-'){ p++; return {k:'neg',a:unary()}; } return atom(); }
+  function atom(){
+    const t=tok[p];
+    if(!t) throw {line,msg:'A number is missing here.'};
+    if(t.k==='num'){ p++; return {k:'num',v:t.v}; }
+    if(t.k==='id'){
+      p++;
+      if(peek()&&peek().k==='('){
+        p++;
+        const args=[];
+        if(peek()&&peek().k!==')'){ args.push(expr()); while(eat(',')) args.push(expr()); }
+        if(!eat(')')) throw {line,msg:'A <b>)</b> is missing.'};
+        return {k:'call',name:t.v,args,line};
+      }
+      return {k:'var',name:t.v};
+    }
+    if(t.k==='('){ p++; const n=expr(); if(!eat(')')) throw {line,msg:'A <b>)</b> is missing.'}; return n; }
+    throw {line,msg:'I can\'t read that number.'};
+  }
+  const n=expr();
+  if(p<tok.length) throw {line,msg:'There is extra stuff on the end of this line.'};
+  return n;
+}
 function parseArgs(s,line){
-  if(!s) return [];
-  return s.split(',').map(a=>{
+  if(!s.trim()) return [];
+  return splitTop(s,line).map(a=>{
     a=a.trim();
-    if(/^-?\d+(\.\d+)?$/.test(a)) return +a;
-    if(/^"[^"]*"$/.test(a)||/^'[^']*'$/.test(a)) return a.slice(1,-1);
-    if(a==='true'||a==='True') return true;
-    if(a==='false'||a==='False') return false;
-    if(/^[a-zA-Z ]+$/.test(a)) throw {line,msg:`Words need quotes — try <b>"${esc(a)}"</b>.`};
-    throw {line,msg:`<b>${esc(a)}</b> isn't a number or a "word".`};
+    if(/^"[^"]*"$/.test(a)||/^'[^']*'$/.test(a)) return {k:'str',v:a.slice(1,-1)};
+    if(!a) throw {line,msg:'There is an empty gap between the commas.'};
+    return parseExpr(lexExpr(a,line),line);
   });
+}
+const exprUses=(n,name)=>!n?false:
+  n.k==='var'?n.name===name:
+  n.k==='bin'?exprUses(n.a,name)||exprUses(n.b,name):
+  n.k==='neg'?exprUses(n.a,name):
+  n.k==='call'?n.args.some(a=>exprUses(a,name)):false;
+
+function evalExpr(n,line){
+  switch(n.k){
+    case 'num': return n.v;
+    case 'neg': return -evalExpr(n.a,line);
+    case 'var':{
+      if(!(n.name in vars)){
+        if(COLORS[n.name.toLowerCase()])
+          throw {line,msg:`Did you mean the colour <b>"${esc(n.name)}"</b>? Words need quotes.`};
+        throw {line,msg:`I don't know a number called <b>${esc(n.name)}</b>. Make one first, like <b>${L.declIns}</b>.`};
+      }
+      usedVarRead=true;
+      return vars[n.name];
+    }
+    case 'bin':{
+      const a=evalExpr(n.a,line), b=evalExpr(n.b,line);
+      if(n.op==='+') return a+b;
+      if(n.op==='-') return a-b;
+      if(n.op==='*') return a*b;
+      if(b===0) throw {line,msg:'You cannot divide by zero!'};
+      return a/b;
+    }
+    case 'call':{
+      if(n.name!=='random')
+        throw {line,msg:`<b>${esc(n.name)}</b> can't be used as a number. Only <b>random(1, 10)</b> can.`};
+      if(n.args.length!==2)
+        throw {line,msg:'<b>random</b> needs two numbers — a lowest and a highest, like <b>random(1, 10)</b>.'};
+      const a=evalExpr(n.args[0],line), b=evalExpr(n.args[1],line);
+      usedRandom=true;
+      const lo=Math.min(a,b), hi=Math.max(a,b);
+      return Math.floor(lo+Math.random()*(hi-lo+1));
+    }
+  }
+}
+function evalArg(node,st){
+  if(node.k==='str') return node.v;
+  try{ return evalExpr(node,st.line); }
+  catch(e){
+    // say(hello) and color(red) read as variables — say what they probably meant
+    if(node.k==='var'&&(st.name==='say'||st.name==='color'))
+      throw {line:st.line,msg:`Words need quotes — try <b>"${esc(node.name)}"</b>.`};
+    throw e;
+  }
 }
 const MAXSTEPS=1600;
 function flatten(nodes,out,depth){
@@ -698,7 +856,9 @@ const anyLoop=nodes=>nodes.some(function look(n){ return n.type==='loop'||(n.bod
 const LW=560, LH=420;
 const cv=$('#stage'), cx=cv.getContext('2d');
 let S, trail=[], flag=null, activeLine=-1;
+let vars={};
 let usedLoop=false, usedPenUp=false, usedGoto=false, usedWait=false, sayCount=0;
+let usedVar=false, usedVarRead=false, usedGrow=false, usedRandom=false;
 let mode='solo', mi=0;
 const peers=new Map();
 let meInfo={name:'You',av:'🦊',color:'#19c37d'};
@@ -713,7 +873,9 @@ function resetSprite(){
 }
 function resetState(){
   resetSprite();
-  trail=[]; sayCount=0; usedLoop=usedPenUp=usedGoto=usedWait=false;
+  trail=[]; vars={}; sayCount=0;
+  usedLoop=usedPenUp=usedGoto=usedWait=false;
+  usedVar=usedVarRead=usedGrow=usedRandom=false;
   activeLine=-1; flag=mode==='solo'?MIS[mi].flag:null; setRunline(-1);
 }
 
@@ -885,7 +1047,14 @@ function needNum(st,v,eg){
   if(typeof v!=='number') throw {line:st.line,msg:`<b>${st.name}</b> needs a number, like <b>${eg}</b>.`};
 }
 async function doStep(st){
-  const a=st.args;
+  if(st.type==='set'){
+    vars[st.name]=evalExpr(st.expr,st.line);
+    usedVar=true;
+    if(st.self) usedGrow=true;      // step = step + 4 — the variable feeding itself
+    await tween(60,()=>{});
+    return;
+  }
+  const a=st.args.map(x=>evalArg(x,st));
   switch(st.name){
     case 'move':{
       needNum(st,a[0],'move(100)');
@@ -1005,7 +1174,8 @@ function showTip(msg){ const el=$('#err'); el.className='err tip'; el.innerHTML=
 function clearErr(){ $('#err').style.display='none'; if(!running) setRunline(-1); }
 
 function checkGoal(){
-  const c={S,trail,sayCount,usedLoop,usedPenUp,usedGoto,usedWait,src:ta.value};
+  const c={S,trail,sayCount,usedLoop,usedPenUp,usedGoto,usedWait,
+           usedVar,usedVarRead,usedGrow,usedRandom,src:ta.value};
   if(!MIS[mi].check(c)){
     const n=MIS[mi].nudge&&MIS[mi].nudge(c);
     if(n) showTip(n);
