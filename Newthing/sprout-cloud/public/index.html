@@ -47,6 +47,12 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
   font-family:var(--sans);white-space:nowrap}
 .seg.on{background:var(--ink);color:var(--bg)}
 .seg:hover:not(.on){color:var(--ink)}
+.langsel{appearance:none;-webkit-appearance:none;border:none;background:transparent;color:var(--ink);
+  font-family:var(--sans);font-weight:800;font-size:13px;padding:5px 26px 5px 9px;border-radius:9px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 14px) 51%, calc(100% - 9px) 51%;
+  background-size:5px 5px, 5px 5px; background-repeat:no-repeat}
+.langsel:focus{outline:none}
 .dots{display:flex;gap:5px}
 .dot{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.3s}
 .dot.on{background:var(--accent);box-shadow:0 0 0 3.5px color-mix(in srgb,var(--accent) 20%,transparent)}
@@ -327,127 +333,186 @@ const PCOLORS=['#19c37d','#3b9dff','#ff5c93','#7c5cff','#ffb020','#ff8a3d'];
    Same blocks everywhere; only the loop, the comment mark and the block
    shape change. Sprout is the training-wheels syntax; the other two are
    exactly what you would type in a real file. */
-function mkLoop(open,close,indent){
-  return (n,body,v)=>{
-    const lines=body.join('\n').split('\n').map(l=>l?indent+l:indent).join('\n');
-    return open(n,v||'i')+'\n'+lines+(close?'\n'+close:'');
+/* Every language gets the same ten actions. What changes is what they're
+   CALLED, how you loop, how you name a number, and how you comment — which
+   is most of what "knowing a language" means at this age.
+   Python's names are not ours: they are the real turtle module's, so what a
+   kid types here is what they'd type in IDLE. */
+const CANON={move:'move',turn:'turn',goto:'goto',penDown:'penDown',penUp:'penUp',
+  color:'color',size:'size',dot:'dot',say:'say',wait:'wait'};
+function mkLang(o){
+  o.names=Object.assign({},CANON,o.names||{});
+  o.byName=new Map(Object.entries(o.names).map(([op,n])=>[n,op]));
+  o.rand=o.rand||'random';
+  o.semi=o.semi||''; o.indent=o.indent||'  '; o.close=o.close||'}';
+  o.kind=o.kind||'brace'; o.com=o.com||'//'; o.base=o.base||0;
+  o.call=(op,...a)=>`${o.names[op]}(${a.join(', ')})${o.semi}`;
+  o.rnd=(a,b)=>`${o.rand}(${a}, ${b})`;
+  o.loop=(n,body,v)=>{
+    v=v||'i';
+    const lines=body.join('\n').split('\n').map(l=>l?o.indent+l:l).join('\n');
+    return o.open(n,v)+'\n'+lines+(o.kind==='indent'?'':'\n'+o.close);
   };
+  o.loopEmpty=o.loop(4,['']);
+  o.declIns=o.decl('side','140');
+  o.assignIns=o.set('side','side + 10');
+  o.say=n=>`<b>${esc(o.open(n,'i'))}</b>`;
+  return o;
 }
+const CSTYLE={   // Java, C++, C# share a for-loop and a typed declaration
+  kw:['for','int','var'], opens:/\{\s*$/, semi:';',
+  open:(n,v)=>`for (int ${v} = 0; ${v} < ${n}; ${v}++) {`,
+  loopRe:/^for\s*\(\s*(?:int|var)\s+([a-zA-Z_]\w*)\s*=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\)\s*\{$/,
+  loopN:m=>+m[2], loopV:m=>m[1],
+  declRe:/^(?:int|float|double|var)\s+([a-zA-Z_]\w*)\s*=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+  decl:(n,v)=>`int ${n} = ${v};`, set:(n,v)=>`${n} = ${v};`,
+  badLoop:'The loop here is <b>for (int i = 0; i &lt; 4; i++) {</b>.'
+};
 const LANGS={
-  sprout:{ id:'sprout', label:'Sprout', com:'//', kind:'brace', indent:'  ',
+  sprout:mkLang({ id:'sprout', label:'Sprout', real:false, blurb:'training wheels',
     kw:['repeat','set'], opens:/\{\s*$/,
+    open:n=>`repeat ${n} {`,
     loopRe:/^repeat\s*\(?\s*(\d+)\s*\)?\s*\{$/, loopN:m=>+m[1], loopV:()=>null,
-    loopEmpty:'repeat 4 {\n  \n}',
-    loop:mkLoop(n=>`repeat ${n} {`,'}','  '),
-    say:n=>`<b>repeat ${n} { }</b>`,
-    badLoop:'A loop looks like <b>repeat 4 {</b> — a number and a <b>{</b>.',
     declRe:/^set\s+([a-zA-Z_]\w*)\s*=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
-    declStmt:(n,v)=>`set ${n} = ${v}`, setStmt:(n,v)=>`set ${n} = ${v}` },
-  js:{ id:'js', label:'JavaScript', com:'//', kind:'brace', indent:'  ',
-    kw:['for','let','var','const'], opens:/\{\s*$/,
-    loopRe:/^for\s*\(\s*(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\)\s*\{$/,
-    loopN:m=>+m[2], loopV:m=>m[1],
-    loopEmpty:'for (let i = 0; i < 4; i++) {\n  \n}',
-    loop:mkLoop((n,v)=>`for (let ${v} = 0; ${v} < ${n}; ${v}++) {`,'}','  '),
-    say:n=>`<b>for (let i = 0; i < ${n}; i++) { }</b>`,
-    badLoop:'A JavaScript loop looks like <b>for (let i = 0; i < 4; i++) {</b>.',
-    declRe:/^(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
-    declStmt:(n,v)=>`let ${n} = ${v}`, setStmt:(n,v)=>`${n} = ${v}` },
-  py:{ id:'py', label:'Python', com:'#', kind:'indent', indent:'    ',
+    decl:(n,v)=>`set ${n} = ${v}`, set:(n,v)=>`set ${n} = ${v}`,
+    badLoop:'A loop looks like <b>repeat 4 {</b> — a number and a <b>{</b>.' }),
+
+  py:mkLang({ id:'py', label:'Python', real:true, blurb:'real Python — the turtle module',
+    com:'#', kind:'indent', indent:'    ',
     kw:['for','in','range'], opens:/:\s*$/,
+    names:{move:'forward',turn:'right',penDown:'pendown',penUp:'penup',
+           color:'pencolor',size:'pensize',say:'write',wait:'sleep'},
+    rand:'randint',
+    open:(n,v)=>`for ${v} in range(${n}):`,
     loopRe:/^for\s+([a-zA-Z_]\w*)\s+in\s+range\s*\(\s*(\d+)\s*\)\s*:$/,
     loopN:m=>+m[2], loopV:m=>m[1],
-    loopEmpty:'for i in range(4):\n    ',
-    loop:mkLoop((n,v)=>`for ${v} in range(${n}):`,'','    '),
-    say:n=>`<b>for i in range(${n}):</b>`,
-    badLoop:'A Python loop looks like <b>for i in range(4):</b> — and the lines inside must be indented.',
-    declRe:null, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,   // Python makes no distinction
-    declStmt:(n,v)=>`${n} = ${v}`, setStmt:(n,v)=>`${n} = ${v}` }
+    declRe:null, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+    decl:(n,v)=>`${n} = ${v}`, set:(n,v)=>`${n} = ${v}`,
+    badLoop:'A Python loop is <b>for i in range(4):</b> — and the lines inside must be indented.' }),
+
+  js:mkLang({ id:'js', label:'JavaScript', real:true, blurb:'real JavaScript',
+    kw:['for','let','var','const'], opens:/\{\s*$/,
+    open:(n,v)=>`for (let ${v} = 0; ${v} < ${n}; ${v}++) {`,
+    loopRe:/^for\s*\(\s*(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\)\s*\{$/,
+    loopN:m=>+m[2], loopV:m=>m[1],
+    declRe:/^(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+    decl:(n,v)=>`let ${n} = ${v}`, set:(n,v)=>`${n} = ${v}`,
+    badLoop:'A JavaScript loop is <b>for (let i = 0; i &lt; 4; i++) {</b>.' }),
+
+  java:mkLang(Object.assign({ id:'java', label:'Java', real:true, blurb:'real Java' },CSTYLE)),
+  cpp:mkLang(Object.assign({ id:'cpp', label:'C++', real:true, blurb:'real C++' },CSTYLE)),
+  cs:mkLang(Object.assign({ id:'cs', label:'C#', real:true, blurb:'real C#' },CSTYLE)),
+
+  go:mkLang({ id:'go', label:'Go', real:true, blurb:'real Go',
+    kw:['for'], opens:/\{\s*$/,
+    open:(n,v)=>`for ${v} := 0; ${v} < ${n}; ${v}++ {`,
+    loopRe:/^for\s+([a-zA-Z_]\w*)\s*:=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\{$/,
+    loopN:m=>+m[2], loopV:m=>m[1],
+    declRe:/^([a-zA-Z_]\w*)\s*:=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+    decl:(n,v)=>`${n} := ${v}`, set:(n,v)=>`${n} = ${v}`,
+    badLoop:'A Go loop is <b>for i := 0; i &lt; 4; i++ {</b>.' }),
+
+  ruby:mkLang({ id:'ruby', label:'Ruby', real:true, blurb:'real Ruby',
+    com:'#', close:'end',
+    kw:['times','do','end'], opens:/\bdo\s*(\|\s*\w+\s*\|)?\s*$/,
+    names:{penDown:'pen_down',penUp:'pen_up'},
+    open:(n,v)=>`${n}.times do |${v}|`,
+    loopRe:/^(\d+)\.times\s+do(?:\s*\|\s*([a-zA-Z_]\w*)\s*\|)?$/,
+    loopN:m=>+m[1], loopV:m=>m[2]||null,
+    declRe:null, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+    decl:(n,v)=>`${n} = ${v}`, set:(n,v)=>`${n} = ${v}`,
+    badLoop:'A Ruby loop is <b>4.times do |i|</b> and finishes with <b>end</b>.' }),
+
+  lua:mkLang({ id:'lua', label:'Lua', real:true, blurb:'real Lua',
+    com:'--', close:'end', base:1,
+    kw:['for','do','end','local'], opens:/\bdo\s*$/,
+    names:{penDown:'pen_down',penUp:'pen_up'},
+    rand:'math.random',
+    open:(n,v)=>`for ${v} = 1, ${n} do`,
+    loopRe:/^for\s+([a-zA-Z_]\w*)\s*=\s*1\s*,\s*(\d+)\s+do$/,
+    loopN:m=>+m[2], loopV:m=>m[1],
+    declRe:/^local\s+([a-zA-Z_]\w*)\s*=\s*(.+)$/, assignRe:/^([a-zA-Z_]\w*)\s*=\s*(.+)$/,
+    decl:(n,v)=>`local ${n} = ${v}`, set:(n,v)=>`${n} = ${v}`,
+    badLoop:'A Lua loop is <b>for i = 1, 4 do</b> and finishes with <b>end</b>.' })
 };
-// palette snippets are just the statement builders with example values
-Object.values(LANGS).forEach(x=>{
-  x.declIns=x.declStmt('side','140');
-  x.assignIns=x.setStmt('side','side + 10');
-});
 let L=LANGS[localStorage.getItem('sprout.lang')||'sprout']||LANGS.sprout;
 
 /* ---------- blocks ---------- */
 const BLOCKS=[
-  {cat:'motion',  name:'move',    ins:'move(100)',     desc:'walk forward'},
-  {cat:'motion',  name:'turn',    ins:'turn(90)',      desc:'turn right'},
-  {cat:'motion',  name:'goto',    ins:'goto(0, 0)',    desc:'jump to a spot'},
-  {cat:'pen',     name:'penDown', ins:'penDown()',     desc:'start drawing'},
-  {cat:'pen',     name:'penUp',   ins:'penUp()',       desc:'stop drawing'},
-  {cat:'pen',     name:'color',   ins:'color("blue")', desc:'pick a colour'},
-  {cat:'pen',     name:'size',    ins:'size(6)',       desc:'line thickness'},
-  {cat:'pen',     name:'dot',     ins:'dot(16)',       desc:'stamp a dot'},
-  {cat:'looks',   name:'say',     ins:'say("Hi!")',    desc:'say something'},
-  {cat:'control', name:'wait',    ins:'wait(1)',       desc:'pause'},
-  {cat:'control', name:'loop',    ins:()=>L.loopEmpty, desc:'do it again'},
-  {cat:'data',    name:'let',     ins:()=>L.declIns,   desc:'make a number'},
-  {cat:'data',    name:'change',  ins:()=>L.assignIns, desc:'change it'},
-  {cat:'data',    name:'random',  ins:'random(1, 10)', desc:'a surprise number', inline:true}
+  {cat:'motion',  name:'move',    ins:()=>L.call('move','100'),    desc:'walk forward'},
+  {cat:'motion',  name:'turn',    ins:()=>L.call('turn','90'),     desc:'turn right'},
+  {cat:'motion',  name:'goto',    ins:()=>L.call('goto','0','0'),  desc:'jump to a spot'},
+  {cat:'pen',     name:'penDown', ins:()=>L.call('penDown'),       desc:'start drawing'},
+  {cat:'pen',     name:'penUp',   ins:()=>L.call('penUp'),         desc:'stop drawing'},
+  {cat:'pen',     name:'color',   ins:()=>L.call('color','"blue"'),desc:'pick a colour'},
+  {cat:'pen',     name:'size',    ins:()=>L.call('size','6'),      desc:'line thickness'},
+  {cat:'pen',     name:'dot',     ins:()=>L.call('dot','16'),      desc:'stamp a dot'},
+  {cat:'looks',   name:'say',     ins:()=>L.call('say','"Hi!"'),   desc:'say something'},
+  {cat:'control', name:'wait',    ins:()=>L.call('wait','1'),      desc:'pause'},
+  {cat:'control', name:'loop',    ins:()=>L.loopEmpty,             desc:'do it again'},
+  {cat:'data',    name:'let',     ins:()=>L.declIns,               desc:'make a number'},
+  {cat:'data',    name:'change',  ins:()=>L.assignIns,             desc:'change it'},
+  {cat:'data',    name:'random',  ins:()=>L.rnd('1','10'),         desc:'a surprise number', inline:true}
 ];
 const GROUPS=[['motion','Motion'],['pen','Pen'],['looks','Looks'],['control','Control'],['data','Numbers']];
-const NOTCMD=new Set(['loop','let','change','random']);
-const CMDS=new Set(BLOCKS.filter(b=>!NOTCMD.has(b.name)).map(b=>b.name));
-const HLNAMES=new Set([...CMDS,'random']);
+const OPS=new Set(Object.keys(CANON));
 
 /* ---------- missions ---------- */
 const near=(S,x,y,r)=>Math.hypot(S.x-x,S.y-y)<=r;
 const dots=t=>t.filter(s=>s.x1===s.x2&&s.y1===s.y2).length;
 const lines=t=>t.filter(s=>s.x1!==s.x2||s.y1!==s.y2).length;
 const allRed=t=>lines(t)>0&&t.every(s=>s.c===COLORS.red);
+const B=(op,...a)=>`<b>${esc(L.call(op,...a))}</b>`;   // the block, spelled the way this language spells it
 const MIS=[
   { teach:'move', title:'Walk to the flag',
-    blurb:'Blocks are words you <b>type</b>. <b>move(100)</b> walks forward.',
+    blurb:L=>`Blocks are words you <b>type</b>. ${B('move','100')} walks forward.`,
     goal:'REACH THE FLAG', start:{x:-190,y:0,dir:90}, flag:{x:60,y:0},
     starter:L=>`${L.com} type a move block, then press Run\n`,
-    hint:'Hover the flag — it tells you how far. Then <b>move(250)</b>.',
+    hint:L=>`Hover the flag — it tells you how far. Then ${B('move','250')}.`,
     check:c=>near(c.S,60,0,36),
-    nudge:c=>c.S.x<24?'Nearly! The flag is further — try a bigger number in <b>move()</b>.'
-             :'Too far! Try a smaller number in <b>move()</b>.' },
+    nudge:c=>c.S.x<24?`Nearly! The flag is further — try a bigger number in ${B('move','…')}.`
+             :`Too far! Try a smaller number in ${B('move','…')}.` },
 
   { teach:'turn', title:'Around the corner',
-    blurb:'<b>turn(90)</b> makes a quarter turn to the right.',
+    blurb:L=>`${B('turn','90')} makes a quarter turn to the right.`,
     goal:'REACH THE FLAG', start:{x:-190,y:90,dir:90}, flag:{x:60,y:-70},
-    starter:L=>`move(250)\n${L.com} now turn, then move again\n`,
-    hint:'<b>move(250)</b>, then <b>turn(90)</b>, then <b>move(160)</b>.',
+    starter:L=>`${L.call('move','250')}\n${L.com} now turn, then move again\n`,
+    hint:L=>`${B('move','250')}, then ${B('turn','90')}, then ${B('move','160')}.`,
     check:c=>near(c.S,60,-70,36),
     nudge:()=>'Not there yet — turn first, then move again.' },
 
   { teach:'penDown', title:'Leave a trail',
-    blurb:'<b>penDown()</b> draws a line as you walk.',
+    blurb:L=>`${B('penDown')} draws a line as you walk.`,
     goal:'DRAW A LINE TO THE FLAG', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
     starter:L=>`${L.com} draw a line to the flag\n`,
-    hint:'<b>penDown()</b> first, then <b>move(360)</b>.',
+    hint:L=>`${B('penDown')} first, then ${B('move','360')}.`,
     check:c=>near(c.S,170,0,36)&&lines(c.trail)>0,
     nudge:c=>near(c.S,170,0,36)&&!lines(c.trail)
-      ?'You got there — but drew nothing. Add <b>penDown()</b> first.':null },
+      ?`You got there — but drew nothing. Add ${B('penDown')} first.`:null },
 
   { teach:'color', title:'Paint it red',
-    blurb:'<b>color("red")</b> changes the pen. Words go in quotes.',
+    blurb:L=>`${B('color','"red"')} changes the pen. Words go in quotes.`,
     goal:'DRAW A RED LINE', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
-    starter:()=>'penDown()\nmove(360)\n',
-    hint:'Put <b>color("red")</b> at the very top.',
+    starter:L=>`${L.call('penDown')}\n${L.call('move','360')}\n`,
+    hint:L=>`Put ${B('color','"red"')} at the very top.`,
     check:c=>near(c.S,170,0,36)&&allRed(c.trail),
     nudge:c=>lines(c.trail)&&!allRed(c.trail)
-      ?'Nice line — now add <b>color("red")</b> above <b>penDown()</b>.':null },
+      ?`Nice line — now add ${B('color','"red"')} above ${B('penDown')}.`:null },
 
   { teach:'size', title:'Make it fat',
-    blurb:'<b>size(20)</b> makes a thick, chunky line.',
+    blurb:L=>`${B('size','20')} makes a thick, chunky line.`,
     goal:'DRAW A THICK LINE', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
-    starter:()=>'penDown()\nmove(360)\n',
-    hint:'Put <b>size(20)</b> at the top.',
+    starter:L=>`${L.call('penDown')}\n${L.call('move','360')}\n`,
+    hint:L=>`Put ${B('size','20')} at the top.`,
     check:c=>near(c.S,170,0,36)&&lines(c.trail)>0&&c.trail.every(s=>s.w>=15),
     nudge:c=>lines(c.trail)&&!c.trail.every(s=>s.w>=15)
-      ?'Still skinny — add <b>size(20)</b> at the top.':null },
+      ?`Still skinny — add ${B('size','20')} at the top.`:null },
 
   { teach:'loop', title:'Draw a square',
     blurb:L=>`${L.say(4)} runs the blocks inside it four times.`,
     goal:'DRAW A SQUARE', start:{x:-70,y:70,dir:90}, flag:null,
-    starter:L=>`penDown()\n${L.loopEmpty}\n`,
-    hint:'Inside the loop: <b>move(140)</b> then <b>turn(90)</b>.',
+    starter:L=>`${L.call('penDown')}\n${L.loopEmpty}\n`,
+    hint:L=>`Inside the loop: ${B('move','140')} then ${B('turn','90')}.`,
     check:c=>c.usedLoop&&lines(c.trail)>=4&&near(c.S,-70,70,26),
     nudge:c=>!c.usedLoop&&lines(c.trail)>=4&&near(c.S,-70,70,26)
       ?'A perfect square! Now do it with a loop — same shape, half the typing.':null },
@@ -455,90 +520,90 @@ const MIS=[
   { teach:'loop', title:'Now a triangle',
     blurb:'Same loop, different numbers. A triangle has <b>3</b> sides and turns of <b>120</b>.',
     goal:'DRAW A TRIANGLE', start:{x:-70,y:60,dir:90}, flag:null,
-    starter:L=>`penDown()\n${L.loop(4,['move(140)','turn(90)'])}\n`,
-    hint:'Change the 4 to <b>3</b>, and <b>turn(90)</b> to <b>turn(120)</b>.',
+    starter:L=>`${L.call('penDown')}\n${L.loop(4,[L.call('move','140'),L.call('turn','90')])}\n`,
+    hint:L=>`Change the 4 to <b>3</b>, and ${B('turn','90')} to ${B('turn','120')}.`,
     check:c=>c.usedLoop&&lines(c.trail)===3&&near(c.S,-70,60,26),
     nudge:c=>lines(c.trail)===4?'That is still a square — a triangle loops <b>3</b> times and turns <b>120</b>.':null },
 
   { teach:'penUp', title:'Dotty line',
-    blurb:'<b>penUp()</b> lifts the pen. Down, up, down, up — dashes!',
+    blurb:L=>`${B('penUp')} lifts the pen. Down, up, down, up — dashes!`,
     goal:'DRAW A DASHED LINE', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
-    starter:L=>`${L.loop(6,['penDown()','move(30)',''])}\n`,
-    hint:'Inside the loop, after <b>move(30)</b>: <b>penUp()</b> then <b>move(30)</b>.',
+    starter:L=>`${L.loop(6,[L.call('penDown'),L.call('move','30'),''])}\n`,
+    hint:L=>`Inside the loop, after the move: ${B('penUp')} then ${B('move','30')}.`,
     check:c=>c.usedPenUp&&lines(c.trail)>=4&&near(c.S,170,0,44),
-    nudge:c=>!c.usedPenUp?'One long line! Add <b>penUp()</b> and another <b>move(30)</b> to skip a gap.':null },
+    nudge:c=>!c.usedPenUp?`One long line! Add ${B('penUp')} and another ${B('move','30')} to skip a gap.`:null },
 
   { teach:'dot', title:'Bead necklace',
-    blurb:'<b>dot(16)</b> stamps a dot right where you stand — pen up or down.',
+    blurb:L=>`${B('dot','16')} stamps a dot right where you stand — pen up or down.`,
     goal:'LEAVE A TRAIL OF BEADS', start:{x:-190,y:0,dir:90}, flag:{x:170,y:0},
-    starter:L=>`color("pink")\n${L.loop(8,['move(45)'])}\n`,
-    hint:'Put <b>dot(16)</b> inside the loop, before the move.',
+    starter:L=>`${L.call('color','"pink"')}\n${L.loop(8,[L.call('move','45')])}\n`,
+    hint:L=>`Put ${B('dot','16')} inside the loop, before the move.`,
     check:c=>dots(c.trail)>=6&&near(c.S,170,0,44),
     nudge:c=>near(c.S,170,0,44)&&!dots(c.trail)
-      ?'You walked the path — now add <b>dot(16)</b> inside the loop to drop beads.':null },
+      ?`You walked the path — now add ${B('dot','16')} inside the loop to drop beads.`:null },
 
   { teach:'say', title:'Say hello',
-    blurb:'<b>say("Hi!")</b> pops a speech bubble.',
+    blurb:L=>`${B('say','"Hi!"')} pops a speech bubble.`,
     goal:'MAKE SPROUT TALK', start:{x:0,y:-30,dir:90}, flag:null,
     starter:L=>`${L.com} make Sprout say something\n`,
-    hint:'Type <b>say("Hi!")</b> — your words go in the quotes.',
+    hint:L=>`Type ${B('say','"Hi!"')} — your words go in the quotes.`,
     check:c=>c.sayCount>0 },
 
   { teach:'wait', title:'Say two things',
-    blurb:'<b>wait(1)</b> pauses for a second — so the first thing can be read.',
+    blurb:L=>`${B('wait','1')} pauses for a second — so the first thing can be read.`,
     goal:'SAY TWO THINGS', start:{x:0,y:-30,dir:90}, flag:null,
-    starter:L=>`say("Hi!")\n${L.com} wait, then say something else\n`,
-    hint:'<b>say("Hi!")</b>, then <b>wait(1)</b>, then <b>say("Bye!")</b>.',
+    starter:L=>`${L.call('say','"Hi!"')}\n${L.com} wait, then say something else\n`,
+    hint:L=>`${B('say','"Hi!"')}, then ${B('wait','1')}, then ${B('say','"Bye!"')}.`,
     check:c=>c.sayCount>=2&&c.usedWait,
-    nudge:c=>c.sayCount>=2&&!c.usedWait?'Too fast to read! Put <b>wait(1)</b> between them.':null },
+    nudge:c=>c.sayCount>=2&&!c.usedWait?`Too fast to read! Put ${B('wait','1')} between them.`:null },
 
   { teach:'goto', title:'Jump home',
-    blurb:'<b>goto(0, 0)</b> jumps straight to a spot. The middle is 0, 0.',
+    blurb:L=>`${B('goto','0','0')} jumps straight to a spot. The middle is 0, 0.`,
     goal:'JUMP TO THE MIDDLE', start:{x:-190,y:90,dir:90}, flag:{x:0,y:0},
     starter:L=>`${L.com} jump to the middle\n`,
-    hint:'Type <b>goto(0, 0)</b>. Hover the stage to read any spot.',
+    hint:L=>`Type ${B('goto','0','0')}. Hover the stage to read any spot.`,
     check:c=>c.usedGoto&&near(c.S,0,0,22) },
 
   { teach:null, title:'Draw a star',
     blurb:'Five moves, turns of 144. Small number, big shape.',
     goal:'DRAW A STAR', start:{x:-85,y:20,dir:90}, flag:null,
-    starter:L=>`color("yellow")\nsize(3)\npenDown()\n${L.loop(5,['move(170)',''])}\n`,
-    hint:'Inside the loop, after the move: <b>turn(144)</b>.',
+    starter:L=>`${L.call('color','"yellow"')}\n${L.call('size','3')}\n${L.call('penDown')}\n${L.loop(5,[L.call('move','170'),''])}\n`,
+    hint:L=>`Inside the loop, after the move: ${B('turn','144')}.`,
     check:c=>c.usedLoop&&lines(c.trail)>=5&&near(c.S,-85,20,30),
     nudge:c=>lines(c.trail)>=5?'Close! A star turns <b>144</b> each time.':null },
 
   { teach:'let', title:'Name a number',
-    blurb:L=>`<b>${L.declIns}</b> makes a box called <em>side</em> with 140 in it. Use the name instead of the number.`,
+    blurb:L=>`<b>${esc(L.declIns)}</b> makes a box called <em>side</em> with 140 in it. Use the name instead of the number.`,
     goal:'DRAW IT WITH A NAMED NUMBER', start:{x:-70,y:70,dir:90}, flag:null,
-    starter:L=>`penDown()\n${L.loop(4,['move(140)','turn(90)'])}\n`,
-    hint:L=>`Put <b>${L.declIns}</b> at the top, then use <b>move(side)</b> instead of 140.`,
+    starter:L=>`${L.call('penDown')}\n${L.loop(4,[L.call('move','140'),L.call('turn','90')])}\n`,
+    hint:L=>`Put <b>${esc(L.declIns)}</b> at the top, then ${B('move','side')} instead of 140.`,
     check:c=>c.usedVar&&c.usedVarRead&&lines(c.trail)>=4&&near(c.S,-70,70,26),
     nudge:c=>c.usedVar&&!c.usedVarRead
-      ?'The box is made — now use it. Put <b>side</b> inside <b>move()</b> instead of the number.'
+      ?`The box is made — now use it. Put <b>side</b> inside ${B('move','…')} instead of the number.`
       :(lines(c.trail)>=4?'Same square — now name the number and use the name.':null) },
 
   { teach:'change', title:'Make it grow',
-    blurb:L=>`Change the number <em>inside</em> the loop — <b>${L.setStmt('step','step + 3')}</b> — and each side comes out longer than the last.`,
+    blurb:L=>`Change the number <em>inside</em> the loop — <b>${esc(L.set('step','step + 3'))}</b> — and each side comes out longer than the last.`,
     goal:'DRAW A SPIRAL', start:{x:-10,y:10,dir:90}, flag:null,
-    starter:L=>`${L.declStmt('step','4')}\npenDown()\ncolor("blue")\n${L.loop(44,['move(step)','turn(91)'])}\n`,
-    hint:L=>`Inside the loop, after the turn, add <b>${L.setStmt('step','step + 3')}</b>.`,
+    starter:L=>`${L.decl('step','4')}\n${L.call('penDown')}\n${L.call('color','"blue"')}\n${L.loop(44,[L.call('move','step'),L.call('turn','91')])}\n`,
+    hint:L=>`Inside the loop, after the turn, add <b>${esc(L.set('step','step + 3'))}</b>.`,
     check:c=>c.usedGrow&&lines(c.trail)>=25,
     nudge:c=>lines(c.trail)>=25&&!c.usedGrow
-      ?`Every side is the same length — the step never changes. Add <b>${L.setStmt('step','step + 3')}</b> inside the loop.`:null },
+      ?`Every side is the same length — the step never changes. Add <b>${esc(L.set('step','step + 3'))}</b> inside the loop.`:null },
 
   { teach:'random', title:'Roll the dice',
-    blurb:'<b>random(1, 10)</b> picks a different number every single run. Put it where a number goes.',
+    blurb:L=>`<b>${esc(L.rnd('1','10'))}</b> picks a different number every single run. Put it where a number goes.`,
     goal:'DRAW SOMETHING DIFFERENT EACH RUN', start:{x:0,y:0,dir:90}, flag:null,
-    starter:L=>`penDown()\ncolor("pink")\n${L.loop(24,['move(60)','turn(90)'])}\n`,
-    hint:'Try <b>move(random(20, 80))</b> and <b>turn(random(0, 360))</b>. Run it twice.',
+    starter:L=>`${L.call('penDown')}\n${L.call('color','"pink"')}\n${L.loop(24,[L.call('move','60'),L.call('turn','90')])}\n`,
+    hint:L=>`Try <b>${esc(L.call('move',L.rnd('20','80')))}</b> and <b>${esc(L.call('turn',L.rnd('0','360')))}</b>. Run it twice.`,
     check:c=>c.usedRandom&&lines(c.trail)>=10,
-    nudge:c=>lines(c.trail)>=10?'Same picture every time — swap a number for <b>random(20, 80)</b>.':null },
+    nudge:c=>lines(c.trail)>=10?`Same picture every time — swap a number for <b>${esc(L.rnd('20','80'))}</b>.`:null },
 
   { teach:null, title:'A loop inside a loop',
     blurb:'Put a loop <em>inside</em> another one and a square becomes a flower.',
     goal:'DRAW A FLOWER', start:{x:0,y:0,dir:90}, flag:null,
-    starter:L=>`penDown()\ncolor("purple")\n${L.loop(6,['','turn(60)'])}\n`,
-    hint:L=>`Inside the big loop, put ${L.say(4)} with <b>move(80)</b> and <b>turn(90)</b>.`,
+    starter:L=>`${L.call('penDown')}\n${L.call('color','"purple"')}\n${L.loop(6,['',L.call('turn','60')])}\n`,
+    hint:L=>`Inside the big loop, put ${L.say(4)} with ${B('move','80')} and ${B('turn','90')}.`,
     check:c=>c.usedLoop&&lines(c.trail)>=20&&near(c.S,0,0,30),
     nudge:c=>lines(c.trail)>=4&&lines(c.trail)<20
       ?'One square so far — put that loop inside the big loop to spin it around.':null },
@@ -546,8 +611,8 @@ const MIS=[
   { teach:null, title:'Free play',
     blurb:'No goal — every block is yours. Change the numbers and see what happens.',
     goal:'MAKE ANYTHING', start:{x:0,y:0,dir:90}, flag:null,
-    starter:L=>`color("purple")\nsize(3)\npenDown()\n${L.loop(36,['move(120)','turn(100)'])}\nsay("I made this!")\n`,
-    hint:'Try changing <b>turn(100)</b> to another number.',
+    starter:L=>`${L.call('color','"purple"')}\n${L.call('size','3')}\n${L.call('penDown')}\n${L.loop(36,[L.call('move','120'),L.call('turn','100')])}\n`,
+    hint:L=>`Try changing the number in ${B('turn','100')}.`,
     check:()=>false }
 ];
 const T=(v)=>typeof v==='function'?v(L):v;
@@ -564,7 +629,7 @@ function highlight(src){
     let out=esc(code)
       .replace(/(&quot;[^&]*?&quot;|"[^"]*")/g,'<span class="k-str">$1</span>')
       .replace(kwRe,'<span class="k-kw">$1</span>')
-      .replace(/\b([a-zA-Z]\w*)(?=\s*\()/g,(mm,w)=>HLNAMES.has(w)?`<span class="k-cmd">${w}</span>`:w)
+      .replace(/\b([a-zA-Z][\w.]*)(?=\s*\()/g,(mm,w)=>(L.byName.has(w)||w===L.rand)?`<span class="k-cmd">${w}</span>`:w)
       .replace(/(?<![\w"#-])(\d+(?:\.\d+)?)(?![\w"])/g,'<span class="k-num">$1</span>')
       .replace(/([{}:;])/g,'<span class="k-brace">$1</span>');
     if(com) out+=`<span class="k-com">${esc(com)}</span>`;
@@ -642,14 +707,17 @@ function renderPal(){
   });
 }
 function renderLangs(){
-  const el=$('#langs'); el.innerHTML='';
-  Object.values(LANGS).forEach(x=>{
-    const b=document.createElement('button');
-    b.className='seg'+(x.id===L.id?' on':''); b.textContent=x.label;
-    b.onclick=()=>setLang(x.id);
-    el.appendChild(b);
-  });
-  $('#langTag').textContent=L.id==='sprout'?'training wheels':'real '+L.label;
+  const el=$('#langs');
+  if(!el.firstChild){
+    const s=document.createElement('select'); s.className='langsel'; s.id='langSel';
+    Object.values(LANGS).forEach(x=>{
+      const o=document.createElement('option'); o.value=x.id; o.textContent=x.label; s.appendChild(o);
+    });
+    s.onchange=()=>setLang(s.value);
+    el.appendChild(s);
+  }
+  $('#langSel').value=L.id;
+  $('#langTag').textContent=L.blurb;
 }
 function setLang(id){
   if(LANGS[id]===L) return;
@@ -664,14 +732,15 @@ function parse(src){
   return L.kind==='indent'?parseIndent(src):parseBrace(src);
 }
 function stripCom(line){
-  const i=L.com==='#'?line.indexOf('#'):line.indexOf('//');
+  const i=line.indexOf(L.com);
   return i>=0?line.slice(0,i):line;
 }
 function readCmd(ln,i){
-  const m=ln.match(/^([a-zA-Z][a-zA-Z0-9]*)\s*\((.*)\)$/);
+  const m=ln.match(/^([a-zA-Z][\w.]*)\s*\((.*)\)$/);
   if(!m) return null;
-  if(!CMDS.has(m[1])) throw {line:i,msg:`I don't know a block called <b>${esc(m[1])}</b>.${suggest(m[1])}`};
-  return {type:'cmd',name:m[1],args:parseArgs(m[2].trim(),i),line:i};
+  const op=L.byName.get(m[1]);        // typed name -> what it actually does
+  if(!op) throw {line:i,msg:`I don't know a block called <b>${esc(m[1])}</b>.${suggest(m[1])}`};
+  return {type:'cmd',name:op,args:parseArgs(m[2].trim(),i),line:i};
 }
 function readSet(ln,i){
   let m=L.declRe&&ln.match(L.declRe);
@@ -681,9 +750,11 @@ function readSet(ln,i){
   return {type:'set',name,expr,self:exprUses(expr,name),line:i};
 }
 function unreadable(ln,i){
-  if(/^(repeat|for)\b/.test(ln)) throw {line:i,msg:L.badLoop};
-  if(/^[a-zA-Z][a-zA-Z0-9]*$/.test(ln)) throw {line:i,msg:`Blocks need brackets — try <b>${esc(ln)}()</b>.`};
-  throw {line:i,msg:`I can't read <b>${esc(ln)}</b>. Blocks look like <b>move(100)</b>.`};
+  if(ln==='}'&&L.close!=='}')
+    throw {line:i,msg:`${L.label} finishes a loop with <b>${L.close}</b>, not <b>}</b>.`};
+  if(/^(repeat|for)\b/.test(ln)||/\.times\b/.test(ln)) throw {line:i,msg:L.badLoop};
+  if(/^[a-zA-Z][\w.]*$/.test(ln)) throw {line:i,msg:`Blocks need brackets — try <b>${esc(ln)}()</b>.`};
+  throw {line:i,msg:`I can't read <b>${esc(ln)}</b>. Blocks look like <b>${esc(L.call('move','100'))}</b>.`};
 }
 function parseBrace(src){
   const src2=src.split('\n'); const root=[]; const stack=[root];
@@ -693,16 +764,16 @@ function parseBrace(src){
     const lm=ln.match(L.loopRe);
     if(lm){ const node={type:'loop',n:L.loopN(lm),v:L.loopV(lm),body:[],line:i};
       stack[stack.length-1].push(node); stack.push(node.body); continue; }
-    if(ln==='}'){
+    if(ln===L.close){
       if(stack.length>1) stack.pop();
-      else throw {line:i,msg:'There is a <b>}</b> here with no loop to close.'};
+      else throw {line:i,msg:`There is an <b>${L.close}</b> here with no loop to close.`};
       continue;
     }
     const c=readCmd(ln,i); if(c){ stack[stack.length-1].push(c); continue; }
     const v=readSet(ln,i); if(v){ stack[stack.length-1].push(v); continue; }
     unreadable(ln,i);
   }
-  if(stack.length>1) throw {line:src2.length-1,msg:'A loop is missing its closing <b>}</b>.'};
+  if(stack.length>1) throw {line:src2.length-1,msg:`A loop is missing its closing <b>${L.close}</b>.`};
   return root;
 }
 function parseIndent(src){
@@ -736,9 +807,15 @@ function findEmptyLoop(nodes){
   return null;
 }
 function suggest(name){
-  const l=name.toLowerCase();
-  const hit=[...CMDS].find(c=>c.toLowerCase()===l||c.toLowerCase().startsWith(l.slice(0,3)));
-  return hit?` Did you mean <b>${hit}</b>?`:'';
+  const l=name.toLowerCase(), here=[...L.byName.keys()];
+  const hit=here.find(c=>c.toLowerCase()===l||c.toLowerCase().startsWith(l.slice(0,3)));
+  if(hit) return ` Did you mean <b>${hit}</b>?`;
+  // typed another language's name for the same thing — say so, don't just shrug
+  for(const other of Object.values(LANGS)){
+    const op=other.byName.get(name);
+    if(op&&other!==L) return ` That is what <b>${other.label}</b> calls it — in ${L.label} it is <b>${L.names[op]}</b>.`;
+  }
+  return '';
 }
 /* Arguments are little expressions, so move(side * 2) and turn(random(0, 360))
    both work. Split on top-level commas only — random(1, 10) has its own. */
@@ -763,7 +840,8 @@ function lexExpr(s,line){
     if(/\s/.test(c)){ i++; continue; }
     if(/[0-9.]/.test(c)){ let j=i; while(j<s.length&&/[0-9.]/.test(s[j])) j++;
       t.push({k:'num',v:parseFloat(s.slice(i,j))}); i=j; continue; }
-    if(/[a-zA-Z_]/.test(c)){ let j=i; while(j<s.length&&/\w/.test(s[j])) j++;
+    // dotted names are one thing: Lua really does call it math.random
+    if(/[a-zA-Z_]/.test(c)){ let j=i; while(j<s.length&&/[\w.]/.test(s[j])) j++;
       t.push({k:'id',v:s.slice(i,j)}); i=j; continue; }
     if('+-*/(),'.includes(c)){ t.push({k:c}); i++; continue; }
     throw {line,msg:`I can't read <b>${esc(c)}</b> here.`};
@@ -836,10 +914,10 @@ function evalExpr(n,line){
       return a/b;
     }
     case 'call':{
-      if(n.name!=='random')
-        throw {line,msg:`<b>${esc(n.name)}</b> can't be used as a number. Only <b>random(1, 10)</b> can.`};
+      if(n.name!==L.rand)
+        throw {line,msg:`<b>${esc(n.name)}</b> can't be used as a number. Only <b>${esc(L.rnd('1','10'))}</b> can.`};
       if(n.args.length!==2)
-        throw {line,msg:'<b>random</b> needs two numbers — a lowest and a highest, like <b>random(1, 10)</b>.'};
+        throw {line,msg:`<b>${esc(L.rand)}</b> needs two numbers — a lowest and a highest, like <b>${esc(L.rnd('1','10'))}</b>.`};
       const a=evalExpr(n.args[0],line), b=evalExpr(n.args[1],line);
       usedRandom=true;
       const lo=Math.min(a,b), hi=Math.max(a,b);
@@ -864,8 +942,9 @@ function flatten(nodes,out,depth){
     if(n.type==='loop'){
       if(depth>5) throw {line:n.line,msg:'That is a lot of loops inside loops!'};
       for(let i=0;i<n.n;i++){
-        // a for-loop whose counter you can't read isn't a for-loop — bind it each pass
-        if(n.v) out.push({type:'set',name:n.v,expr:{k:'num',v:i},counter:true,line:n.line});
+        // a for-loop whose counter you can't read isn't a for-loop — bind it each pass.
+        // Lua counts 1..n, everyone else 0..n-1; pretending otherwise would be a lie.
+        if(n.v) out.push({type:'set',name:n.v,expr:{k:'num',v:i+L.base},counter:true,line:n.line});
         flatten(n.body,out,depth+1);
         if(out.length>MAXSTEPS) throw {line:n.line,msg:'That repeats too many times — try a smaller number.'};
       }
@@ -880,8 +959,6 @@ const anyLoop=nodes=>nodes.some(function look(n){ return n.type==='loop'||(n.bod
    Python maps onto the turtle module (stdlib, y-up, same as our stage, and
    heading 0 = east = our dir 90 — the coordinate systems line up exactly).
    The web page ships the little library the browser doesn't have. */
-const PY_MAP={move:'forward',turn:'right',goto:'goto',penDown:'pendown',penUp:'penup',
-  color:'pencolor',size:'pensize',dot:'dot',say:'write',wait:'time.sleep'};
 const PREC={'+':1,'-':1,'*':2,'/':2};
 function emitExpr(n,lang){
   switch(n.k){
@@ -890,9 +967,7 @@ function emitExpr(n,lang){
     case 'var': return n.name;
     case 'neg': return '-'+emitExpr(n.a,lang);
     case 'call':
-      return lang==='py'
-        ? `random.randint(${emitExpr(n.args[0],lang)}, ${emitExpr(n.args[1],lang)})`
-        : `random(${emitExpr(n.args[0],lang)}, ${emitExpr(n.args[1],lang)})`;
+      return `${lang==='py'?'randint':'random'}(${emitExpr(n.args[0],lang)}, ${emitExpr(n.args[1],lang)})`;
     case 'bin':{
       const wrap=(c,right)=>{
         const s=emitExpr(c,lang);
@@ -928,7 +1003,7 @@ function emitBody(nodes,lang,ind,depth){
       out.push(`${px}${n.name} = ${emitExpr(n.expr,lang)}`);
     } else {
       const args=n.args.map(a=>emitExpr(a,lang)).join(', ');
-      const name=lang==='py'?(PY_MAP[n.name]||n.name):n.name;
+      const name=lang==='py'?LANGS.py.names[n.name]:CANON[n.name];
       out.push(`${px}${name}(${args})${lang==='js'?';':''}`);
     }
   }
@@ -937,14 +1012,14 @@ function emitBody(nodes,lang,ind,depth){
 function emitPython(ast,start){
   const loopVars=new Set(), vs=collectVars(ast,new Set(),loopVars);
   const body=emitBody(ast,'py','    ',0);
-  const needRandom=/random\.randint/.test(body), needTime=/time\.sleep/.test(body);
+  const needRandom=/\brandint\(/.test(body), needTime=/\bsleep\(/.test(body);
   return [
     '# Made in Sprout — and this is real Python.',
     '# Save it as drawing.py and run it, or paste it into IDLE.',
     '',
     'from turtle import *',
-    needRandom?'import random':null,
-    needTime?'import time':null,
+    needRandom?'from random import randint':null,
+    needTime?'from time import sleep':null,
     '',
     'speed(0)',
     'pensize(6)',
