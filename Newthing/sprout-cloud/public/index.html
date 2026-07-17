@@ -171,6 +171,10 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
 .mrow{display:flex;gap:8px;margin-top:16px}
 .mrow .btn{flex:1}
 .msg{font-size:11.5px;line-height:1.4;color:var(--pink);margin-top:10px;min-height:16px;font-weight:700}
+.realcode{background:var(--stage);color:#dfe5f5;border-radius:14px;padding:14px;margin-top:10px;
+  font-family:var(--mono);font-size:11.5px;line-height:1.65;white-space:pre;overflow:auto;max-height:46vh}
+.realnote{font-size:11.5px;line-height:1.5;color:var(--muted);margin-top:11px;font-weight:600}
+.realnote b{font-family:var(--mono);color:var(--ink);font-weight:700}
 
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 @media (max-width:1080px){
@@ -222,6 +226,7 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
         <button class="btn go" id="runBtn">▶ Run</button>
         <button class="btn stop" id="stopBtn" style="display:none">■ Stop</button>
         <button class="btn" id="resetBtn">↺ Reset</button>
+        <button class="btn" id="realBtn" title="Your program as a file that really runs">⤓ Real file</button>
       </div>
     </section>
 
@@ -255,6 +260,22 @@ canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:60;display:none}
       </div>
       <div style="height:12px;flex:none"></div>
     </section>
+  </div>
+</div>
+
+<div class="modal" id="realModal">
+  <div class="sheet" style="width:min(680px,100%)">
+    <h2>Your program, for real</h2>
+    <div class="sub">This is your drawing as a genuine file — nothing from Sprout is needed to run it.
+      It says the same thing you typed, in the words each language actually uses.</div>
+    <div class="segs" id="realTabs" style="display:inline-flex"></div>
+    <div class="realnote" id="realNote"></div>
+    <pre class="realcode" id="realCode"></pre>
+    <div class="mrow">
+      <button class="btn go" id="realCopy">Copy</button>
+      <button class="btn" id="realSave">Download</button>
+      <button class="btn" id="realClose">Close</button>
+    </div>
   </div>
 </div>
 
@@ -315,7 +336,7 @@ function mkLoop(open,close,indent){
 const LANGS={
   sprout:{ id:'sprout', label:'Sprout', com:'//', kind:'brace', indent:'  ',
     kw:['repeat','set'], opens:/\{\s*$/,
-    loopRe:/^repeat\s*\(?\s*(\d+)\s*\)?\s*\{$/, loopN:m=>+m[1],
+    loopRe:/^repeat\s*\(?\s*(\d+)\s*\)?\s*\{$/, loopN:m=>+m[1], loopV:()=>null,
     loopEmpty:'repeat 4 {\n  \n}',
     loop:mkLoop(n=>`repeat ${n} {`,'}','  '),
     say:n=>`<b>repeat ${n} { }</b>`,
@@ -325,7 +346,7 @@ const LANGS={
   js:{ id:'js', label:'JavaScript', com:'//', kind:'brace', indent:'  ',
     kw:['for','let','var','const'], opens:/\{\s*$/,
     loopRe:/^for\s*\(\s*(?:let|var|const)\s+([a-zA-Z_]\w*)\s*=\s*0\s*;\s*\1\s*<\s*(\d+)\s*;\s*\1\s*\+\+\s*\)\s*\{$/,
-    loopN:m=>+m[2],
+    loopN:m=>+m[2], loopV:m=>m[1],
     loopEmpty:'for (let i = 0; i < 4; i++) {\n  \n}',
     loop:mkLoop((n,v)=>`for (let ${v} = 0; ${v} < ${n}; ${v}++) {`,'}','  '),
     say:n=>`<b>for (let i = 0; i < ${n}; i++) { }</b>`,
@@ -335,7 +356,7 @@ const LANGS={
   py:{ id:'py', label:'Python', com:'#', kind:'indent', indent:'    ',
     kw:['for','in','range'], opens:/:\s*$/,
     loopRe:/^for\s+([a-zA-Z_]\w*)\s+in\s+range\s*\(\s*(\d+)\s*\)\s*:$/,
-    loopN:m=>+m[2],
+    loopN:m=>+m[2], loopV:m=>m[1],
     loopEmpty:'for i in range(4):\n    ',
     loop:mkLoop((n,v)=>`for ${v} in range(${n}):`,'','    '),
     say:n=>`<b>for i in range(${n}):</b>`,
@@ -670,7 +691,7 @@ function parseBrace(src){
     let ln=stripCom(src2[i]).trim().replace(/;$/,'');
     if(!ln) continue;
     const lm=ln.match(L.loopRe);
-    if(lm){ const node={type:'loop',n:L.loopN(lm),body:[],line:i};
+    if(lm){ const node={type:'loop',n:L.loopN(lm),v:L.loopV(lm),body:[],line:i};
       stack[stack.length-1].push(node); stack.push(node.body); continue; }
     if(ln==='}'){
       if(stack.length>1) stack.pop();
@@ -694,7 +715,7 @@ function parseIndent(src){
     const ln=noc.trim().replace(/;$/,'');
     while(stack.length>1 && ind<=stack[stack.length-1].ind) stack.pop();
     const lm=ln.match(L.loopRe);
-    if(lm){ const node={type:'loop',n:L.loopN(lm),body:[],line:i};
+    if(lm){ const node={type:'loop',n:L.loopN(lm),v:L.loopV(lm),body:[],line:i};
       stack[stack.length-1].body.push(node); stack.push({ind,body:node.body,line:i}); continue; }
     if(ln==='}') throw {line:i,msg:'Python has no <b>}</b> — indent the lines inside the loop instead.'};
     const c=readCmd(ln,i); if(c){ stack[stack.length-1].body.push(c); continue; }
@@ -843,6 +864,8 @@ function flatten(nodes,out,depth){
     if(n.type==='loop'){
       if(depth>5) throw {line:n.line,msg:'That is a lot of loops inside loops!'};
       for(let i=0;i<n.n;i++){
+        // a for-loop whose counter you can't read isn't a for-loop — bind it each pass
+        if(n.v) out.push({type:'set',name:n.v,expr:{k:'num',v:i},counter:true,line:n.line});
         flatten(n.body,out,depth+1);
         if(out.length>MAXSTEPS) throw {line:n.line,msg:'That repeats too many times — try a smaller number.'};
       }
@@ -851,6 +874,139 @@ function flatten(nodes,out,depth){
   return out;
 }
 const anyLoop=nodes=>nodes.some(function look(n){ return n.type==='loop'||(n.body&&n.body.some(look)); });
+
+/* ---------- export: your program as a file that really runs ----------
+   Emitted from the parsed AST, so it works whichever language you wrote in.
+   Python maps onto the turtle module (stdlib, y-up, same as our stage, and
+   heading 0 = east = our dir 90 — the coordinate systems line up exactly).
+   The web page ships the little library the browser doesn't have. */
+const PY_MAP={move:'forward',turn:'right',goto:'goto',penDown:'pendown',penUp:'penup',
+  color:'pencolor',size:'pensize',dot:'dot',say:'write',wait:'time.sleep'};
+const PREC={'+':1,'-':1,'*':2,'/':2};
+function emitExpr(n,lang){
+  switch(n.k){
+    case 'num': return String(n.v);
+    case 'str': return JSON.stringify(n.v);
+    case 'var': return n.name;
+    case 'neg': return '-'+emitExpr(n.a,lang);
+    case 'call':
+      return lang==='py'
+        ? `random.randint(${emitExpr(n.args[0],lang)}, ${emitExpr(n.args[1],lang)})`
+        : `random(${emitExpr(n.args[0],lang)}, ${emitExpr(n.args[1],lang)})`;
+    case 'bin':{
+      const wrap=(c,right)=>{
+        const s=emitExpr(c,lang);
+        if(c.k!=='bin') return s;
+        const need=PREC[c.op]<PREC[n.op] || (right&&PREC[c.op]===PREC[n.op]&&(n.op==='-'||n.op==='/'));
+        return need?`(${s})`:s;
+      };
+      return `${wrap(n.a,false)} ${n.op} ${wrap(n.b,true)}`;
+    }
+  }
+}
+function collectVars(nodes,out,loopVars){
+  for(const n of nodes){
+    if(n.type==='loop'){ if(n.v) loopVars.add(n.v); collectVars(n.body,out,loopVars); }
+    else if(n.type==='set') out.add(n.name);
+  }
+  return out;
+}
+function emitBody(nodes,lang,ind,depth){
+  const pad='  '.repeat(depth+ (lang==='py'?1:0)*0);
+  const I=lang==='py'?'    ':'  ';
+  const px=I.repeat(depth);
+  const out=[];
+  for(const n of nodes){
+    if(n.type==='loop'){
+      const v=n.v||['i','j','k','m'][Math.min(depth,3)];
+      out.push(lang==='py'
+        ? `${px}for ${v} in range(${n.n}):`
+        : `${px}for (let ${v} = 0; ${v} < ${n.n}; ${v}++) {`);
+      out.push(emitBody(n.body,lang,ind,depth+1));
+      if(lang!=='py') out.push(`${px}}`);
+    } else if(n.type==='set'){
+      out.push(`${px}${n.name} = ${emitExpr(n.expr,lang)}`);
+    } else {
+      const args=n.args.map(a=>emitExpr(a,lang)).join(', ');
+      const name=lang==='py'?(PY_MAP[n.name]||n.name):n.name;
+      out.push(`${px}${name}(${args})${lang==='js'?';':''}`);
+    }
+  }
+  return out.filter(s=>s!=='').join('\n');
+}
+function emitPython(ast,start){
+  const loopVars=new Set(), vs=collectVars(ast,new Set(),loopVars);
+  const body=emitBody(ast,'py','    ',0);
+  const needRandom=/random\.randint/.test(body), needTime=/time\.sleep/.test(body);
+  return [
+    '# Made in Sprout — and this is real Python.',
+    '# Save it as drawing.py and run it, or paste it into IDLE.',
+    '',
+    'from turtle import *',
+    needRandom?'import random':null,
+    needTime?'import time':null,
+    '',
+    'speed(0)',
+    'pensize(6)',
+    'pencolor("#19c37d")',
+    'penup()',
+    `goto(${start.x}, ${start.y})`,
+    'setheading(0)',
+    '',
+    body,
+    '',
+    'hideturtle()',
+    'done()'
+  ].filter(s=>s!==null).join('\n')+'\n';
+}
+function emitWebPage(ast,start){
+  const loopVars=new Set(), vs=[...collectVars(ast,new Set(),loopVars)].filter(v=>!loopVars.has(v));
+  const body=emitBody(ast,'js','  ',0);
+  return `<!doctype html>
+<meta charset="utf-8">
+<title>My Sprout drawing</title>
+<style>
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0d1020}
+  canvas{border-radius:14px}
+</style>
+<canvas id="c" width="560" height="420"></canvas>
+<${'script'}>
+// ---- Sprout's little drawing library ----
+// Browsers have no turtle built in, so here it is. This is the same job
+// Python's turtle module does — a library, not magic.
+const cv = document.getElementById('c'), cx = cv.getContext('2d');
+cx.translate(280, 210); cx.lineCap = 'round'; cx.lineJoin = 'round';
+let _x = ${start.x}, _y = ${start.y}, _d = 90, _pen = false, _col = '#19c37d', _w = 6;
+const _C = ${JSON.stringify(COLORS)};
+const _rad = d => d * Math.PI / 180;
+function _line(nx, ny){
+  if (_pen) { cx.strokeStyle = _col; cx.lineWidth = _w;
+    cx.beginPath(); cx.moveTo(_x, -_y); cx.lineTo(nx, -ny); cx.stroke(); }
+  _x = nx; _y = ny;
+}
+function move(n){ _line(_x + Math.sin(_rad(_d)) * n, _y + Math.cos(_rad(_d)) * n); }
+function turn(d){ _d = (_d + d) % 360; }
+function penDown(){ _pen = true; }
+function penUp(){ _pen = false; }
+function color(c){ _col = _C[c] || c; }
+function size(n){ _w = n; }
+function dot(n){ cx.fillStyle = _col; cx.beginPath(); cx.arc(_x, -_y, n / 2, 0, 7); cx.fill(); }
+function goto(x, y){ _line(x, y); }
+function say(t){ cx.fillStyle = '#fff'; cx.font = '600 15px sans-serif'; cx.fillText(t, _x + 12, -_y - 12); }
+function wait(s){ const t = Date.now() + s * 1000; while (Date.now() < t); }
+function random(a, b){ const lo = Math.min(a, b), hi = Math.max(a, b);
+  return Math.floor(lo + Math.random() * (hi - lo + 1)); }
+
+// ---- your program ----
+${vs.length?'let '+vs.join(', ')+';\n':''}${body}
+</${'script'}>
+`;
+}
+function buildExport(kind){
+  const ast=parse(ta.value);                     // throws the same friendly errors
+  const start=mode==='solo'?MIS[mi].start:spawn;
+  return kind==='py'?emitPython(ast,start):emitWebPage(ast,start);
+}
 
 /* ---------- stage ---------- */
 const LW=560, LH=420;
@@ -1049,6 +1205,7 @@ function needNum(st,v,eg){
 async function doStep(st){
   if(st.type==='set'){
     vars[st.name]=evalExpr(st.expr,st.line);
+    if(st.counter) return;          // the loop's own counter: free, instant, not the kid's doing
     usedVar=true;
     if(st.self) usedGrow=true;      // step = step + 4 — the variable feeding itself
     await tween(60,()=>{});
@@ -1259,6 +1416,43 @@ $('#hintBtn').onclick=()=>$('#hintbox').classList.toggle('show');
 $('#nextBtn').onclick=()=>{ stop(); mi=(mi+1)%MIS.length; loadMission(); };
 $('#clearAll').onclick=()=>{ trail=[]; net.send({t:'clear'}); };
 $('#leaveBtn').onclick=()=>leaveRoom(false);
+
+/* ---------- real file ---------- */
+let realKind='py';
+const REAL={
+  py:{ label:'Python', file:'drawing.py',
+       note:'Real Python. <b>move</b> is called <b>forward</b> here, and <b>turn</b> is <b>right</b> — those names come from Python\'s <b>turtle</b> library. Save it and run it; the turtle draws the same picture.' },
+  web:{ label:'Web page', file:'drawing.html',
+       note:'A real web page. Browsers have no turtle built in, so the file carries the little library with it — the same job <b>turtle</b> does for Python. Open it in any browser.' }
+};
+function showReal(){
+  let code;
+  try{ code=buildExport(realKind); }
+  catch(e){ $('#realModal').classList.remove('on'); showErr(e); return; }
+  $('#realCode').textContent=code;
+  $('#realNote').innerHTML=REAL[realKind].note;
+  const tabs=$('#realTabs'); tabs.innerHTML='';
+  Object.entries(REAL).forEach(([k,v])=>{
+    const b=document.createElement('button');
+    b.className='seg'+(k===realKind?' on':''); b.textContent=v.label;
+    b.onclick=()=>{ realKind=k; showReal(); };
+    tabs.appendChild(b);
+  });
+  $('#realModal').classList.add('on');
+}
+$('#realBtn').onclick=showReal;
+$('#realClose').onclick=()=>$('#realModal').classList.remove('on');
+$('#realCopy').onclick=async()=>{
+  try{ await navigator.clipboard.writeText($('#realCode').textContent); $('#realCopy').textContent='Copied'; }
+  catch(e){ $('#realCopy').textContent='Press ⌘C'; }
+  setTimeout(()=>$('#realCopy').textContent='Copy',1400);
+};
+$('#realSave').onclick=()=>{
+  const blob=new Blob([$('#realCode').textContent],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=REAL[realKind].file;
+  a.click(); URL.revokeObjectURL(a.href);
+};
 
 /* ---------- join modal ---------- */
 let selAv=AVS[0], selColor=PCOLORS[0];
