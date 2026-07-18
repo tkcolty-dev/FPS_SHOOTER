@@ -206,7 +206,7 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   #menu.hasImage .chip span { color: #ffd98a; }
-  #menu.hasImage #menuTop { left: 2vw; right: 16.5vw; top: 2.6vh; justify-content: space-between; }
+  #menu.hasImage #menuTop { left: 2vw; right: 17.5vw; top: 2.6vh; justify-content: space-between; }
 
   #menu.hasImage .titleBlock { display: block; left: 3.5vw; top: 8.5vh; }
   #menu.hasImage .kicker {
@@ -304,7 +304,7 @@
 
   /* top-right icon cluster */
   #menu.hasImage #iconRow {
-    display: flex; position: absolute; right: 2vw; top: 2.6vh;
+    display: flex; position: absolute; right: 2.8vw; top: 2.6vh;
     height: 5.8vh; box-sizing: border-box; min-width: 11vw;
     justify-content: space-evenly; align-items: center;
     background: linear-gradient(180deg, rgba(28, 22, 15, 0.85), rgba(13, 11, 10, 0.85));
@@ -322,7 +322,7 @@
   }
   .iconBtn:hover { transform: scale(1.12); background: rgba(255, 255, 255, 0.12); }
   .badge {
-    position: absolute; top: -0.5vh; right: -0.3vw;
+    position: absolute; top: -0.3vh; right: 0;
     min-width: 2.2vh; height: 2.2vh; border-radius: 1.1vh;
     background: #e5484d; color: #fff;
     font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.4vh;
@@ -355,7 +355,7 @@
   /* right-side latest update card */
   #menu.hasImage #updateCard {
     display: flex; flex-direction: column;
-    position: absolute; right: 2vw; top: 32vh; bottom: 14vh; width: 18vw;
+    position: absolute; right: 2.8vw; top: 32vh; bottom: 14vh; width: 18vw;
     box-sizing: border-box; overflow: hidden;
     background: linear-gradient(180deg, rgba(26, 21, 15, 0.9), rgba(13, 11, 10, 0.9));
     border: 1px solid rgba(232, 182, 76, 0.3); border-radius: 1.8vh;
@@ -394,7 +394,7 @@
 
   /* bottom-right quest card */
   #menu.hasImage #questCard {
-    display: flex; position: absolute; right: 2vw; bottom: 2.6vh;
+    display: flex; position: absolute; right: 2.8vw; bottom: 2.6vh;
     width: 20.5vw; box-sizing: border-box;
     align-items: center; gap: 1vw;
     background: linear-gradient(135deg, rgba(70, 48, 118, 0.85), rgba(36, 26, 64, 0.85));
@@ -722,19 +722,10 @@ function buildSprite(rows, palette, scale = 4) {
 
 // ---------- Kenna sprites ----------
 const KENNA_PAL = {
-  'H': '#7a4a21',  // hair
-  'h': '#935c2c',  // hair highlight
-  'S': '#f6cfa4',  // skin
-  'E': '#3d2c1e',  // eyes
-  'T': '#2f8f8f',  // squire tunic (teal)
-  't': '#3aa6a0',  // tunic highlight
-  'B': '#6b4a2a',  // belt
-  'b': '#c9a86a',  // belt buckle
-  'L': '#5b3b20',  // boots
-  'o': '#00000033' // soft shadow px
+  'H': '#7a4a21', 'h': '#935c2c', 'S': '#f6cfa4', 'E': '#3d2c1e',
+  'T': '#2f8f8f', 't': '#3aa6a0', 'B': '#6b4a2a', 'b': '#c9a86a',
+  'L': '#5b3b20',
 };
-
-// 16x16, drawn at 4x. Two frames per direction: stride / together.
 const KENNA_DOWN_A = [
 '................',
 '.....hHHHHh.....',
@@ -752,23 +743,11 @@ const KENNA_DOWN_A = [
 '....LL....LL....',
 '....LL....LL....',
 '................'];
-const KENNA_DOWN_B = [
-'................',
-'.....hHHHHh.....',
-'....HHHHHHHH....',
-'....HHHHHHHH....',
-'....HSSSSSSH....',
-'....SSESSESS....',
-'.....SSSSSS.....',
-'.....tTTTTt.....',
-'....TTTTTTTT....',
-'...STTTTTTTTS...',
-'...STTTTTTTTS...',
-'....BBBbBBBB....',
+const KENNA_DOWN_B = KENNA_DOWN_A.slice(0, 12).concat([
 '......LLLL......',
 '......LLLL......',
 '......LLLL......',
-'................'];
+'................']);
 const KENNA_UP_A = [
 '................',
 '.....hHHHHh.....',
@@ -791,7 +770,7 @@ const KENNA_UP_B = KENNA_UP_A.slice(0, 12).concat([
 '......LLLL......',
 '......LLLL......',
 '................']);
-const KENNA_SIDE_A = [   // facing right; flipped for left
+const KENNA_SIDE_A = [
 '................',
 '.....hHHHH......',
 '....HHHHHHH.....',
@@ -814,400 +793,485 @@ const KENNA_SIDE_B = KENNA_SIDE_A.slice(0, 12).concat([
 '.....LL.LL......',
 '................']);
 
-const sprites = {
-  down: [buildSprite(KENNA_DOWN_A, KENNA_PAL), buildSprite(KENNA_DOWN_B, KENNA_PAL)],
-  up:   [buildSprite(KENNA_UP_A, KENNA_PAL),   buildSprite(KENNA_UP_B, KENNA_PAL)],
-  side: [buildSprite(KENNA_SIDE_A, KENNA_PAL), buildSprite(KENNA_SIDE_B, KENNA_PAL)],
+function buildDirSprites(pal) {
+  return {
+    down: [buildSprite(KENNA_DOWN_A, pal), buildSprite(KENNA_DOWN_B, pal)],
+    up:   [buildSprite(KENNA_UP_A, pal),   buildSprite(KENNA_UP_B, pal)],
+    side: [buildSprite(KENNA_SIDE_A, pal), buildSprite(KENNA_SIDE_B, pal)],
+  };
+}
+// palette-swap the same silhouette into an armored knight
+function knightPal(tabard) {
+  return {
+    'H': '#a9b1b9', 'h': '#c7ccd1', 'S': '#8a9299', 'E': '#23272c',
+    'T': tabard, 't': tabard, 'B': '#4a3a26', 'b': '#c9a86a',
+    'L': '#565c63',
+  };
+}
+const heroSprites = {
+  kenna:   buildDirSprites(KENNA_PAL),
+  bramble: buildDirSprites(knightPal('#3f7d3a')),
+  ember:   buildDirSprites(knightPal('#b7452e')),
+  whisper: buildDirSprites(knightPal('#5b3d8f')),
+  gale:    buildDirSprites(knightPal('#3f8fae')),
 };
 
-// ---------- Stone knight statue (Sir Bramble, frozen) ----------
-const STATUE_PAL = {
-  'M': '#9aa0a6', 'm': '#b7bdc2', // armor grays
-  'V': '#3c4148',  // visor slit
-  'T': '#7e858c',  // torso
-  'L': '#565c63',  // legs
-  'X': '#c7ccd1',  // sword blade
-  'G': '#6d6354',  // hilt
-};
-const STATUE_ROWS = [
-'................',
-'.....mMMMMm.....',
-'....MMMMMMMM....',
-'....MVVVVVVM....',
-'....MMMMMMMM....',
-'.....mMMMMm.....',
-'....TTTTTTTT..X.',
-'...MTTTTTTTTM.X.',
-'...MTTTTTTTTM.X.',
-'....TTTTTTTT..X.',
-'....MMMMMMMM.GXG',
-'.....LL..LL...X.',
-'.....LL..LL.....',
-'....LLL..LLL....',
-'................',
-'................'];
-const statueSprite = buildSprite(STATUE_ROWS, STATUE_PAL);
+// ============================================================
+// THE LAST KNIGHT — co-op survivors mode
+// ============================================================
+const WORLD_W = 2400, WORLD_H = 1800;
 
-// ---------- Room: The Castle Courtyard ----------
-// W wall  G grass  P path  D sealed gate  F fountain  S statue  B bush
-const COURTYARD = [
-'WWWWWWDDDWWWWWW',
-'WGGGGGPPPGGGGGW',
-'WGBGGGPPPGGGBGW',
-'WGGGGGPPPGGGGGW',
-'WGGFFGPPPGGSGGW',
-'WGGFFGPPPGGGGGW',
-'WGGGGGPPPGGGGGW',
-'WGBGGGPPPGGGBGW',
-'WGGGGGPPPGGGGGW',
-'WWWWWWWWWWWWWWW'];
-const SOLID = new Set(['W', 'D', 'F', 'S', 'B']);
-
-function tileAt(tx, ty) {
-  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return 'W';
-  return COURTYARD[ty][tx];
-}
-
-// ---------- Player ----------
-const player = {
-  x: 7.5 * TILE,   // center x (px)
-  y: 7.5 * TILE,   // feet y (px)
-  speed: 230,
-  dir: 'down',     // down | up | left | right
-  moving: false,
-  animTime: 0,
-};
-const HIT_W = 36, HIT_H = 22; // feet hitbox
-
-function rectHitsSolid(cx, feetY) {
-  const l = cx - HIT_W / 2, r = cx + HIT_W / 2;
-  const t = feetY - HIT_H, b = feetY;
-  for (const [px, py] of [[l, t], [r, t], [l, b], [r, b], [cx, b]]) {
-    if (SOLID.has(tileAt(Math.floor(px / TILE), Math.floor(py / TILE)))) return true;
-  }
-  return false;
-}
-
-// which solid tile (if any) the player is pushing against — for gate messages
-function pushedTile(cx, feetY) {
-  const tx = Math.floor(cx / TILE), ty = Math.floor((feetY - HIT_H / 2) / TILE);
-  const d = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] }[player.dir];
-  return tileAt(tx + d[0], ty + d[1]);
-}
-
-// ---------- Input ----------
+// raw key state
 const keys = new Set();
-const KEYMAP = {
-  ArrowUp: 'up', KeyW: 'up',
-  ArrowDown: 'down', KeyS: 'down',
-  ArrowLeft: 'left', KeyA: 'left',
-  ArrowRight: 'right', KeyD: 'right',
-};
 window.addEventListener('keydown', e => {
-  if (KEYMAP[e.code]) { keys.add(KEYMAP[e.code]); e.preventDefault(); }
+  keys.add(e.code);
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'KeyR' && game.over && !menuOpen) initRun();
+  // P2 joins on any arrow key
+  const p2 = players[1];
+  if (!p2.joined && e.code.startsWith('Arrow') && !menuOpen) {
+    p2.joined = true;
+    p2.alive = true;
+    p2.hp = p2.maxHp;
+    p2.x = players[0].x + 60;
+    p2.y = players[0].y;
+    gameToast('Sir Bramble joins the fight!');
+  }
 });
-window.addEventListener('keyup', e => {
-  if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]);
-});
+window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 
-// ---------- Toast messages ----------
-let toast = null; // {text, until}
-function showToast(text, secs = 3) {
-  toast = { text, until: elapsed + secs };
+function makePlayer(name, heroKey, keymap, joined) {
+  return {
+    name, heroKey, keymap, joined,
+    x: WORLD_W / 2, y: WORLD_H / 2,
+    dir: 'down', moving: false, animTime: 0,
+    speed: 235, maxHp: 6, hp: 6,
+    alive: true, invuln: 0,
+    attackEvery: 0.75, attackTimer: 0.4, range: 165, damage: 1,
+    reviveProgress: 0,
+  };
 }
-let lastGateMsg = -99;
+const players = [
+  makePlayer('KENNA', 'kenna', { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, true),
+  makePlayer('SIR BRAMBLE', 'bramble', { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, false),
+];
 
-// ---------- Update ----------
-let elapsed = 0;
+const game = { time: 0, kills: 0, over: false, spawnTimer: 1 };
+let enemies = [], slashes = [], particles = [], toasts = [];
+const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
+
+function initRun() {
+  game.time = 0; game.kills = 0; game.over = false; game.spawnTimer = 1.2;
+  enemies = []; slashes = []; particles = []; toasts = [];
+  for (const p of players) {
+    p.hp = p.maxHp; p.alive = true; p.invuln = 0;
+    p.attackTimer = Math.random() * 0.5; p.reviveProgress = 0;
+    p.x = WORLD_W / 2 + (p === players[0] ? -40 : 40);
+    p.y = WORLD_H / 2;
+  }
+  players[1].alive = players[1].joined;
+}
+initRun();
+
+function gameToast(text) {
+  toasts.push({ text, age: 0 });
+}
+
+// ---------- enemies ----------
+function spawnEnemy() {
+  // spawn just outside the camera view
+  const side = Math.floor(Math.random() * 4);
+  const m = 60;
+  let x, y;
+  if (side === 0) { x = cam.x - m; y = cam.y + Math.random() * 640; }
+  else if (side === 1) { x = cam.x + 960 + m; y = cam.y + Math.random() * 640; }
+  else if (side === 2) { x = cam.x + Math.random() * 960; y = cam.y - m; }
+  else { x = cam.x + Math.random() * 960; y = cam.y + 640 + m; }
+  x = Math.max(20, Math.min(WORLD_W - 20, x));
+  y = Math.max(20, Math.min(WORLD_H - 20, y));
+  const tough = game.time > 90 && Math.random() < 0.18;
+  enemies.push({
+    x, y, r: tough ? 20 : 14,
+    hp: tough ? 8 : 3,
+    speed: tough ? 46 : 58 + Math.random() * 22 + Math.min(30, game.time * 0.25),
+    kx: 0, ky: 0, flash: 0, tough,
+    seed: Math.random() * 100,
+  });
+}
+
+function nearestAlivePlayer(x, y) {
+  let best = null, bd = 1e9;
+  for (const p of players) {
+    if (!p.joined || !p.alive) continue;
+    const d = (p.x - x) ** 2 + (p.y - y) ** 2;
+    if (d < bd) { bd = d; best = p; }
+  }
+  return best;
+}
+
+// ---------- update ----------
 function update(dt) {
-  let vx = 0, vy = 0;
-  if (keys.has('left')) vx -= 1;
-  if (keys.has('right')) vx += 1;
-  if (keys.has('up')) vy -= 1;
-  if (keys.has('down')) vy += 1;
+  if (game.over) return;
+  game.time += dt;
 
-  player.moving = (vx !== 0 || vy !== 0);
-  if (player.moving) {
-    // facing: horizontal wins for side-sprite flavor, vertical otherwise
-    if (vx < 0) player.dir = 'left';
-    else if (vx > 0) player.dir = 'right';
-    if (vy !== 0 && vx === 0) player.dir = vy < 0 ? 'up' : 'down';
+  // players
+  for (const p of players) {
+    if (!p.joined) continue;
+    if (p.invuln > 0) p.invuln -= dt;
 
-    const len = Math.hypot(vx, vy);
-    const step = player.speed * dt;
-    const dx = (vx / len) * step, dy = (vy / len) * step;
-
-    // axis-separated so she slides along walls
-    if (!rectHitsSolid(player.x + dx, player.y)) player.x += dx;
-    if (!rectHitsSolid(player.x, player.y + dy)) player.y += dy;
-
-    player.animTime += dt;
-
-    // pushing on the sealed gate?
-    if (pushedTile(player.x, player.y) === 'D' && elapsed - lastGateMsg > 4) {
-      lastGateMsg = elapsed;
-      showToast("The gate to the Great Hall is sealed by Concur's magic…", 3.5);
+    if (!p.alive) {
+      // teammate revive
+      const mate = players.find(q => q !== p && q.joined && q.alive);
+      if (mate && Math.hypot(mate.x - p.x, mate.y - p.y) < 70) {
+        p.reviveProgress += dt;
+        if (p.reviveProgress >= 2.5) {
+          p.alive = true; p.hp = 3; p.invuln = 2; p.reviveProgress = 0;
+          gameToast(p.name + ' is back on their feet!');
+        }
+      } else {
+        p.reviveProgress = Math.max(0, p.reviveProgress - dt);
+      }
+      continue;
     }
-  } else {
-    player.animTime = 0;
-  }
 
-  if (toast && elapsed > toast.until) toast = null;
-}
+    let vx = 0, vy = 0;
+    if (keys.has(p.keymap.left)) vx -= 1;
+    if (keys.has(p.keymap.right)) vx += 1;
+    if (keys.has(p.keymap.up)) vy -= 1;
+    if (keys.has(p.keymap.down)) vy += 1;
+    p.moving = vx !== 0 || vy !== 0;
+    if (p.moving) {
+      if (vx < 0) p.dir = 'left';
+      else if (vx > 0) p.dir = 'right';
+      if (vy !== 0 && vx === 0) p.dir = vy < 0 ? 'up' : 'down';
+      const len = Math.hypot(vx, vy);
+      p.x += (vx / len) * p.speed * dt;
+      p.y += (vy / len) * p.speed * dt;
+      p.x = Math.max(24, Math.min(WORLD_W - 24, p.x));
+      p.y = Math.max(40, Math.min(WORLD_H - 10, p.y));
+      p.animTime += dt;
+    } else p.animTime = 0;
 
-// ---------- Tile rendering ----------
-// Painters that tile beyond their bounds get clipped to the tile rect.
-function clipTile(x, y, fn) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, TILE, TILE);
-  ctx.clip();
-  fn();
-  ctx.restore();
-}
-
-function drawGrass(x, y, tx, ty) {
-  ctx.fillStyle = '#4e8f3c';
-  ctx.fillRect(x, y, TILE, TILE);
-  // deterministic tufts + speckles
-  for (let i = 0; i < 5; i++) {
-    const rx = hash2(tx, ty, i), ry = hash2(tx, ty, i + 10);
-    const px = x + 6 + rx * (TILE - 14), py = y + 6 + ry * (TILE - 14);
-    ctx.fillStyle = hash2(tx, ty, i + 20) > 0.5 ? '#5ba147' : '#447f34';
-    ctx.fillRect(px, py, 5, 3);
-    ctx.fillRect(px + 1, py - 3, 3, 3);
-  }
-  if (hash2(tx, ty, 99) > 0.86) { // occasional tiny flower
-    const fx = x + 10 + hash2(tx, ty, 7) * 40, fy = y + 10 + hash2(tx, ty, 8) * 40;
-    ctx.fillStyle = hash2(tx, ty, 9) > 0.5 ? '#e8d44f' : '#e8ebee';
-    ctx.fillRect(fx, fy, 6, 6);
-    ctx.fillStyle = '#c9862c';
-    ctx.fillRect(fx + 2, fy + 2, 2, 2);
-  }
-}
-
-function drawPath(x, y, tx, ty) {
-  ctx.fillStyle = '#b3a284';
-  ctx.fillRect(x, y, TILE, TILE);
-  // cobblestones
-  const off = (ty % 2) ? 16 : 0;
-  ctx.fillStyle = '#a2917320';
-  for (let sy = 0; sy < TILE; sy += 16) {
-    for (let sx = -16; sx < TILE; sx += 32) {
-      const jx = hash2(tx * 4 + sx, ty * 4 + sy) * 3;
-      ctx.fillStyle = hash2(tx * 7 + sx, ty * 7 + sy) > 0.5 ? '#a89678' : '#bcab8d';
-      ctx.fillRect(x + sx + off + jx, y + sy + 1, 28, 13);
+    // auto sword swing at the nearest enemy in range
+    p.attackTimer -= dt;
+    if (p.attackTimer <= 0) {
+      let target = null, bd = p.range * p.range;
+      for (const e of enemies) {
+        const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
+        if (d < bd) { bd = d; target = e; }
+      }
+      if (target) {
+        p.attackTimer = p.attackEvery;
+        const ang = Math.atan2(target.y - p.y, target.x - p.x);
+        slashes.push({ x: p.x, y: p.y - 20, ang, age: 0, owner: p });
+        for (const e of enemies) {
+          const d = Math.hypot(e.x - p.x, e.y - (p.y - 10));
+          if (d > p.range * 0.72) continue;
+          let da = Math.atan2(e.y - (p.y - 10), e.x - p.x) - ang;
+          while (da > Math.PI) da -= 2 * Math.PI;
+          while (da < -Math.PI) da += 2 * Math.PI;
+          if (Math.abs(da) > 1.15) continue;
+          e.hp -= p.damage;
+          e.flash = 0.12;
+          e.kx += Math.cos(ang) * 230;
+          e.ky += Math.sin(ang) * 230;
+        }
+      }
     }
   }
-  ctx.strokeStyle = '#8d7c60';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x + 0.5, y + 0.5, TILE, TILE);
-}
 
-function drawWall(x, y, tx, ty) {
-  ctx.fillStyle = '#6e6a63';
-  ctx.fillRect(x, y, TILE, TILE);
-  // brick courses
-  for (let sy = 0; sy < TILE; sy += 16) {
-    const rowOff = ((sy / 16 + ty) % 2) ? 16 : 0;
-    for (let sx = -16; sx < TILE; sx += 32) {
-      const shade = hash2(tx * 3 + sx, ty * 3 + sy);
-      ctx.fillStyle = shade > 0.66 ? '#7d7970' : shade > 0.33 ? '#6b675f' : '#5f5b54';
-      ctx.fillRect(x + sx + rowOff + 1, y + sy + 1, 30, 14);
+  // enemies
+  const alive = players.filter(p => p.joined && p.alive);
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const e = enemies[i];
+    if (e.flash > 0) e.flash -= dt;
+    const t = nearestAlivePlayer(e.x, e.y);
+    if (t) {
+      const d = Math.hypot(t.x - e.x, t.y - e.y) || 1;
+      e.x += ((t.x - e.x) / d) * e.speed * dt;
+      e.y += ((t.y - e.y) / d) * e.speed * dt;
+    }
+    e.x += e.kx * dt; e.y += e.ky * dt;
+    e.kx *= Math.pow(0.02, dt); e.ky *= Math.pow(0.02, dt);
+
+    if (e.hp <= 0) {
+      game.kills++;
+      for (let k = 0; k < 8; k++) {
+        const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 120;
+        particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5, color: e.tough ? '#c084fc' : '#a855f7', size: e.tough ? 5 : 3 });
+      }
+      enemies.splice(i, 1);
+      continue;
+    }
+    // touch damage
+    if (t && Math.hypot(t.x - e.x, t.y - 12 - e.y) < e.r + 14 && t.invuln <= 0) {
+      t.hp -= 1;
+      t.invuln = 1.2;
+      e.kx -= Math.cos(Math.atan2(t.y - e.y, t.x - e.x)) * 150;
+      if (t.hp <= 0) {
+        t.alive = false;
+        t.reviveProgress = 0;
+        gameToast(t.name + ' is down! Stand close to revive!');
+        if (!players.some(p => p.joined && p.alive)) {
+          game.over = true;
+        }
+      }
     }
   }
-  // top edge highlight (battlement feel on the top row)
-  if (ty === 0 || tileAt(tx, ty - 1) !== 'W') {
-    ctx.fillStyle = '#8a867d';
-    ctx.fillRect(x, y, TILE, 6);
+
+  // spawner ramps up over time
+  game.spawnTimer -= dt;
+  const interval = Math.max(0.28, 1.5 - game.time * 0.014);
+  if (game.spawnTimer <= 0 && enemies.length < 130) {
+    game.spawnTimer = interval;
+    spawnEnemy();
+    if (game.time > 60 && Math.random() < 0.4) spawnEnemy();
   }
-  ctx.fillStyle = '#00000022';
-  ctx.fillRect(x, y + TILE - 5, TILE, 5);
-}
 
-function drawGate(x, y, t) {
-  // wooden gate
-  ctx.fillStyle = '#5d4426';
-  ctx.fillRect(x, y, TILE, TILE);
-  ctx.fillStyle = '#6d5230';
-  for (let sx = 4; sx < TILE; sx += 14) ctx.fillRect(x + sx, y, 8, TILE);
-  // iron bands
-  ctx.fillStyle = '#3a3d42';
-  ctx.fillRect(x, y + 12, TILE, 6);
-  ctx.fillRect(x, y + 44, TILE, 6);
-  // Concur's magic seal — pulsing purple glow
-  const pulse = 0.35 + 0.2 * Math.sin(t * 2.2);
-  ctx.fillStyle = `rgba(140, 60, 220, ${pulse})`;
-  ctx.fillRect(x, y, TILE, TILE);
-  ctx.strokeStyle = `rgba(200, 140, 255, ${0.5 + 0.3 * Math.sin(t * 2.2)})`;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(x + TILE / 2, y + TILE / 2, 18 + 2 * Math.sin(t * 3), 0, Math.PI * 2);
-  ctx.stroke();
-}
-
-function drawFountain(x, y, tx, ty, t) {
-  // determine which corner of the 2x2 fountain this tile is
-  const isLeft = tileAt(tx - 1, ty) !== 'F';
-  const isTop = tileAt(tx, ty - 1) !== 'F';
-  ctx.fillStyle = '#8f8b83';
-  ctx.fillRect(x, y, TILE, TILE);
-  // water basin (inset from outer edges)
-  const ix = x + (isLeft ? 10 : 0), iy = y + (isTop ? 10 : 0);
-  const iw = TILE - (isLeft ? 10 : 0) - (tileAt(tx + 1, ty) !== 'F' ? 10 : 0);
-  const ih = TILE - (isTop ? 10 : 0) - (tileAt(tx, ty + 1) !== 'F' ? 10 : 0);
-  ctx.fillStyle = '#3f7fb5';
-  ctx.fillRect(ix, iy, iw, ih);
-  // shimmering ripples
-  for (let i = 0; i < 3; i++) {
-    const rp = (t * 0.7 + i * 0.33 + hash2(tx, ty, i)) % 1;
-    ctx.fillStyle = `rgba(180, 220, 255, ${0.5 * (1 - rp)})`;
-    ctx.fillRect(ix + 4 + hash2(tx, ty, i + 3) * (iw - 16), iy + 4 + rp * (ih - 10), 10, 3);
+  // fx
+  for (let i = slashes.length - 1; i >= 0; i--) {
+    slashes[i].age += dt;
+    if (slashes[i].age > 0.18) slashes.splice(i, 1);
   }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const pt = particles[i];
+    pt.life -= dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+    pt.vx *= 0.94; pt.vy *= 0.94;
+    if (pt.life <= 0) particles.splice(i, 1);
+  }
+  for (let i = toasts.length - 1; i >= 0; i--) {
+    toasts[i].age += dt;
+    if (toasts[i].age > 3) toasts.splice(i, 1);
+  }
+
+  // camera follows the players' midpoint
+  const fx = alive.length ? alive.reduce((s, p) => s + p.x, 0) / alive.length : players[0].x;
+  const fy = alive.length ? alive.reduce((s, p) => s + p.y, 0) / alive.length : players[0].y;
+  cam.x += ((fx - 480) - cam.x) * Math.min(1, dt * 5);
+  cam.y += ((fy - 340) - cam.y) * Math.min(1, dt * 5);
+  cam.x = Math.max(0, Math.min(WORLD_W - 960, cam.x));
+  cam.y = Math.max(0, Math.min(WORLD_H - 640, cam.y));
 }
 
-function drawBush(x, y, tx, ty) {
-  drawGrass(x, y, tx, ty);
-  ctx.fillStyle = '#2e6b26';
+// ---------- render ----------
+function drawHeart(x, y, s, filled) {
+  ctx.fillStyle = filled ? '#e5484d' : 'rgba(255,255,255,0.18)';
   ctx.beginPath();
-  ctx.arc(x + 20, y + 38, 15, 0, Math.PI * 2);
-  ctx.arc(x + 42, y + 36, 16, 0, Math.PI * 2);
-  ctx.arc(x + 31, y + 24, 14, 0, Math.PI * 2);
+  ctx.arc(x - s * 0.32, y - s * 0.2, s * 0.36, 0, Math.PI * 2);
+  ctx.arc(x + s * 0.32, y - s * 0.2, s * 0.36, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = '#3c8232';
   ctx.beginPath();
-  ctx.arc(x + 26, y + 28, 10, 0, Math.PI * 2);
-  ctx.arc(x + 40, y + 30, 8, 0, Math.PI * 2);
+  ctx.moveTo(x - s * 0.65, y - s * 0.05);
+  ctx.lineTo(x, y + s * 0.72);
+  ctx.lineTo(x + s * 0.65, y - s * 0.05);
+  ctx.closePath();
   ctx.fill();
-  if (hash2(tx, ty, 5) > 0.4) { // berries
-    ctx.fillStyle = '#c33b4e';
-    ctx.fillRect(x + 22, y + 34, 4, 4);
-    ctx.fillRect(x + 38, y + 26, 4, 4);
-    ctx.fillRect(x + 30, y + 42, 4, 4);
-  }
 }
 
-function drawStatueTile(x, y, tx, ty) {
-  drawGrass(x, y, tx, ty);
-  // pedestal
-  ctx.fillStyle = '#7c7870';
-  ctx.fillRect(x + 8, y + 44, TILE - 16, 16);
-  ctx.fillStyle = '#8d897f';
-  ctx.fillRect(x + 12, y + 40, TILE - 24, 8);
-  // frozen knight, slightly raised on pedestal
-  ctx.drawImage(statueSprite, x, y - 24);
-}
-
-// ---------- Static background, rendered once ----------
-const bgCanvas = document.createElement('canvas');
-bgCanvas.width = 960; bgCanvas.height = 640;
-const animTiles = []; // gate + fountain tiles, redrawn every frame
-
-function prerenderBG() {
-  const mainCtx = ctx;
-  ctx = bgCanvas.getContext('2d');
-  ctx.imageSmoothingEnabled = false;
-  for (let ty = 0; ty < ROWS; ty++) {
-    for (let tx = 0; tx < COLS; tx++) {
-      const x = tx * TILE, y = ty * TILE;
-      const ch = COURTYARD[ty][tx];
-      if (ch === 'G') drawGrass(x, y, tx, ty);
-      else if (ch === 'P') clipTile(x, y, () => drawPath(x, y, tx, ty));
-      else if (ch === 'W') clipTile(x, y, () => drawWall(x, y, tx, ty));
-      else if (ch === 'D') { drawGate(x, y, 0); animTiles.push({ tx, ty, ch }); }
-      else if (ch === 'F') { drawFountain(x, y, tx, ty, 0); animTiles.push({ tx, ty, ch }); }
-      else if (ch === 'B') drawBush(x, y, tx, ty);
-      else if (ch === 'S') drawStatueTile(x, y, tx, ty);
-    }
-  }
-  ctx = mainCtx;
-}
-prerenderBG();
-
-// ---------- Render ----------
 function render(t) {
-  // stone surround filling the whole window
   if (!surroundPattern) surroundPattern = ctx.createPattern(surroundTile, 'repeat');
   ctx.fillStyle = surroundPattern;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.save();
   ctx.translate(view.ox, view.oy);
   ctx.scale(view.scale, view.scale);
-  ctx.drawImage(bgCanvas, 0, 0);
-  for (const a of animTiles) {
-    const x = a.tx * TILE, y = a.ty * TILE;
-    if (a.ch === 'D') drawGate(x, y, t);
-    else drawFountain(x, y, a.tx, a.ty, t);
+  ctx.beginPath(); ctx.rect(0, 0, 960, 640); ctx.clip();
+
+  // ---- world (camera space) ----
+  ctx.save();
+  ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
+
+  // meadow
+  ctx.fillStyle = '#4e8f3c';
+  ctx.fillRect(cam.x, cam.y, 960, 640);
+  const c0x = Math.floor(cam.x / 64), c0y = Math.floor(cam.y / 64);
+  for (let cy = c0y; cy <= c0y + 10; cy++) {
+    for (let cx = c0x; cx <= c0x + 15; cx++) {
+      const h = hash2(cx, cy);
+      const px = cx * 64 + hash2(cx, cy, 3) * 44 + 8;
+      const py = cy * 64 + hash2(cx, cy, 4) * 44 + 8;
+      if (h > 0.93) {
+        ctx.fillStyle = hash2(cx, cy, 5) > 0.5 ? '#e8d44f' : '#eef0f2';
+        ctx.fillRect(px, py, 6, 6);
+        ctx.fillStyle = '#c9862c';
+        ctx.fillRect(px + 2, py + 2, 2, 2);
+      } else if (h > 0.5) {
+        ctx.fillStyle = hash2(cx, cy, 6) > 0.5 ? '#5ba147' : '#447f34';
+        ctx.fillRect(px, py, 6, 3);
+        ctx.fillRect(px + 1, py - 3, 4, 3);
+        if (hash2(cx, cy, 7) > 0.5) {
+          ctx.fillRect(px + 10, py + 6, 5, 3);
+        }
+      } else if (h < 0.03) {
+        ctx.fillStyle = '#8f8b83';
+        ctx.fillRect(px, py, 10, 7);
+        ctx.fillStyle = '#a9a49b';
+        ctx.fillRect(px + 1, py + 1, 8, 3);
+      }
+    }
+  }
+  // world edge: dark cursed forest ring
+  ctx.fillStyle = '#22391b';
+  if (cam.x < 24) ctx.fillRect(cam.x - 200, cam.y - 200, 224 - cam.x + 200, 1040);
+  if (cam.y < 24) ctx.fillRect(cam.x - 200, cam.y - 200, 1360, 224 - cam.y + 200);
+  if (cam.x + 960 > WORLD_W - 24) ctx.fillRect(WORLD_W - 24, cam.y - 200, 500, 1040);
+  if (cam.y + 640 > WORLD_H - 24) ctx.fillRect(cam.x - 200, WORLD_H - 24, 1360, 500);
+
+  // entities sorted by feet-y
+  const drawList = [];
+  for (const e of enemies) drawList.push({ y: e.y, kind: 'enemy', e });
+  for (const p of players) if (p.joined) drawList.push({ y: p.y, kind: 'player', p });
+  drawList.sort((a, b) => a.y - b.y);
+
+  for (const d of drawList) {
+    if (d.kind === 'enemy') {
+      const e = d.e;
+      const bob = Math.sin(t * 5 + e.seed) * 3;
+      const glow = ctx.createRadialGradient(e.x, e.y + bob, 2, e.x, e.y + bob, e.r * 2.2);
+      glow.addColorStop(0, 'rgba(168, 85, 247, 0.35)');
+      glow.addColorStop(1, 'rgba(168, 85, 247, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(e.x - e.r * 2.2, e.y + bob - e.r * 2.2, e.r * 4.4, e.r * 4.4);
+      ctx.fillStyle = e.flash > 0 ? '#f5eaff' : (e.tough ? '#4c1d80' : '#3b1e63');
+      ctx.beginPath();
+      ctx.arc(e.x, e.y + bob, e.r, 0, Math.PI * 2);
+      ctx.fill();
+      // wispy tail
+      ctx.fillStyle = e.flash > 0 ? '#f5eaff' : 'rgba(76, 29, 128, 0.7)';
+      ctx.beginPath();
+      ctx.arc(e.x - e.r * 0.5, e.y + bob + e.r * 0.55, e.r * 0.45, 0, Math.PI * 2);
+      ctx.arc(e.x + e.r * 0.5, e.y + bob + e.r * 0.6, e.r * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+      // eyes
+      ctx.fillStyle = '#e9d5ff';
+      const ed = e.r * 0.34;
+      ctx.fillRect(e.x - ed - 2, e.y + bob - 3, 4, e.tough ? 7 : 5);
+      ctx.fillRect(e.x + ed - 2, e.y + bob - 3, 4, e.tough ? 7 : 5);
+    } else {
+      const p = d.p;
+      const set = heroSprites[p.heroKey];
+      const frame = p.moving ? (Math.floor(p.animTime * 8) % 2) : 1;
+      const spr = (p.dir === 'left' || p.dir === 'right') ? set.side[frame] : set[p.dir][frame];
+      const bob = (p.moving && frame === 1) ? -2 : 0;
+      // shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 2, 18, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!p.alive) {
+        // downed: lying flat + revive ring
+        ctx.save();
+        ctx.translate(p.x, p.y - 18);
+        ctx.rotate(Math.PI / 2);
+        ctx.globalAlpha = 0.75;
+        ctx.drawImage(spr, -32, -32);
+        ctx.restore();
+        if (p.reviveProgress > 0) {
+          ctx.strokeStyle = '#ffd98a';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y - 30, 26, -Math.PI / 2, -Math.PI / 2 + (p.reviveProgress / 2.5) * Math.PI * 2);
+          ctx.stroke();
+        }
+        continue;
+      }
+      if (p.invuln > 0 && Math.floor(t * 14) % 2) ctx.globalAlpha = 0.45;
+      if (p.dir === 'left') {
+        ctx.save();
+        ctx.translate(p.x + 32, p.y - 60 + bob);
+        ctx.scale(-1, 1);
+        ctx.drawImage(spr, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.drawImage(spr, p.x - 32, p.y - 60 + bob);
+      }
+      ctx.globalAlpha = 1;
+    }
   }
 
-  // ---- player ----
-  const frame = player.moving ? (Math.floor(player.animTime * 8) % 2) : 1;
-  const set = (player.dir === 'left' || player.dir === 'right') ? sprites.side : sprites[player.dir];
-  const spr = set[frame];
-  const bob = (player.moving && frame === 1) ? -2 : 0;
-  const drawX = Math.round(player.x - 32);
-  const drawY = Math.round(player.y - 60 + bob);
-  // shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.beginPath();
-  ctx.ellipse(Math.round(player.x), Math.round(player.y - 2), 18, 7, 0, 0, Math.PI * 2);
-  ctx.fill();
-  if (player.dir === 'left') {
-    ctx.save();
-    ctx.translate(drawX + 64, drawY);
-    ctx.scale(-1, 1);
-    ctx.drawImage(spr, 0, 0);
-    ctx.restore();
-  } else {
-    ctx.drawImage(spr, drawX, drawY);
+  // sword slashes
+  for (const s of slashes) {
+    const f = s.age / 0.18;
+    ctx.strokeStyle = `rgba(255, 250, 235, ${0.9 * (1 - f)})`;
+    ctx.lineWidth = 10 * (1 - f * 0.5);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 46 + f * 26, s.ang - 0.95, s.ang + 0.95);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 217, 138, ${0.5 * (1 - f)})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, 54 + f * 26, s.ang - 0.8, s.ang + 0.8);
+    ctx.stroke();
   }
+  // particles
+  for (const pt of particles) {
+    ctx.fillStyle = pt.color;
+    ctx.globalAlpha = Math.max(0, pt.life * 2);
+    ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
+  }
+  ctx.globalAlpha = 1;
 
-  // ---- soft vignette ----
-  const vg = ctx.createRadialGradient(480, 320, 320, 480, 320, 640);
-  vg.addColorStop(0, 'rgba(0,0,0,0)');
-  vg.addColorStop(1, 'rgba(10,5,20,0.35)');
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, 960, 640);
+  ctx.restore(); // end camera space
 
-  // ---- room banner (first few seconds) ----
-  if (t < 4.5) {
-    const a = Math.min(1, t / 0.6) * Math.min(1, Math.max(0, (4.5 - t) / 0.8));
+  // ---- HUD (960x640 screen coords) ----
+  let hy = 26;
+  for (const p of players) {
+    if (!p.joined) continue;
+    ctx.textAlign = 'left';
+    ctx.font = '20px "VT323", monospace';
+    ctx.fillStyle = p.alive ? '#f0e2c3' : 'rgba(240,226,195,0.5)';
+    ctx.fillText(p.name, 16, hy + 5);
+    for (let i = 0; i < p.maxHp; i++) drawHeart(140 + i * 26, hy, 11, i < p.hp);
+    hy += 30;
+  }
+  if (!players[1].joined) {
+    ctx.textAlign = 'left';
+    ctx.font = '18px "VT323", monospace';
+    ctx.fillStyle = `rgba(240, 226, 195, ${0.5 + 0.3 * Math.sin(t * 3)})`;
+    ctx.fillText('P2: press an ARROW KEY to join!', 16, 640 - 16);
+  }
+  // timer + kills
+  const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
+  const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
+  ctx.textAlign = 'center';
+  ctx.font = '30px "VT323", monospace';
+  ctx.fillStyle = '#f0e2c3';
+  ctx.fillText(mm + ':' + ss, 480, 34);
+  ctx.textAlign = 'right';
+  ctx.font = '22px "VT323", monospace';
+  ctx.fillStyle = '#c9a8ff';
+  ctx.fillText('CURSED SPIRITS BANISHED: ' + game.kills, 944, 30);
+
+  // toasts
+  let ty = 84;
+  for (const tst of toasts) {
+    const a = Math.min(1, tst.age * 4) * Math.min(1, (3 - tst.age));
     ctx.textAlign = 'center';
-    ctx.fillStyle = `rgba(20, 14, 8, ${0.65 * a})`;
-    ctx.fillRect(280, 34, 400, 54);
-    ctx.strokeStyle = `rgba(201, 168, 106, ${a})`;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(280, 34, 400, 54);
-    ctx.fillStyle = `rgba(240, 226, 195, ${a})`;
-    ctx.font = '26px Georgia, serif';
-    ctx.fillText('The Castle Courtyard', 480, 69);
+    ctx.font = '22px "VT323", monospace';
+    ctx.fillStyle = `rgba(255, 217, 138, ${a})`;
+    ctx.fillText(tst.text, 480, ty);
+    ty += 26;
   }
 
-  // ---- toast ----
-  if (toast) {
-    const remain = toast.until - t;
-    const a = Math.min(1, remain / 0.5);
-    ctx.font = '20px Georgia, serif';
-    const w = ctx.measureText(toast.text).width + 44;
-    ctx.fillStyle = `rgba(20, 14, 8, ${0.75 * a})`;
-    ctx.fillRect(480 - w / 2, 552, w, 44);
-    ctx.strokeStyle = `rgba(160, 100, 230, ${0.9 * a})`;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(480 - w / 2, 552, w, 44);
-    ctx.fillStyle = `rgba(240, 226, 195, ${a})`;
+  // game over
+  if (game.over) {
+    ctx.fillStyle = 'rgba(10, 5, 16, 0.72)';
+    ctx.fillRect(0, 0, 960, 640);
     ctx.textAlign = 'center';
-    ctx.fillText(toast.text, 480, 581);
+    ctx.fillStyle = '#e5484d';
+    ctx.font = '64px "VT323", monospace';
+    ctx.fillText('THE KINGDOM HAS FALLEN', 480, 280);
+    ctx.fillStyle = '#f0e2c3';
+    ctx.font = '26px "VT323", monospace';
+    ctx.fillText('You survived ' + mm + ':' + ss + ' and banished ' + game.kills + ' spirits', 480, 330);
+    ctx.fillStyle = '#ffd98a';
+    ctx.font = '24px "VT323", monospace';
+    ctx.fillText('Press R to rise again  •  Esc for the menu', 480, 380);
   }
 
-  // ---- controls hint ----
-  ctx.textAlign = 'left';
-  ctx.font = '15px Georgia, serif';
-  ctx.fillStyle = 'rgba(240,226,195,0.45)';
-  ctx.fillText('WASD / Arrow keys to move', 14, 626);
-
-  ctx.restore();
-  // soft shadow framing the room against the stone surround
+  ctx.restore(); // end room transform
+  // soft shadow framing the arena against the stone surround
   ctx.save();
   ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
   ctx.shadowBlur = 42;
@@ -1218,6 +1282,7 @@ function render(t) {
 }
 
 // ---------- Main loop ----------
+let elapsed = 0;
 let menuOpen = true;
 let gameStarted = false;
 let last = performance.now();
@@ -2011,7 +2076,7 @@ setMusic.addEventListener('input', () => {
 });
 
 // debug handle for automated testing
-window.__game = { player, keys, get menuOpen() { return menuOpen; }, hideMenu, showMenu };
+window.__game = { players, enemies: () => enemies, game, keys, get menuOpen() { return menuOpen; }, hideMenu, showMenu };
 </script>
 </body>
 </html>
