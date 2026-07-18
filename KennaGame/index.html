@@ -462,6 +462,7 @@
   #menu.hasImage #statCards { animation: menuRise 0.6s 0.4s ease both; }
   #menu.hasImage #questCard { animation: menuRise 0.6s 0.45s ease both; }
   #menu.hasImage .menuFoot { animation: menuRise 0.6s 0.5s ease both; }
+  #menu button:focus { outline: none; }
   #menu button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) {
     #menu * { animation: none !important; transition: none !important; }
@@ -904,41 +905,148 @@ const heroSprites = {
 // ============================================================
 const WORLD_W = 2400, WORLD_H = 1800;
 
+// royal UI palette (matches the home page)
+const UI = {
+  gold: '#e8b64c', goldLight: '#ffd98a', goldPale: '#fdf3d7',
+  plate: 'rgba(16, 13, 10, 0.82)', plateBorder: 'rgba(232, 182, 76, 0.55)',
+  text: '#f0e2c3', dim: 'rgba(240, 226, 195, 0.6)',
+};
+if (document.fonts) {
+  document.fonts.load('700 30px Cinzel');
+  document.fonts.load('800 40px Cinzel');
+}
+function plate(x, y, w, h, r = 10) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fillStyle = UI.plate;
+  ctx.fill();
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+// ---------- heroes ----------
+const HERO_DEFS = [
+  { key: 'kenna',   name: 'KENNA',        role: 'The Last Squire',    weapon: 'Valiant Slash',  wdesc: 'Wide sword arcs',        wtype: 'slash' },
+  { key: 'bramble', name: 'SIR BRAMBLE',  role: 'Knight of the Shield', weapon: 'Spinning Aegis', wdesc: 'Orbiting shields, extra hearts', wtype: 'slash' },
+  { key: 'ember',   name: 'DAME EMBER',   role: 'Knight of the Flame', weapon: 'Flame Nova',     wdesc: 'Burning ring of fire',   wtype: 'nova' },
+  { key: 'whisper', name: 'SIR WHISPER',  role: 'Knight of Shadows',  weapon: 'Shadow Daggers', wdesc: 'Fast thrown blades',     wtype: 'daggers' },
+  { key: 'gale',    name: 'DAME GALE',    role: 'Knight of the Wind', weapon: 'Wind Gust',      wdesc: 'Blasts enemies away',    wtype: 'gust' },
+];
+function applyHero(p, key) {
+  p.heroKey = key;
+  const def = HERO_DEFS.find(h => h.key === key);
+  p.name = def.name;
+  p.wtype = def.wtype;
+  if (key === 'bramble') { p.maxHp = 8; p.hp = 8; p.orbCount = 2; p.attackEvery = 0.75; }
+  if (key === 'ember') { p.attackEvery = 1.05; }
+  if (key === 'whisper') { p.attackEvery = 0.42; }
+  if (key === 'gale') { p.attackEvery = 0.9; }
+}
+
+// ---------- maps ----------
+const MAPS = [
+  { key: 'meadow', name: 'ROYAL MEADOW', desc: 'Green fields of the kingdom',
+    base: '#4e8f3c', tuftA: '#5ba147', tuftB: '#447f34', stone: '#8f8b83', stoneHi: '#a9a49b',
+    flowerA: '#e8d44f', flowerB: '#eef0f2', edge: '#22391b' },
+  { key: 'courtyard', name: 'CASTLE COURTYARD', desc: 'Stone halls of the keep',
+    base: '#a3937b', tuftA: '#8f8168', tuftB: '#b3a488', stone: '#6e6a63', stoneHi: '#7d7970',
+    flowerA: '#c9a86a', flowerB: '#8d7c60', edge: '#3a3128' },
+  { key: 'crypt', name: 'CURSED CRYPT', desc: 'Where the shadows are thick',
+    base: '#332f3d', tuftA: '#3d3848', tuftB: '#2a2632', stone: '#4a4556', stoneHi: '#5a5468',
+    flowerA: '#a855f7', flowerB: '#7e6bb0', edge: '#151218' },
+];
+
 // raw key state
 const keys = new Set();
 window.addEventListener('keydown', e => {
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (menuOpen) return;
+
+  // hero / map selection screens
+  if (game.phase === 'select' || game.phase === 'map') {
+    const n = game.phase === 'select' ? HERO_DEFS.length : MAPS.length;
+    if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
+    if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
+    if (['Space', 'Enter'].includes(e.code)) confirmSelection();
+    return;
+  }
   // upgrade picking
   if (game.choices) {
     const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
-    if (idx !== undefined && game.choices[idx]) {
-      const c = game.choices[idx];
-      c.apply();
-      gameToast('✨ ' + c.name + '!');
-      game.choices = null;
-    }
+    if (idx !== undefined && game.choices[idx]) pickUpgrade(idx);
     return;
   }
-  if (e.code === 'KeyR' && game.over) initRun();
+  if (e.code === 'KeyR' && game.over) { game.phase = 'select'; game.cursor = 0; game.over = false; return; }
   // P2 joins on any arrow key
   const p2 = players[1];
-  if (!p2.joined && e.code.startsWith('Arrow')) {
+  if (!p2.joined && e.code.startsWith('Arrow') && game.phase === 'run') {
     p2.joined = true;
     p2.alive = true;
+    const used = players[0].heroKey;
+    const free = HERO_DEFS.find(h => h.key !== used);
+    applyHero(p2, free.key);
     p2.hp = p2.maxHp;
     p2.x = players[0].x + 60;
     p2.y = players[0].y;
-    gameToast('Sir Bramble joins the fight!');
+    gameToast(p2.name + ' joins the fight!');
   }
 });
 window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('blur', () => keys.clear());
 
-function makePlayer(name, heroKey, keymap, joined) {
+// mouse on canvas (room coords)
+const mouse = { x: -1, y: -1 };
+let cardRects = [];  // {x,y,w,h,idx}
+canvas.addEventListener('mousemove', e => {
+  const r = canvas.getBoundingClientRect();
+  mouse.x = (e.clientX - r.left - view.ox) / view.scale;
+  mouse.y = (e.clientY - r.top - view.oy) / view.scale;
+  for (const c of cardRects) {
+    if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
+      if (game.phase === 'select' || game.phase === 'map') game.cursor = c.idx;
+    }
+  }
+});
+canvas.addEventListener('click', () => {
+  if (menuOpen) return;
+  for (const c of cardRects) {
+    if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
+      if (game.phase === 'select' || game.phase === 'map') { game.cursor = c.idx; confirmSelection(); }
+      else if (game.choices) pickUpgrade(c.idx);
+      return;
+    }
+  }
+});
+
+function confirmSelection() {
+  if (game.phase === 'select') {
+    game.heroPick = HERO_DEFS[game.cursor].key;
+    game.phase = 'map';
+    game.cursor = 0;
+  } else if (game.phase === 'map') {
+    game.mapPick = game.cursor;
+    initRun();
+    game.phase = 'run';
+  }
+}
+function pickUpgrade(idx) {
+  const c = game.choices[idx];
+  if (!c) return;
+  c.apply();
+  gameToast('✨ ' + c.name + '!');
+  game.choices = null;
+}
+
+function makePlayer(keymap, joined) {
   return {
-    name, heroKey, keymap, joined,
+    name: 'KENNA', heroKey: 'kenna', wtype: 'slash', keymap, joined,
     x: WORLD_W / 2, y: WORLD_H / 2,
     dir: 'down', moving: false, animTime: 0,
     speed: 235, maxHp: 6, hp: 6,
@@ -946,28 +1054,29 @@ function makePlayer(name, heroKey, keymap, joined) {
     attackEvery: 0.6, attackTimer: 0.4, range: 175, damage: 1, arc: 1.2,
     magnet: 95,
     orbCount: 0, orbAngle: 0,
-    wave: 0, // sword-wave level
+    wave: 0,
     reviveProgress: 0,
   };
 }
 const players = [
-  makePlayer('KENNA', 'kenna', { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, true),
-  makePlayer('SIR BRAMBLE', 'bramble', { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, false),
+  makePlayer({ up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, true),
+  makePlayer({ up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, false),
 ];
 
 const game = {
+  phase: 'select', cursor: 0, heroPick: 'kenna', mapPick: 0,
   time: 0, kills: 0, over: false, spawnTimer: 1,
   xp: 0, level: 1, xpNext: 10, choices: null,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [];
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [];
 const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
 
 function initRun() {
   game.time = 0; game.kills = 0; game.over = false; game.spawnTimer = 1.2;
   game.xp = 0; game.level = 1; game.xpNext = 10; game.choices = null;
   game.burstTimer = 40; game.shake = 0;
-  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = [];
+  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = [];
   for (const p of players) {
     p.hp = 6; p.maxHp = 6; p.alive = true; p.invuln = 0;
     p.speed = 235; p.attackEvery = 0.6; p.range = 175; p.damage = 1; p.arc = 1.2;
@@ -976,9 +1085,11 @@ function initRun() {
     p.x = WORLD_W / 2 + (p === players[0] ? -40 : 40);
     p.y = WORLD_H / 2;
   }
-  players[1].alive = players[1].joined;
+  applyHero(players[0], game.heroPick);
+  players[0].hp = players[0].maxHp;
+  players[1].joined = false;
+  players[1].alive = false;
 }
-initRun();
 
 function gameToast(text) {
   toasts.push({ text, age: 0 });
@@ -986,21 +1097,21 @@ function gameToast(text) {
 
 // ---------- upgrades ----------
 const UPGRADES = [
-  { name: 'Sharper Blades', desc: '+1 sword damage for all heroes',
+  { name: 'Sharper Blades', desc: '+1 damage for all heroes',
     can: () => true, apply: () => players.forEach(p => p.damage += 1) },
-  { name: 'Swift Strikes', desc: 'Everyone swings 15% faster',
+  { name: 'Swift Strikes', desc: 'Everyone attacks 15% faster',
     can: () => players[0].attackEvery > 0.24, apply: () => players.forEach(p => p.attackEvery = Math.max(0.22, p.attackEvery * 0.85)) },
-  { name: 'Long Reach', desc: 'Bigger slashes, +25 range',
+  { name: 'Long Reach', desc: 'Bigger attacks, +25 range',
     can: () => players[0].range < 300, apply: () => players.forEach(p => { p.range += 25; p.arc = Math.min(1.6, p.arc + 0.08); }) },
   { name: 'Boots of the Wind', desc: 'Everyone moves 12% faster',
     can: () => players[0].speed < 360, apply: () => players.forEach(p => p.speed *= 1.12) },
   { name: 'Heart of the Kingdom', desc: '+1 max heart and heal 2',
     can: () => players[0].maxHp < 10, apply: () => players.forEach(p => { p.maxHp += 1; p.hp = Math.min(p.maxHp, p.hp + 2); }) },
-  { name: 'Royal Magnet', desc: 'Gems fly to you from much farther',
+  { name: 'Royal Magnet', desc: 'Gems fly to you from farther',
     can: () => players[0].magnet < 320, apply: () => players.forEach(p => p.magnet *= 1.55) },
   { name: 'Spinning Aegis', desc: 'An enchanted shield orbits each hero',
     can: () => players[0].orbCount < 4, apply: () => players.forEach(p => p.orbCount += 1) },
-  { name: 'Sword Wave', desc: 'Slashes launch a flying blade',
+  { name: 'Sword Wave', desc: 'Attacks launch a flying blade',
     can: () => players[0].wave < 3, apply: () => players.forEach(p => p.wave += 1) },
 ];
 function levelUp() {
@@ -1072,23 +1183,75 @@ function killEnemy(i) {
     const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 120;
     particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5, color: colors[e.kind], size: e.kind === 'golem' ? 5 : 3 });
   }
-  // gems
   const n = e.kind === 'golem' ? 3 : 1;
   for (let k = 0; k < n; k++) {
     gems.push({ x: e.x + (Math.random() - 0.5) * 18, y: e.y + (Math.random() - 0.5) * 18, v: Math.ceil(e.xp / n), vx: 0, vy: 0 });
   }
-  // occasional heart
   if (Math.random() < 0.045) drops.push({ x: e.x, y: e.y, kind: 'heart' });
   enemies.splice(i, 1);
 }
 
+// ---------- weapons ----------
+function fireWeapon(p) {
+  let target = null, bd = p.range * p.range;
+  for (const e of enemies) {
+    const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
+    if (d < bd) { bd = d; target = e; }
+  }
+  if (!target) return false;
+  const ang = Math.atan2(target.y - p.y, target.x - p.x);
+
+  if (p.wtype === 'slash') {
+    slashes.push({ x: p.x, y: p.y - 20, ang, age: 0 });
+    for (const e of enemies) {
+      const d = Math.hypot(e.x - p.x, e.y - (p.y - 10));
+      if (d > p.range * 0.72) continue;
+      let da = Math.atan2(e.y - (p.y - 10), e.x - p.x) - ang;
+      while (da > Math.PI) da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
+      if (Math.abs(da) > p.arc) continue;
+      hurtEnemy(e, p.damage, ang, 230);
+    }
+  } else if (p.wtype === 'nova') {
+    const rad = 95 + p.range * 0.25;
+    novas.push({ x: p.x, y: p.y - 14, r: rad, age: 0 });
+    for (const e of enemies) {
+      const d = Math.hypot(e.x - p.x, e.y - (p.y - 14));
+      if (d < rad + e.r) hurtEnemy(e, p.damage + 1, Math.atan2(e.y - p.y, e.x - p.x), 260);
+    }
+  } else if (p.wtype === 'daggers') {
+    for (let k = -1; k <= 1; k++) {
+      const a2 = ang + k * 0.22;
+      waves.push({
+        x: p.x, y: p.y - 20, ang: a2,
+        vx: Math.cos(a2) * 520, vy: Math.sin(a2) * 520,
+        dmg: p.damage, life: 0.55, hit: new Set(), kind: 'dagger',
+      });
+    }
+  } else if (p.wtype === 'gust') {
+    waves.push({
+      x: p.x, y: p.y - 20, ang,
+      vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380,
+      dmg: p.damage, life: 1.0, hit: new Set(), kind: 'gust', kb: 520,
+    });
+  }
+  // sword-wave upgrade rides along for every hero
+  if (p.wave > 0) {
+    waves.push({
+      x: p.x, y: p.y - 20, ang,
+      vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420,
+      dmg: p.damage + p.wave - 1, life: 0.9, hit: new Set(), kind: 'blade',
+    });
+  }
+  return true;
+}
+
 // ---------- update ----------
 function update(dt) {
-  if (game.over || game.choices) return;
+  if (game.phase !== 'run' || game.over || game.choices) return;
   game.time += dt;
   if (game.shake > 0) game.shake -= dt;
 
-  // players
   for (const p of players) {
     if (!p.joined) continue;
     if (p.invuln > 0) p.invuln -= dt;
@@ -1125,38 +1288,9 @@ function update(dt) {
       p.animTime += dt;
     } else p.animTime = 0;
 
-    // auto sword swing
     p.attackTimer -= dt;
-    if (p.attackTimer <= 0) {
-      let target = null, bd = p.range * p.range;
-      for (const e of enemies) {
-        const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
-        if (d < bd) { bd = d; target = e; }
-      }
-      if (target) {
-        p.attackTimer = p.attackEvery;
-        const ang = Math.atan2(target.y - p.y, target.x - p.x);
-        slashes.push({ x: p.x, y: p.y - 20, ang, age: 0 });
-        for (const e of enemies) {
-          const d = Math.hypot(e.x - p.x, e.y - (p.y - 10));
-          if (d > p.range * 0.72) continue;
-          let da = Math.atan2(e.y - (p.y - 10), e.x - p.x) - ang;
-          while (da > Math.PI) da -= 2 * Math.PI;
-          while (da < -Math.PI) da += 2 * Math.PI;
-          if (Math.abs(da) > p.arc) continue;
-          hurtEnemy(e, p.damage, ang, 230);
-        }
-        if (p.wave > 0) {
-          waves.push({
-            x: p.x, y: p.y - 20, ang,
-            vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420,
-            dmg: p.damage + p.wave - 1, life: 0.9, hit: new Set(),
-          });
-        }
-      }
-    }
+    if (p.attackTimer <= 0 && fireWeapon(p)) p.attackTimer = p.attackEvery;
 
-    // orbiting shields
     if (p.orbCount > 0) {
       p.orbAngle += dt * 2.6;
       for (let o = 0; o < p.orbCount; o++) {
@@ -1174,19 +1308,25 @@ function update(dt) {
     }
   }
 
-  // sword waves
+  // projectiles
   for (let i = waves.length - 1; i >= 0; i--) {
     const w = waves[i];
     w.life -= dt;
     w.x += w.vx * dt; w.y += w.vy * dt;
     for (const e of enemies) {
       if (w.hit.has(e)) continue;
-      if (Math.hypot(e.x - w.x, e.y - w.y) < e.r + 26) {
+      const rad = w.kind === 'dagger' ? e.r + 14 : e.r + 26;
+      if (Math.hypot(e.x - w.x, e.y - w.y) < rad) {
         w.hit.add(e);
-        hurtEnemy(e, w.dmg, w.ang, 180);
+        hurtEnemy(e, w.dmg, w.ang, w.kb || 180);
+        if (w.kind === 'dagger') { w.life = 0; break; }
       }
     }
     if (w.life <= 0) waves.splice(i, 1);
+  }
+  for (let i = novas.length - 1; i >= 0; i--) {
+    novas[i].age += dt;
+    if (novas[i].age > 0.35) novas.splice(i, 1);
   }
 
   // enemies
@@ -1219,7 +1359,7 @@ function update(dt) {
     }
   }
 
-  // gems: magnet + collect
+  // gems
   for (let i = gems.length - 1; i >= 0; i--) {
     const g2 = gems[i];
     const t = nearestAlivePlayer(g2.x, g2.y);
@@ -1240,7 +1380,6 @@ function update(dt) {
       }
     }
   }
-  // heart drops
   for (let i = drops.length - 1; i >= 0; i--) {
     const dr = drops[i];
     const t = nearestAlivePlayer(dr.x, dr.y);
@@ -1260,7 +1399,6 @@ function update(dt) {
     if (game.time > 50 && Math.random() < 0.5) spawnEnemy();
     if (game.time > 120 && Math.random() < 0.4) spawnEnemy();
   }
-  // horde bursts
   game.burstTimer -= dt;
   if (game.burstTimer <= 0) {
     game.burstTimer = 42;
@@ -1304,7 +1442,7 @@ function update(dt) {
   cam.y = Math.max(0, Math.min(WORLD_H - 640, cam.y));
 }
 
-// ---------- render ----------
+// ---------- render helpers ----------
 function drawHeart(x, y, s, filled) {
   ctx.fillStyle = filled ? '#e5484d' : 'rgba(255,255,255,0.18)';
   ctx.beginPath();
@@ -1341,7 +1479,7 @@ function drawEnemy(e, t) {
   ctx.arc(e.x - e.r * 0.5, e.y + bob + e.r * 0.55, e.r * 0.45, 0, Math.PI * 2);
   ctx.arc(e.x + e.r * 0.5, e.y + bob + e.r * 0.6, e.r * 0.4, 0, Math.PI * 2);
   ctx.fill();
-  if (e.kind === 'imp') { // little horns
+  if (e.kind === 'imp') {
     ctx.fillStyle = '#fdba74';
     ctx.beginPath();
     ctx.moveTo(e.x - e.r * 0.6, e.y + bob - e.r * 0.5);
@@ -1352,7 +1490,7 @@ function drawEnemy(e, t) {
     ctx.lineTo(e.x + e.r * 0.05, e.y + bob - e.r * 0.6);
     ctx.fill();
   }
-  if (e.kind === 'golem') { // rocky chunks
+  if (e.kind === 'golem') {
     ctx.fillStyle = '#475569';
     ctx.fillRect(e.x - e.r * 0.7, e.y + bob - e.r * 0.6, e.r * 0.5, e.r * 0.4);
     ctx.fillRect(e.x + e.r * 0.2, e.y + bob - e.r * 0.8, e.r * 0.45, e.r * 0.45);
@@ -1362,7 +1500,6 @@ function drawEnemy(e, t) {
   ctx.fillStyle = cols.eye;
   ctx.fillRect(e.x - ed - 2, e.y + bob - 3, 4, e.kind === 'brute' || e.kind === 'golem' ? 7 : 5);
   ctx.fillRect(e.x + ed - 2, e.y + bob - 3, 4, e.kind === 'brute' || e.kind === 'golem' ? 7 : 5);
-  // hp bar for big ones
   if ((e.kind === 'brute' || e.kind === 'golem') && e.hp < e.maxHp) {
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(e.x - 18, e.y + bob - e.r - 12, 36, 5);
@@ -1371,6 +1508,163 @@ function drawEnemy(e, t) {
   }
 }
 
+function drawPlayerSprite(p, t) {
+  const set = heroSprites[p.heroKey];
+  const frame = p.moving ? (Math.floor(p.animTime * 8) % 2) : 1;
+  const spr = (p.dir === 'left' || p.dir === 'right') ? set.side[frame] : set[p.dir][frame];
+  const bob = (p.moving && frame === 1) ? -2 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y - 2, 18, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (!p.alive) {
+    ctx.save();
+    ctx.translate(p.x, p.y - 18);
+    ctx.rotate(Math.PI / 2);
+    ctx.globalAlpha = 0.75;
+    ctx.drawImage(spr, -32, -32);
+    ctx.restore();
+    if (p.reviveProgress > 0) {
+      ctx.strokeStyle = UI.goldLight;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y - 30, 26, -Math.PI / 2, -Math.PI / 2 + (p.reviveProgress / 2.5) * Math.PI * 2);
+      ctx.stroke();
+    }
+    return;
+  }
+  if (p.invuln > 0 && Math.floor(t * 14) % 2) ctx.globalAlpha = 0.45;
+  if (p.dir === 'left') {
+    ctx.save();
+    ctx.translate(p.x + 32, p.y - 60 + bob);
+    ctx.scale(-1, 1);
+    ctx.drawImage(spr, 0, 0);
+    ctx.restore();
+  } else {
+    ctx.drawImage(spr, p.x - 32, p.y - 60 + bob);
+  }
+  ctx.globalAlpha = 1;
+  for (let o = 0; o < p.orbCount; o++) {
+    const oa = p.orbAngle + (o / p.orbCount) * Math.PI * 2;
+    const ox = p.x + Math.cos(oa) * 72;
+    const oy = p.y - 18 + Math.sin(oa) * 72;
+    ctx.fillStyle = 'rgba(255, 217, 138, 0.25)';
+    ctx.beginPath(); ctx.arc(ox, oy, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath(); ctx.arc(ox, oy, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = UI.goldPale;
+    ctx.beginPath(); ctx.arc(ox - 2, oy - 3, 3, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// ---------- selection screens ----------
+function renderCardScreen(t, title, items, drawItem) {
+  ctx.fillStyle = '#12100d';
+  ctx.fillRect(0, 0, 960, 640);
+  // subtle royal backdrop
+  for (let i = 0; i < 40; i++) {
+    const sx = hash2(i, 3) * 960, sy = hash2(i, 5) * 640;
+    ctx.fillStyle = `rgba(232, 182, 76, ${0.03 + 0.05 * Math.sin(t + i)})`;
+    ctx.fillRect(sx, sy, 3, 3);
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = UI.goldLight;
+  ctx.font = '800 34px Cinzel, Georgia, serif';
+  ctx.fillText(title, 480, 90);
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(280, 112); ctx.lineTo(680, 112); ctx.stroke();
+
+  cardRects = [];
+  const n = items.length;
+  const cw = Math.min(170, 820 / n), ch = 290, gap = 14;
+  const total = n * cw + (n - 1) * gap;
+  for (let i = 0; i < n; i++) {
+    const x = 480 - total / 2 + i * (cw + gap), y = 170;
+    cardRects.push({ x, y, w: cw, h: ch, idx: i });
+    const sel = game.cursor === i;
+    ctx.save();
+    if (sel) { ctx.translate(0, -8); }
+    plate(x, y, cw, ch, 12);
+    if (sel) {
+      ctx.strokeStyle = UI.goldLight;
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(x + 3, y + 3, cw - 6, ch - 6);
+      ctx.shadowColor = 'rgba(232, 182, 76, 0.5)';
+      ctx.shadowBlur = 24;
+      ctx.strokeRect(x + 3, y + 3, cw - 6, ch - 6);
+      ctx.shadowBlur = 0;
+    }
+    drawItem(items[i], x, y, cw, ch, sel, t);
+    ctx.restore();
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
+  ctx.font = '20px "VT323", monospace';
+  ctx.fillText('A / D or MOUSE to choose  •  SPACE or CLICK to confirm', 480, 530);
+}
+
+function renderSelect(t) {
+  renderCardScreen(t, 'CHOOSE YOUR HERO', HERO_DEFS, (h, x, y, w, ch2, sel, t2) => {
+    const set = heroSprites[h.key];
+    const spr = set.down[1];
+    const bob2 = sel ? Math.sin(t2 * 4) * 3 : 0;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(spr, x + w / 2 - 48, y + 26 + bob2, 96, 96);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = sel ? UI.goldLight : UI.text;
+    ctx.font = '700 15px Cinzel, Georgia, serif';
+    ctx.fillText(h.name, x + w / 2, y + 150);
+    ctx.fillStyle = UI.dim;
+    ctx.font = '13px Inter, sans-serif';
+    ctx.fillText(h.role, x + w / 2, y + 170);
+    ctx.fillStyle = sel ? UI.gold : 'rgba(232, 182, 76, 0.7)';
+    ctx.font = '700 14px Cinzel, Georgia, serif';
+    ctx.fillText(h.weapon, x + w / 2, y + 210);
+    ctx.fillStyle = UI.dim;
+    ctx.font = '12px Inter, sans-serif';
+    const words = h.wdesc.split(' ');
+    let line = '', ly = y + 232;
+    for (const wd of words) {
+      if ((line + wd).length > 18) { ctx.fillText(line, x + w / 2, ly); ly += 16; line = ''; }
+      line += (line ? ' ' : '') + wd;
+    }
+    ctx.fillText(line, x + w / 2, ly);
+  });
+}
+
+function renderMapSelect(t) {
+  renderCardScreen(t, 'CHOOSE THE BATTLEFIELD', MAPS, (m, x, y, w, ch2, sel) => {
+    // mini terrain preview
+    ctx.fillStyle = m.base;
+    ctx.fillRect(x + 14, y + 22, w - 28, 110);
+    for (let i = 0; i < 26; i++) {
+      const px = x + 18 + hash2(i, 11) * (w - 42);
+      const py = y + 28 + hash2(i, 13) * 96;
+      const h2 = hash2(i, 17);
+      ctx.fillStyle = h2 > 0.85 ? m.flowerA : h2 > 0.5 ? m.tuftA : m.tuftB;
+      ctx.fillRect(px, py, 5, h2 > 0.85 ? 5 : 3);
+    }
+    ctx.strokeStyle = m.edge;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(x + 14, y + 22, w - 28, 110);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = sel ? UI.goldLight : UI.text;
+    ctx.font = '700 15px Cinzel, Georgia, serif';
+    ctx.fillText(m.name, x + w / 2, y + 165);
+    ctx.fillStyle = UI.dim;
+    ctx.font = '12px Inter, sans-serif';
+    const words = m.desc.split(' ');
+    let line = '', ly = y + 190;
+    for (const wd of words) {
+      if ((line + wd).length > 20) { ctx.fillText(line, x + w / 2, ly); ly += 16; line = ''; }
+      line += (line ? ' ' : '') + wd;
+    }
+    ctx.fillText(line, x + w / 2, ly);
+  });
+}
+
+// ---------- render ----------
 function render(t) {
   if (!surroundPattern) surroundPattern = ctx.createPattern(surroundTile, 'repeat');
   ctx.fillStyle = surroundPattern;
@@ -1380,14 +1674,16 @@ function render(t) {
   ctx.scale(view.scale, view.scale);
   ctx.beginPath(); ctx.rect(0, 0, 960, 640); ctx.clip();
 
-  // ---- world (camera space, with shake) ----
+  if (game.phase === 'select') { renderSelect(t); ctx.restore(); frameShadow(); return; }
+  if (game.phase === 'map') { renderMapSelect(t); ctx.restore(); frameShadow(); return; }
+
+  const M = MAPS[game.mapPick];
   const shx = game.shake > 0 ? (Math.random() - 0.5) * 10 * game.shake * 4 : 0;
   const shy = game.shake > 0 ? (Math.random() - 0.5) * 10 * game.shake * 4 : 0;
   ctx.save();
   ctx.translate(-Math.round(cam.x + shx), -Math.round(cam.y + shy));
 
-  // meadow
-  ctx.fillStyle = '#4e8f3c';
+  ctx.fillStyle = M.base;
   ctx.fillRect(cam.x - 20, cam.y - 20, 1000, 680);
   const c0x = Math.floor(cam.x / 64), c0y = Math.floor(cam.y / 64);
   for (let cy = c0y; cy <= c0y + 10; cy++) {
@@ -1396,31 +1692,42 @@ function render(t) {
       const px = cx * 64 + hash2(cx, cy, 3) * 44 + 8;
       const py = cy * 64 + hash2(cx, cy, 4) * 44 + 8;
       if (h > 0.93) {
-        ctx.fillStyle = hash2(cx, cy, 5) > 0.5 ? '#e8d44f' : '#eef0f2';
+        ctx.fillStyle = hash2(cx, cy, 5) > 0.5 ? M.flowerA : M.flowerB;
         ctx.fillRect(px, py, 6, 6);
-        ctx.fillStyle = '#c9862c';
-        ctx.fillRect(px + 2, py + 2, 2, 2);
       } else if (h > 0.5) {
-        ctx.fillStyle = hash2(cx, cy, 6) > 0.5 ? '#5ba147' : '#447f34';
+        ctx.fillStyle = hash2(cx, cy, 6) > 0.5 ? M.tuftA : M.tuftB;
         ctx.fillRect(px, py, 6, 3);
         ctx.fillRect(px + 1, py - 3, 4, 3);
         if (hash2(cx, cy, 7) > 0.5) ctx.fillRect(px + 10, py + 6, 5, 3);
       } else if (h < 0.03) {
-        ctx.fillStyle = '#8f8b83';
+        ctx.fillStyle = M.stone;
         ctx.fillRect(px, py, 10, 7);
-        ctx.fillStyle = '#a9a49b';
+        ctx.fillStyle = M.stoneHi;
         ctx.fillRect(px + 1, py + 1, 8, 3);
       }
     }
   }
-  // world edge forest
-  ctx.fillStyle = '#22391b';
+  ctx.fillStyle = M.edge;
   if (cam.x < 24) ctx.fillRect(cam.x - 200, cam.y - 200, 224 - cam.x + 200, 1040);
   if (cam.y < 24) ctx.fillRect(cam.x - 200, cam.y - 200, 1360, 224 - cam.y + 200);
   if (cam.x + 960 > WORLD_W - 24) ctx.fillRect(WORLD_W - 24, cam.y - 200, 500, 1040);
   if (cam.y + 640 > WORLD_H - 24) ctx.fillRect(cam.x - 200, WORLD_H - 24, 1360, 500);
 
-  // gems
+  // novas (under entities)
+  for (const nv of novas) {
+    const f = nv.age / 0.35;
+    ctx.strokeStyle = `rgba(251, 146, 60, ${0.85 * (1 - f)})`;
+    ctx.lineWidth = 12 * (1 - f * 0.6);
+    ctx.beginPath();
+    ctx.arc(nv.x, nv.y, nv.r * (0.4 + 0.6 * f), 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 220, 120, ${0.5 * (1 - f)})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(nv.x, nv.y, nv.r * (0.3 + 0.7 * f), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   for (const g2 of gems) {
     const pulse = 0.8 + 0.2 * Math.sin(t * 6 + g2.x);
     ctx.save();
@@ -1432,89 +1739,47 @@ function render(t) {
     ctx.fillRect(-5 * pulse, -5 * pulse, 4, 4);
     ctx.restore();
   }
-  // heart drops
   for (const dr of drops) {
     const bob2 = Math.sin(t * 4 + dr.x) * 3;
     drawHeart(dr.x, dr.y + bob2, 13, true);
   }
 
-  // entities sorted by y
   const drawList = [];
   for (const e of enemies) drawList.push({ y: e.y, kind: 'enemy', e });
   for (const p of players) if (p.joined) drawList.push({ y: p.y, kind: 'player', p });
   drawList.sort((a, b) => a.y - b.y);
-
   for (const d of drawList) {
-    if (d.kind === 'enemy') { drawEnemy(d.e, t); continue; }
-    const p = d.p;
-    const set = heroSprites[p.heroKey];
-    const frame = p.moving ? (Math.floor(p.animTime * 8) % 2) : 1;
-    const spr = (p.dir === 'left' || p.dir === 'right') ? set.side[frame] : set[p.dir][frame];
-    const bob = (p.moving && frame === 1) ? -2 : 0;
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y - 2, 18, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-    if (!p.alive) {
-      ctx.save();
-      ctx.translate(p.x, p.y - 18);
-      ctx.rotate(Math.PI / 2);
-      ctx.globalAlpha = 0.75;
-      ctx.drawImage(spr, -32, -32);
-      ctx.restore();
-      if (p.reviveProgress > 0) {
-        ctx.strokeStyle = '#ffd98a';
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y - 30, 26, -Math.PI / 2, -Math.PI / 2 + (p.reviveProgress / 2.5) * Math.PI * 2);
-        ctx.stroke();
-      }
-      continue;
-    }
-    if (p.invuln > 0 && Math.floor(t * 14) % 2) ctx.globalAlpha = 0.45;
-    if (p.dir === 'left') {
-      ctx.save();
-      ctx.translate(p.x + 32, p.y - 60 + bob);
-      ctx.scale(-1, 1);
-      ctx.drawImage(spr, 0, 0);
-      ctx.restore();
-    } else {
-      ctx.drawImage(spr, p.x - 32, p.y - 60 + bob);
-    }
-    ctx.globalAlpha = 1;
-    // orbiting shields
-    for (let o = 0; o < p.orbCount; o++) {
-      const oa = p.orbAngle + (o / p.orbCount) * Math.PI * 2;
-      const ox = p.x + Math.cos(oa) * 72;
-      const oy = p.y - 18 + Math.sin(oa) * 72;
-      ctx.fillStyle = 'rgba(255, 217, 138, 0.25)';
-      ctx.beginPath(); ctx.arc(ox, oy, 15, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#e8b64c';
-      ctx.beginPath(); ctx.arc(ox, oy, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fdf3d7';
-      ctx.beginPath(); ctx.arc(ox - 2, oy - 3, 3, 0, Math.PI * 2); ctx.fill();
-    }
+    if (d.kind === 'enemy') drawEnemy(d.e, t);
+    else drawPlayerSprite(d.p, t);
   }
 
-  // sword waves
+  // projectiles
   for (const w of waves) {
     ctx.save();
     ctx.translate(w.x, w.y);
     ctx.rotate(w.ang);
-    ctx.strokeStyle = `rgba(255, 250, 235, ${Math.min(1, w.life * 2)})`;
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.arc(0, 0, 26, -1.1, 1.1);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(255, 217, 138, ${Math.min(1, w.life * 1.4)})`;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(-8, 0, 26, -0.9, 0.9);
-    ctx.stroke();
+    if (w.kind === 'dagger') {
+      ctx.fillStyle = `rgba(226, 213, 255, ${Math.min(1, w.life * 3)})`;
+      ctx.fillRect(-9, -2.5, 18, 5);
+      ctx.fillStyle = '#5b3d8f';
+      ctx.fillRect(-13, -2, 5, 4);
+    } else if (w.kind === 'gust') {
+      ctx.strokeStyle = `rgba(163, 216, 244, ${Math.min(1, w.life * 1.6)})`;
+      ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.arc(0, 0, 30, -1.2, 1.2); ctx.stroke();
+      ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(1, w.life * 1.2)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(-10, 0, 30, -1.0, 1.0); ctx.stroke();
+    } else {
+      ctx.strokeStyle = `rgba(255, 250, 235, ${Math.min(1, w.life * 2)})`;
+      ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.arc(0, 0, 26, -1.1, 1.1); ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 217, 138, ${Math.min(1, w.life * 1.4)})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(-8, 0, 26, -0.9, 0.9); ctx.stroke();
+    }
     ctx.restore();
   }
-
-  // slashes
   for (const s of slashes) {
     const f = s.age / 0.18;
     ctx.strokeStyle = `rgba(255, 250, 235, ${0.9 * (1 - f)})`;
@@ -1523,14 +1788,12 @@ function render(t) {
     ctx.arc(s.x, s.y, 46 + f * 26, s.ang - 0.95, s.ang + 0.95);
     ctx.stroke();
   }
-  // particles
   for (const pt of particles) {
     ctx.fillStyle = pt.color;
     ctx.globalAlpha = Math.max(0, pt.life * 2);
     ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
   }
   ctx.globalAlpha = 1;
-  // damage numbers
   for (const dm of dmgTexts) {
     ctx.font = '19px "VT323", monospace';
     ctx.textAlign = 'center';
@@ -1540,53 +1803,55 @@ function render(t) {
 
   ctx.restore(); // end camera
 
-  // ---- HUD ----
-  let hy = 26;
-  for (const p of players) {
-    if (!p.joined) continue;
+  // ---- HUD (royal style) ----
+  const joined = players.filter(p => p.joined);
+  plate(10, 10, 250, joined.length * 30 + 14, 10);
+  let hy = 32;
+  for (const p of joined) {
     ctx.textAlign = 'left';
-    ctx.font = '20px "VT323", monospace';
-    ctx.fillStyle = p.alive ? '#f0e2c3' : 'rgba(240,226,195,0.5)';
-    ctx.fillText(p.name, 16, hy + 5);
-    for (let i = 0; i < p.maxHp; i++) drawHeart(140 + i * 26, hy, 11, i < p.hp);
+    ctx.font = '700 13px Cinzel, Georgia, serif';
+    ctx.fillStyle = p.alive ? UI.text : UI.dim;
+    ctx.fillText(p.name, 22, hy + 4);
+    for (let i = 0; i < p.maxHp; i++) drawHeart(138 + i * 23, hy, 10, i < p.hp);
     hy += 30;
   }
+  // center: timer + XP
+  plate(355, 8, 250, 56, 10);
+  const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
+  const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
+  ctx.textAlign = 'center';
+  ctx.font = '700 24px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldPale;
+  ctx.fillText(mm + ':' + ss, 480, 34);
+  ctx.fillStyle = 'rgba(10, 6, 16, 0.8)';
+  ctx.fillRect(372, 44, 216, 10);
+  const xg = ctx.createLinearGradient(372, 0, 588, 0);
+  xg.addColorStop(0, '#a855f7');
+  xg.addColorStop(1, UI.gold);
+  ctx.fillStyle = xg;
+  ctx.fillRect(372, 44, 216 * Math.min(1, game.xp / game.xpNext), 10);
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(372, 44, 216, 10);
+  ctx.textAlign = 'left';
+  ctx.font = '700 13px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText('LV ' + game.level, 594, 54);
+  // right: kills
+  plate(770, 10, 180, 38, 10);
+  ctx.textAlign = 'right';
+  ctx.font = '700 15px Cinzel, Georgia, serif';
+  ctx.fillStyle = '#c9a8ff';
+  ctx.fillText('BANISHED  ' + game.kills, 938, 35);
+
   if (!players[1].joined) {
     ctx.textAlign = 'left';
     ctx.font = '18px "VT323", monospace';
     ctx.fillStyle = `rgba(240, 226, 195, ${0.5 + 0.3 * Math.sin(t * 3)})`;
     ctx.fillText('P2: press an ARROW KEY to join!', 16, 640 - 16);
   }
-  // XP bar
-  ctx.fillStyle = 'rgba(10, 6, 16, 0.65)';
-  ctx.fillRect(280, 44, 400, 12);
-  const xpw = 400 * Math.min(1, game.xp / game.xpNext);
-  const xg = ctx.createLinearGradient(280, 0, 680, 0);
-  xg.addColorStop(0, '#a855f7');
-  xg.addColorStop(1, '#e8b64c');
-  ctx.fillStyle = xg;
-  ctx.fillRect(280, 44, xpw, 12);
-  ctx.strokeStyle = 'rgba(255, 217, 138, 0.5)';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(280, 44, 400, 12);
-  ctx.textAlign = 'left';
-  ctx.font = '20px "VT323", monospace';
-  ctx.fillStyle = '#ffd98a';
-  ctx.fillText('LV ' + game.level, 688, 55);
-  // timer + kills
-  const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
-  const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
-  ctx.textAlign = 'center';
-  ctx.font = '30px "VT323", monospace';
-  ctx.fillStyle = '#f0e2c3';
-  ctx.fillText(mm + ':' + ss, 480, 34);
-  ctx.textAlign = 'right';
-  ctx.font = '22px "VT323", monospace';
-  ctx.fillStyle = '#c9a8ff';
-  ctx.fillText('BANISHED: ' + game.kills, 944, 30);
 
-  // toasts
-  let ty = 90;
+  let ty = 100;
   for (const tst of toasts) {
     const a = Math.min(1, tst.age * 4) * Math.min(1, (3 - tst.age));
     ctx.textAlign = 'center';
@@ -1596,59 +1861,68 @@ function render(t) {
     ty += 26;
   }
 
-  // ---- level-up choice overlay ----
+  // ---- level-up overlay ----
+  cardRects = [];
   if (game.choices) {
-    ctx.fillStyle = 'rgba(10, 5, 16, 0.7)';
+    ctx.fillStyle = 'rgba(10, 5, 16, 0.72)';
     ctx.fillRect(0, 0, 960, 640);
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffd98a';
-    ctx.font = '40px "VT323", monospace';
-    ctx.fillText('⚔ LEVEL ' + game.level + '! CHOOSE A ROYAL GIFT ⚔', 480, 150);
+    ctx.fillStyle = UI.goldLight;
+    ctx.font = '800 32px Cinzel, Georgia, serif';
+    ctx.fillText('LEVEL ' + game.level + ' — CHOOSE A ROYAL GIFT', 480, 140);
+    ctx.strokeStyle = UI.plateBorder;
+    ctx.beginPath(); ctx.moveTo(300, 162); ctx.lineTo(660, 162); ctx.stroke();
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
       const cx2 = 480 + (i - 1) * 270, cy2 = 330;
-      ctx.fillStyle = 'rgba(26, 21, 15, 0.96)';
-      ctx.fillRect(cx2 - 115, cy2 - 110, 230, 220);
-      ctx.strokeStyle = '#e8b64c';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(cx2 - 115, cy2 - 110, 230, 220);
-      ctx.fillStyle = '#ffd98a';
-      ctx.font = '26px "VT323", monospace';
-      ctx.fillText('[' + (i + 1) + ']', cx2, cy2 - 74);
-      ctx.font = '24px "VT323", monospace';
-      ctx.fillText(c.name, cx2, cy2 - 34);
-      ctx.fillStyle = 'rgba(240, 226, 195, 0.75)';
-      ctx.font = '18px "VT323", monospace';
+      const hov = mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > cy2 - 110 && mouse.y < cy2 + 110;
+      cardRects.push({ x: cx2 - 115, y: cy2 - 110, w: 230, h: 220, idx: i });
+      plate(cx2 - 115, cy2 - 110, 230, 220, 14);
+      if (hov) {
+        ctx.strokeStyle = UI.goldLight;
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(cx2 - 111, cy2 - 106, 222, 212);
+      }
+      ctx.fillStyle = UI.gold;
+      ctx.font = '700 18px Cinzel, Georgia, serif';
+      ctx.fillText('' + (i + 1), cx2, cy2 - 76);
+      ctx.fillStyle = hov ? UI.goldLight : UI.text;
+      ctx.font = '700 17px Cinzel, Georgia, serif';
+      ctx.fillText(c.name, cx2, cy2 - 36);
+      ctx.fillStyle = UI.dim;
+      ctx.font = '15px Inter, sans-serif';
       const words = c.desc.split(' ');
-      let line = '', ly = cy2 + 8;
+      let line = '', ly = cy2 + 4;
       for (const wd of words) {
-        if ((line + wd).length > 20) { ctx.fillText(line, cx2, ly); ly += 22; line = ''; }
+        if ((line + wd).length > 22) { ctx.fillText(line, cx2, ly); ly += 21; line = ''; }
         line += (line ? ' ' : '') + wd;
       }
       ctx.fillText(line, cx2, ly);
     }
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
-    ctx.font = '22px "VT323", monospace';
-    ctx.fillText('PRESS 1, 2 OR 3', 480, 500);
+    ctx.font = '20px "VT323", monospace';
+    ctx.fillText('PRESS 1, 2, 3  •  OR CLICK A CARD', 480, 505);
   }
 
-  // game over
   if (game.over) {
-    ctx.fillStyle = 'rgba(10, 5, 16, 0.72)';
+    ctx.fillStyle = 'rgba(10, 5, 16, 0.75)';
     ctx.fillRect(0, 0, 960, 640);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e5484d';
-    ctx.font = '64px "VT323", monospace';
+    ctx.font = '800 44px Cinzel, Georgia, serif';
     ctx.fillText('THE KINGDOM HAS FALLEN', 480, 260);
-    ctx.fillStyle = '#f0e2c3';
-    ctx.font = '26px "VT323", monospace';
-    ctx.fillText('You survived ' + mm + ':' + ss + ' at level ' + game.level + ' and banished ' + game.kills + ' spirits', 480, 315);
-    ctx.fillStyle = '#ffd98a';
-    ctx.font = '24px "VT323", monospace';
-    ctx.fillText('Press R to rise again  •  Esc for the menu', 480, 365);
+    ctx.fillStyle = UI.text;
+    ctx.font = '19px Inter, sans-serif';
+    ctx.fillText('You survived ' + mm + ':' + ss + ' at level ' + game.level + ' and banished ' + game.kills + ' spirits', 480, 312);
+    ctx.fillStyle = UI.goldLight;
+    ctx.font = '22px "VT323", monospace';
+    ctx.fillText('Press R to choose a new hero  •  Esc for the menu', 480, 362);
   }
 
   ctx.restore(); // end room transform
+  frameShadow();
+}
+function frameShadow() {
   ctx.save();
   ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
   ctx.shadowBlur = 42;
@@ -2467,6 +2741,10 @@ window.addEventListener('keydown', startMusic, { once: true });
 setMusic.addEventListener('input', () => {
   if (musicGain && menuOpen) musicGain.gain.value = (settings.music / 100) * 0.5;
 });
+
+// clicking a menu button should not leave a lingering focus ring
+document.querySelectorAll('#menu button').forEach(b =>
+  b.addEventListener('click', () => b.blur()));
 
 // debug handle for automated testing
 window.__game = { players, enemies: () => enemies, game, keys, get menuOpen() { return menuOpen; }, hideMenu, showMenu };
