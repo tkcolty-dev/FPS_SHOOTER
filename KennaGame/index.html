@@ -20,11 +20,7 @@
     image-rendering: pixelated;
     image-rendering: crisp-edges;
   }
-  #game {
-    box-shadow: 0 0 80px rgba(0,0,0,0.9);
-    border: 2px solid #2b2118;
-    border-radius: 4px;
-  }
+  #game { display: block; }
 
   /* ================= MAIN MENU ================= */
   #menu {
@@ -202,10 +198,10 @@
   #menu.hasImage .chip {
     display: block;
     font-family: 'Cinzel', 'Inter', serif; font-weight: 700;
-    font-size: min(1.9vh, 1.35vw); letter-spacing: 0.14em; color: #f3ead8;
+    font-size: min(1.6vh, 1.15vw); letter-spacing: 0.14em; color: #f3ead8;
     background: linear-gradient(180deg, rgba(28, 22, 15, 0.85), rgba(13, 11, 10, 0.85));
     border: 1px solid rgba(232, 182, 76, 0.32); border-radius: 1.2vh;
-    padding: 1.5vh 1.5vw; text-shadow: none;
+    padding: 1.2vh 1.2vw; text-shadow: none;
     box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.09), 0 8px 30px rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
@@ -215,12 +211,12 @@
   #menu.hasImage .titleBlock { display: block; left: 3.5vw; top: 8.5vh; }
   #menu.hasImage .kicker {
     font-family: 'Cinzel', serif; font-weight: 700;
-    font-size: min(2vh, 1.4vw); letter-spacing: 0.55em; color: #e8c98f;
+    font-size: min(1.7vh, 1.2vw); letter-spacing: 0.55em; color: #e8c98f;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85); margin-bottom: 1vh;
   }
   #menu.hasImage .titleBlock h1 {
     font-family: 'Cinzel', serif; font-weight: 900;
-    font-size: min(9.6vh, 6.8vw); line-height: 1.06; letter-spacing: 0.03em;
+    font-size: min(7.8vh, 5.6vw); line-height: 1.06; letter-spacing: 0.03em;
     background: none; -webkit-text-fill-color: initial; color: #fff;
     filter: drop-shadow(0 6px 22px rgba(0, 0, 0, 0.9));
   }
@@ -234,16 +230,16 @@
   }
   #menu.hasImage .subtitle {
     font-family: 'Cinzel', serif; font-weight: 700; font-style: normal;
-    font-size: min(2.5vh, 1.75vw); letter-spacing: 0.42em; color: #e8c98f;
+    font-size: min(2.1vh, 1.5vw); letter-spacing: 0.42em; color: #e8c98f;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85); margin-top: 2vh;
   }
 
-  #menu.hasImage #btnStack { left: 2.5vw; top: 45.5vh; gap: 1.4vh; min-width: 24vw; max-width: 24vw; }
+  #menu.hasImage #btnStack { left: 2.5vw; top: 47vh; gap: 1.2vh; min-width: 21vw; max-width: 21vw; }
   #menu.hasImage .menuBtn {
     position: relative; overflow: hidden;
     display: flex; align-items: center; gap: 1vw;
     font-family: 'Inter', sans-serif;
-    height: 8.3vh; box-sizing: border-box;
+    height: 7vh; box-sizing: border-box;
     padding: 0 1.2vw; border-radius: 1.4vh;
     background: linear-gradient(180deg, rgba(26, 21, 15, 0.82), rgba(13, 11, 10, 0.82));
     border: 1px solid rgba(232, 182, 76, 0.22);
@@ -268,28 +264,28 @@
   #menu.hasImage .menuBtn:hover::before, #menu.hasImage .menuBtn:focus-visible::before { transform: scaleY(1); }
   #menu.hasImage .menuBtn:hover .bChev { transform: translateX(0.35vw); color: #ffd98a; }
   #menu.hasImage .bIcon {
-    width: 4.8vh; height: 4.8vh; margin: 0; flex: none;
+    width: 4vh; height: 4vh; margin: 0; flex: none;
     display: flex; align-items: center; justify-content: center;
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 1.1vh; font-size: 2.4vh; color: #eee;
+    border-radius: 1.1vh; font-size: 2.1vh; color: #eee;
   }
   #menu.hasImage .bText { display: flex; flex-direction: column; gap: 0.3vh; }
   #menu.hasImage .bTitle {
-    font-family: 'Cinzel', serif; font-weight: 800; font-size: min(2.4vh, 1.7vw); color: #f3ead8;
+    font-family: 'Cinzel', serif; font-weight: 800; font-size: min(2vh, 1.45vw); color: #f3ead8;
     letter-spacing: 0.08em; text-transform: uppercase;
   }
   #menu.hasImage .bSub {
-    display: block; font-weight: 400; font-size: min(1.6vh, 1.15vw);
+    display: block; font-weight: 400; font-size: min(1.4vh, 1vw);
     color: rgba(255, 255, 255, 0.55);
   }
   #menu.hasImage .bChev {
     display: block; margin-left: auto;
-    font-size: 3.2vh; color: rgba(255, 255, 255, 0.4); line-height: 1;
+    font-size: 2.7vh; color: rgba(255, 255, 255, 0.4); line-height: 1;
     transition: transform 0.18s ease, color 0.18s ease;
   }
   #menu.hasImage #btnExit { display: flex; }
   #menu.hasImage #btnPlay {
-    height: 9.6vh;
+    height: 8vh;
     background: linear-gradient(140deg, rgba(70, 50, 14, 0.92), rgba(32, 23, 9, 0.92));
     border: 1px solid #e8b64c;
     box-shadow: inset 0 0 0 1px rgba(255, 233, 184, 0.25), inset 0 1px 0 rgba(255, 235, 190, 0.2),
@@ -309,7 +305,7 @@
   /* top-right icon cluster */
   #menu.hasImage #iconRow {
     display: flex; position: absolute; right: 2vw; top: 2.6vh;
-    height: 6.9vh; box-sizing: border-box; min-width: 13vw;
+    height: 5.8vh; box-sizing: border-box; min-width: 11vw;
     justify-content: space-evenly; align-items: center;
     background: linear-gradient(180deg, rgba(28, 22, 15, 0.85), rgba(13, 11, 10, 0.85));
     border: 1px solid rgba(232, 182, 76, 0.32); border-radius: 1.2vh;
@@ -318,10 +314,10 @@
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
   .iconBtn {
-    position: relative; width: 3vw; height: 76%;
+    position: relative; width: 2.6vw; height: 76%;
     display: flex; align-items: center; justify-content: center;
     background: transparent; border: none; border-radius: 1vh;
-    color: #ddd; font-size: 2.5vh; cursor: pointer;
+    color: #ddd; font-size: 2.2vh; cursor: pointer;
     transition: transform 0.15s ease, background 0.15s ease;
   }
   .iconBtn:hover { transform: scale(1.12); background: rgba(255, 255, 255, 0.12); }
@@ -336,8 +332,8 @@
 
   /* bottom-left stat cards */
   #menu.hasImage #statCards {
-    display: flex; position: absolute; left: 2vw; bottom: 3vh;
-    width: 25vw; height: 11vh; gap: 0.7vw;
+    display: flex; position: absolute; left: 2vw; bottom: 2.6vh;
+    width: 21.5vw; height: 9.6vh; gap: 0.6vw;
   }
   .statCard {
     flex: 1; box-sizing: border-box;
@@ -348,46 +344,46 @@
     box-shadow: inset 0 1px 0 rgba(255, 235, 190, 0.07);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   }
-  .scIcon { font-size: 2.6vh; }
+  .scIcon { font-size: 2.2vh; }
   .scLabel {
-    margin-top: 0.5vh; font-size: min(1.25vh, 0.88vw); font-weight: 600;
+    margin-top: 0.5vh; font-size: min(1.1vh, 0.8vw); font-weight: 600;
     letter-spacing: 0.14em; text-transform: uppercase;
     color: rgba(255, 255, 255, 0.5);
   }
-  .scVal { margin-top: 0.4vh; font-size: min(1.9vh, 1.3vw); font-weight: 800; color: #ffd98a; }
+  .scVal { margin-top: 0.4vh; font-size: min(1.65vh, 1.15vw); font-weight: 800; color: #ffd98a; }
 
   /* right-side latest update card */
   #menu.hasImage #updateCard {
     display: flex; flex-direction: column;
-    position: absolute; right: 2vw; top: 29.5vh; bottom: 15vh; width: 21vw;
+    position: absolute; right: 2vw; top: 32vh; bottom: 14vh; width: 18vw;
     box-sizing: border-box; overflow: hidden;
     background: linear-gradient(180deg, rgba(26, 21, 15, 0.9), rgba(13, 11, 10, 0.9));
     border: 1px solid rgba(232, 182, 76, 0.3); border-radius: 1.8vh;
-    padding: 1.8vh 1vw; font-family: 'Inter', sans-serif;
+    padding: 1.5vh 0.9vw; font-family: 'Inter', sans-serif;
     box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   }
   .ucHead {
     display: flex; justify-content: space-between; align-items: center;
-    font-size: min(1.7vh, 1.2vw); font-weight: 700; letter-spacing: 0.12em; color: #fff;
+    font-size: min(1.5vh, 1.05vw); font-weight: 700; letter-spacing: 0.12em; color: #fff;
   }
   .ucNew {
     background: #e8b64c; color: #201603; font-weight: 800; font-size: 1.4vh;
     padding: 0.3vh 0.6vw; border-radius: 0.9vh; letter-spacing: 0.08em;
   }
   .ucThumb {
-    width: 100%; max-height: 17vh; object-fit: cover;
+    width: 100%; max-height: 14vh; object-fit: cover;
     border-radius: 1.2vh; margin: 1.3vh 0 1.2vh; display: block;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  .ucTitle { font-family: 'Cinzel', serif; font-size: min(2.3vh, 1.6vw); font-weight: 800; letter-spacing: 0.06em; color: #ffd98a; }
-  .ucBody { margin: 0.8vh 0 1.5vh; font-size: min(1.65vh, 1.2vw); line-height: 1.45; color: rgba(255, 255, 255, 0.65); }
+  .ucTitle { font-family: 'Cinzel', serif; font-size: min(2vh, 1.4vw); font-weight: 800; letter-spacing: 0.06em; color: #ffd98a; }
+  .ucBody { margin: 0.8vh 0 1.5vh; font-size: min(1.45vh, 1.05vw); line-height: 1.45; color: rgba(255, 255, 255, 0.65); }
   .ucBtn {
     margin-top: auto;
     width: 100%; padding: 1.3vh 0; border-radius: 1.1vh; cursor: pointer;
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.18);
-    font-family: 'Inter', sans-serif; font-weight: 700; font-size: min(1.6vh, 1.15vw);
+    font-family: 'Inter', sans-serif; font-weight: 700; font-size: min(1.45vh, 1vw);
     letter-spacing: 0.1em; color: #fff;
     transition: background 0.15s ease;
   }
@@ -398,32 +394,32 @@
 
   /* bottom-right quest card */
   #menu.hasImage #questCard {
-    display: flex; position: absolute; right: 2vw; bottom: 3vh;
-    width: 24vw; box-sizing: border-box;
+    display: flex; position: absolute; right: 2vw; bottom: 2.6vh;
+    width: 20.5vw; box-sizing: border-box;
     align-items: center; gap: 1vw;
     background: linear-gradient(135deg, rgba(70, 48, 118, 0.85), rgba(36, 26, 64, 0.85));
     border: 1px solid rgba(170, 140, 255, 0.45); border-radius: 1.5vh;
-    padding: 1.8vh 1.2vw; cursor: pointer;
+    padding: 1.5vh 1vw; cursor: pointer;
     font-family: 'Inter', sans-serif; text-align: left;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     transition: transform 0.15s ease, border-color 0.15s ease;
   }
   #menu.hasImage #questCard:hover { transform: translateY(-2px); border-color: rgba(200, 175, 255, 0.8); }
-  .qIcon { font-size: 3vh; }
-  .qText b { display: block; font-family: 'Cinzel', serif; font-size: min(1.9vh, 1.35vw); font-weight: 800; letter-spacing: 0.1em; color: #f3ead8; }
-  .qText span { display: block; font-size: min(1.55vh, 1.1vw); color: rgba(255, 255, 255, 0.65); margin-top: 0.3vh; }
+  .qIcon { font-size: 2.6vh; }
+  .qText b { display: block; font-family: 'Cinzel', serif; font-size: min(1.7vh, 1.2vw); font-weight: 800; letter-spacing: 0.1em; color: #f3ead8; }
+  .qText span { display: block; font-size: min(1.4vh, 1vw); color: rgba(255, 255, 255, 0.65); margin-top: 0.3vh; }
   #questCard .bChev { display: block; margin-left: auto; font-size: 3vh; color: rgba(255, 255, 255, 0.5); }
 
   /* footer */
   #menu.hasImage .menuFoot { display: block; bottom: 3.2vh; }
   #menu.hasImage .mfBig {
     display: block; font-family: 'Cinzel', serif; font-weight: 800;
-    font-size: min(2.7vh, 1.9vw); letter-spacing: 0.3em; color: #ffd98a;
+    font-size: min(2.3vh, 1.65vw); letter-spacing: 0.3em; color: #ffd98a;
     text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
   }
   #menu.hasImage .mfSmall {
     font-family: 'Inter', sans-serif; font-weight: 400;
-    font-size: 1.8vh; letter-spacing: 0.18em; color: rgba(255, 255, 255, 0.75);
+    font-size: 1.6vh; letter-spacing: 0.18em; color: rgba(255, 255, 255, 0.75);
     margin-top: 0.6vh; text-transform: none;
   }
 
@@ -664,14 +660,40 @@ const canvas = document.getElementById('game');
 let ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
-// Fit canvas to window, preserving aspect
+// The canvas fills the whole window; the 960x640 room is scaled up and
+// centered inside it, with a dark stone surround instead of black bars.
+const ROOM_W = 960, ROOM_H = 640;
+const view = { scale: 1, ox: 0, oy: 0 };
 function fitCanvas() {
-  const s = Math.min(window.innerWidth / 960, window.innerHeight / 640) * 0.97;
-  canvas.style.width = (960 * s) + 'px';
-  canvas.style.height = (640 * s) + 'px';
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  view.scale = Math.min(canvas.width / ROOM_W, canvas.height / ROOM_H);
+  view.ox = (canvas.width - ROOM_W * view.scale) / 2;
+  view.oy = (canvas.height - ROOM_H * view.scale) / 2;
+  ctx.imageSmoothingEnabled = false;
 }
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
+
+// dark castle-stone tile for the area around the room
+const surroundTile = (() => {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#16130f';
+  g.fillRect(0, 0, 64, 64);
+  for (let y = 0; y < 64; y += 16) {
+    const off = (y / 16) % 2 ? 16 : 0;
+    for (let x = -16; x < 64; x += 32) {
+      g.fillStyle = ((x + y) % 3) ? '#191510' : '#131009';
+      g.fillRect(x + off + 1, y + 1, 30, 14);
+    }
+  }
+  g.fillStyle = 'rgba(255,255,255,0.02)';
+  g.fillRect(0, 0, 64, 2);
+  return c;
+})();
+let surroundPattern = null;
 
 // ---------- deterministic per-tile randomness (stable textures) ----------
 function hash2(x, y, seed = 0) {
@@ -1105,6 +1127,13 @@ prerenderBG();
 
 // ---------- Render ----------
 function render(t) {
+  // stone surround filling the whole window
+  if (!surroundPattern) surroundPattern = ctx.createPattern(surroundTile, 'repeat');
+  ctx.fillStyle = surroundPattern;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
   ctx.drawImage(bgCanvas, 0, 0);
   for (const a of animTiles) {
     const x = a.tx * TILE, y = a.ty * TILE;
@@ -1176,6 +1205,16 @@ function render(t) {
   ctx.font = '15px Georgia, serif';
   ctx.fillStyle = 'rgba(240,226,195,0.45)';
   ctx.fillText('WASD / Arrow keys to move', 14, 626);
+
+  ctx.restore();
+  // soft shadow framing the room against the stone surround
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+  ctx.shadowBlur = 42;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(view.ox - 3, view.oy - 3, ROOM_W * view.scale + 6, ROOM_H * view.scale + 6);
+  ctx.restore();
 }
 
 // ---------- Main loop ----------
