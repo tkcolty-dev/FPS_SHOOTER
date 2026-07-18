@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kingdom Deluxe: The Last Knight</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Inter:wght@400;600;700;800&display=swap');
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #14100c;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    font-family: Georgia, 'Times New Roman', serif;
+  }
+  #wrap { position: relative; }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  #game {
+    box-shadow: 0 0 80px rgba(0,0,0,0.9);
+    border: 2px solid #2b2118;
+    border-radius: 4px;
+  }
+
+  /* ================= MAIN MENU ================= */
+  #menu {
+    position: fixed; inset: 0; z-index: 10;
+    overflow: hidden; background: #14100c;
+    transition: opacity 0.7s ease;
+  }
+  #menu.hidden { opacity: 0; pointer-events: none; }
+  #menuBg, #menuFx {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+  }
+  #menuBgImg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: none;
+    image-rendering: auto;
+  }
+  #menu.hasImage #menuBg { display: none; }
+  #menu.hasImage #menuBgImg { display: block; }
+
+  .titleBlock {
+    position: absolute; left: 7vw; top: 10vh;
+    user-select: none; pointer-events: none;
+  }
+  .kicker {
+    font-family: 'VT323', monospace;
+    font-size: 2.8vh; letter-spacing: 0.45em;
+    color: #c9a86a; opacity: 0.9; margin-bottom: 1.4vh;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+  }
+  .titleBlock h1 {
+    margin: 0; font-family: 'Press Start 2P', Georgia, serif;
+    font-size: 5.6vh; line-height: 1.28;
+    background: linear-gradient(#fdf3d7, #d9b26a 70%, #a97e3c);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; color: #e8cf9a;
+    filter: drop-shadow(4px 4px 0 rgba(20, 8, 30, 0.85));
+  }
+  .subtitle {
+    margin-top: 1.8vh; font-family: 'VT323', monospace;
+    font-size: 4.2vh; color: #e8c98f; letter-spacing: 0.08em;
+    text-shadow: 2px 2px 0 rgba(0,0,0,0.7), 0 0 30px rgba(140,60,220,0.35);
+  }
+
+  #btnStack {
+    position: absolute; left: 7vw; top: 46vh;
+    display: flex; flex-direction: column; gap: 2.2vh;
+    min-width: 17vw;
+  }
+  .menuBtn {
+    font-family: 'VT323', monospace;
+    font-size: 3.3vh; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #f0e2c3; text-align: center;
+    padding: 1.4vh 2.6vw; border-radius: 3px; cursor: pointer;
+    background: rgba(18, 12, 8, 0.4);
+    border: 2px solid rgba(201, 168, 106, 0.55);
+    box-shadow: 3px 3px 0 rgba(10, 5, 16, 0.55);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .menuBtn:hover, .menuBtn:focus-visible {
+    transform: scale(1.12);
+    background: rgba(70, 46, 18, 0.55);
+    border-color: rgba(232, 201, 143, 0.95);
+    box-shadow: 0 0 28px rgba(201, 168, 106, 0.4);
+    outline: none;
+  }
+  .menuBtn:active { transform: scale(1.05); }
+
+  .menuFoot {
+    position: absolute; bottom: 3vh; left: 0; right: 0;
+    text-align: center; color: rgba(240, 226, 195, 0.45);
+    font-size: 1.8vh; letter-spacing: 0.35em; text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  /* ---- panels ---- */
+  #panelShade {
+    position: absolute; inset: 0; z-index: 20;
+    background: rgba(5, 3, 10, 0.55);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.25s ease;
+  }
+  #panelShade.hidden { opacity: 0; pointer-events: none; }
+  .panel {
+    position: relative;
+    width: min(600px, 88vw); max-height: 80vh; overflow: auto;
+    background: linear-gradient(#26190e, #191108);
+    border: 2px solid rgba(201, 168, 106, 0.55);
+    border-radius: 12px;
+    padding: 4.5vh 3.2vw 3.5vh;
+    color: #f0e2c3;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), inset 0 0 60px rgba(0,0,0,0.35);
+    animation: panelIn 0.28s ease;
+  }
+  @keyframes panelIn {
+    from { transform: scale(0.92) translateY(2vh); opacity: 0; }
+    to   { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  .panel h2 {
+    margin: 0 0 3vh; color: #e8c98f;
+    letter-spacing: 0.28em; font-size: 3vh; text-transform: uppercase;
+    text-align: center;
+  }
+  .panel .row {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 2vw; margin: 2.4vh 0; font-size: 2.2vh;
+  }
+  .panel input[type=range] { flex: 1; max-width: 55%; accent-color: #c9a86a; height: 2.2vh; }
+  .panel .rowBtn {
+    font-family: Georgia, serif; font-size: 2vh; color: #f0e2c3;
+    background: rgba(201, 168, 106, 0.12);
+    border: 1px solid rgba(201, 168, 106, 0.5);
+    border-radius: 6px; padding: 1vh 1.6vw; cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .panel .rowBtn:hover { background: rgba(201, 168, 106, 0.28); }
+  .panelX {
+    position: absolute; top: 1.6vh; right: 1.2vw;
+    background: none; border: none; color: #c9a86a;
+    font-size: 3vh; cursor: pointer; line-height: 1;
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+  .panelX:hover { transform: scale(1.25); color: #ffd98a; }
+  .credits-center { text-align: center; }
+  .credit-role {
+    margin-top: 3vh; font-size: 1.9vh; letter-spacing: 0.3em;
+    text-transform: uppercase; color: rgba(240, 226, 195, 0.55);
+  }
+  .credit-name {
+    margin-top: 0.8vh; font-size: 3.6vh; color: #ffd98a;
+    letter-spacing: 0.12em; text-shadow: 0 0 24px rgba(255, 217, 138, 0.35);
+  }
+  .credit-small { margin-top: 4vh; font-style: italic; font-size: 2vh; color: rgba(240,226,195,0.6); }
+
+  /* pixel-font pass for panels + footer */
+  .panel, .panel .rowBtn { font-family: 'VT323', monospace; }
+  .panel .row { font-size: 2.9vh; }
+  .panel .rowBtn { font-size: 2.7vh; letter-spacing: 0.08em; border-radius: 3px; }
+  .panel h2 { font-family: 'Press Start 2P', Georgia, serif; font-size: 2.3vh; }
+  .credit-role { font-size: 2.4vh; }
+  .credit-name { font-family: 'Press Start 2P', Georgia, serif; font-size: 2.6vh; line-height: 1.5; }
+  .credit-small { font-size: 2.6vh; }
+  .menuFoot { font-family: 'VT323', monospace; font-size: 2.4vh; }
+
+  /* top stats ribbon */
+  #menuTop {
+    position: absolute; top: 1.6vh; left: 2vw; right: 2vw;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1vw; pointer-events: none;
+  }
+  .chip {
+    font-family: 'VT323', monospace; font-size: 2.4vh;
+    letter-spacing: 0.12em; color: #f0dfae;
+    background: rgba(18, 12, 8, 0.45);
+    border: 1px solid rgba(201, 168, 106, 0.45);
+    border-radius: 3px; padding: 0.5vh 1.2vw;
+    text-shadow: 0 0 14px rgba(255, 200, 110, 0.6);
+    box-shadow: 2px 2px 0 rgba(10, 5, 16, 0.45);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    white-space: nowrap;
+  }
+  .chip span { color: #ffd98a; }
+  .bIcon { color: #c9a86a; margin-right: 1.2vw; }
+
+  /* structural bits of the rich buttons, hidden in fallback mode */
+  .bText { display: inline; }
+  .bTitle { display: inline; }
+  .bSub, .bChev { display: none; }
+  #iconRow, #statCards, #updateCard, #questCard, #menuToast, #btnExit { display: none; }
+
+  /* ===== when title-bg.png is active: AAA glassy overlay UI ===== */
+  #menu.hasImage .titleBlock,
+  #menu.hasImage .menuFoot,
+  #menu.hasImage .chip:not(#chipDate) { display: none; }
+  #menu.hasImage #menuTop { justify-content: center; left: 0; right: 0; top: 0; }
+  #menu.hasImage #chipDate {
+    position: absolute; left: 50%; top: 3vh; transform: translateX(-50%);
+    min-width: 25.5vw; text-align: center;
+    font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: 0.14em;
+    font-size: 2.2vh; padding: 1.6vh 2vw;
+    background: rgba(12, 12, 16, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 1.4vh;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+    color: #fff; text-shadow: none;
+  }
+  #menu.hasImage #btnStack {
+    left: 2.5vw; top: 47.2vh; gap: 1.15vh; min-width: 24.6vw; max-width: 24.6vw;
+  }
+  #menu.hasImage .menuBtn {
+    display: flex; align-items: center; gap: 1vw;
+    font-family: 'Inter', sans-serif;
+    padding: 1.35vh 1.1vw; border-radius: 1.5vh;
+    background: rgba(14, 13, 12, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
+    text-transform: none; letter-spacing: 0; text-align: left;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  #menu.hasImage .menuBtn:hover, #menu.hasImage .menuBtn:focus-visible {
+    transform: translateY(-2px) scale(1.02);
+    background: rgba(24, 22, 18, 0.95);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
+  }
+  #menu.hasImage .bIcon {
+    width: 4.8vh; height: 4.8vh; margin: 0; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 1.1vh; font-size: 2.4vh; color: #eee;
+  }
+  #menu.hasImage .bText { display: flex; flex-direction: column; gap: 0.3vh; }
+  #menu.hasImage .bTitle {
+    font-weight: 800; font-size: 2.3vh; color: #fff;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  #menu.hasImage .bSub {
+    display: block; font-weight: 400; font-size: 1.6vh;
+    color: rgba(255, 255, 255, 0.55);
+  }
+  #menu.hasImage .bChev {
+    display: block; margin-left: auto;
+    font-size: 3.2vh; color: rgba(255, 255, 255, 0.4); line-height: 1;
+  }
+  #menu.hasImage #btnExit { display: flex; }
+  #menu.hasImage #btnPlay {
+    background: linear-gradient(140deg, rgba(66, 46, 10, 0.95), rgba(30, 22, 8, 0.95));
+    border: 1.5px solid #e8b64c;
+    box-shadow: 0 0 26px rgba(232, 182, 76, 0.28), 0 8px 26px rgba(0, 0, 0, 0.5);
+  }
+  #menu.hasImage #btnPlay .bIcon { background: rgba(232, 182, 76, 0.22); color: #ffd98a; }
+  #menu.hasImage #btnPlay .bTitle { color: #ffd98a; }
+  #menu.hasImage #btnPlay .bChev { color: rgba(255, 217, 138, 0.7); }
+
+  /* top-right icon cluster */
+  #menu.hasImage #iconRow { display: flex; position: absolute; right: 1.7vw; top: 3vh; gap: 0.55vw; }
+  .iconBtn {
+    position: relative; width: 3.4vw; height: 6vh;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(12, 12, 16, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 1.2vh;
+    color: #ddd; font-size: 2.5vh; cursor: pointer;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .iconBtn:hover { transform: scale(1.08); border-color: rgba(255, 255, 255, 0.4); }
+  .badge {
+    position: absolute; top: -0.7vh; right: -0.4vw;
+    min-width: 2.2vh; height: 2.2vh; border-radius: 1.1vh;
+    background: #e5484d; color: #fff;
+    font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.4vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 0.3vh; border: 2px solid rgba(12, 12, 16, 0.95);
+  }
+
+  /* bottom-left stat cards */
+  #menu.hasImage #statCards { display: flex; position: absolute; left: 1.7vw; bottom: 2.6vh; gap: 0.75vw; }
+  .statCard {
+    width: 7.9vw; padding: 1.3vh 0.5vw; text-align: center;
+    background: rgba(12, 12, 16, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 1.4vh;
+    font-family: 'Inter', sans-serif;
+  }
+  .scIcon { font-size: 2.6vh; }
+  .scLabel {
+    margin-top: 0.5vh; font-size: 1.25vh; font-weight: 600;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
+  }
+  .scVal { margin-top: 0.4vh; font-size: 1.9vh; font-weight: 800; color: #ffd98a; }
+
+  /* right-side latest update card */
+  #menu.hasImage #updateCard {
+    display: block; position: absolute; right: 1.7vw; top: 30vh; width: 20.5vw;
+    background: rgba(12, 12, 16, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 1.8vh;
+    padding: 1.8vh 1vw; font-family: 'Inter', sans-serif;
+    box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55);
+  }
+  .ucHead {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 1.7vh; font-weight: 700; letter-spacing: 0.12em; color: #fff;
+  }
+  .ucNew {
+    background: #e8b64c; color: #201603; font-weight: 800; font-size: 1.4vh;
+    padding: 0.3vh 0.6vw; border-radius: 0.9vh; letter-spacing: 0.08em;
+  }
+  .ucThumb {
+    width: 100%; border-radius: 1.2vh; margin: 1.3vh 0 1.2vh; display: block;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .ucTitle { font-size: 2.3vh; font-weight: 800; letter-spacing: 0.06em; color: #ffd98a; }
+  .ucBody { margin: 0.8vh 0 1.5vh; font-size: 1.65vh; line-height: 1.45; color: rgba(255, 255, 255, 0.65); }
+  .ucBtn {
+    width: 100%; padding: 1.3vh 0; border-radius: 1.1vh; cursor: pointer;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.6vh;
+    letter-spacing: 0.1em; color: #fff;
+    transition: background 0.15s ease;
+  }
+  .ucBtn:hover { background: rgba(255, 255, 255, 0.16); }
+  .ucDots { display: flex; justify-content: center; gap: 0.5vw; margin-top: 1.5vh; }
+  .ucDots i { width: 1vh; height: 1vh; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+  .ucDots i.on { background: #ffd98a; }
+
+  /* bottom-right quest card (where "discord" used to be — there is no discord) */
+  #menu.hasImage #questCard {
+    display: flex; position: absolute; right: 1.7vw; bottom: 2.6vh;
+    width: 23.7vw; align-items: center; gap: 1vw;
+    background: linear-gradient(135deg, rgba(70, 48, 118, 0.95), rgba(36, 26, 64, 0.95));
+    border: 1px solid rgba(170, 140, 255, 0.45); border-radius: 1.5vh;
+    padding: 1.6vh 1.2vw; cursor: pointer;
+    font-family: 'Inter', sans-serif; text-align: left;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  #menu.hasImage #questCard:hover { transform: translateY(-2px); border-color: rgba(200, 175, 255, 0.8); }
+  .qIcon { font-size: 3vh; }
+  .qText b { display: block; font-size: 1.9vh; font-weight: 800; letter-spacing: 0.1em; color: #fff; }
+  .qText span { display: block; font-size: 1.55vh; color: rgba(255, 255, 255, 0.65); margin-top: 0.3vh; }
+  #questCard .bChev { display: block; margin-left: auto; font-size: 3vh; color: rgba(255, 255, 255, 0.5); }
+
+  /* menu toast */
+  #menuToast {
+    position: absolute; bottom: 13vh; left: 50%; transform: translateX(-50%);
+    background: rgba(12, 12, 16, 0.94);
+    border: 1px solid rgba(255, 217, 138, 0.4); border-radius: 1.2vh;
+    padding: 1.5vh 2.2vw; font-family: 'Inter', sans-serif;
+    font-size: 1.9vh; color: #ffe9b8; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    z-index: 30;
+  }
+  #menu.hasImage #menuToast { display: block; }
+  #menuToast.show { opacity: 1; }
+
+  .patchList p { margin: 1.6vh 0; font-size: 2.6vh; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="game" width="960" height="640"></canvas></div>
+
+<div id="menu">
+  <canvas id="menuBg"></canvas>
+  <img id="menuBgImg" src="title-bg.png" alt="">
+  <canvas id="menuFx"></canvas>
+
+  <div id="menuTop">
+    <div class="chip">&#9876; KNIGHTS FREED <span id="statKnights">0 / 4</span></div>
+    <div class="chip" id="chipDate">&mdash;</div>
+    <div class="chip">REMASTER v1.0</div>
+  </div>
+
+  <div class="titleBlock">
+    <div class="kicker">KENNA KUHN'S</div>
+    <h1>KINGDOM<br>DELUXE</h1>
+    <div class="subtitle">The Last Knight</div>
+  </div>
+
+  <div id="btnStack">
+    <button class="menuBtn" id="btnPlay">
+      <span class="bIcon">&#9876;</span>
+      <span class="bText"><span class="bTitle">Play</span><span class="bSub">Begin your adventure</span></span>
+      <span class="bChev">&#8250;</span>
+    </button>
+    <button class="menuBtn" id="btnSettings">
+      <span class="bIcon">&#9881;</span>
+      <span class="bText"><span class="bTitle">Settings</span><span class="bSub">Customize your experience</span></span>
+      <span class="bChev">&#8250;</span>
+    </button>
+    <button class="menuBtn" id="btnCredits">
+      <span class="bIcon">&#9818;</span>
+      <span class="bText"><span class="bTitle">Credits</span><span class="bSub">View the team &amp; creators</span></span>
+      <span class="bChev">&#8250;</span>
+    </button>
+    <button class="menuBtn" id="btnExit">
+      <span class="bIcon">&#10005;</span>
+      <span class="bText"><span class="bTitle">Exit Game</span><span class="bSub">Close Kingdom Deluxe</span></span>
+      <span class="bChev">&#8250;</span>
+    </button>
+  </div>
+
+  <div id="iconRow">
+    <button class="iconBtn" id="icMail">&#9993;<span class="badge">1</span></button>
+    <button class="iconBtn" id="icBell">&#128276;<span class="badge">4</span></button>
+    <button class="iconBtn" id="icGear">&#9881;</button>
+  </div>
+
+  <div id="statCards">
+    <div class="statCard"><div class="scIcon">&#127942;</div><div class="scLabel">Achievements</div><div class="scVal">0 / 12</div></div>
+    <div class="statCard"><div class="scIcon">&#128081;</div><div class="scLabel">Leaderboard</div><div class="scVal">#1 KENNA</div></div>
+    <div class="statCard"><div class="scIcon">&#128202;</div><div class="scLabel">Playtime</div><div class="scVal" id="scTime">0h 0m</div></div>
+  </div>
+
+  <div id="updateCard">
+    <div class="ucHead"><span>&#10022; LATEST UPDATE</span><span class="ucNew">NEW</span></div>
+    <img src="patch-thumb.png" alt="" class="ucThumb">
+    <div class="ucTitle">v1.0 REMASTER</div>
+    <div class="ucBody">A complete visual overhaul of Kenna's original kingdom &mdash; new story, new castle, real knights.</div>
+    <button class="ucBtn" id="btnPatch">VIEW PATCH NOTES &#8599;</button>
+    <div class="ucDots"><i class="on"></i><i></i><i></i><i></i></div>
+  </div>
+
+  <button id="questCard">
+    <span class="qIcon">&#9876;</span>
+    <span class="qText"><b>YOUR QUEST</b><span>Free the four frozen knights!</span></span>
+    <span class="bChev">&#8250;</span>
+  </button>
+
+  <div id="menuToast"></div>
+
+  <div class="menuFoot">Created by Kenna Kuhn</div>
+
+  <div id="panelShade" class="hidden">
+    <div class="panel" id="settingsPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>Settings</h2>
+      <div class="row"><span>Music volume</span><input type="range" id="setMusic" min="0" max="100"></div>
+      <div class="row"><span>Sound effects</span><input type="range" id="setSfx" min="0" max="100"></div>
+      <div class="row"><span>Screen</span><button class="rowBtn" id="setFullscreen">Toggle fullscreen</button></div>
+      <div class="row" style="justify-content:center; margin-top:3.5vh">
+        <button class="rowBtn" data-close>Done</button>
+      </div>
+    </div>
+    <div class="panel" id="patchPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>Patch Notes &mdash; v1.0</h2>
+      <div class="patchList">
+        <p>&#9876; Kingdom rebuilt from Kenna's original <i>"Math Fact Kingdom Deluxe"</i></p>
+        <p>&#128683; All math has been banished from the realm forever</p>
+        <p>&#128220; New story: <b>The Last Knight</b> &mdash; the sorcerer Concur has turned every knight to stone</p>
+        <p>&#127984; The castle courtyard is open for exploration</p>
+        <p>&#9878; Four knights await rescue&hellip; coming soon</p>
+      </div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+    <div class="panel credits-center" id="creditsPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>Credits</h2>
+      <div class="credit-role">Original game &amp; creator of the Kingdom</div>
+      <div class="credit-name">KENNA KUHN</div>
+      <div class="credit-role">Based on</div>
+      <div class="credit-name" style="font-size:2.6vh">"Math Fact Kingdom Deluxe"</div>
+      <div class="credit-role">Remaster</div>
+      <div class="credit-name" style="font-size:2.6vh">The Royal Remaster Guild</div>
+      <div class="credit-small">Step 1: Concur. Step 2: Rule the kingdom. Step 3: Rule the world.</div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+'use strict';
+
+// ============================================================
+// KINGDOM DELUXE: THE LAST KNIGHT
+// A birthday remake of "Math Fact Kingdom Deluxe" by Kenna Kuhn
+// ============================================================
+
+const TILE = 64;
+const COLS = 15, ROWS = 10;
+const canvas = document.getElementById('game');
+let ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+// Fit canvas to window, preserving aspect
+function fitCanvas() {
+  const s = Math.min(window.innerWidth / 960, window.innerHeight / 640) * 0.97;
+  canvas.style.width = (960 * s) + 'px';
+  canvas.style.height = (640 * s) + 'px';
+}
+window.addEventListener('resize', fitCanvas);
+fitCanvas();
+
+// ---------- deterministic per-tile randomness (stable textures) ----------
+function hash2(x, y, seed = 0) {
+  let h = (x * 374761393 + y * 668265263 + seed * 1274126177) | 0;
+  h = ((h ^ (h >> 13)) * 1103515245) | 0;
+  return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+}
+
+// ---------- pixel sprite builder ----------
+// Turns rows of characters into an offscreen canvas at 4x scale (16px -> 64px)
+function buildSprite(rows, palette, scale = 4) {
+  const w = rows[0].length, h = rows.length;
+  const c = document.createElement('canvas');
+  c.width = w * scale; c.height = h * scale;
+  const g = c.getContext('2d');
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const col = palette[rows[y][x]];
+      if (!col) continue;
+      g.fillStyle = col;
+      g.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+  return c;
+}
+
+// ---------- Kenna sprites ----------
+const KENNA_PAL = {
+  'H': '#7a4a21',  // hair
+  'h': '#935c2c',  // hair highlight
+  'S': '#f6cfa4',  // skin
+  'E': '#3d2c1e',  // eyes
+  'T': '#2f8f8f',  // squire tunic (teal)
+  't': '#3aa6a0',  // tunic highlight
+  'B': '#6b4a2a',  // belt
+  'b': '#c9a86a',  // belt buckle
+  'L': '#5b3b20',  // boots
+  'o': '#00000033' // soft shadow px
+};
+
+// 16x16, drawn at 4x. Two frames per direction: stride / together.
+const KENNA_DOWN_A = [
+'................',
+'.....hHHHHh.....',
+'....HHHHHHHH....',
+'....HHHHHHHH....',
+'....HSSSSSSH....',
+'....SSESSESS....',
+'.....SSSSSS.....',
+'.....tTTTTt.....',
+'....TTTTTTTT....',
+'...STTTTTTTTS...',
+'...STTTTTTTTS...',
+'....BBBbBBBB....',
+'.....LL..LL.....',
+'....LL....LL....',
+'....LL....LL....',
+'................'];
+const KENNA_DOWN_B = [
+'................',
+'.....hHHHHh.....',
+'....HHHHHHHH....',
+'....HHHHHHHH....',
+'....HSSSSSSH....',
+'....SSESSESS....',
+'.....SSSSSS.....',
+'.....tTTTTt.....',
+'....TTTTTTTT....',
+'...STTTTTTTTS...',
+'...STTTTTTTTS...',
+'....BBBbBBBB....',
+'......LLLL......',
+'......LLLL......',
+'......LLLL......',
+'................'];
+const KENNA_UP_A = [
+'................',
+'.....hHHHHh.....',
+'....HHHHHHHH....',
+'....HhHHHHhH....',
+'....HHHHHHHH....',
+'....HHHHHHHH....',
+'.....HHHHHH.....',
+'.....tTTTTt.....',
+'....TTTTTTTT....',
+'...STTTTTTTTS...',
+'...STTTTTTTTS...',
+'....BBBBBBBB....',
+'.....LL..LL.....',
+'....LL....LL....',
+'....LL....LL....',
+'................'];
+const KENNA_UP_B = KENNA_UP_A.slice(0, 12).concat([
+'......LLLL......',
+'......LLLL......',
+'......LLLL......',
+'................']);
+const KENNA_SIDE_A = [   // facing right; flipped for left
+'................',
+'.....hHHHH......',
+'....HHHHHHH.....',
+'....HHHHHHHH....',
+'....HhSSSSS.....',
+'....HHSESSS.....',
+'.....SSSSS......',
+'.....tTTTT......',
+'....TTTTTTT.....',
+'....TTTTTTTS....',
+'....TTTTTTTS....',
+'....BBBbBBB.....',
+'.....LLLLL......',
+'....LL...LL.....',
+'...LL.....LL....',
+'................'];
+const KENNA_SIDE_B = KENNA_SIDE_A.slice(0, 12).concat([
+'.....LLLL.......',
+'.....LL.LL......',
+'.....LL.LL......',
+'................']);
+
+const sprites = {
+  down: [buildSprite(KENNA_DOWN_A, KENNA_PAL), buildSprite(KENNA_DOWN_B, KENNA_PAL)],
+  up:   [buildSprite(KENNA_UP_A, KENNA_PAL),   buildSprite(KENNA_UP_B, KENNA_PAL)],
+  side: [buildSprite(KENNA_SIDE_A, KENNA_PAL), buildSprite(KENNA_SIDE_B, KENNA_PAL)],
+};
+
+// ---------- Stone knight statue (Sir Bramble, frozen) ----------
+const STATUE_PAL = {
+  'M': '#9aa0a6', 'm': '#b7bdc2', // armor grays
+  'V': '#3c4148',  // visor slit
+  'T': '#7e858c',  // torso
+  'L': '#565c63',  // legs
+  'X': '#c7ccd1',  // sword blade
+  'G': '#6d6354',  // hilt
+};
+const STATUE_ROWS = [
+'................',
+'.....mMMMMm.....',
+'....MMMMMMMM....',
+'....MVVVVVVM....',
+'....MMMMMMMM....',
+'.....mMMMMm.....',
+'....TTTTTTTT..X.',
+'...MTTTTTTTTM.X.',
+'...MTTTTTTTTM.X.',
+'....TTTTTTTT..X.',
+'....MMMMMMMM.GXG',
+'.....LL..LL...X.',
+'.....LL..LL.....',
+'....LLL..LLL....',
+'................',
+'................'];
+const statueSprite = buildSprite(STATUE_ROWS, STATUE_PAL);
+
+// ---------- Room: The Castle Courtyard ----------
+// W wall  G grass  P path  D sealed gate  F fountain  S statue  B bush
+const COURTYARD = [
+'WWWWWWDDDWWWWWW',
+'WGGGGGPPPGGGGGW',
+'WGBGGGPPPGGGBGW',
+'WGGGGGPPPGGGGGW',
+'WGGFFGPPPGGSGGW',
+'WGGFFGPPPGGGGGW',
+'WGGGGGPPPGGGGGW',
+'WGBGGGPPPGGGBGW',
+'WGGGGGPPPGGGGGW',
+'WWWWWWWWWWWWWWW'];
+const SOLID = new Set(['W', 'D', 'F', 'S', 'B']);
+
+function tileAt(tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return 'W';
+  return COURTYARD[ty][tx];
+}
+
+// ---------- Player ----------
+const player = {
+  x: 7.5 * TILE,   // center x (px)
+  y: 7.5 * TILE,   // feet y (px)
+  speed: 230,
+  dir: 'down',     // down | up | left | right
+  moving: false,
+  animTime: 0,
+};
+const HIT_W = 36, HIT_H = 22; // feet hitbox
+
+function rectHitsSolid(cx, feetY) {
+  const l = cx - HIT_W / 2, r = cx + HIT_W / 2;
+  const t = feetY - HIT_H, b = feetY;
+  for (const [px, py] of [[l, t], [r, t], [l, b], [r, b], [cx, b]]) {
+    if (SOLID.has(tileAt(Math.floor(px / TILE), Math.floor(py / TILE)))) return true;
+  }
+  return false;
+}
+
+// which solid tile (if any) the player is pushing against — for gate messages
+function pushedTile(cx, feetY) {
+  const tx = Math.floor(cx / TILE), ty = Math.floor((feetY - HIT_H / 2) / TILE);
+  const d = { down: [0, 1], up: [0, -1], left: [-1, 0], right: [1, 0] }[player.dir];
+  return tileAt(tx + d[0], ty + d[1]);
+}
+
+// ---------- Input ----------
+const keys = new Set();
+const KEYMAP = {
+  ArrowUp: 'up', KeyW: 'up',
+  ArrowDown: 'down', KeyS: 'down',
+  ArrowLeft: 'left', KeyA: 'left',
+  ArrowRight: 'right', KeyD: 'right',
+};
+window.addEventListener('keydown', e => {
+  if (KEYMAP[e.code]) { keys.add(KEYMAP[e.code]); e.preventDefault(); }
+});
+window.addEventListener('keyup', e => {
+  if (KEYMAP[e.code]) keys.delete(KEYMAP[e.code]);
+});
+window.addEventListener('blur', () => keys.clear());
+
+// ---------- Toast messages ----------
+let toast = null; // {text, until}
+function showToast(text, secs = 3) {
+  toast = { text, until: elapsed + secs };
+}
+let lastGateMsg = -99;
+
+// ---------- Update ----------
+let elapsed = 0;
+function update(dt) {
+  let vx = 0, vy = 0;
+  if (keys.has('left')) vx -= 1;
+  if (keys.has('right')) vx += 1;
+  if (keys.has('up')) vy -= 1;
+  if (keys.has('down')) vy += 1;
+
+  player.moving = (vx !== 0 || vy !== 0);
+  if (player.moving) {
+    // facing: horizontal wins for side-sprite flavor, vertical otherwise
+    if (vx < 0) player.dir = 'left';
+    else if (vx > 0) player.dir = 'right';
+    if (vy !== 0 && vx === 0) player.dir = vy < 0 ? 'up' : 'down';
+
+    const len = Math.hypot(vx, vy);
+    const step = player.speed * dt;
+    const dx = (vx / len) * step, dy = (vy / len) * step;
+
+    // axis-separated so she slides along walls
+    if (!rectHitsSolid(player.x + dx, player.y)) player.x += dx;
+    if (!rectHitsSolid(player.x, player.y + dy)) player.y += dy;
+
+    player.animTime += dt;
+
+    // pushing on the sealed gate?
+    if (pushedTile(player.x, player.y) === 'D' && elapsed - lastGateMsg > 4) {
+      lastGateMsg = elapsed;
+      showToast("The gate to the Great Hall is sealed by Concur's magic…", 3.5);
+    }
+  } else {
+    player.animTime = 0;
+  }
+
+  if (toast && elapsed > toast.until) toast = null;
+}
+
+// ---------- Tile rendering ----------
+// Painters that tile beyond their bounds get clipped to the tile rect.
+function clipTile(x, y, fn) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, TILE, TILE);
+  ctx.clip();
+  fn();
+  ctx.restore();
+}
+
+function drawGrass(x, y, tx, ty) {
+  ctx.fillStyle = '#4e8f3c';
+  ctx.fillRect(x, y, TILE, TILE);
+  // deterministic tufts + speckles
+  for (let i = 0; i < 5; i++) {
+    const rx = hash2(tx, ty, i), ry = hash2(tx, ty, i + 10);
+    const px = x + 6 + rx * (TILE - 14), py = y + 6 + ry * (TILE - 14);
+    ctx.fillStyle = hash2(tx, ty, i + 20) > 0.5 ? '#5ba147' : '#447f34';
+    ctx.fillRect(px, py, 5, 3);
+    ctx.fillRect(px + 1, py - 3, 3, 3);
+  }
+  if (hash2(tx, ty, 99) > 0.86) { // occasional tiny flower
+    const fx = x + 10 + hash2(tx, ty, 7) * 40, fy = y + 10 + hash2(tx, ty, 8) * 40;
+    ctx.fillStyle = hash2(tx, ty, 9) > 0.5 ? '#e8d44f' : '#e8ebee';
+    ctx.fillRect(fx, fy, 6, 6);
+    ctx.fillStyle = '#c9862c';
+    ctx.fillRect(fx + 2, fy + 2, 2, 2);
+  }
+}
+
+function drawPath(x, y, tx, ty) {
+  ctx.fillStyle = '#b3a284';
+  ctx.fillRect(x, y, TILE, TILE);
+  // cobblestones
+  const off = (ty % 2) ? 16 : 0;
+  ctx.fillStyle = '#a2917320';
+  for (let sy = 0; sy < TILE; sy += 16) {
+    for (let sx = -16; sx < TILE; sx += 32) {
+      const jx = hash2(tx * 4 + sx, ty * 4 + sy) * 3;
+      ctx.fillStyle = hash2(tx * 7 + sx, ty * 7 + sy) > 0.5 ? '#a89678' : '#bcab8d';
+      ctx.fillRect(x + sx + off + jx, y + sy + 1, 28, 13);
+    }
+  }
+  ctx.strokeStyle = '#8d7c60';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x + 0.5, y + 0.5, TILE, TILE);
+}
+
+function drawWall(x, y, tx, ty) {
+  ctx.fillStyle = '#6e6a63';
+  ctx.fillRect(x, y, TILE, TILE);
+  // brick courses
+  for (let sy = 0; sy < TILE; sy += 16) {
+    const rowOff = ((sy / 16 + ty) % 2) ? 16 : 0;
+    for (let sx = -16; sx < TILE; sx += 32) {
+      const shade = hash2(tx * 3 + sx, ty * 3 + sy);
+      ctx.fillStyle = shade > 0.66 ? '#7d7970' : shade > 0.33 ? '#6b675f' : '#5f5b54';
+      ctx.fillRect(x + sx + rowOff + 1, y + sy + 1, 30, 14);
+    }
+  }
+  // top edge highlight (battlement feel on the top row)
+  if (ty === 0 || tileAt(tx, ty - 1) !== 'W') {
+    ctx.fillStyle = '#8a867d';
+    ctx.fillRect(x, y, TILE, 6);
+  }
+  ctx.fillStyle = '#00000022';
+  ctx.fillRect(x, y + TILE - 5, TILE, 5);
+}
+
+function drawGate(x, y, t) {
+  // wooden gate
+  ctx.fillStyle = '#5d4426';
+  ctx.fillRect(x, y, TILE, TILE);
+  ctx.fillStyle = '#6d5230';
+  for (let sx = 4; sx < TILE; sx += 14) ctx.fillRect(x + sx, y, 8, TILE);
+  // iron bands
+  ctx.fillStyle = '#3a3d42';
+  ctx.fillRect(x, y + 12, TILE, 6);
+  ctx.fillRect(x, y + 44, TILE, 6);
+  // Concur's magic seal — pulsing purple glow
+  const pulse = 0.35 + 0.2 * Math.sin(t * 2.2);
+  ctx.fillStyle = `rgba(140, 60, 220, ${pulse})`;
+  ctx.fillRect(x, y, TILE, TILE);
+  ctx.strokeStyle = `rgba(200, 140, 255, ${0.5 + 0.3 * Math.sin(t * 2.2)})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x + TILE / 2, y + TILE / 2, 18 + 2 * Math.sin(t * 3), 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawFountain(x, y, tx, ty, t) {
+  // determine which corner of the 2x2 fountain this tile is
+  const isLeft = tileAt(tx - 1, ty) !== 'F';
+  const isTop = tileAt(tx, ty - 1) !== 'F';
+  ctx.fillStyle = '#8f8b83';
+  ctx.fillRect(x, y, TILE, TILE);
+  // water basin (inset from outer edges)
+  const ix = x + (isLeft ? 10 : 0), iy = y + (isTop ? 10 : 0);
+  const iw = TILE - (isLeft ? 10 : 0) - (tileAt(tx + 1, ty) !== 'F' ? 10 : 0);
+  const ih = TILE - (isTop ? 10 : 0) - (tileAt(tx, ty + 1) !== 'F' ? 10 : 0);
+  ctx.fillStyle = '#3f7fb5';
+  ctx.fillRect(ix, iy, iw, ih);
+  // shimmering ripples
+  for (let i = 0; i < 3; i++) {
+    const rp = (t * 0.7 + i * 0.33 + hash2(tx, ty, i)) % 1;
+    ctx.fillStyle = `rgba(180, 220, 255, ${0.5 * (1 - rp)})`;
+    ctx.fillRect(ix + 4 + hash2(tx, ty, i + 3) * (iw - 16), iy + 4 + rp * (ih - 10), 10, 3);
+  }
+}
+
+function drawBush(x, y, tx, ty) {
+  drawGrass(x, y, tx, ty);
+  ctx.fillStyle = '#2e6b26';
+  ctx.beginPath();
+  ctx.arc(x + 20, y + 38, 15, 0, Math.PI * 2);
+  ctx.arc(x + 42, y + 36, 16, 0, Math.PI * 2);
+  ctx.arc(x + 31, y + 24, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3c8232';
+  ctx.beginPath();
+  ctx.arc(x + 26, y + 28, 10, 0, Math.PI * 2);
+  ctx.arc(x + 40, y + 30, 8, 0, Math.PI * 2);
+  ctx.fill();
+  if (hash2(tx, ty, 5) > 0.4) { // berries
+    ctx.fillStyle = '#c33b4e';
+    ctx.fillRect(x + 22, y + 34, 4, 4);
+    ctx.fillRect(x + 38, y + 26, 4, 4);
+    ctx.fillRect(x + 30, y + 42, 4, 4);
+  }
+}
+
+function drawStatueTile(x, y, tx, ty) {
+  drawGrass(x, y, tx, ty);
+  // pedestal
+  ctx.fillStyle = '#7c7870';
+  ctx.fillRect(x + 8, y + 44, TILE - 16, 16);
+  ctx.fillStyle = '#8d897f';
+  ctx.fillRect(x + 12, y + 40, TILE - 24, 8);
+  // frozen knight, slightly raised on pedestal
+  ctx.drawImage(statueSprite, x, y - 24);
+}
+
+// ---------- Static background, rendered once ----------
+const bgCanvas = document.createElement('canvas');
+bgCanvas.width = 960; bgCanvas.height = 640;
+const animTiles = []; // gate + fountain tiles, redrawn every frame
+
+function prerenderBG() {
+  const mainCtx = ctx;
+  ctx = bgCanvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  for (let ty = 0; ty < ROWS; ty++) {
+    for (let tx = 0; tx < COLS; tx++) {
+      const x = tx * TILE, y = ty * TILE;
+      const ch = COURTYARD[ty][tx];
+      if (ch === 'G') drawGrass(x, y, tx, ty);
+      else if (ch === 'P') clipTile(x, y, () => drawPath(x, y, tx, ty));
+      else if (ch === 'W') clipTile(x, y, () => drawWall(x, y, tx, ty));
+      else if (ch === 'D') { drawGate(x, y, 0); animTiles.push({ tx, ty, ch }); }
+      else if (ch === 'F') { drawFountain(x, y, tx, ty, 0); animTiles.push({ tx, ty, ch }); }
+      else if (ch === 'B') drawBush(x, y, tx, ty);
+      else if (ch === 'S') drawStatueTile(x, y, tx, ty);
+    }
+  }
+  ctx = mainCtx;
+}
+prerenderBG();
+
+// ---------- Render ----------
+function render(t) {
+  ctx.drawImage(bgCanvas, 0, 0);
+  for (const a of animTiles) {
+    const x = a.tx * TILE, y = a.ty * TILE;
+    if (a.ch === 'D') drawGate(x, y, t);
+    else drawFountain(x, y, a.tx, a.ty, t);
+  }
+
+  // ---- player ----
+  const frame = player.moving ? (Math.floor(player.animTime * 8) % 2) : 1;
+  const set = (player.dir === 'left' || player.dir === 'right') ? sprites.side : sprites[player.dir];
+  const spr = set[frame];
+  const bob = (player.moving && frame === 1) ? -2 : 0;
+  const drawX = Math.round(player.x - 32);
+  const drawY = Math.round(player.y - 60 + bob);
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.beginPath();
+  ctx.ellipse(Math.round(player.x), Math.round(player.y - 2), 18, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (player.dir === 'left') {
+    ctx.save();
+    ctx.translate(drawX + 64, drawY);
+    ctx.scale(-1, 1);
+    ctx.drawImage(spr, 0, 0);
+    ctx.restore();
+  } else {
+    ctx.drawImage(spr, drawX, drawY);
+  }
+
+  // ---- soft vignette ----
+  const vg = ctx.createRadialGradient(480, 320, 320, 480, 320, 640);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(10,5,20,0.35)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, 960, 640);
+
+  // ---- room banner (first few seconds) ----
+  if (t < 4.5) {
+    const a = Math.min(1, t / 0.6) * Math.min(1, Math.max(0, (4.5 - t) / 0.8));
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(20, 14, 8, ${0.65 * a})`;
+    ctx.fillRect(280, 34, 400, 54);
+    ctx.strokeStyle = `rgba(201, 168, 106, ${a})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(280, 34, 400, 54);
+    ctx.fillStyle = `rgba(240, 226, 195, ${a})`;
+    ctx.font = '26px Georgia, serif';
+    ctx.fillText('The Castle Courtyard', 480, 69);
+  }
+
+  // ---- toast ----
+  if (toast) {
+    const remain = toast.until - t;
+    const a = Math.min(1, remain / 0.5);
+    ctx.font = '20px Georgia, serif';
+    const w = ctx.measureText(toast.text).width + 44;
+    ctx.fillStyle = `rgba(20, 14, 8, ${0.75 * a})`;
+    ctx.fillRect(480 - w / 2, 552, w, 44);
+    ctx.strokeStyle = `rgba(160, 100, 230, ${0.9 * a})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(480 - w / 2, 552, w, 44);
+    ctx.fillStyle = `rgba(240, 226, 195, ${a})`;
+    ctx.textAlign = 'center';
+    ctx.fillText(toast.text, 480, 581);
+  }
+
+  // ---- controls hint ----
+  ctx.textAlign = 'left';
+  ctx.font = '15px Georgia, serif';
+  ctx.fillStyle = 'rgba(240,226,195,0.45)';
+  ctx.fillText('WASD / Arrow keys to move', 14, 626);
+}
+
+// ---------- Main loop ----------
+let menuOpen = true;
+let gameStarted = false;
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (!menuOpen) {
+    elapsed += dt;
+    update(dt);
+    render(elapsed);
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ============================================================
+// MAIN MENU
+// ============================================================
+const menuEl = document.getElementById('menu');
+const menuBg = document.getElementById('menuBg');
+const menuFx = document.getElementById('menuFx');
+const menuImg = document.getElementById('menuBgImg');
+const mbg = menuBg.getContext('2d');
+const mfx = menuFx.getContext('2d');
+
+// If the user drops a title-bg.png next to index.html, use it automatically.
+menuImg.addEventListener('load', () => menuEl.classList.add('hasImage'));
+menuImg.addEventListener('error', () => menuEl.classList.remove('hasImage'));
+// the image may finish loading before these listeners attach
+if (menuImg.complete && menuImg.naturalWidth > 0) menuEl.classList.add('hasImage');
+
+function sizeMenuCanvases() {
+  for (const c of [menuBg, menuFx]) {
+    c.width = window.innerWidth;
+    c.height = window.innerHeight;
+  }
+}
+window.addEventListener('resize', sizeMenuCanvases);
+sizeMenuCanvases();
+
+// ---- placeholder hero scene (until title-bg.png exists) ----
+function drawFlag(g, x, y, s, t, phase) {
+  g.beginPath();
+  g.moveTo(x, y);
+  const wv = Math.sin(t * 3 + phase);
+  g.lineTo(x + s * (1.6 + 0.25 * wv), y + s * 0.35 + s * 0.15 * wv);
+  g.lineTo(x, y + s * 0.8);
+  g.closePath();
+  g.fill();
+}
+
+// ---- big pixel-art heroes for the title screen ----
+const ARMOR_BASE = {
+  'a': '#d7dde2', 'A': '#a9b1b9', 'd': '#6f7780', 'v': '#23272c',
+  'B': '#4a3a26', 'b': '#33291d', 'g': '#7b5c38',
+};
+const KNIGHT_ROWS = [
+'.........pp.........',
+'........pppp........',
+'......aaaaaa........',
+'.....aaaaaaaa.......',
+'.....avvvvvva.......',
+'.....avvvvvva.......',
+'.....aaaaaaaa.......',
+'......aaaaaa........',
+'......dAAAAd........',
+'...AAAAAAAAAAAA.....',
+'..aAAAAttttAAAAa....',
+'..aAAAAttttAAAAa....',
+'..aAAAAttttAAAAa....',
+'..g.AAAttttAAA.g....',
+'....AAAttttAAA......',
+'....BBBBBBBBBB......',
+'.....AAAAAAAA.......',
+'.....AAAAAAAA.......',
+'.....dAA..AAd.......',
+'.....dAA..AAd.......',
+'.....dAA..AAd.......',
+'.....dAA..AAd.......',
+'....bbbb..bbbb......',
+'....bbbb..bbbb......'];
+const KENNA_BIG_ROWS = [
+'......hhhhh.........',
+'.....hhhhhhhh.......',
+'....hhhhhhhhhhh.....',
+'....hSSSSSShhhh.....',
+'....hSeSSeShhhh.....',
+'.....SSSSSS.........',
+'.....dAAAAd....g....',
+'...AAAAAAAAAA.gg....',
+'..aAAAttttAAAggg....',
+'..aAAAttttAAA.......',
+'..aAAAttttAAA.......',
+'..gAAAttttAAA.......',
+'....BBBBBBBB........',
+'....AAAAAAAA........',
+'....dAA..AAd........',
+'....dAA..AAd........',
+'....dAA..AAd........',
+'...bbbb..bbbb.......',
+'...bbbb..bbbb.......'];
+const KENNA_BIG_PAL = {
+  'h': '#7a4a21', 'S': '#f6cfa4', 'e': '#3d2c1e', 't': '#2f8f8f',
+  'a': '#d7dde2', 'A': '#a9b1b9', 'd': '#6f7780',
+  'B': '#4a3a26', 'b': '#33291d', 'g': '#c7ccd1',
+};
+function knightSprite(tabard, plume) {
+  return buildSprite(KNIGHT_ROWS, Object.assign({}, ARMOR_BASE, { 't': tabard, 'p': plume }), 8);
+}
+const MENU_HEROES = [
+  { spr: knightSprite('#3f7d3a', '#2e5d2b'), kind: 'bramble' },  // shield knight
+  { spr: knightSprite('#b7452e', '#e2622f'), kind: 'ember' },    // fire knight
+  { spr: buildSprite(KENNA_BIG_ROWS, KENNA_BIG_PAL, 8), kind: 'kenna' },
+  { spr: knightSprite('#5b3d8f', '#7a55bd'), kind: 'whisper' },  // shadow knight
+  { spr: knightSprite('#3f8fae', '#63b7d6'), kind: 'gale' },     // wind knight
+];
+
+// ---- the colorful castle from Kenna's cover (pixel style) ----
+function drawMenuCastle(g, cx, gy, u, t) {
+  const wallL = '#ead9ae', wallS = '#c2ad7e';
+  const roof = '#8e3b46', roofD = '#652832';
+  const winGlow = `rgba(255,190,90,${0.75 + 0.2 * Math.sin(t * 1.3)})`;
+  const R = Math.round;
+
+  function tower(x, wd, ht, roofH, flagPhase) {
+    g.fillStyle = wallL; g.fillRect(R(x - wd / 2), R(gy - ht), R(wd), R(ht));
+    g.fillStyle = wallS; g.fillRect(R(x + wd / 2 - wd * 0.3), R(gy - ht), R(wd * 0.3), R(ht));
+    // stepped pixel cone roof
+    const steps = 6, rh = roofH / steps;
+    for (let k = 0; k < steps; k++) {
+      const half = wd * 0.7 * (1 - k / steps);
+      const yk = R(gy - ht - rh * (k + 1));
+      g.fillStyle = roof;
+      g.fillRect(R(x - half), yk, R(half * 2), Math.ceil(rh) + 1);
+      g.fillStyle = roofD;
+      g.fillRect(R(x + half * 0.3), yk, R(half * 0.7), Math.ceil(rh) + 1);
+    }
+    g.fillStyle = '#5a4a33';
+    g.fillRect(R(x) - 1, R(gy - ht - roofH - 18 * u), 2, R(18 * u));
+    g.fillStyle = '#3f6fb5';
+    drawFlag(g, R(x) + 1, gy - ht - roofH - 18 * u, 11 * u, t, flagPhase);
+    g.fillStyle = winGlow;
+    g.fillRect(R(x - 4 * u), R(gy - ht + 14 * u), R(8 * u), R(12 * u));
+  }
+
+  // warm glow separating castle from sky
+  const glow = g.createRadialGradient(cx, gy - 180 * u, 10, cx, gy - 180 * u, 420 * u);
+  glow.addColorStop(0, 'rgba(255,175,95,0.18)');
+  glow.addColorStop(1, 'rgba(255,175,95,0)');
+  g.fillStyle = glow;
+  g.fillRect(cx - 430 * u, gy - 620 * u, 860 * u, 660 * u);
+
+  // tall central tower behind the keep
+  tower(cx, 110 * u, 400 * u, 85 * u, 0);
+  // main keep
+  const kw = 340 * u, kh = 250 * u;
+  g.fillStyle = wallL; g.fillRect(R(cx - kw / 2), R(gy - kh), R(kw), R(kh));
+  g.fillStyle = wallS; g.fillRect(R(cx + kw / 2 - kw * 0.22), R(gy - kh), R(kw * 0.22), R(kh));
+  // battlements
+  g.fillStyle = wallL;
+  for (let i = 0; i < 8; i++) {
+    g.fillRect(R(cx - kw / 2 + i * (kw / 7.5)), R(gy - kh - 22 * u), R(kw / 14), R(22 * u));
+  }
+  // keep windows
+  g.fillStyle = winGlow;
+  g.fillRect(R(cx - 90 * u), R(gy - kh + 55 * u), R(26 * u), R(38 * u));
+  g.fillRect(R(cx + 64 * u), R(gy - kh + 55 * u), R(26 * u), R(38 * u));
+  // stepped gate arch + wooden door
+  g.fillStyle = '#8d7a58';
+  g.fillRect(R(cx - 52 * u), R(gy - 76 * u), R(104 * u), R(76 * u));
+  g.fillRect(R(cx - 42 * u), R(gy - 92 * u), R(84 * u), R(16 * u));
+  g.fillRect(R(cx - 28 * u), R(gy - 104 * u), R(56 * u), R(12 * u));
+  g.fillStyle = '#4a3018';
+  g.fillRect(R(cx - 40 * u), R(gy - 66 * u), R(80 * u), R(66 * u));
+  g.fillRect(R(cx - 32 * u), R(gy - 80 * u), R(64 * u), R(14 * u));
+  g.fillRect(R(cx - 20 * u), R(gy - 90 * u), R(40 * u), R(10 * u));
+  g.fillStyle = '#2d1d0e';
+  for (let i = -3; i <= 3; i++) g.fillRect(R(cx + i * 11 * u), R(gy - 80 * u), 1, R(80 * u));
+  // faint stone texture on the keep face
+  for (let i = 0; i < 12; i++) {
+    const fx3 = R(cx - kw / 2 + 4 + hash2(i, 51) * (kw - 10));
+    const fy3 = R(gy - kh + 8 + hash2(i * 3 + 1, 52) * (kh - 70));
+    if (Math.abs(fx3 - cx) < 34 * u) continue;
+    g.fillStyle = 'rgba(180, 158, 112, 0.55)';
+    g.fillRect(fx3, fy3, 1, 1);
+  }
+  // teal royal banner hanging above the gate
+  g.fillStyle = '#c9a86a';
+  g.fillRect(R(cx - 11 * u), R(gy - kh + 30 * u), R(22 * u), R(5 * u));
+  g.fillStyle = '#2f8f8f';
+  g.fillRect(R(cx - 8 * u), R(gy - kh + 35 * u), R(16 * u), R(52 * u));
+  g.fillStyle = wallL;
+  g.fillRect(R(cx - 2 * u), R(gy - kh + 77 * u), R(4 * u), R(10 * u));
+  g.fillStyle = '#ffd98a';
+  g.fillRect(R(cx - 2 * u), R(gy - kh + 52 * u), R(4 * u), R(6 * u));
+  // flickering wall sconces flanking the banner (high, so the heroes don't hide them)
+  for (const side of [-1, 1]) {
+    const tx2 = R(cx + side * 100 * u);
+    const ty2 = R(gy - 150 * u);
+    const flick = 0.6 + 0.4 * Math.sin(t * 9 + side * 2);
+    const fg = g.createRadialGradient(tx2, ty2, 1, tx2, ty2, 20 * u);
+    fg.addColorStop(0, `rgba(255,150,60,${0.35 * flick})`);
+    fg.addColorStop(1, 'rgba(255,150,60,0)');
+    g.fillStyle = fg;
+    g.fillRect(tx2 - 20 * u, ty2 - 20 * u, 40 * u, 40 * u);
+    g.fillStyle = '#5a4a33';
+    g.fillRect(tx2 - 1, ty2 + 2, 2, R(12 * u));
+    g.fillStyle = '#e2622f';
+    g.fillRect(tx2 - 1, ty2 - 1, 2, 2);
+    g.fillStyle = '#ffd257';
+    g.fillRect(tx2 + (Math.floor(t * 8) % 2 ? 0 : -1), ty2 - 2 + (flick > 0.8 ? -1 : 0), 1, 2);
+  }
+  // flanking towers
+  tower(cx - 230 * u, 120 * u, 330 * u, 78 * u, 2.2);
+  tower(cx + 230 * u, 120 * u, 330 * u, 78 * u, 4.1);
+}
+
+// ---- the whole scene renders at low resolution, then upscales with
+// nearest-neighbor so castle, sky, moon and heroes share one pixel grid ----
+const LOW_W = 384, LOW_H = 216;
+const lowC = document.createElement('canvas');
+lowC.width = LOW_W; lowC.height = LOW_H;
+const lctx = lowC.getContext('2d');
+
+function paintMenuBg(t) {
+  const w = LOW_W, h = LOW_H, g = lctx;
+  g.imageSmoothingEnabled = false;
+
+  // banded retro dusk sky
+  const SKY = [[0.00, 23, 16, 48], [0.50, 58, 31, 78], [0.78, 126, 67, 64], [1.00, 216, 137, 74]];
+  const bands = 16, bandCols = [];
+  for (let b = 0; b < bands; b++) {
+    const f = (b + 0.5) / bands;
+    let c0 = SKY[0], c1 = SKY[SKY.length - 1];
+    for (let s = 0; s < SKY.length - 1; s++) {
+      if (f >= SKY[s][0] && f <= SKY[s + 1][0]) { c0 = SKY[s]; c1 = SKY[s + 1]; }
+    }
+    const q = (f - c0[0]) / Math.max(0.0001, c1[0] - c0[0]);
+    const mix = i => Math.round(c0[i] + (c1[i] - c0[i]) * q);
+    bandCols[b] = `rgb(${mix(1)},${mix(2)},${mix(3)})`;
+    g.fillStyle = bandCols[b];
+    g.fillRect(0, Math.floor(b * h / bands), w, Math.ceil(h / bands) + 1);
+  }
+  // dithered band edges — classic pixel-art gradient blending
+  for (let b = 1; b < bands; b++) {
+    const y = Math.floor(b * h / bands);
+    g.fillStyle = bandCols[b - 1];
+    for (let x = y % 2; x < w; x += 2) g.fillRect(x, y, 1, 1);
+  }
+  // twinkling single-pixel stars
+  for (let i = 0; i < 60; i++) {
+    if (Math.sin(t * 1.6 + i * 1.7) < -0.2) continue;
+    const sx = Math.floor(hash2(i, 7) * w), sy = Math.floor(hash2(i, 13) * h * 0.5);
+    g.fillStyle = hash2(i, 3) > 0.5 ? '#fff2dc' : '#c9bfe8';
+    g.fillRect(sx, sy, 1, 1);
+  }
+  // pixel moon with craters + soft halo
+  const mx = Math.round(w * 0.84), my = Math.round(h * 0.16), mr = 9;
+  const halo = g.createRadialGradient(mx, my, 2, mx, my, mr * 3.2);
+  halo.addColorStop(0, 'rgba(242,231,201,0.35)');
+  halo.addColorStop(1, 'rgba(242,231,201,0)');
+  g.fillStyle = halo;
+  g.fillRect(mx - mr * 3.2, my - mr * 3.2, mr * 6.4, mr * 6.4);
+  for (let px = -mr; px <= mr; px++) {
+    for (let py = -mr; py <= mr; py++) {
+      const d2 = px * px + py * py;
+      if (d2 > mr * mr) continue;
+      const crater =
+        (px + 3) * (px + 3) + (py - 2) * (py - 2) <= 4 ||
+        (px - 4) * (px - 4) + (py + 3) * (py + 3) <= 2.5 ||
+        (px - 1) * (px - 1) + (py - 5) * (py - 5) <= 2;
+      g.fillStyle = crater ? '#cdbf9e' : (d2 > (mr - 1.2) * (mr - 1.2) ? '#e0d4ae' : '#f2e7c9');
+      g.fillRect(mx + px, my + py, 1, 1);
+    }
+  }
+
+  // drifting pixel clouds (cool ones high, dusk-lit ones low)
+  for (let i = 0; i < 7; i++) {
+    const cs = 0.7 + hash2(i, 24) * 0.9;
+    const cy = Math.round(8 + hash2(i, 22) * 78);
+    const cxx = Math.round(((hash2(i, 21) * 500 + t * (1.5 + hash2(i, 23) * 3)) % (w + 64)) - 32);
+    const warm = cy > 48;
+    g.fillStyle = warm ? '#7e4356' : '#2e2050';
+    g.fillRect(Math.round(cxx - 14 * cs), cy, Math.round(28 * cs), Math.round(5 * cs));
+    g.fillRect(Math.round(cxx - 8 * cs), Math.round(cy - 4 * cs), Math.round(13 * cs), Math.round(4 * cs) + 1);
+    g.fillRect(Math.round(cxx + 2 * cs), Math.round(cy - 2 * cs), Math.round(8 * cs), Math.round(2 * cs) + 1);
+    g.fillStyle = warm ? '#b06a67' : '#413066';
+    g.fillRect(Math.round(cxx - 14 * cs), Math.round(cy + 3 * cs), Math.round(28 * cs), Math.round(2 * cs));
+  }
+  // an occasional shooting star
+  const shootPh = t % 9;
+  if (shootPh < 0.7) {
+    const p = shootPh / 0.7;
+    const sx0 = Math.round(w * (0.12 + 0.55 * ((Math.floor(t / 9) * 0.37) % 1)) + p * 70);
+    const sy0 = Math.round(h * 0.07 + p * 30);
+    for (let k = 0; k < 6; k++) {
+      g.fillStyle = `rgba(255,244,214,${Math.max(0, (1 - p) * (1 - k / 6))})`;
+      g.fillRect(sx0 - k * 2, sy0 - k, 2, 1);
+    }
+  }
+  // a flock of birds crossing now and then
+  const birdPh = t % 14;
+  if (birdPh < 6) {
+    const p = birdPh / 6;
+    const flap = Math.floor(t * 6) % 2;
+    g.fillStyle = '#171026';
+    for (let k = 0; k < 4; k++) {
+      const bx = Math.round(-20 + p * (w + 40) + k * 9 + (k % 2) * 4);
+      const by = Math.round(h * 0.2 + Math.sin(p * 6 + k) * 4 + (k % 2) * 3);
+      g.fillRect(bx - 2, by - (flap ? 1 : 0), 2, 1);
+      g.fillRect(bx + 1, by - (flap ? 1 : 0), 2, 1);
+      g.fillRect(bx, by, 1, 1);
+    }
+  }
+  // distant mountain ridges for depth
+  for (const [seed, baseF, ampF, col] of [[5, 0.73, 0.15, '#241638'], [9, 0.745, 0.09, '#1b1030']]) {
+    g.fillStyle = col;
+    for (let x = 0; x < w; x += 4) {
+      const n = 0.35 * Math.sin(x * 0.028 + seed) + 0.65 * hash2(Math.floor(x / 22), seed);
+      const yv = Math.round(h * baseF - n * h * ampF);
+      g.fillRect(x, yv, 4, Math.round(h * 0.79) - yv + 2);
+    }
+  }
+
+  // rolling hill in banded greens
+  g.save();
+  g.beginPath();
+  g.moveTo(0, h * 0.78);
+  g.quadraticCurveTo(w * 0.5, h * 0.715, w, h * 0.78);
+  g.lineTo(w, h); g.lineTo(0, h);
+  g.closePath();
+  g.clip();
+  const greens = ['#4c7a3a', '#3f652f', '#305226', '#22391b'];
+  const greenY = [0.70, 0.775, 0.83, 0.90];
+  for (let i = 0; i < greens.length; i++) {
+    g.fillStyle = greens[i];
+    g.fillRect(0, Math.round(h * greenY[i]), w, h);
+  }
+  g.restore();
+
+  // castle position first — hill details keep clear of the gate path
+  const cx = Math.round(w * 0.60), gy = Math.round(h * 0.80), u = h / 810;
+
+  // scattered grass tufts + tiny flowers
+  for (let i = 0; i < 46; i++) {
+    const gx2 = Math.floor(hash2(i, 41) * w);
+    const s2 = gx2 / w;
+    const surf = h * ((1 - s2) * (1 - s2) * 0.78 + 2 * s2 * (1 - s2) * 0.715 + s2 * s2 * 0.78);
+    const ty = Math.round(surf + 3 + hash2(i, 42) * (h - surf - 8));
+    if (ty > gy && Math.abs(gx2 - cx) < 52 * u + 98 * u * (ty - gy) / (h - gy)) continue;
+    const shade = hash2(i, 43);
+    g.fillStyle = shade > 0.6 ? '#5c8a46' : '#2a4720';
+    g.fillRect(gx2, ty, 2, 1);
+    g.fillRect(gx2 + (shade > 0.5 ? 1 : 0), ty - 1, 1, 1);
+    if (hash2(i, 44) > 0.82) {
+      g.fillStyle = hash2(i, 45) > 0.5 ? '#e8d44f' : '#f0f0ea';
+      g.fillRect(gx2 + 2, ty - 1, 1, 1);
+    }
+  }
+
+  drawMenuCastle(g, cx, gy, u, t);
+
+  // path from the castle gate down the hill
+  g.fillStyle = 'rgba(196, 178, 142, 0.45)';
+  g.beginPath();
+  g.moveTo(cx - 52 * u, gy); g.lineTo(cx + 52 * u, gy);
+  g.lineTo(cx + 150 * u, h); g.lineTo(cx - 150 * u, h);
+  g.closePath(); g.fill();
+
+  // the heroes lined up in front of their castle — Kenna front and center
+  const baseline = Math.round(h * 0.945);
+  const heroX = [0.34, 0.465, 0.60, 0.735, 0.86];
+  for (let i = 0; i < MENU_HEROES.length; i++) {
+    const hero = MENU_HEROES[i];
+    const isKenna = hero.kind === 'kenna';
+    const pu = 3; // low-res pixels per sprite pixel
+    const rows = isKenna ? 19 : 24;
+    const hh = rows * pu, hw = 20 * pu;
+    const x = Math.round(heroX[i] * w);
+    const y = baseline + Math.round(Math.sin(t * 1.5 + i * 1.4) * 1.2);
+    // pixel contact shadow
+    g.fillStyle = 'rgba(0,0,0,0.35)';
+    g.fillRect(x - Math.round(hw * 0.38), baseline, Math.round(hw * 0.76), 2);
+    g.drawImage(hero.spr, x - hw / 2, y - hh, hw, hh);
+
+    if (hero.kind === 'kenna') {
+      // raised sword with a pulsing glint
+      const fx = x + 5.5 * pu, fy = y - 12.5 * pu;
+      g.save();
+      g.translate(fx, fy);
+      g.rotate(0.32);
+      g.fillStyle = '#4a3018'; g.fillRect(-0.7 * pu, 0.4 * pu, 1.4 * pu, 1.8 * pu);
+      g.fillStyle = '#c9a86a'; g.fillRect(-2.1 * pu, -0.8 * pu, 4.2 * pu, 1 * pu);
+      g.fillStyle = '#dfe5ea'; g.fillRect(-0.65 * pu, -9.5 * pu, 1.3 * pu, 8.7 * pu);
+      g.fillStyle = '#f7fafc'; g.fillRect(-0.65 * pu, -9.5 * pu, 0.55 * pu, 8.7 * pu);
+      g.restore();
+      const gl = 0.5 + 0.5 * Math.sin(t * 2.2);
+      g.fillStyle = `rgba(255, 245, 210, ${0.35 + 0.45 * gl})`;
+      const gx = Math.round(fx + 9.5 * pu * Math.sin(0.32));
+      const gyy = Math.round(fy - 9.5 * pu * Math.cos(0.32));
+      g.fillRect(gx - 1, gyy, 3, 1);
+      g.fillRect(gx, gyy - 1, 1, 3);
+    } else if (hero.kind === 'bramble') {
+      // kite shield with a green cross
+      const sx = x - 7 * pu, sy = y - 9 * pu;
+      g.fillStyle = '#8a9299';
+      g.beginPath();
+      g.moveTo(sx - 3.2 * pu, sy - 4 * pu); g.lineTo(sx + 3.2 * pu, sy - 4 * pu);
+      g.lineTo(sx + 3.2 * pu, sy + 1.5 * pu); g.lineTo(sx, sy + 5 * pu);
+      g.lineTo(sx - 3.2 * pu, sy + 1.5 * pu);
+      g.closePath(); g.fill();
+      g.fillStyle = '#3f7d3a';
+      g.fillRect(Math.round(sx - 0.7 * pu), Math.round(sy - 3.4 * pu), Math.round(1.4 * pu), Math.round(7.2 * pu));
+      g.fillRect(Math.round(sx - 2.5 * pu), Math.round(sy - 1.6 * pu), 5 * pu, Math.round(1.4 * pu));
+    } else if (hero.kind === 'ember') {
+      // sword point-up with a flame shimmer
+      const sx = x + 7.2 * pu;
+      g.fillStyle = '#4a3018'; g.fillRect(Math.round(sx - 0.7 * pu), y - Math.round(8.5 * pu), Math.round(1.4 * pu), Math.round(2.6 * pu));
+      g.fillStyle = '#c9a86a'; g.fillRect(Math.round(sx - 2 * pu), y - Math.round(9.2 * pu), 4 * pu, 3);
+      g.fillStyle = '#e2622f'; g.fillRect(Math.round(sx - 0.6 * pu), y - Math.round(17.5 * pu), Math.round(1.2 * pu), Math.round(8.3 * pu));
+      g.fillStyle = `rgba(255, 170, 60, ${0.5 + 0.3 * Math.sin(t * 6 + 1)})`;
+      g.fillRect(Math.round(sx - 1.1 * pu), y - Math.round(18.6 * pu), Math.round(2.2 * pu), 2 * pu);
+    } else if (hero.kind === 'whisper') {
+      // violet sparkles drifting around the shadow knight
+      for (let k = 0; k < 3; k++) {
+        const ph = t * 1.4 + k * 2.1;
+        const wx = Math.round(x + Math.sin(ph) * 6.5 * pu);
+        const wy = Math.round(y - 9 * pu - Math.cos(ph * 0.8) * 5.5 * pu);
+        const a = 0.3 + 0.28 * Math.sin(ph * 2);
+        g.fillStyle = `rgba(170, 120, 240, ${Math.max(0, a)})`;
+        g.fillRect(wx - 1, wy, 3, 1);
+        g.fillRect(wx, wy - 1, 1, 3);
+      }
+    } else if (hero.kind === 'gale') {
+      // tall spear with a waving sky-blue pennant
+      const sx = Math.round(x + 7.6 * pu);
+      g.fillStyle = '#8a6a3f'; g.fillRect(sx, y - 26 * pu, 1, 26 * pu);
+      g.fillStyle = '#c7ccd1'; g.fillRect(sx - 1, y - 28 * pu, 3, 2 * pu);
+      g.fillStyle = '#63b7d6';
+      drawFlag(g, sx + 1, y - 25 * pu, 5 * pu, t, i);
+    }
+  }
+
+  // fireflies drifting over the meadow
+  for (let i = 0; i < 9; i++) {
+    const ph = t * (0.3 + hash2(i, 31) * 0.3) + i * 7;
+    const fx2 = Math.round((hash2(i, 32) * w + Math.sin(ph) * 14 + w) % w);
+    const fy2 = Math.round(h * (0.78 + hash2(i, 33) * 0.16) + Math.cos(ph * 1.3) * 5);
+    const a = Math.max(0, Math.sin(t * (1.2 + hash2(i, 34)) + i * 2));
+    g.fillStyle = `rgba(255, 226, 130, ${0.1 * a})`;
+    g.fillRect(fx2 - 1, fy2 - 1, 3, 3);
+    g.fillStyle = `rgba(255, 226, 130, ${0.25 + 0.6 * a})`;
+    g.fillRect(fx2, fy2, 1, 1);
+  }
+}
+
+// upscale the low-res scene to the full window, nearest-neighbor, cover-fit
+function blitMenu() {
+  const W = menuBg.width, H = menuBg.height;
+  mbg.imageSmoothingEnabled = false;
+  const s = Math.max(W / LOW_W, H / LOW_H);
+  const dw = LOW_W * s, dh = LOW_H * s;
+  mbg.clearRect(0, 0, W, H);
+  mbg.drawImage(lowC, (W - dw) / 2, (H - dh) / 2, dw, dh);
+}
+
+// ---- wind + ember particles (chunky pixels, over placeholder OR user image) ----
+const winds = Array.from({ length: 34 }, (_, i) => ({
+  x: hash2(i, 1) * 2000, y: hash2(i, 2),
+  spd: 60 + hash2(i, 3) * 130,
+  size: 2 + hash2(i, 4) * 4,
+  wob: 1 + hash2(i, 5) * 2,
+  gold: hash2(i, 6) > 0.4,
+}));
+function paintMenuFx(t) {
+  const w = menuFx.width, h = menuFx.height, g = mfx;
+  g.clearRect(0, 0, w, h);
+  // one "screen pixel" matching the upscaled scene grid
+  const P = Math.max(3, Math.round(h / LOW_H * 1.0));
+  for (const p of winds) {
+    const px = Math.round(((p.x + t * p.spd) % (w + 40) - 20) / P) * P;
+    const py = Math.round(((p.y * h + Math.sin(t * p.wob + p.x) * 30) % h) / P) * P;
+    const a = 0.2 + 0.25 * Math.sin(t * 2 + p.x);
+    g.fillStyle = p.gold
+      ? `rgba(255, 200, 110, ${Math.max(0, a)})`
+      : `rgba(190, 150, 255, ${Math.max(0, a * 0.8)})`;
+    g.fillRect(px, py, p.size > 4 ? P * 2 : P, p.size > 4 ? P * 2 : P);
+  }
+  // vignette so scene + UI blend together
+  const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.45, w / 2, h / 2, Math.max(w, h) * 0.75);
+  vg.addColorStop(0, 'rgba(10,6,18,0)');
+  vg.addColorStop(1, 'rgba(10,6,18,0.5)');
+  g.fillStyle = vg;
+  g.fillRect(0, 0, w, h);
+}
+
+let menuTime = 0, menuLast = performance.now();
+function menuLoop(now) {
+  if (menuOpen) {
+    menuTime += Math.min(0.05, (now - menuLast) / 1000);
+    if (!menuEl.classList.contains('hasImage')) { paintMenuBg(menuTime); blitMenu(); }
+    paintMenuFx(menuTime);
+  }
+  menuLast = now;
+  requestAnimationFrame(menuLoop);
+}
+requestAnimationFrame(menuLoop);
+
+// ---- settings (persisted) ----
+const settings = Object.assign(
+  { music: 70, sfx: 80 },
+  JSON.parse(localStorage.getItem('kd_settings') || '{}')
+);
+function saveSettings() {
+  localStorage.setItem('kd_settings', JSON.stringify(settings));
+}
+const setMusic = document.getElementById('setMusic');
+const setSfx = document.getElementById('setSfx');
+setMusic.value = settings.music;
+setSfx.value = settings.sfx;
+setMusic.addEventListener('input', () => { settings.music = +setMusic.value; saveSettings(); });
+setSfx.addEventListener('input', () => { settings.sfx = +setSfx.value; saveSettings(); });
+document.getElementById('setFullscreen').addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+});
+
+// ---- top ribbon: live date + clock ----
+const chipDate = document.getElementById('chipDate');
+function updateChipDate() {
+  const d = new Date();
+  const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  let hr = d.getHours();
+  const ampm = hr >= 12 ? 'PM' : 'AM';
+  hr = hr % 12 || 12;
+  const min = String(d.getMinutes()).padStart(2, '0');
+  chipDate.textContent =
+    `${days[d.getDay()]} • ${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} • ${hr}:${min} ${ampm}`;
+}
+updateChipDate();
+setInterval(updateChipDate, 1000);
+
+// ---- panels ----
+const panelShade = document.getElementById('panelShade');
+const panels = {
+  settings: document.getElementById('settingsPanel'),
+  credits: document.getElementById('creditsPanel'),
+  patch: document.getElementById('patchPanel'),
+};
+function openPanel(name) {
+  for (const k in panels) panels[k].style.display = k === name ? 'block' : 'none';
+  panelShade.classList.remove('hidden');
+}
+function closePanels() { panelShade.classList.add('hidden'); }
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
+panelShade.addEventListener('click', e => { if (e.target === panelShade) closePanels(); });
+document.getElementById('btnSettings').addEventListener('click', () => openPanel('settings'));
+document.getElementById('btnCredits').addEventListener('click', () => openPanel('credits'));
+document.getElementById('btnPatch').addEventListener('click', () => openPanel('patch'));
+document.getElementById('icGear').addEventListener('click', () => openPanel('settings'));
+
+// ---- menu toasts + extra cards ----
+const menuToastEl = document.getElementById('menuToast');
+let menuToastTimer = null;
+function menuToastShow(text, secs = 3.5) {
+  menuToastEl.textContent = text;
+  menuToastEl.classList.add('show');
+  clearTimeout(menuToastTimer);
+  menuToastTimer = setTimeout(() => menuToastEl.classList.remove('show'), secs * 1000);
+}
+document.getElementById('icMail').addEventListener('click', () =>
+  menuToastShow("✉ One new letter: 'Dear Knight, the kingdom needs you. — K.'"));
+document.getElementById('icBell').addEventListener('click', () =>
+  menuToastShow('🔔 4 royal decrees: free Sir Bramble, Dame Ember, Sir Whisper & Dame Gale!'));
+document.getElementById('questCard').addEventListener('click', () =>
+  menuToastShow('⚔ Knights freed: 0 of 4 — press PLAY to begin your adventure!'));
+document.getElementById('btnExit').addEventListener('click', () => {
+  window.close();
+  menuToastShow('🏰 The kingdom will not let you go so easily… (close the tab to exit)');
+});
+
+// ---- playtime stat, persisted ----
+const kdStats = Object.assign({ playMs: 0 }, JSON.parse(localStorage.getItem('kd_stats') || '{}'));
+const scTime = document.getElementById('scTime');
+function fmtPlaytime(ms) {
+  const m = Math.floor(ms / 60000);
+  return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+}
+scTime.textContent = fmtPlaytime(kdStats.playMs);
+setInterval(() => {
+  if (!menuOpen) {
+    kdStats.playMs += 1000;
+    if (kdStats.playMs % 10000 < 1000) localStorage.setItem('kd_stats', JSON.stringify(kdStats));
+  } else {
+    scTime.textContent = fmtPlaytime(kdStats.playMs);
+  }
+}, 1000);
+
+// ---- play / pause ----
+const btnPlay = document.getElementById('btnPlay');
+function showMenu() {
+  menuOpen = true;
+  keys.clear();
+  btnPlay.textContent = gameStarted ? 'Continue' : 'Play';
+  menuEl.classList.remove('hidden');
+}
+function hideMenu() {
+  closePanels();
+  menuOpen = false;
+  gameStarted = true;
+  menuEl.classList.add('hidden');
+}
+btnPlay.addEventListener('click', hideMenu);
+window.addEventListener('keydown', e => {
+  if (e.code !== 'Escape') return;
+  if (!panelShade.classList.contains('hidden')) closePanels();
+  else if (menuOpen && gameStarted) hideMenu();
+  else if (!menuOpen) showMenu();
+});
+
+// debug handle for automated testing
+window.__game = { player, keys, get menuOpen() { return menuOpen; }, hideMenu, showMenu };
+</script>
+</body>
+</html>
