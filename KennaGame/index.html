@@ -556,6 +556,12 @@
     background: rgba(255, 217, 138, 0.06);
     box-shadow: 0 0 22px rgba(232, 182, 76, 0.35);
   }
+  /* bottom strip of painted UI is hidden behind a cinematic bar */
+  #bottomBar {
+    position: absolute; left: -2px; right: -2px; bottom: -2px; height: 16%;
+    background: #0a0a0e;
+  }
+  #menu.hasImage #statCards, #menu.hasImage #questCard { display: none; }
 </style>
 </head>
 <body>
@@ -1385,8 +1391,11 @@ function sizeImgAnchor() {
   imgAnchor.style.left = (W - iw * s) / 2 + 'px';
   imgAnchor.style.top = (H - ih * s) / 2 + 'px';
 }
+const bottomBar = document.createElement('div');
+bottomBar.id = 'bottomBar';
 function activateImageUI() {
   menuEl.classList.add('hasImage');
+  imgAnchor.appendChild(bottomBar);
   if (imgUIActive) return;
   imgUIActive = true;
   for (const id of ['menuTop', 'btnStack', 'iconRow', 'statCards', 'updateCard', 'questCard', 'hotspots']) {
