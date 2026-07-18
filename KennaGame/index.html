@@ -930,25 +930,80 @@ function plate(x, y, w, h, r = 10) {
   ctx.stroke();
 }
 
-// ---------- heroes ----------
-const HERO_DEFS = [
-  { key: 'kenna',   name: 'KENNA',        role: 'The Last Squire',    weapon: 'Valiant Slash',  wdesc: 'Wide sword arcs',        wtype: 'slash' },
-  { key: 'bramble', name: 'SIR BRAMBLE',  role: 'Knight of the Shield', weapon: 'Spinning Aegis', wdesc: 'Orbiting shields, extra hearts', wtype: 'slash' },
-  { key: 'ember',   name: 'DAME EMBER',   role: 'Knight of the Flame', weapon: 'Flame Nova',     wdesc: 'Burning ring of fire',   wtype: 'nova' },
-  { key: 'whisper', name: 'SIR WHISPER',  role: 'Knight of Shadows',  weapon: 'Shadow Daggers', wdesc: 'Fast thrown blades',     wtype: 'daggers' },
-  { key: 'gale',    name: 'DAME GALE',    role: 'Knight of the Wind', weapon: 'Wind Gust',      wdesc: 'Blasts enemies away',    wtype: 'gust' },
+// ---------- persistent treasury & unlocks (like Vampire Survivors) ----------
+const kdMeta = Object.assign(
+  { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'], power: {} },
+  JSON.parse(localStorage.getItem('kd_meta') || '{}')
+);
+function saveMeta() { localStorage.setItem('kd_meta', JSON.stringify(kdMeta)); }
+
+// ---------- the knight roster ----------
+// wtype: slash | nova | daggers | gust   mods: hp+, dmg+, atkM (cooldown mult), speedM, magnetM, orb, wave
+const ROSTER = [
+  { key: 'kenna',    name: 'KENNA',         role: 'The Last Squire',      wtype: 'slash',   tabard: '#2f8f8f', price: 0,   mods: {} },
+  { key: 'bramble',  name: 'SIR BRAMBLE',   role: 'Knight of the Shield', wtype: 'slash',   tabard: '#3f7d3a', price: 0,   mods: { hp: 2, orb: 2, atkM: 1.25 } },
+  { key: 'ember',    name: 'DAME EMBER',    role: 'Knight of the Flame',  wtype: 'nova',    tabard: '#b7452e', price: 0,   mods: {} },
+  { key: 'whisper',  name: 'SIR WHISPER',   role: 'Knight of Shadows',    wtype: 'daggers', tabard: '#5b3d8f', price: 0,   mods: {} },
+  { key: 'gale',     name: 'DAME GALE',     role: 'Knight of the Wind',   wtype: 'gust',    tabard: '#3f8fae', price: 0,   mods: {} },
+  { key: 'oakheart', name: 'SIR OAKHEART',  role: 'Knight of the Grove',  wtype: 'slash',   tabard: '#2d5016', price: 200, mods: { hp: 2 } },
+  { key: 'rose',     name: 'DAME ROSE',     role: 'Knight of Thorns',     wtype: 'daggers', tabard: '#e75480', price: 200, mods: { speedM: 1.1 } },
+  { key: 'frost',    name: 'SIR FROST',     role: 'Knight of Winter',     wtype: 'gust',    tabard: '#7dd3fc', price: 250, mods: { atkM: 0.9 } },
+  { key: 'sunfire',  name: 'DAME SUNFIRE',  role: 'Knight of the Dawn',   wtype: 'nova',    tabard: '#f59e0b', price: 250, mods: { dmg: 1 } },
+  { key: 'storm',    name: 'SIR STORM',     role: 'Knight of Thunder',    wtype: 'slash',   tabard: '#64748b', price: 300, mods: { wave: 1 } },
+  { key: 'ivy',      name: 'DAME IVY',      role: 'Knight of Vines',      wtype: 'daggers', tabard: '#22c55e', price: 300, mods: { magnetM: 1.6 } },
+  { key: 'coal',     name: 'SIR COAL',      role: 'Knight of the Forge',  wtype: 'nova',    tabard: '#3f3f46', price: 350, mods: { hp: 1, dmg: 1 } },
+  { key: 'star',     name: 'DAME STAR',     role: 'Knight of Midnight',   wtype: 'gust',    tabard: '#fde047', price: 350, mods: { magnetM: 1.4, speedM: 1.06 } },
+  { key: 'pebble',   name: 'SIR PEBBLE',    role: 'Knight of the Mountain', wtype: 'slash', tabard: '#a8a29e', price: 400, mods: { hp: 4, speedM: 0.92 } },
+  { key: 'swift',    name: 'DAME SWIFT',    role: 'Knight of Rivers',     wtype: 'daggers', tabard: '#38bdf8', price: 450, mods: { speedM: 1.18, atkM: 0.92 } },
+  { key: 'grumble',  name: 'SIR GRUMBLE',   role: 'Knight of Mondays',    wtype: 'slash',   tabard: '#92400e', price: 450, mods: { dmg: 2, atkM: 1.3 } },
+  { key: 'lily',     name: 'DAME LILY',     role: 'Knight of the Lake',   wtype: 'nova',    tabard: '#f9a8d4', price: 500, mods: { hp: 3 } },
+  { key: 'tumble',   name: 'SIR TUMBLE',    role: 'Knight of Chaos',      wtype: 'gust',    tabard: '#fb7185', price: 500, mods: { speedM: 1.25, hp: -2 } },
+  { key: 'nova',     name: 'DAME NOVA',     role: 'Knight of the Void',   wtype: 'nova',    tabard: '#c084fc', price: 600, mods: { atkM: 0.85 } },
+  { key: 'moss',     name: 'SIR MOSS',      role: 'Knight of Patience',   wtype: 'slash',   tabard: '#4d7c0f', price: 600, mods: { orb: 1 } },
+  { key: 'comet',    name: 'DAME COMET',    role: 'Knight of the Sky',    wtype: 'daggers', tabard: '#67e8f9', price: 700, mods: { wave: 1 } },
+  { key: 'biscuit',  name: 'SIR BISCUIT',   role: 'Knight of the Feast',  wtype: 'slash',   tabard: '#d4a373', price: 800, mods: { hp: 5 } },
+  { key: 'aurora',   name: 'DAME AURORA',   role: 'Knight of Lights',     wtype: 'gust',    tabard: '#a5b4fc', price: 900, mods: { orb: 2 } },
+  { key: 'queen',    name: 'QUEEN KENNA',   role: 'Ruler of the Kingdom', wtype: 'slash',   tabard: '#e8b64c', price: 1500, mods: { hp: 2, dmg: 1, speedM: 1.1, atkM: 0.85, wave: 1 } },
 ];
-function applyHero(p, key) {
-  p.heroKey = key;
-  const def = HERO_DEFS.find(h => h.key === key);
-  p.name = def.name;
-  p.wtype = def.wtype;
-  if (key === 'bramble') { p.maxHp = 8; p.hp = 8; p.orbCount = 2; p.attackEvery = 0.75; }
-  if (key === 'ember') { p.attackEvery = 1.05; }
-  if (key === 'whisper') { p.attackEvery = 0.42; }
-  if (key === 'gale') { p.attackEvery = 0.9; }
+// forge sprites for every roster knight
+for (const rk of ROSTER) {
+  if (!heroSprites[rk.key]) {
+    heroSprites[rk.key] = rk.key === 'queen'
+      ? buildDirSprites(Object.assign({}, KENNA_PAL, { 'T': '#e8b64c', 't': '#ffd98a' }))
+      : buildDirSprites(knightPal(rk.tabard));
+  }
 }
 
+// ---------- permanent power-ups (Royal Armory) ----------
+const POWERUPS = [
+  { key: 'might',  name: 'Might',     icon: 'sword',  max: 5, base: 200, desc: '+6% damage per rank' },
+  { key: 'vigor',  name: 'Vigor',     icon: 'heart',  max: 3, base: 300, desc: '+1 max heart per rank' },
+  { key: 'haste',  name: 'Haste',     icon: 'swift',  max: 5, base: 200, desc: '+4% attack speed per rank' },
+  { key: 'stride', name: 'Stride',    icon: 'boots',  max: 5, base: 180, desc: '+4% move speed per rank' },
+  { key: 'lode',   name: 'Lodestone', icon: 'magnet', max: 5, base: 150, desc: '+15% gem magnet per rank' },
+  { key: 'greed',  name: 'Greed',     icon: 'coin',   max: 5, base: 150, desc: '+10% gold per rank' },
+];
+function powerRank(k) { return kdMeta.power[k] || 0; }
+function powerPrice(pu) { return pu.base * (powerRank(pu.key) + 1); }
+
+function applyHero(p, key) {
+  p.heroKey = key;
+  const def = ROSTER.find(h => h.key === key);
+  p.name = def.name;
+  p.wtype = def.wtype;
+  // weapon base cadence
+  p.attackEvery = { slash: 0.6, nova: 1.05, daggers: 0.42, gust: 0.9 }[def.wtype];
+  const m = def.mods;
+  p.maxHp = 6 + (m.hp || 0) + powerRank('vigor');
+  p.hp = p.maxHp;
+  p.damage = 1 + (m.dmg || 0);
+  p.damage *= 1 + 0.06 * powerRank('might');
+  p.attackEvery *= (m.atkM || 1) * (1 - 0.04 * powerRank('haste'));
+  p.speed = 235 * (m.speedM || 1) * (1 + 0.04 * powerRank('stride'));
+  p.magnet = 95 * (m.magnetM || 1) * (1 + 0.15 * powerRank('lode'));
+  p.orbCount = m.orb || 0;
+  p.wave = m.wave || 0;
+}
 // ---------- maps ----------
 const MAPS = [
   { key: 'meadow', name: 'ROYAL MEADOW', desc: 'Green fields of the kingdom',
@@ -969,9 +1024,27 @@ window.addEventListener('keydown', e => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (menuOpen) return;
 
-  // hero / map selection screens
-  if (game.phase === 'select' || game.phase === 'map') {
-    const n = game.phase === 'select' ? HERO_DEFS.length : MAPS.length;
+  // hero grid / armory / map selection screens
+  if (game.phase === 'select') {
+    const cols = 8, n = ROSTER.length;
+    if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
+    if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
+    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - cols + n) % n;
+    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + cols) % n;
+    if (['Space', 'Enter'].includes(e.code)) confirmSelection();
+    if (e.code === 'KeyT') { game.phase = 'armory'; game.cursor = 0; }
+    return;
+  }
+  if (game.phase === 'armory') {
+    const n = POWERUPS.length;
+    if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
+    if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
+    if (['Space', 'Enter'].includes(e.code)) buyPower(game.cursor);
+    if (e.code === 'KeyT' || e.code === 'Backspace') { game.phase = 'select'; game.cursor = 0; }
+    return;
+  }
+  if (game.phase === 'map') {
+    const n = MAPS.length;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
     if (['Space', 'Enter'].includes(e.code)) confirmSelection();
@@ -990,7 +1063,7 @@ window.addEventListener('keydown', e => {
     p2.joined = true;
     p2.alive = true;
     const used = players[0].heroKey;
-    const free = HERO_DEFS.find(h => h.key !== used);
+    const free = ROSTER.find(h => h.key !== used && kdMeta.unlocked.includes(h.key));
     applyHero(p2, free.key);
     p2.hp = p2.maxHp;
     p2.x = players[0].x + 60;
@@ -1010,7 +1083,7 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = (e.clientY - r.top - view.oy) / view.scale;
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
-      if (game.phase === 'select' || game.phase === 'map') game.cursor = c.idx;
+      if ((game.phase === 'select' || game.phase === 'map' || game.phase === 'armory') && c.idx >= 0) game.cursor = c.idx;
     }
   }
 });
@@ -1018,7 +1091,9 @@ canvas.addEventListener('click', () => {
   if (menuOpen) return;
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
-      if (game.phase === 'select' || game.phase === 'map') { game.cursor = c.idx; confirmSelection(); }
+      if (game.phase === 'armory') { if (c.idx >= 0) buyPower(c.idx); else { game.phase = 'select'; game.cursor = 0; } }
+      else if (game.phase === 'select' && c.idx === -2) { game.phase = 'armory'; game.cursor = 0; }
+      else if (game.phase === 'select' || game.phase === 'map') { game.cursor = Math.max(0, c.idx); confirmSelection(); }
       else if (game.choices) pickUpgrade(c.idx);
       return;
     }
@@ -1027,7 +1102,19 @@ canvas.addEventListener('click', () => {
 
 function confirmSelection() {
   if (game.phase === 'select') {
-    game.heroPick = HERO_DEFS[game.cursor].key;
+    const rk = ROSTER[game.cursor];
+    if (!kdMeta.unlocked.includes(rk.key)) {
+      if (kdMeta.gold >= rk.price) {
+        kdMeta.gold -= rk.price;
+        kdMeta.unlocked.push(rk.key);
+        saveMeta();
+        gameToast('👑 ' + rk.name + ' has joined your order!');
+      } else {
+        gameToast('Not enough gold! (' + rk.price + 'g needed)');
+      }
+      return;
+    }
+    game.heroPick = rk.key;
     game.phase = 'map';
     game.cursor = 0;
   } else if (game.phase === 'map') {
@@ -1035,6 +1122,16 @@ function confirmSelection() {
     initRun();
     game.phase = 'run';
   }
+}
+function buyPower(idx) {
+  const pu = POWERUPS[idx];
+  if (powerRank(pu.key) >= pu.max) { gameToast(pu.name + ' is already at max rank!'); return; }
+  const price = powerPrice(pu);
+  if (kdMeta.gold < price) { gameToast('Not enough gold! (' + price + 'g needed)'); return; }
+  kdMeta.gold -= price;
+  kdMeta.power[pu.key] = powerRank(pu.key) + 1;
+  saveMeta();
+  gameToast('✨ ' + pu.name + ' rank ' + kdMeta.power[pu.key] + '!');
 }
 function pickUpgrade(idx) {
   const c = game.choices[idx];
@@ -1089,6 +1186,9 @@ function initRun() {
   players[0].hp = players[0].maxHp;
   players[1].joined = false;
   players[1].alive = false;
+  game.runGold = 0;
+  game.payout = 0;
+  game.paidOut = false;
 }
 
 function gameToast(text) {
@@ -1189,6 +1289,7 @@ function killEnemy(i) {
     gems.push({ x: e.x + (Math.random() - 0.5) * 18, y: e.y + (Math.random() - 0.5) * 18, v: Math.ceil(e.xp / n), vx: 0, vy: 0 });
   }
   if (Math.random() < 0.045) drops.push({ x: e.x, y: e.y, kind: 'heart' });
+  else if (Math.random() < 0.06) drops.push({ x: e.x, y: e.y, kind: 'coin', v: 2 + Math.floor(Math.random() * 3) + (e.kind === 'golem' ? 6 : 0) });
   enemies.splice(i, 1);
 }
 
@@ -1360,7 +1461,15 @@ function update(dt) {
         t.alive = false;
         t.reviveProgress = 0;
         gameToast(t.name + ' is down! Stand close to revive!');
-        if (!players.some(p => p.joined && p.alive)) game.over = true;
+        if (!players.some(p => p.joined && p.alive)) {
+          game.over = true;
+          if (!game.paidOut) {
+            game.paidOut = true;
+            game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
+            kdMeta.gold += game.payout;
+            saveMeta();
+          }
+        }
       }
     }
   }
@@ -1391,8 +1500,16 @@ function update(dt) {
     const t = nearestAlivePlayer(dr.x, dr.y);
     if (t && Math.hypot(t.x - dr.x, t.y - 14 - dr.y) < 26) {
       drops.splice(i, 1);
-      t.hp = Math.min(t.maxHp, t.hp + 2);
-      gameToast('❤ ' + t.name + ' recovers!');
+      if (dr.kind === 'coin') {
+        const g3 = Math.round(dr.v * (1 + 0.1 * powerRank('greed')));
+        kdMeta.gold += g3;
+        game.runGold += g3;
+        saveMeta();
+        dmgTexts.push({ x: dr.x, y: dr.y - 18, val: '+' + g3 + 'g', age: 0, gold: true });
+      } else {
+        t.hp = Math.min(t.maxHp, t.hp + 2);
+        gameToast('❤ ' + t.name + ' recovers!');
+      }
     }
   }
 
@@ -1701,6 +1818,18 @@ function drawUpgradeIcon(kind, x, y, s, t) {
     const oa = (t || 0) * 3;
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(Math.cos(oa) * 22, Math.sin(oa) * 22, 3, 0, 7); ctx.fill();
+  } else if (kind === 'coin') {
+    ctx.fillStyle = '#a9722c';
+    ctx.beginPath(); ctx.arc(2, 2, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#a9722c';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = UI.goldPale;
+    ctx.font = '700 13px Cinzel, Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('K', 0, 4.5);
   } else if (kind === 'wave') {
     ctx.strokeStyle = '#fffaeb'; ctx.lineWidth = 7;
     ctx.beginPath(); ctx.arc(-6, 0, 18, -1.1, 1.1); ctx.stroke();
@@ -1758,32 +1887,202 @@ function renderCardScreen(t, title, items, drawItem) {
 }
 
 function renderSelect(t) {
-  renderCardScreen(t, 'CHOOSE YOUR HERO', HERO_DEFS, (h, x, y, w, ch2, sel, t2) => {
-    const set = heroSprites[h.key];
-    const spr = set.down[1];
-    const bob2 = sel ? Math.sin(t2 * 4) * 3 : 0;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(spr, x + w / 2 - 48, y + 26 + bob2, 96, 96);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = sel ? UI.goldLight : UI.text;
-    ctx.font = '700 15px Cinzel, Georgia, serif';
-    ctx.fillText(h.name, x + w / 2, y + 150);
-    ctx.fillStyle = UI.dim;
-    ctx.font = '13px Inter, sans-serif';
-    ctx.fillText(h.role, x + w / 2, y + 170);
-    ctx.fillStyle = sel ? UI.gold : 'rgba(232, 182, 76, 0.7)';
-    ctx.font = '700 14px Cinzel, Georgia, serif';
-    ctx.fillText(h.weapon, x + w / 2, y + 210);
-    ctx.fillStyle = UI.dim;
-    ctx.font = '12px Inter, sans-serif';
-    const words = h.wdesc.split(' ');
-    let line = '', ly = y + 232;
-    for (const wd of words) {
-      if ((line + wd).length > 18) { ctx.fillText(line, x + w / 2, ly); ly += 16; line = ''; }
-      line += (line ? ' ' : '') + wd;
+  ctx.fillStyle = '#12100d';
+  ctx.fillRect(0, 0, 960, 640);
+  for (let i = 0; i < 40; i++) {
+    const sx = hash2(i, 3) * 960, sy = hash2(i, 5) * 640;
+    ctx.fillStyle = `rgba(232, 182, 76, ${0.03 + 0.05 * Math.sin(t + i)})`;
+    ctx.fillRect(sx, sy, 3, 3);
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = UI.goldLight;
+  ctx.font = '800 30px Cinzel, Georgia, serif';
+  ctx.fillText('CHOOSE YOUR KNIGHT', 430, 66);
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(250, 84); ctx.lineTo(610, 84); ctx.stroke();
+
+  // treasury
+  plate(742, 30, 208, 46, 12);
+  drawUpgradeIcon('coin', 772, 53, 0.65, t);
+  ctx.textAlign = 'right';
+  ctx.font = '700 20px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText(String(kdMeta.gold), 934, 60);
+
+  cardRects = [];
+  const cols = 8, tile = 100, gap = 10;
+  const gx0 = 480 - (cols * tile + (cols - 1) * gap) / 2;
+  for (let i = 0; i < ROSTER.length; i++) {
+    const rk = ROSTER[i];
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = gx0 + col * (tile + gap), y = 108 + row * (tile + gap);
+    cardRects.push({ x, y, w: tile, h: tile, idx: i });
+    const sel = game.cursor === i;
+    const owned = kdMeta.unlocked.includes(rk.key);
+    plate(x, y, tile, tile, 10);
+    if (sel) {
+      ctx.strokeStyle = UI.goldLight;
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(x + 2.5, y + 2.5, tile - 5, tile - 5);
+      ctx.save();
+      ctx.shadowColor = 'rgba(232, 182, 76, 0.55)';
+      ctx.shadowBlur = 18;
+      ctx.strokeRect(x + 2.5, y + 2.5, tile - 5, tile - 5);
+      ctx.restore();
     }
-    ctx.fillText(line, x + w / 2, ly);
-  });
+    const bob2 = sel ? Math.sin(t * 4) * 2 : 0;
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = owned ? 1 : 0.38;
+    ctx.drawImage(heroSprites[rk.key].down[1], x + tile / 2 - 32, y + 8 + bob2, 64, 64);
+    ctx.globalAlpha = 1;
+    if (!owned) {
+      ctx.fillStyle = 'rgba(8, 6, 4, 0.45)';
+      ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+      drawUpgradeIcon('coin', x + tile / 2 - 20, y + tile - 18, 0.34, t);
+      ctx.textAlign = 'left';
+      ctx.font = '700 13px Cinzel, Georgia, serif';
+      ctx.fillStyle = UI.gold;
+      ctx.fillText(String(rk.price), x + tile / 2 - 8, y + tile - 13);
+    } else {
+      ctx.textAlign = 'center';
+      ctx.font = '600 9px Inter, sans-serif';
+      ctx.fillStyle = sel ? UI.goldLight : UI.dim;
+      ctx.fillText(rk.name, x + tile / 2, y + tile - 10);
+    }
+  }
+
+  // details panel for the highlighted knight
+  const rk = ROSTER[game.cursor];
+  const owned = kdMeta.unlocked.includes(rk.key);
+  plate(130, 460, 700, 96, 14);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(heroSprites[rk.key].down[1], 150, 470, 76, 76);
+  ctx.textAlign = 'left';
+  ctx.font = '700 20px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText(rk.name, 240, 492);
+  ctx.font = '13px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText(rk.role, 240, 512);
+  const wname = { slash: 'Valiant Slash', nova: 'Flame Nova', daggers: 'Shadow Daggers', gust: 'Wind Gust' }[rk.wtype];
+  ctx.fillStyle = UI.gold;
+  ctx.font = '700 14px Cinzel, Georgia, serif';
+  ctx.fillText(wname, 240, 538);
+  const m = rk.mods, traits = [];
+  if (m.hp > 0) traits.push('+' + m.hp + ' hearts'); if (m.hp < 0) traits.push(m.hp + ' hearts');
+  if (m.dmg) traits.push('+' + m.dmg + ' damage');
+  if (m.atkM && m.atkM < 1) traits.push('faster attacks'); if (m.atkM && m.atkM > 1) traits.push('slower attacks');
+  if (m.speedM && m.speedM > 1) traits.push('fleet-footed'); if (m.speedM && m.speedM < 1) traits.push('heavy armor');
+  if (m.magnetM) traits.push('gem sense');
+  if (m.orb) traits.push(m.orb + ' aegis shield' + (m.orb > 1 ? 's' : ''));
+  if (m.wave) traits.push('sword waves');
+  ctx.fillStyle = UI.text;
+  ctx.font = '13px Inter, sans-serif';
+  ctx.fillText(traits.length ? traits.join('  •  ') : 'a true all-rounder', 400, 538);
+  ctx.textAlign = 'right';
+  if (!owned) {
+    ctx.fillStyle = kdMeta.gold >= rk.price ? UI.goldLight : '#e5484d';
+    ctx.font = '700 15px Cinzel, Georgia, serif';
+    ctx.fillText('UNLOCK — ' + rk.price + 'g', 810, 512);
+  }
+
+  // armory button
+  cardRects.push({ x: 742, y: 460, w: 208, h: 96, idx: -2 });
+  plate(742, 460, 208, 96, 14);
+  drawUpgradeIcon('aegis', 786, 506, 0.55, t);
+  ctx.textAlign = 'left';
+  ctx.font = '700 16px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText('ROYAL', 832, 496);
+  ctx.fillText('ARMORY', 832, 516);
+  ctx.font = '11px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText('press T', 832, 538);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
+  ctx.font = '18px "VT323", monospace';
+  ctx.fillText('MOVE with WASD/arrows or mouse  •  SPACE / CLICK to choose or unlock', 480, 596);
+}
+
+function renderArmory(t) {
+  ctx.fillStyle = '#12100d';
+  ctx.fillRect(0, 0, 960, 640);
+  for (let i = 0; i < 40; i++) {
+    const sx = hash2(i, 7) * 960, sy = hash2(i, 9) * 640;
+    ctx.fillStyle = `rgba(232, 182, 76, ${0.03 + 0.05 * Math.sin(t + i)})`;
+    ctx.fillRect(sx, sy, 3, 3);
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = UI.goldLight;
+  ctx.font = '800 30px Cinzel, Georgia, serif';
+  ctx.fillText('THE ROYAL ARMORY', 430, 70);
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(250, 90); ctx.lineTo(610, 90); ctx.stroke();
+  plate(742, 34, 208, 46, 12);
+  drawUpgradeIcon('coin', 772, 57, 0.65, t);
+  ctx.textAlign = 'right';
+  ctx.font = '700 20px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText(String(kdMeta.gold), 934, 64);
+
+  cardRects = [];
+  const cw = 280, ch = 150, gap = 18;
+  for (let i = 0; i < POWERUPS.length; i++) {
+    const pu = POWERUPS[i];
+    const col = i % 3, row = Math.floor(i / 3);
+    const x = 480 - (3 * cw + 2 * gap) / 2 + col * (cw + gap);
+    const y = 130 + row * (ch + gap);
+    cardRects.push({ x, y, w: cw, h: ch, idx: i });
+    const sel = game.cursor === i;
+    const rank = powerRank(pu.key), maxed = rank >= pu.max;
+    plate(x, y, cw, ch, 12);
+    if (sel) {
+      ctx.strokeStyle = UI.goldLight;
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(x + 3, y + 3, cw - 6, ch - 6);
+    }
+    ctx.beginPath();
+    ctx.arc(x + 44, y + 52, 28, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(232, 182, 76, 0.1)';
+    ctx.fill();
+    ctx.strokeStyle = UI.plateBorder;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    drawUpgradeIcon(pu.icon, x + 44, y + 52, 0.75, t);
+    ctx.textAlign = 'left';
+    ctx.font = '700 17px Cinzel, Georgia, serif';
+    ctx.fillStyle = sel ? UI.goldLight : UI.text;
+    ctx.fillText(pu.name, x + 86, y + 40);
+    // rank pips
+    for (let r2 = 0; r2 < pu.max; r2++) {
+      ctx.fillStyle = r2 < rank ? UI.gold : 'rgba(255, 255, 255, 0.15)';
+      ctx.fillRect(x + 86 + r2 * 18, y + 52, 13, 7);
+    }
+    ctx.font = '12px Inter, sans-serif';
+    ctx.fillStyle = UI.dim;
+    ctx.fillText(pu.desc, x + 86, y + 82);
+    ctx.font = '700 14px Cinzel, Georgia, serif';
+    if (maxed) {
+      ctx.fillStyle = UI.gold;
+      ctx.fillText('MAX RANK', x + 86, y + 116);
+    } else {
+      ctx.fillStyle = kdMeta.gold >= powerPrice(pu) ? UI.goldLight : '#e5484d';
+      ctx.fillText('UPGRADE — ' + powerPrice(pu) + 'g', x + 86, y + 116);
+    }
+  }
+  // back button
+  cardRects.push({ x: 380, y: 500, w: 200, h: 52, idx: -1 });
+  plate(380, 500, 200, 52, 12);
+  ctx.textAlign = 'center';
+  ctx.font = '700 16px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText('BACK  (T)', 480, 532);
+  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
+  ctx.font = '18px "VT323", monospace';
+  ctx.fillText('These blessings are permanent — every knight, every run', 480, 590);
 }
 
 function renderMapSelect(t) {
@@ -1828,6 +2127,7 @@ function render(t) {
   ctx.beginPath(); ctx.rect(0, 0, 960, 640); ctx.clip();
 
   if (game.phase === 'select') { renderSelect(t); ctx.restore(); frameShadow(); return; }
+  if (game.phase === 'armory') { renderArmory(t); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'map') { renderMapSelect(t); ctx.restore(); frameShadow(); return; }
 
   const M = MAPS[game.mapPick];
@@ -1956,7 +2256,16 @@ function render(t) {
   }
   for (const dr of drops) {
     const bob2 = Math.sin(t * 4 + dr.x) * 3;
-    drawHeart(dr.x, dr.y + bob2, 13, true);
+    if (dr.kind === 'coin') {
+      ctx.save();
+      ctx.translate(dr.x, dr.y + bob2);
+      const sq = Math.abs(Math.sin(t * 3 + dr.x));
+      ctx.scale(0.4 + 0.6 * sq, 1);
+      drawUpgradeIcon('coin', 0, 0, 0.55, t);
+      ctx.restore();
+    } else {
+      drawHeart(dr.x, dr.y + bob2, 13, true);
+    }
   }
 
   const drawList = [];
@@ -2051,7 +2360,9 @@ function render(t) {
   for (const dm of dmgTexts) {
     ctx.font = '19px "VT323", monospace';
     ctx.textAlign = 'center';
-    ctx.fillStyle = `rgba(255, 233, 184, ${1 - dm.age / 0.7})`;
+    ctx.fillStyle = dm.gold
+      ? `rgba(255, 208, 80, ${1 - dm.age / 0.7})`
+      : `rgba(255, 233, 184, ${1 - dm.age / 0.7})`;
     ctx.fillText(dm.val, dm.x, dm.y);
   }
 
@@ -2156,6 +2467,12 @@ function render(t) {
   ctx.font = '700 19px Cinzel, Georgia, serif';
   ctx.fillStyle = '#c9a8ff';
   ctx.fillText(String(game.kills), 832, 46);
+  plate(788, 60, 162, 34, 12);
+  drawUpgradeIcon('coin', 812, 77, 0.42, t);
+  ctx.textAlign = 'right';
+  ctx.font = '700 15px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText(String(kdMeta.gold), 938, 83);
 
   if (!players[1].joined) {
     ctx.font = '600 13px Inter, sans-serif';
@@ -2249,8 +2566,8 @@ function render(t) {
   if (game.over) {
     ctx.fillStyle = 'rgba(10, 5, 16, 0.78)';
     ctx.fillRect(0, 0, 960, 640);
-    plate(230, 170, 500, 280, 18);
-    for (const [dx, dy] of [[230, 170], [730, 170], [230, 450], [730, 450]]) {
+    plate(230, 150, 500, 330, 18);
+    for (const [dx, dy] of [[230, 150], [730, 150], [230, 480], [730, 480]]) {
       ctx.save();
       ctx.translate(dx, dy);
       ctx.rotate(Math.PI / 4);
@@ -2261,16 +2578,18 @@ function render(t) {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e5484d';
     ctx.font = '800 32px Cinzel, Georgia, serif';
-    ctx.fillText('THE KINGDOM HAS FALLEN', 480, 226);
+    ctx.fillText('THE KINGDOM HAS FALLEN', 480, 206);
     ctx.strokeStyle = UI.plateBorder;
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(300, 248); ctx.lineTo(660, 248); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(300, 228); ctx.lineTo(660, 228); ctx.stroke();
     const rows = [
       ['Time survived', mm + ':' + ss],
       ['Level reached', String(game.level)],
       ['Spirits banished', String(game.kills)],
+      ['Gold collected', game.runGold + 'g'],
+      ['Royal payout', '+' + game.payout + 'g'],
     ];
-    let ry = 288;
+    let ry = 264;
     for (const [k2, v2] of rows) {
       ctx.textAlign = 'left';
       ctx.font = '15px Inter, sans-serif';
@@ -2285,7 +2604,7 @@ function render(t) {
     ctx.textAlign = 'center';
     ctx.fillStyle = UI.goldLight;
     ctx.font = '20px "VT323", monospace';
-    ctx.fillText('Press R — choose a new hero   •   Esc — menu', 480, 420);
+    ctx.fillText('Press R — choose a new hero   •   Esc — menu', 480, 452);
   }
 
   ctx.restore(); // end room transform
@@ -3055,11 +3374,14 @@ const ACHIEVEMENTS = [
 document.getElementById('achList').innerHTML =
   ACHIEVEMENTS.map(a => `<p>\u{1F512} ${a}</p>`).join('');
 function fillStatsPanel() {
+  const meta = JSON.parse(localStorage.getItem('kd_meta') || '{"gold":0,"unlocked":[]}');
   document.getElementById('statsList').innerHTML = [
     `⏳ Time in the kingdom: <b>${fmtPlaytime(kdStats.playMs)}</b>`,
     `⚔ Knights freed: <b>0 / 4</b>`,
     `\u{1F3C6} Achievements earned: <b>0 / 12</b>`,
     `\u{1F3F0} Times the kingdom was opened: <b>${kdStats.launches}</b>`,
+    `\u{1FA99} Royal treasury: <b>${meta.gold} gold</b>`,
+    `\u2694 Knights in your order: <b>${(meta.unlocked || []).length} / 24</b>`,
   ].map(s => `<p>${s}</p>`).join('');
 }
 const statCardEls = document.querySelectorAll('.statCard');
