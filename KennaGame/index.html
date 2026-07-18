@@ -202,7 +202,7 @@
   #menu.hasImage .chip {
     display: block;
     font-family: 'Cinzel', 'Inter', serif; font-weight: 700;
-    font-size: 1.9vh; letter-spacing: 0.14em; color: #f3ead8;
+    font-size: min(1.9vh, 1.35vw); letter-spacing: 0.14em; color: #f3ead8;
     background: linear-gradient(180deg, rgba(28, 22, 15, 0.85), rgba(13, 11, 10, 0.85));
     border: 1px solid rgba(232, 182, 76, 0.32); border-radius: 1.2vh;
     padding: 1.5vh 1.5vw; text-shadow: none;
@@ -215,12 +215,12 @@
   #menu.hasImage .titleBlock { display: block; left: 3.5vw; top: 8.5vh; }
   #menu.hasImage .kicker {
     font-family: 'Cinzel', serif; font-weight: 700;
-    font-size: 2vh; letter-spacing: 0.55em; color: #e8c98f;
+    font-size: min(2vh, 1.4vw); letter-spacing: 0.55em; color: #e8c98f;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85); margin-bottom: 1vh;
   }
   #menu.hasImage .titleBlock h1 {
     font-family: 'Cinzel', serif; font-weight: 900;
-    font-size: 9.6vh; line-height: 1.06; letter-spacing: 0.03em;
+    font-size: min(9.6vh, 6.8vw); line-height: 1.06; letter-spacing: 0.03em;
     background: none; -webkit-text-fill-color: initial; color: #fff;
     filter: drop-shadow(0 6px 22px rgba(0, 0, 0, 0.9));
   }
@@ -234,7 +234,7 @@
   }
   #menu.hasImage .subtitle {
     font-family: 'Cinzel', serif; font-weight: 700; font-style: normal;
-    font-size: 2.5vh; letter-spacing: 0.42em; color: #e8c98f;
+    font-size: min(2.5vh, 1.75vw); letter-spacing: 0.42em; color: #e8c98f;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85); margin-top: 2vh;
   }
 
@@ -275,11 +275,11 @@
   }
   #menu.hasImage .bText { display: flex; flex-direction: column; gap: 0.3vh; }
   #menu.hasImage .bTitle {
-    font-family: 'Cinzel', serif; font-weight: 800; font-size: 2.4vh; color: #f3ead8;
+    font-family: 'Cinzel', serif; font-weight: 800; font-size: min(2.4vh, 1.7vw); color: #f3ead8;
     letter-spacing: 0.08em; text-transform: uppercase;
   }
   #menu.hasImage .bSub {
-    display: block; font-weight: 400; font-size: 1.6vh;
+    display: block; font-weight: 400; font-size: min(1.6vh, 1.15vw);
     color: rgba(255, 255, 255, 0.55);
   }
   #menu.hasImage .bChev {
@@ -350,17 +350,17 @@
   }
   .scIcon { font-size: 2.6vh; }
   .scLabel {
-    margin-top: 0.5vh; font-size: 1.25vh; font-weight: 600;
+    margin-top: 0.5vh; font-size: min(1.25vh, 0.88vw); font-weight: 600;
     letter-spacing: 0.14em; text-transform: uppercase;
     color: rgba(255, 255, 255, 0.5);
   }
-  .scVal { margin-top: 0.4vh; font-size: 1.9vh; font-weight: 800; color: #ffd98a; }
+  .scVal { margin-top: 0.4vh; font-size: min(1.9vh, 1.3vw); font-weight: 800; color: #ffd98a; }
 
   /* right-side latest update card */
   #menu.hasImage #updateCard {
     display: flex; flex-direction: column;
-    position: absolute; right: 2vw; top: 29.5vh; width: 21vw;
-    box-sizing: border-box;
+    position: absolute; right: 2vw; top: 29.5vh; bottom: 15vh; width: 21vw;
+    box-sizing: border-box; overflow: hidden;
     background: linear-gradient(180deg, rgba(26, 21, 15, 0.9), rgba(13, 11, 10, 0.9));
     border: 1px solid rgba(232, 182, 76, 0.3); border-radius: 1.8vh;
     padding: 1.8vh 1vw; font-family: 'Inter', sans-serif;
@@ -369,24 +369,25 @@
   }
   .ucHead {
     display: flex; justify-content: space-between; align-items: center;
-    font-size: 1.7vh; font-weight: 700; letter-spacing: 0.12em; color: #fff;
+    font-size: min(1.7vh, 1.2vw); font-weight: 700; letter-spacing: 0.12em; color: #fff;
   }
   .ucNew {
     background: #e8b64c; color: #201603; font-weight: 800; font-size: 1.4vh;
     padding: 0.3vh 0.6vw; border-radius: 0.9vh; letter-spacing: 0.08em;
   }
   .ucThumb {
-    width: 100%; border-radius: 1.2vh; margin: 1.3vh 0 1.2vh; display: block;
+    width: 100%; max-height: 17vh; object-fit: cover;
+    border-radius: 1.2vh; margin: 1.3vh 0 1.2vh; display: block;
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  .ucTitle { font-family: 'Cinzel', serif; font-size: 2.3vh; font-weight: 800; letter-spacing: 0.06em; color: #ffd98a; }
-  .ucBody { margin: 0.8vh 0 1.5vh; font-size: 1.65vh; line-height: 1.45; color: rgba(255, 255, 255, 0.65); }
+  .ucTitle { font-family: 'Cinzel', serif; font-size: min(2.3vh, 1.6vw); font-weight: 800; letter-spacing: 0.06em; color: #ffd98a; }
+  .ucBody { margin: 0.8vh 0 1.5vh; font-size: min(1.65vh, 1.2vw); line-height: 1.45; color: rgba(255, 255, 255, 0.65); }
   .ucBtn {
     margin-top: auto;
     width: 100%; padding: 1.3vh 0; border-radius: 1.1vh; cursor: pointer;
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.18);
-    font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.6vh;
+    font-family: 'Inter', sans-serif; font-weight: 700; font-size: min(1.6vh, 1.15vw);
     letter-spacing: 0.1em; color: #fff;
     transition: background 0.15s ease;
   }
@@ -409,15 +410,15 @@
   }
   #menu.hasImage #questCard:hover { transform: translateY(-2px); border-color: rgba(200, 175, 255, 0.8); }
   .qIcon { font-size: 3vh; }
-  .qText b { display: block; font-family: 'Cinzel', serif; font-size: 1.9vh; font-weight: 800; letter-spacing: 0.1em; color: #f3ead8; }
-  .qText span { display: block; font-size: 1.55vh; color: rgba(255, 255, 255, 0.65); margin-top: 0.3vh; }
+  .qText b { display: block; font-family: 'Cinzel', serif; font-size: min(1.9vh, 1.35vw); font-weight: 800; letter-spacing: 0.1em; color: #f3ead8; }
+  .qText span { display: block; font-size: min(1.55vh, 1.1vw); color: rgba(255, 255, 255, 0.65); margin-top: 0.3vh; }
   #questCard .bChev { display: block; margin-left: auto; font-size: 3vh; color: rgba(255, 255, 255, 0.5); }
 
   /* footer */
   #menu.hasImage .menuFoot { display: block; bottom: 3.2vh; }
   #menu.hasImage .mfBig {
     display: block; font-family: 'Cinzel', serif; font-weight: 800;
-    font-size: 2.7vh; letter-spacing: 0.3em; color: #ffd98a;
+    font-size: min(2.7vh, 1.9vw); letter-spacing: 0.3em; color: #ffd98a;
     text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
   }
   #menu.hasImage .mfSmall {
