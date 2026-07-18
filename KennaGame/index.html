@@ -508,6 +508,54 @@
   #menu.hasImage .statCard:hover { transform: translateY(-2px); border-color: rgba(255, 217, 138, 0.5); }
   .ucDots i { cursor: pointer; transition: background 0.2s ease; }
   #ucBody { min-height: 7.5vh; }
+
+  /* ===== picture-is-the-UI: overlays are invisible hit areas, the painted
+     plates light up on hover ===== */
+  #menu.hasImage .menuBtn, #menu.hasImage #btnPlay {
+    background: none; border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    border-radius: 1.8vh;
+  }
+  #menu.hasImage .menuBtn > * { visibility: hidden; }
+  #menu.hasImage .menuBtn::before, #menu.hasImage #btnPlay::after { display: none; }
+  #menu.hasImage .menuBtn:hover, #menu.hasImage .menuBtn:focus-visible,
+  #menu.hasImage #btnPlay:hover {
+    transform: none;
+    background: rgba(255, 217, 138, 0.07);
+    border: 2px solid rgba(255, 217, 138, 0.8);
+    box-shadow: 0 0 24px rgba(232, 182, 76, 0.4), inset 0 0 18px rgba(232, 182, 76, 0.12);
+    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+  }
+  #menu.hasImage .chip {
+    background: none; border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    pointer-events: none;
+  }
+  #menu.hasImage .chip, #menu.hasImage .chip span { color: transparent; text-shadow: none; }
+  #menu.hasImage #iconRow {
+    background: none; border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+  #menu.hasImage .iconBtn { color: transparent; border-radius: 1.2vh; }
+  #menu.hasImage .iconBtn .badge { visibility: hidden; }
+  #menu.hasImage .iconBtn:hover {
+    transform: none;
+    background: rgba(255, 217, 138, 0.1);
+    border: 2px solid rgba(255, 217, 138, 0.7);
+    box-shadow: 0 0 16px rgba(232, 182, 76, 0.4);
+  }
+  #menu.hasImage .statCard, #menu.hasImage #updateCard, #menu.hasImage #questCard {
+    background: none; border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    cursor: pointer;
+  }
+  #menu.hasImage .statCard > *, #menu.hasImage #updateCard > *, #menu.hasImage #questCard > * { visibility: hidden; }
+  #menu.hasImage .statCard:hover, #menu.hasImage #updateCard:hover, #menu.hasImage #questCard:hover {
+    transform: none;
+    border: 2px solid rgba(255, 217, 138, 0.7);
+    background: rgba(255, 217, 138, 0.06);
+    box-shadow: 0 0 22px rgba(232, 182, 76, 0.35);
+  }
 </style>
 </head>
 <body>
@@ -554,6 +602,7 @@
   </div>
 
   <div id="iconRow">
+    <button class="iconBtn" id="icDiscord"></button>
     <button class="iconBtn" id="icMail">&#9993;<span class="badge">1</span></button>
     <button class="iconBtn" id="icBell">&#128276;<span class="badge">4</span></button>
     <button class="iconBtn" id="icGear">&#9881;</button>
@@ -1833,12 +1882,14 @@ function paintMenuFx(t) {
     g.restore();
   }
 
-  // vignette so scene + UI blend together
-  const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.45, w / 2, h / 2, Math.max(w, h) * 0.75);
-  vg.addColorStop(0, 'rgba(10,6,18,0)');
-  vg.addColorStop(1, 'rgba(10,6,18,0.5)');
-  g.fillStyle = vg;
-  g.fillRect(0, 0, w, h);
+  // vignette (painted-canvas fallback only — the pristine picture stays pure)
+  if (!menuEl.classList.contains('hasImage')) {
+    const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.45, w / 2, h / 2, Math.max(w, h) * 0.75);
+    vg.addColorStop(0, 'rgba(10,6,18,0)');
+    vg.addColorStop(1, 'rgba(10,6,18,0.5)');
+    g.fillStyle = vg;
+    g.fillRect(0, 0, w, h);
+  }
 }
 
 let menuTime = 0, menuLast = performance.now();
@@ -1916,6 +1967,9 @@ function menuToastShow(text, secs = 3.5) {
   clearTimeout(menuToastTimer);
   menuToastTimer = setTimeout(() => menuToastEl.classList.remove('show'), secs * 1000);
 }
+document.getElementById('icDiscord').addEventListener('click', () =>
+  menuToastShow('\u{1F3F0} There is no royal Discord \u2014 the knights prefer carrier pigeons!'));
+document.getElementById('updateCard').addEventListener('click', () => openPanel('patch'));
 document.getElementById('icMail').addEventListener('click', () =>
   menuToastShow("✉ One new letter: 'Dear Knight, the kingdom needs you. — K.'"));
 document.getElementById('icBell').addEventListener('click', () =>
