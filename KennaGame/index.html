@@ -38,7 +38,7 @@
   }
   #menuBgImg {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: contain; display: none;
+    object-fit: cover; display: none;
     image-rendering: auto;
   }
   #menu.hasImage #menuBg { display: none; }
@@ -195,43 +195,65 @@
   .bTitle { display: inline; }
   .bSub, .bChev { display: none; }
   #iconRow, #statCards, #updateCard, #questCard, #menuToast, #btnExit { display: none; }
+  .mfBig { display: none; }
 
-  /* ===== when title-bg.png is active: AAA glassy overlay UI ===== */
-  #menu.hasImage .titleBlock,
-  #menu.hasImage .menuFoot,
-  #menu.hasImage .chip:not(#chipDate) { display: none; }
-  #menu.hasImage #menuTop { justify-content: center; left: 0; right: 0; top: 0; }
-  #menu.hasImage #chipDate {
-    position: absolute; left: 48.06%; top: 2.95%; transform: translateX(-50%);
-    width: 25.6%; height: 6.35%; box-sizing: border-box;
-    display: flex; align-items: center; justify-content: center;
-    text-align: center;
-    font-family: 'Inter', sans-serif; font-weight: 700; letter-spacing: 0.14em;
-    font-size: 2.2vh; padding: 0 1%;
-    background: rgba(12, 12, 16, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    border-radius: 1.4vh;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-    color: #fff; text-shadow: none;
+  /* ===== clean-art mode: the image is pure background, ALL UI is real ===== */
+  #menu.hasImage { background: #0a0a0e; }
+  #menu.hasImage .chip {
+    display: block;
+    font-family: 'Inter', sans-serif; font-weight: 700;
+    font-size: 1.9vh; letter-spacing: 0.14em; color: #fff;
+    background: rgba(10, 10, 14, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 1.2vh;
+    padding: 1.5vh 1.5vw; text-shadow: none;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   }
-  #menu.hasImage #btnStack {
-    left: 2.45%; top: 47.4%; height: 35.6%; gap: 3%; min-width: 24.6%; max-width: 24.6%;
+  #menu.hasImage .chip span { color: #ffd98a; }
+  #menu.hasImage #menuTop { left: 2vw; right: 16.5vw; top: 2.6vh; justify-content: space-between; }
+
+  #menu.hasImage .titleBlock { display: block; left: 3.5vw; top: 8.5vh; }
+  #menu.hasImage .kicker {
+    font-family: 'Inter', sans-serif; font-weight: 700;
+    font-size: 2vh; letter-spacing: 0.55em; color: #e8c98f;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85); margin-bottom: 1vh;
   }
+  #menu.hasImage .titleBlock h1 {
+    font-family: 'Inter', sans-serif; font-weight: 800;
+    font-size: 10.5vh; line-height: 1.03; letter-spacing: 0.01em;
+    background: none; -webkit-text-fill-color: initial; color: #fff;
+    filter: drop-shadow(0 6px 22px rgba(0, 0, 0, 0.9));
+  }
+  #menu.hasImage .tWhite {
+    background: linear-gradient(#ffffff, #b9c2cc);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  #menu.hasImage .tGold {
+    background: linear-gradient(#ffe9b8, #e8b64c 55%, #a4711f);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  #menu.hasImage .subtitle {
+    font-family: 'Inter', sans-serif; font-weight: 700; font-style: normal;
+    font-size: 2.5vh; letter-spacing: 0.42em; color: #e8c98f;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85); margin-top: 2vh;
+  }
+
+  #menu.hasImage #btnStack { left: 2.5vw; top: 45.5vh; gap: 1.4vh; min-width: 24vw; max-width: 24vw; }
   #menu.hasImage .menuBtn {
     display: flex; align-items: center; gap: 1vw;
     font-family: 'Inter', sans-serif;
-    height: 20.9%; box-sizing: border-box;
-    padding: 0 4.5%; border-radius: 1.5vh;
-    background: rgba(14, 13, 12, 0.98);
+    height: 8.3vh; box-sizing: border-box;
+    padding: 0 1.2vw; border-radius: 1.5vh;
+    background: rgba(10, 10, 14, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.10);
     box-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
     text-transform: none; letter-spacing: 0; text-align: left;
-    backdrop-filter: none; -webkit-backdrop-filter: none;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
   #menu.hasImage .menuBtn:hover, #menu.hasImage .menuBtn:focus-visible {
     transform: translateY(-2px) scale(1.02);
-    background: rgba(24, 22, 18, 0.95);
+    background: rgba(20, 19, 20, 0.85);
     border-color: rgba(255, 255, 255, 0.35);
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
   }
@@ -256,35 +278,35 @@
   }
   #menu.hasImage #btnExit { display: flex; }
   #menu.hasImage #btnPlay {
-    height: 25.7%;
-    background: linear-gradient(140deg, rgb(66, 46, 10), rgb(30, 22, 8));
+    height: 9.6vh;
+    background: linear-gradient(140deg, rgba(66, 46, 10, 0.88), rgba(30, 22, 8, 0.88));
     border: 1.5px solid #e8b64c;
     box-shadow: 0 0 26px rgba(232, 182, 76, 0.28), 0 8px 26px rgba(0, 0, 0, 0.5);
   }
   #menu.hasImage #btnPlay .bIcon { background: rgba(232, 182, 76, 0.22); color: #ffd98a; }
-  #menu.hasImage #btnSettings { margin-top: 1.8%; }
   #menu.hasImage #btnPlay .bTitle { color: #ffd98a; }
   #menu.hasImage #btnPlay .bChev { color: rgba(255, 217, 138, 0.7); }
 
   /* top-right icon cluster */
   #menu.hasImage #iconRow {
-    display: flex; position: absolute; right: 1.75%; top: 2.95%;
-    height: 6.35%; box-sizing: border-box;
-    min-width: 15.8%; justify-content: space-evenly; align-items: center;
-    background: rgba(12, 12, 16, 0.95);
+    display: flex; position: absolute; right: 2vw; top: 2.6vh;
+    height: 6.9vh; box-sizing: border-box; min-width: 13vw;
+    justify-content: space-evenly; align-items: center;
+    background: rgba(10, 10, 14, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 1.2vh;
     padding: 0 0.4vw;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   }
   .iconBtn {
-    position: relative; width: 3vw; height: 78%;
+    position: relative; width: 3vw; height: 76%;
     display: flex; align-items: center; justify-content: center;
     background: transparent; border: none; border-radius: 1vh;
     color: #ddd; font-size: 2.5vh; cursor: pointer;
-    transition: transform 0.15s ease, border-color 0.15s ease;
+    transition: transform 0.15s ease, background 0.15s ease;
   }
   .iconBtn:hover { transform: scale(1.12); background: rgba(255, 255, 255, 0.12); }
   .badge {
-    position: absolute; top: -0.7vh; right: -0.4vw;
+    position: absolute; top: -0.5vh; right: -0.3vw;
     min-width: 2.2vh; height: 2.2vh; border-radius: 1.1vh;
     background: #e5484d; color: #fff;
     font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.4vh;
@@ -293,13 +315,17 @@
   }
 
   /* bottom-left stat cards */
-  #menu.hasImage #statCards { display: flex; position: absolute; left: 1.8%; bottom: 3.7%; height: 10.2%; width: 26%; gap: 2.3%; }
+  #menu.hasImage #statCards {
+    display: flex; position: absolute; left: 2vw; bottom: 3vh;
+    width: 25vw; height: 11vh; gap: 0.7vw;
+  }
   .statCard {
-    flex: 1; height: 100%; box-sizing: border-box;
+    flex: 1; box-sizing: border-box;
     padding: 1.3vh 0.4vw; text-align: center;
-    background: rgba(12, 12, 16, 0.95);
+    background: rgba(10, 10, 14, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 1.4vh;
     font-family: 'Inter', sans-serif;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   }
   .scIcon { font-size: 2.6vh; }
   .scLabel {
@@ -312,12 +338,13 @@
   /* right-side latest update card */
   #menu.hasImage #updateCard {
     display: flex; flex-direction: column;
-    position: absolute; right: 1.75%; top: 30.5%; width: 20.3%;
-    height: 44%; box-sizing: border-box;
-    background: rgba(12, 12, 16, 0.95);
+    position: absolute; right: 2vw; top: 29.5vh; width: 21vw;
+    box-sizing: border-box;
+    background: rgba(10, 10, 14, 0.78);
     border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 1.8vh;
     padding: 1.8vh 1vw; font-family: 'Inter', sans-serif;
     box-shadow: 0 14px 44px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   }
   .ucHead {
     display: flex; justify-content: space-between; align-items: center;
@@ -347,15 +374,16 @@
   .ucDots i { width: 1vh; height: 1vh; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
   .ucDots i.on { background: #ffd98a; }
 
-  /* bottom-right quest card (where "discord" used to be — there is no discord) */
+  /* bottom-right quest card */
   #menu.hasImage #questCard {
-    display: flex; position: absolute; right: 1.75%; bottom: 4%;
-    width: 23.9%; height: 8.2%; box-sizing: border-box;
+    display: flex; position: absolute; right: 2vw; bottom: 3vh;
+    width: 24vw; box-sizing: border-box;
     align-items: center; gap: 1vw;
-    background: linear-gradient(135deg, rgb(64, 44, 108), rgb(34, 24, 60));
+    background: linear-gradient(135deg, rgba(70, 48, 118, 0.85), rgba(36, 26, 64, 0.85));
     border: 1px solid rgba(170, 140, 255, 0.45); border-radius: 1.5vh;
-    padding: 1.6vh 1.2vw; cursor: pointer;
+    padding: 1.8vh 1.2vw; cursor: pointer;
     font-family: 'Inter', sans-serif; text-align: left;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     transition: transform 0.15s ease, border-color 0.15s ease;
   }
   #menu.hasImage #questCard:hover { transform: translateY(-2px); border-color: rgba(200, 175, 255, 0.8); }
@@ -364,9 +392,22 @@
   .qText span { display: block; font-size: 1.55vh; color: rgba(255, 255, 255, 0.65); margin-top: 0.3vh; }
   #questCard .bChev { display: block; margin-left: auto; font-size: 3vh; color: rgba(255, 255, 255, 0.5); }
 
+  /* footer */
+  #menu.hasImage .menuFoot { display: block; bottom: 3.2vh; }
+  #menu.hasImage .mfBig {
+    display: block; font-family: 'Inter', sans-serif; font-weight: 800;
+    font-size: 2.7vh; letter-spacing: 0.3em; color: #ffd98a;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+  }
+  #menu.hasImage .mfSmall {
+    font-family: 'Inter', sans-serif; font-weight: 400;
+    font-size: 1.8vh; letter-spacing: 0.18em; color: rgba(255, 255, 255, 0.75);
+    margin-top: 0.6vh; text-transform: none;
+  }
+
   /* menu toast */
   #menuToast {
-    position: absolute; bottom: 13vh; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: 16vh; left: 50%; transform: translateX(-50%);
     background: rgba(12, 12, 16, 0.94);
     border: 1px solid rgba(255, 217, 138, 0.4); border-radius: 1.2vh;
     padding: 1.5vh 2.2vw; font-family: 'Inter', sans-serif;
@@ -425,9 +466,9 @@
   </div>
 
   <div class="titleBlock">
-    <div class="kicker">KENNA KUHN'S</div>
-    <h1>KINGDOM<br>DELUXE</h1>
-    <div class="subtitle">The Last Knight</div>
+    <div class="kicker">&mdash; KENNA KUHN'S &mdash;</div>
+    <h1><span class="tWhite">KINGDOM</span><br><span class="tGold">DELUXE</span></h1>
+    <div class="subtitle">&#10022; THE LAST KNIGHT &#10022;</div>
   </div>
 
   <div id="btnStack">
@@ -484,7 +525,10 @@
 
   <div id="menuToast"></div>
 
-  <div class="menuFoot">Created by Kenna Kuhn</div>
+  <div class="menuFoot">
+    <div class="mfBig">&#9670; WELCOME, KNIGHT &#9670;</div>
+    <div class="mfSmall">Created by Kenna Kuhn</div>
+  </div>
 
   <div id="panelShade" class="hidden">
     <div class="panel" id="settingsPanel" style="display:none">
@@ -1119,7 +1163,7 @@ let imgUIActive = false;
 function sizeImgAnchor() {
   const W = window.innerWidth, H = window.innerHeight;
   const iw = menuImg.naturalWidth || 1659, ih = menuImg.naturalHeight || 948;
-  const s = Math.min(W / iw, H / ih);
+  const s = Math.max(W / iw, H / ih);
   imgAnchor.style.width = iw * s + 'px';
   imgAnchor.style.height = ih * s + 'px';
   imgAnchor.style.left = (W - iw * s) / 2 + 'px';
@@ -1129,9 +1173,7 @@ function activateImageUI() {
   menuEl.classList.add('hasImage');
   if (imgUIActive) return;
   imgUIActive = true;
-  for (const id of ['chipDate', 'btnStack', 'iconRow', 'statCards', 'updateCard', 'questCard', 'hotspots']) {
-    imgAnchor.appendChild(document.getElementById(id));
-  }
+  imgAnchor.appendChild(document.getElementById('hotspots'));
   sizeImgAnchor();
 }
 window.addEventListener('resize', sizeImgAnchor);
