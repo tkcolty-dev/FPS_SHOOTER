@@ -1097,21 +1097,21 @@ function gameToast(text) {
 
 // ---------- upgrades ----------
 const UPGRADES = [
-  { name: 'Sharper Blades', desc: '+1 damage for all heroes',
+  { name: 'Sharper Blades', icon: 'sword', desc: '+1 damage for all heroes',
     can: () => true, apply: () => players.forEach(p => p.damage += 1) },
-  { name: 'Swift Strikes', desc: 'Everyone attacks 15% faster',
+  { name: 'Swift Strikes', icon: 'swift', desc: 'Everyone attacks 15% faster',
     can: () => players[0].attackEvery > 0.24, apply: () => players.forEach(p => p.attackEvery = Math.max(0.22, p.attackEvery * 0.85)) },
-  { name: 'Long Reach', desc: 'Bigger attacks, +25 range',
+  { name: 'Long Reach', icon: 'reach', desc: 'Bigger attacks, +25 range',
     can: () => players[0].range < 300, apply: () => players.forEach(p => { p.range += 25; p.arc = Math.min(1.6, p.arc + 0.08); }) },
-  { name: 'Boots of the Wind', desc: 'Everyone moves 12% faster',
+  { name: 'Boots of the Wind', icon: 'boots', desc: 'Everyone moves 12% faster',
     can: () => players[0].speed < 360, apply: () => players.forEach(p => p.speed *= 1.12) },
-  { name: 'Heart of the Kingdom', desc: '+1 max heart and heal 2',
+  { name: 'Heart of the Kingdom', icon: 'heart', desc: '+1 max heart and heal 2',
     can: () => players[0].maxHp < 10, apply: () => players.forEach(p => { p.maxHp += 1; p.hp = Math.min(p.maxHp, p.hp + 2); }) },
-  { name: 'Royal Magnet', desc: 'Gems fly to you from farther',
+  { name: 'Royal Magnet', icon: 'magnet', desc: 'Gems fly to you from farther',
     can: () => players[0].magnet < 320, apply: () => players.forEach(p => p.magnet *= 1.55) },
-  { name: 'Spinning Aegis', desc: 'An enchanted shield orbits each hero',
+  { name: 'Spinning Aegis', icon: 'aegis', desc: 'An enchanted shield orbits each hero',
     can: () => players[0].orbCount < 4, apply: () => players.forEach(p => p.orbCount += 1) },
-  { name: 'Sword Wave', desc: 'Attacks launch a flying blade',
+  { name: 'Sword Wave', icon: 'wave', desc: 'Attacks launch a flying blade',
     can: () => players[0].wave < 3, apply: () => players.forEach(p => p.wave += 1) },
 ];
 function levelUp() {
@@ -1557,6 +1557,79 @@ function drawPlayerSprite(p, t) {
   }
 }
 
+// upgrade icons, drawn as crisp little emblems
+function drawUpgradeIcon(kind, x, y, s, t) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  if (kind === 'sword') {
+    ctx.rotate(-Math.PI / 4);
+    ctx.fillStyle = '#dfe5ea'; ctx.fillRect(-4, -26, 8, 32);
+    ctx.fillStyle = '#f7fafc'; ctx.fillRect(-4, -26, 3, 32);
+    ctx.fillStyle = UI.gold; ctx.fillRect(-12, 5, 24, 5);
+    ctx.fillStyle = '#4a3018'; ctx.fillRect(-3, 10, 6, 11);
+    ctx.fillStyle = UI.gold; ctx.beginPath(); ctx.arc(0, 24, 4, 0, 7); ctx.fill();
+  } else if (kind === 'swift') {
+    for (const rot of [-0.6, 0.6]) {
+      ctx.save(); ctx.rotate(rot);
+      ctx.fillStyle = '#dfe5ea'; ctx.fillRect(-3, -22, 6, 26);
+      ctx.fillStyle = UI.gold; ctx.fillRect(-8, 3, 16, 4);
+      ctx.fillStyle = '#4a3018'; ctx.fillRect(-2, 7, 4, 8);
+      ctx.restore();
+    }
+  } else if (kind === 'reach') {
+    ctx.rotate(-Math.PI / 4);
+    ctx.fillStyle = '#dfe5ea'; ctx.fillRect(-2.5, -30, 5, 42);
+    ctx.fillStyle = UI.gold; ctx.fillRect(-9, 10, 18, 4);
+    ctx.strokeStyle = UI.goldLight; ctx.lineWidth = 3;
+    for (const o of [0, 8]) {
+      ctx.beginPath(); ctx.moveTo(-7, -14 + o - 8); ctx.lineTo(0, -20 + o - 8); ctx.lineTo(7, -14 + o - 8);
+      ctx.stroke();
+    }
+  } else if (kind === 'boots') {
+    ctx.fillStyle = '#6b4a2a';
+    ctx.fillRect(-10, -20, 12, 26);
+    ctx.fillRect(-10, 0, 22, 12);
+    ctx.fillStyle = '#8a6a3f';
+    ctx.fillRect(-10, -20, 12, 5);
+    ctx.fillStyle = '#33291d';
+    ctx.fillRect(-10, 9, 22, 4);
+    ctx.fillStyle = '#a3d8f4';
+    ctx.beginPath(); ctx.moveTo(-12, -12); ctx.lineTo(-22, -16); ctx.lineTo(-12, -6); ctx.closePath(); ctx.fill();
+  } else if (kind === 'heart') {
+    drawHeart(0, -2, 20, true);
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(-7, -10, 3.5, 0, 7); ctx.fill();
+  } else if (kind === 'magnet') {
+    ctx.strokeStyle = '#e5484d'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(0, -4, 13, Math.PI, 0); ctx.stroke();
+    ctx.fillStyle = '#e5484d';
+    ctx.fillRect(-18, -6, 10, 14); ctx.fillRect(8, -6, 10, 14);
+    ctx.fillStyle = '#dfe5ea';
+    ctx.fillRect(-18, 8, 10, 6); ctx.fillRect(8, 8, 10, 6);
+    ctx.fillStyle = '#4ade80';
+    ctx.save(); ctx.translate(0, 18); ctx.rotate(Math.PI / 4); ctx.fillRect(-4, -4, 8, 8); ctx.restore();
+  } else if (kind === 'aegis') {
+    ctx.fillStyle = 'rgba(255, 217, 138, 0.25)';
+    ctx.beginPath(); ctx.arc(0, 0, 22, 0, 7); ctx.fill();
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, 7); ctx.fill();
+    ctx.fillStyle = '#a9722c';
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0.6, 2.4); ctx.lineTo(0, 0); ctx.fill();
+    ctx.fillStyle = UI.goldPale;
+    ctx.beginPath(); ctx.arc(-4, -5, 4.5, 0, 7); ctx.fill();
+    const oa = (t || 0) * 3;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(Math.cos(oa) * 22, Math.sin(oa) * 22, 3, 0, 7); ctx.fill();
+  } else if (kind === 'wave') {
+    ctx.strokeStyle = '#fffaeb'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(-6, 0, 18, -1.1, 1.1); ctx.stroke();
+    ctx.strokeStyle = UI.goldLight; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(-14, 0, 18, -0.9, 0.9); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 // ---------- selection screens ----------
 function renderCardScreen(t, title, items, drawItem) {
   ctx.fillStyle = '#12100d';
@@ -1803,62 +1876,111 @@ function render(t) {
 
   ctx.restore(); // end camera
 
-  // ---- HUD (royal style) ----
+  // ---- HUD: royal command bar ----
   const joined = players.filter(p => p.joined);
-  plate(10, 10, 250, joined.length * 30 + 14, 10);
-  let hy = 32;
+  let hy = 12;
   for (const p of joined) {
+    const pw = Math.max(180, 76 + p.maxHp * 21);
+    plate(10, hy, pw, 46, 12);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(35, hy + 23, 15, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.fillStyle = 'rgba(232, 182, 76, 0.14)';
+    ctx.fillRect(20, hy + 8, 30, 30);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(heroSprites[p.heroKey].down[1], 19, hy + 5, 32, 32);
+    ctx.restore();
+    ctx.strokeStyle = p.alive ? UI.plateBorder : 'rgba(140, 140, 140, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(35, hy + 23, 15, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.textAlign = 'left';
-    ctx.font = '700 13px Cinzel, Georgia, serif';
-    ctx.fillStyle = p.alive ? UI.text : UI.dim;
-    ctx.fillText(p.name, 22, hy + 4);
-    for (let i = 0; i < p.maxHp; i++) drawHeart(138 + i * 23, hy, 10, i < p.hp);
-    hy += 30;
+    ctx.font = '700 12px Cinzel, Georgia, serif';
+    ctx.fillStyle = p.alive ? UI.goldPale : UI.dim;
+    ctx.fillText(p.name, 60, hy + 19);
+    for (let i = 0; i < p.maxHp; i++) drawHeart(66 + i * 21, hy + 33, 9, i < p.hp);
+    hy += 54;
   }
-  // center: timer + XP
-  plate(355, 8, 250, 56, 10);
+
+  // center: timer + XP + level medallion
+  plate(362, 8, 236, 58, 12);
+  for (const [dx, dy] of [[362, 8], [598, 8], [362, 66], [598, 66]]) {
+    ctx.save();
+    ctx.translate(dx, dy);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillStyle = UI.gold;
+    ctx.fillRect(-3, -3, 6, 6);
+    ctx.restore();
+  }
   const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
   const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
   ctx.textAlign = 'center';
   ctx.font = '700 24px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldPale;
-  ctx.fillText(mm + ':' + ss, 480, 34);
-  ctx.fillStyle = 'rgba(10, 6, 16, 0.8)';
-  ctx.fillRect(372, 44, 216, 10);
-  const xg = ctx.createLinearGradient(372, 0, 588, 0);
+  ctx.fillText(mm + ':' + ss, 470, 36);
+  ctx.fillStyle = 'rgba(10, 6, 16, 0.85)';
+  ctx.fillRect(380, 46, 180, 9);
+  const xg = ctx.createLinearGradient(380, 0, 560, 0);
   xg.addColorStop(0, '#a855f7');
   xg.addColorStop(1, UI.gold);
   ctx.fillStyle = xg;
-  ctx.fillRect(372, 44, 216 * Math.min(1, game.xp / game.xpNext), 10);
+  ctx.fillRect(380, 46, 180 * Math.min(1, game.xp / game.xpNext), 9);
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
-  ctx.strokeRect(372, 44, 216, 10);
-  ctx.textAlign = 'left';
+  ctx.strokeRect(380, 46, 180, 9);
+  // level medallion
+  ctx.beginPath();
+  ctx.arc(586, 44, 17, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1410';
+  ctx.fill();
+  ctx.strokeStyle = UI.gold;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.textAlign = 'center';
   ctx.font = '700 13px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText('LV ' + game.level, 594, 54);
-  // right: kills
-  plate(770, 10, 180, 38, 10);
-  ctx.textAlign = 'right';
-  ctx.font = '700 15px Cinzel, Georgia, serif';
+  ctx.fillText(String(game.level), 586, 49);
+
+  // right: banished counter with a wisp emblem
+  plate(788, 10, 162, 44, 12);
+  ctx.fillStyle = '#3b1e63';
+  ctx.beginPath(); ctx.arc(812, 32, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#e9d5ff';
+  ctx.fillRect(807, 28, 3, 5); ctx.fillRect(814, 28, 3, 5);
+  ctx.textAlign = 'left';
+  ctx.font = '600 9px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText('BANISHED', 832, 25);
+  ctx.font = '700 19px Cinzel, Georgia, serif';
   ctx.fillStyle = '#c9a8ff';
-  ctx.fillText('BANISHED  ' + game.kills, 938, 35);
+  ctx.fillText(String(game.kills), 832, 46);
 
   if (!players[1].joined) {
+    ctx.font = '600 13px Inter, sans-serif';
+    const jtxt = 'P2 — press an ARROW KEY to join!';
+    const jw = ctx.measureText(jtxt).width + 38;
+    ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 3);
+    plate(12, 640 - 46, jw, 32, 16);
     ctx.textAlign = 'left';
-    ctx.font = '18px "VT323", monospace';
-    ctx.fillStyle = `rgba(240, 226, 195, ${0.5 + 0.3 * Math.sin(t * 3)})`;
-    ctx.fillText('P2: press an ARROW KEY to join!', 16, 640 - 16);
+    ctx.fillStyle = UI.goldLight;
+    ctx.fillText(jtxt, 31, 640 - 25);
+    ctx.globalAlpha = 1;
   }
 
   let ty = 100;
   for (const tst of toasts) {
     const a = Math.min(1, tst.age * 4) * Math.min(1, (3 - tst.age));
+    ctx.font = '600 14px Inter, sans-serif';
+    const tw = ctx.measureText(tst.text).width + 42;
+    ctx.globalAlpha = a;
+    plate(480 - tw / 2, ty - 19, tw, 30, 15);
     ctx.textAlign = 'center';
-    ctx.font = '22px "VT323", monospace';
-    ctx.fillStyle = `rgba(255, 217, 138, ${a})`;
-    ctx.fillText(tst.text, 480, ty);
-    ty += 26;
+    ctx.fillStyle = UI.goldLight;
+    ctx.fillText(tst.text, 480, ty + 1);
+    ctx.globalAlpha = 1;
+    ty += 38;
   }
 
   // ---- level-up overlay ----
@@ -1869,30 +1991,50 @@ function render(t) {
     ctx.textAlign = 'center';
     ctx.fillStyle = UI.goldLight;
     ctx.font = '800 32px Cinzel, Georgia, serif';
-    ctx.fillText('LEVEL ' + game.level + ' — CHOOSE A ROYAL GIFT', 480, 140);
+    ctx.fillText('LEVEL ' + game.level + ' — CHOOSE A ROYAL GIFT', 480, 122);
     ctx.strokeStyle = UI.plateBorder;
-    ctx.beginPath(); ctx.moveTo(300, 162); ctx.lineTo(660, 162); ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(300, 144); ctx.lineTo(660, 144); ctx.stroke();
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
-      const cx2 = 480 + (i - 1) * 270, cy2 = 330;
-      const hov = mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > cy2 - 110 && mouse.y < cy2 + 110;
-      cardRects.push({ x: cx2 - 115, y: cy2 - 110, w: 230, h: 220, idx: i });
-      plate(cx2 - 115, cy2 - 110, 230, 220, 14);
+      const cx2 = 480 + (i - 1) * 270;
+      const hov = mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > 195 && mouse.y < 460;
+      const top = 205 - (hov ? 10 : 0);
+      cardRects.push({ x: cx2 - 115, y: 195, w: 230, h: 265, idx: i });
+      plate(cx2 - 115, top, 230, 250, 14);
       if (hov) {
         ctx.strokeStyle = UI.goldLight;
         ctx.lineWidth = 2.5;
-        ctx.strokeRect(cx2 - 111, cy2 - 106, 222, 212);
+        ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+        ctx.save();
+        ctx.shadowColor = 'rgba(232, 182, 76, 0.55)';
+        ctx.shadowBlur = 26;
+        ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+        ctx.restore();
       }
+      // number chip
+      plate(cx2 - 103, top + 12, 28, 24, 8);
+      ctx.textAlign = 'center';
+      ctx.font = '700 14px Cinzel, Georgia, serif';
       ctx.fillStyle = UI.gold;
-      ctx.font = '700 18px Cinzel, Georgia, serif';
-      ctx.fillText('' + (i + 1), cx2, cy2 - 76);
+      ctx.fillText(String(i + 1), cx2 - 89, top + 29);
+      // icon medallion
+      ctx.beginPath();
+      ctx.arc(cx2, top + 72, 37, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(232, 182, 76, 0.1)';
+      ctx.fill();
+      ctx.strokeStyle = UI.plateBorder;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawUpgradeIcon(c.icon, cx2, top + 72, 1.05, t);
+      ctx.textAlign = 'center';
       ctx.fillStyle = hov ? UI.goldLight : UI.text;
       ctx.font = '700 17px Cinzel, Georgia, serif';
-      ctx.fillText(c.name, cx2, cy2 - 36);
+      ctx.fillText(c.name, cx2, top + 145);
       ctx.fillStyle = UI.dim;
       ctx.font = '15px Inter, sans-serif';
       const words = c.desc.split(' ');
-      let line = '', ly = cy2 + 4;
+      let line = '', ly = top + 176;
       for (const wd of words) {
         if ((line + wd).length > 22) { ctx.fillText(line, cx2, ly); ly += 21; line = ''; }
         line += (line ? ' ' : '') + wd;
@@ -1901,22 +2043,49 @@ function render(t) {
     }
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
     ctx.font = '20px "VT323", monospace';
-    ctx.fillText('PRESS 1, 2, 3  •  OR CLICK A CARD', 480, 505);
+    ctx.fillText('PRESS 1, 2, 3  •  OR CLICK A CARD', 480, 520);
   }
 
   if (game.over) {
-    ctx.fillStyle = 'rgba(10, 5, 16, 0.75)';
+    ctx.fillStyle = 'rgba(10, 5, 16, 0.78)';
     ctx.fillRect(0, 0, 960, 640);
+    plate(230, 170, 500, 280, 18);
+    for (const [dx, dy] of [[230, 170], [730, 170], [230, 450], [730, 450]]) {
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = UI.gold;
+      ctx.fillRect(-4, -4, 8, 8);
+      ctx.restore();
+    }
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e5484d';
-    ctx.font = '800 44px Cinzel, Georgia, serif';
-    ctx.fillText('THE KINGDOM HAS FALLEN', 480, 260);
-    ctx.fillStyle = UI.text;
-    ctx.font = '19px Inter, sans-serif';
-    ctx.fillText('You survived ' + mm + ':' + ss + ' at level ' + game.level + ' and banished ' + game.kills + ' spirits', 480, 312);
+    ctx.font = '800 32px Cinzel, Georgia, serif';
+    ctx.fillText('THE KINGDOM HAS FALLEN', 480, 226);
+    ctx.strokeStyle = UI.plateBorder;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(300, 248); ctx.lineTo(660, 248); ctx.stroke();
+    const rows = [
+      ['Time survived', mm + ':' + ss],
+      ['Level reached', String(game.level)],
+      ['Spirits banished', String(game.kills)],
+    ];
+    let ry = 288;
+    for (const [k2, v2] of rows) {
+      ctx.textAlign = 'left';
+      ctx.font = '15px Inter, sans-serif';
+      ctx.fillStyle = UI.dim;
+      ctx.fillText(k2, 300, ry);
+      ctx.textAlign = 'right';
+      ctx.font = '700 17px Cinzel, Georgia, serif';
+      ctx.fillStyle = UI.goldPale;
+      ctx.fillText(v2, 660, ry);
+      ry += 36;
+    }
+    ctx.textAlign = 'center';
     ctx.fillStyle = UI.goldLight;
-    ctx.font = '22px "VT323", monospace';
-    ctx.fillText('Press R to choose a new hero  •  Esc for the menu', 480, 362);
+    ctx.font = '20px "VT323", monospace';
+    ctx.fillText('Press R — choose a new hero   •   Esc — menu', 480, 420);
   }
 
   ctx.restore(); // end room transform
