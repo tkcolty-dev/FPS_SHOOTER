@@ -570,6 +570,31 @@
     box-shadow: 0 -18px 30px rgba(10, 10, 14, 0.7);
   }
   #menu.hasImage #statCards, #menu.hasImage #questCard { display: none; }
+  /* real stats on the bottom bar */
+  #homeStats {
+    position: absolute; left: 0; right: 0; bottom: 1.4%;
+    display: flex; align-items: center; justify-content: center;
+    gap: 1vw; z-index: 6;
+  }
+  .hsCard {
+    font-family: 'Cinzel', Georgia, serif; font-weight: 700;
+    font-size: min(2vh, 1.4vw); letter-spacing: 0.06em;
+    color: #f0e2c3; display: flex; gap: 0.5vw; align-items: center;
+    background: linear-gradient(180deg, rgba(28, 22, 15, 0.92), rgba(13, 11, 10, 0.92));
+    border: 1px solid rgba(232, 182, 76, 0.35); border-radius: 1.2vh;
+    padding: 1.2vh 1.5vw;
+  }
+  .hsCard b { color: #ffd98a; }
+  #hsUpgrades {
+    cursor: pointer;
+    background: linear-gradient(140deg, rgba(70, 50, 14, 0.95), rgba(32, 23, 9, 0.95));
+    border: 1.5px solid #e8b64c; color: #ffd98a;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  #hsUpgrades:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0 18px rgba(232, 182, 76, 0.4);
+  }
   /* foreground foliage silhouettes hiding the last painted bits at the corners */
   #bushL, #bushR {
     position: absolute; bottom: 7%; height: 11%; width: 34%;
@@ -967,12 +992,13 @@ const ROSTER = [
 ];
 // forge sprites for every roster knight
 for (const rk of ROSTER) {
-  if (!heroSprites[rk.key]) {
-    heroSprites[rk.key] = rk.key === 'queen'
-      ? buildDirSprites(Object.assign({}, KENNA_PAL, { 'T': '#e8b64c', 't': '#ffd98a' }))
-      : buildDirSprites(knightPal(rk.tabard));
-  }
+  if (!heroSprites[rk.key]) heroSprites[rk.key] = buildDirSprites(knightPal(rk.tabard));
 }
+// Kenna fights in armor now (her hair stays, so you always know it's her)
+heroSprites.kenna = buildDirSprites(Object.assign({}, KENNA_PAL,
+  { 'T': '#a9b1b9', 't': '#c7ccd1', 'B': '#4a3a26', 'b': '#c9a86a', 'L': '#565c63' }));
+heroSprites.queen = buildDirSprites(Object.assign({}, KENNA_PAL,
+  { 'T': '#e8b64c', 't': '#ffd98a', 'B': '#4a3a26', 'b': '#c9a86a', 'L': '#8a6a3f' }));
 
 // ---------- permanent power-ups (Royal Armory) ----------
 const POWERUPS = [
@@ -1025,14 +1051,19 @@ window.addEventListener('keydown', e => {
   if (menuOpen) return;
 
   // hero grid / armory / map selection screens
-  if (game.phase === 'select') {
+  if (game.phase === 'select' || game.phase === 'select2') {
     const cols = 8, n = ROSTER.length;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
     if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - cols + n) % n;
     if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + cols) % n;
-    if (['Space', 'Enter'].includes(e.code)) confirmSelection();
-    if (e.code === 'KeyT') { game.phase = 'armory'; game.cursor = 0; }
+    if (e.code === 'KeyQ') game.cursor = Math.max(0, game.cursor - 16);
+    if (e.code === 'KeyE') game.cursor = Math.min(n - 1, game.cursor + 16);
+    if (['Space', 'Enter'].includes(e.code)) {
+      if (game.phase === 'select2') confirmSelection2();
+      else confirmSelection();
+    }
+    if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.cursor = 0; }
     return;
   }
   if (game.phase === 'armory') {
@@ -1057,18 +1088,11 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (e.code === 'KeyR' && game.over) { game.phase = 'select'; game.cursor = 0; game.over = false; return; }
-  // P2 joins on any arrow key
+  // P2 joins on any arrow key — and picks their own knight
   const p2 = players[1];
   if (!p2.joined && e.code.startsWith('Arrow') && game.phase === 'run') {
-    p2.joined = true;
-    p2.alive = true;
-    const used = players[0].heroKey;
-    const free = ROSTER.find(h => h.key !== used && kdMeta.unlocked.includes(h.key));
-    applyHero(p2, free.key);
-    p2.hp = p2.maxHp;
-    p2.x = players[0].x + 60;
-    p2.y = players[0].y;
-    gameToast(p2.name + ' joins the fight!');
+    game.phase = 'select2';
+    game.cursor = 0;
   }
 });
 window.addEventListener('keyup', e => keys.delete(e.code));
@@ -1083,7 +1107,7 @@ canvas.addEventListener('mousemove', e => {
   mouse.y = (e.clientY - r.top - view.oy) / view.scale;
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
-      if ((game.phase === 'select' || game.phase === 'map' || game.phase === 'armory') && c.idx >= 0) game.cursor = c.idx;
+      if ((game.phase === 'select' || game.phase === 'select2' || game.phase === 'map' || game.phase === 'armory') && c.idx >= 0) game.cursor = c.idx;
     }
   }
 });
@@ -1092,7 +1116,9 @@ canvas.addEventListener('click', () => {
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
       if (game.phase === 'armory') { if (c.idx >= 0) buyPower(c.idx); else { game.phase = 'select'; game.cursor = 0; } }
-      else if (game.phase === 'select' && c.idx === -2) { game.phase = 'armory'; game.cursor = 0; }
+      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -3) { game.cursor = Math.max(0, game.cursor - 16); }
+      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -4) { game.cursor = Math.min(ROSTER.length - 1, game.cursor + 16); }
+      else if (game.phase === 'select2' && c.idx >= 0) { game.cursor = c.idx; confirmSelection2(); }
       else if (game.phase === 'select' || game.phase === 'map') { game.cursor = Math.max(0, c.idx); confirmSelection(); }
       else if (game.choices) pickUpgrade(c.idx);
       return;
@@ -1122,6 +1148,23 @@ function confirmSelection() {
     initRun();
     game.phase = 'run';
   }
+}
+function confirmSelection2() {
+  const rk = ROSTER[game.cursor];
+  if (!kdMeta.unlocked.includes(rk.key)) {
+    gameToast('🔒 Locked — unlock with gold first!');
+    return;
+  }
+  const p2 = players[1];
+  p2.joined = true;
+  applyHero(p2, rk.key);
+  p2.alive = true;
+  p2.hp = p2.maxHp;
+  p2.invuln = 2;
+  p2.x = players[0].x + 60;
+  p2.y = players[0].y;
+  game.phase = 'run';
+  gameToast(p2.name + ' joins the fight!');
 }
 function buyPower(idx) {
   const pu = POWERUPS[idx];
@@ -1841,21 +1884,8 @@ function drawUpgradeIcon(kind, x, y, s, t) {
 
 // ---------- selection screens ----------
 function renderCardScreen(t, title, items, drawItem) {
-  ctx.fillStyle = '#12100d';
-  ctx.fillRect(0, 0, 960, 640);
-  // subtle royal backdrop
-  for (let i = 0; i < 40; i++) {
-    const sx = hash2(i, 3) * 960, sy = hash2(i, 5) * 640;
-    ctx.fillStyle = `rgba(232, 182, 76, ${0.03 + 0.05 * Math.sin(t + i)})`;
-    ctx.fillRect(sx, sy, 3, 3);
-  }
-  ctx.textAlign = 'center';
-  ctx.fillStyle = UI.goldLight;
-  ctx.font = '800 34px Cinzel, Georgia, serif';
-  ctx.fillText(title, 480, 90);
-  ctx.strokeStyle = UI.plateBorder;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(280, 112); ctx.lineTo(680, 112); ctx.stroke();
+  drawScreenBg(t);
+  drawScreenTitle(title, 90);
 
   cardRects = [];
   const n = items.length;
@@ -1886,37 +1916,78 @@ function renderCardScreen(t, title, items, drawItem) {
   ctx.fillText('A / D or MOUSE to choose  •  SPACE or CLICK to confirm', 480, 530);
 }
 
-function renderSelect(t) {
-  ctx.fillStyle = '#12100d';
-  ctx.fillRect(0, 0, 960, 640);
-  for (let i = 0; i < 40; i++) {
+// faded title art behind the game screens
+function drawScreenBg(t) {
+  const img = document.getElementById('menuBgImg');
+  if (img && img.naturalWidth) {
+    const s = Math.max(960 / img.naturalWidth, 640 / img.naturalHeight);
+    const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(img, (960 - dw) / 2, (640 - dh) / 2, dw, dh);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = 'rgba(10, 8, 6, 0.78)';
+    ctx.fillRect(0, 0, 960, 640);
+    const vg = ctx.createRadialGradient(480, 320, 220, 480, 320, 640);
+    vg.addColorStop(0, 'rgba(8, 6, 4, 0)');
+    vg.addColorStop(1, 'rgba(8, 6, 4, 0.5)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, 960, 640);
+  } else {
+    ctx.fillStyle = '#12100d';
+    ctx.fillRect(0, 0, 960, 640);
+  }
+  for (let i = 0; i < 30; i++) {
     const sx = hash2(i, 3) * 960, sy = hash2(i, 5) * 640;
     ctx.fillStyle = `rgba(232, 182, 76, ${0.03 + 0.05 * Math.sin(t + i)})`;
     ctx.fillRect(sx, sy, 3, 3);
   }
+}
+// gold gradient headline like the home screen title
+function drawScreenTitle(text, y) {
   ctx.textAlign = 'center';
-  ctx.fillStyle = UI.goldLight;
-  ctx.font = '800 30px Cinzel, Georgia, serif';
-  ctx.fillText('CHOOSE YOUR KNIGHT', 430, 66);
+  const g = ctx.createLinearGradient(0, y - 30, 0, y + 8);
+  g.addColorStop(0, '#fdf3d7');
+  g.addColorStop(0.6, '#e8b64c');
+  g.addColorStop(1, '#a97e3c');
+  ctx.fillStyle = g;
+  ctx.font = '800 34px Cinzel, Georgia, serif';
+  ctx.fillText(text, 480, y);
+  const w = ctx.measureText(text).width;
+  ctx.fillStyle = UI.gold;
+  ctx.font = '15px Georgia, serif';
+  ctx.fillText('✦', 480 - w / 2 - 32, y - 10);
+  ctx.fillText('✦', 480 + w / 2 + 32, y - 10);
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(250, 84); ctx.lineTo(610, 84); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(480 - w / 2 - 58, y + 16);
+  ctx.lineTo(480 + w / 2 + 58, y + 16);
+  ctx.stroke();
+}
+
+function renderSelect(t, forP2) {
+  drawScreenBg(t);
+  drawScreenTitle(forP2 ? 'PLAYER 2 — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 64);
 
   // treasury
-  plate(742, 30, 208, 46, 12);
-  drawUpgradeIcon('coin', 772, 53, 0.65, t);
+  plate(760, 24, 190, 42, 12);
+  drawUpgradeIcon('coin', 788, 45, 0.55, t);
   ctx.textAlign = 'right';
-  ctx.font = '700 20px Cinzel, Georgia, serif';
+  ctx.font = '700 19px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(kdMeta.gold), 934, 60);
+  ctx.fillText(String(kdMeta.gold), 934, 52);
 
   cardRects = [];
-  const cols = 8, tile = 100, gap = 10;
+  const cols = 8, perPage = 16, tile = 104, gap = 12;
+  const page = Math.floor(game.cursor / perPage);
+  const pages = Math.ceil(ROSTER.length / perPage);
   const gx0 = 480 - (cols * tile + (cols - 1) * gap) / 2;
-  for (let i = 0; i < ROSTER.length; i++) {
+  for (let k = 0; k < perPage; k++) {
+    const i = page * perPage + k;
+    if (i >= ROSTER.length) break;
     const rk = ROSTER[i];
-    const col = i % cols, row = Math.floor(i / cols);
-    const x = gx0 + col * (tile + gap), y = 108 + row * (tile + gap);
+    const col = k % cols, row = Math.floor(k / cols);
+    const x = gx0 + col * (tile + gap), y = 100 + row * (tile + gap);
     cardRects.push({ x, y, w: tile, h: tile, idx: i });
     const sel = game.cursor === i;
     const owned = kdMeta.unlocked.includes(rk.key);
@@ -1934,99 +2005,95 @@ function renderSelect(t) {
     const bob2 = sel ? Math.sin(t * 4) * 2 : 0;
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = owned ? 1 : 0.38;
-    ctx.drawImage(heroSprites[rk.key].down[1], x + tile / 2 - 32, y + 8 + bob2, 64, 64);
+    ctx.drawImage(heroSprites[rk.key].down[1], x + tile / 2 - 34, y + 8 + bob2, 68, 68);
     ctx.globalAlpha = 1;
     if (!owned) {
       ctx.fillStyle = 'rgba(8, 6, 4, 0.45)';
       ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-      drawUpgradeIcon('coin', x + tile / 2 - 20, y + tile - 18, 0.34, t);
+      drawUpgradeIcon('coin', x + tile / 2 - 22, y + tile - 17, 0.32, t);
       ctx.textAlign = 'left';
       ctx.font = '700 13px Cinzel, Georgia, serif';
       ctx.fillStyle = UI.gold;
-      ctx.fillText(String(rk.price), x + tile / 2 - 8, y + tile - 13);
+      ctx.fillText(String(rk.price), x + tile / 2 - 10, y + tile - 12);
     } else {
       ctx.textAlign = 'center';
       ctx.font = '600 9px Inter, sans-serif';
       ctx.fillStyle = sel ? UI.goldLight : UI.dim;
-      ctx.fillText(rk.name, x + tile / 2, y + tile - 10);
+      ctx.fillText(rk.name, x + tile / 2, y + tile - 9);
     }
   }
 
-  // details panel for the highlighted knight
+  // page selector
+  const py = 100 + 2 * (tile + gap) + 6;
+  cardRects.push({ x: 352, y: py, w: 56, h: 36, idx: -3 });
+  cardRects.push({ x: 552, y: py, w: 56, h: 36, idx: -4 });
+  plate(352, py, 56, 36, 10);
+  plate(552, py, 56, 36, 10);
+  ctx.textAlign = 'center';
+  ctx.font = '700 16px Cinzel, Georgia, serif';
+  ctx.fillStyle = page > 0 ? UI.goldLight : 'rgba(240, 226, 195, 0.25)';
+  ctx.fillText('◀', 380, py + 24);
+  ctx.fillStyle = page < pages - 1 ? UI.goldLight : 'rgba(240, 226, 195, 0.25)';
+  ctx.fillText('▶', 580, py + 24);
+  ctx.font = '700 14px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.text;
+  ctx.fillText('PAGE ' + (page + 1) + ' / ' + pages, 480, py + 23);
+
+  // details panel
   const rk = ROSTER[game.cursor];
   const owned = kdMeta.unlocked.includes(rk.key);
-  plate(130, 460, 700, 96, 14);
+  plate(70, py + 52, 820, 96, 14);
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(heroSprites[rk.key].down[1], 150, 470, 76, 76);
+  ctx.drawImage(heroSprites[rk.key].down[1], 92, py + 62, 76, 76);
   ctx.textAlign = 'left';
   ctx.font = '700 20px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(rk.name, 240, 492);
+  ctx.fillText(rk.name, 184, py + 86);
   ctx.font = '13px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText(rk.role, 240, 512);
+  ctx.fillText(rk.role, 184, py + 106);
   const wname = { slash: 'Valiant Slash', nova: 'Flame Nova', daggers: 'Shadow Daggers', gust: 'Wind Gust' }[rk.wtype];
   ctx.fillStyle = UI.gold;
   ctx.font = '700 14px Cinzel, Georgia, serif';
-  ctx.fillText(wname, 240, 538);
+  ctx.fillText(wname, 184, py + 132);
   const m = rk.mods, traits = [];
-  if (m.hp > 0) traits.push('+' + m.hp + ' hearts'); if (m.hp < 0) traits.push(m.hp + ' hearts');
+  if (m.hp > 0) traits.push('+' + m.hp + ' hearts');
+  if (m.hp < 0) traits.push(m.hp + ' hearts');
   if (m.dmg) traits.push('+' + m.dmg + ' damage');
-  if (m.atkM && m.atkM < 1) traits.push('faster attacks'); if (m.atkM && m.atkM > 1) traits.push('slower attacks');
-  if (m.speedM && m.speedM > 1) traits.push('fleet-footed'); if (m.speedM && m.speedM < 1) traits.push('heavy armor');
+  if (m.atkM && m.atkM < 1) traits.push('faster attacks');
+  if (m.atkM && m.atkM > 1) traits.push('slower attacks');
+  if (m.speedM && m.speedM > 1) traits.push('fleet-footed');
+  if (m.speedM && m.speedM < 1) traits.push('heavy armor');
   if (m.magnetM) traits.push('gem sense');
   if (m.orb) traits.push(m.orb + ' aegis shield' + (m.orb > 1 ? 's' : ''));
   if (m.wave) traits.push('sword waves');
   ctx.fillStyle = UI.text;
   ctx.font = '13px Inter, sans-serif';
-  ctx.fillText(traits.length ? traits.join('  •  ') : 'a true all-rounder', 400, 538);
+  ctx.fillText(traits.length ? traits.join('  •  ') : 'a true all-rounder', 360, py + 132);
   ctx.textAlign = 'right';
   if (!owned) {
     ctx.fillStyle = kdMeta.gold >= rk.price ? UI.goldLight : '#e5484d';
     ctx.font = '700 15px Cinzel, Georgia, serif';
-    ctx.fillText('UNLOCK — ' + rk.price + 'g', 810, 512);
+    ctx.fillText('UNLOCK — ' + rk.price + 'g', 866, py + 106);
   }
-
-  // armory button
-  cardRects.push({ x: 742, y: 460, w: 208, h: 96, idx: -2 });
-  plate(742, 460, 208, 96, 14);
-  drawUpgradeIcon('aegis', 786, 506, 0.55, t);
-  ctx.textAlign = 'left';
-  ctx.font = '700 16px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
-  ctx.fillText('ROYAL', 832, 496);
-  ctx.fillText('ARMORY', 832, 516);
-  ctx.font = '11px Inter, sans-serif';
-  ctx.fillStyle = UI.dim;
-  ctx.fillText('press T', 832, 538);
 
   ctx.textAlign = 'center';
   ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
   ctx.font = '18px "VT323", monospace';
-  ctx.fillText('MOVE with WASD/arrows or mouse  •  SPACE / CLICK to choose or unlock', 480, 596);
+  ctx.fillText(forP2
+    ? 'ARROWS to move  •  ENTER to join the battle!'
+    : 'WASD / arrows / mouse  •  SPACE or CLICK — choose or unlock  •  Q / E — pages', 480, 612);
 }
 
 function renderArmory(t) {
-  ctx.fillStyle = '#12100d';
-  ctx.fillRect(0, 0, 960, 640);
-  for (let i = 0; i < 40; i++) {
-    const sx = hash2(i, 7) * 960, sy = hash2(i, 9) * 640;
-    ctx.fillStyle = `rgba(232, 182, 76, ${0.03 + 0.05 * Math.sin(t + i)})`;
-    ctx.fillRect(sx, sy, 3, 3);
-  }
-  ctx.textAlign = 'center';
-  ctx.fillStyle = UI.goldLight;
-  ctx.font = '800 30px Cinzel, Georgia, serif';
-  ctx.fillText('THE ROYAL ARMORY', 430, 70);
-  ctx.strokeStyle = UI.plateBorder;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(250, 90); ctx.lineTo(610, 90); ctx.stroke();
-  plate(742, 34, 208, 46, 12);
-  drawUpgradeIcon('coin', 772, 57, 0.65, t);
+  drawScreenBg(t);
+  drawScreenTitle('UPGRADES', 64);
+  plate(760, 24, 190, 42, 12);
+  drawUpgradeIcon('coin', 788, 45, 0.55, t);
   ctx.textAlign = 'right';
-  ctx.font = '700 20px Cinzel, Georgia, serif';
+  ctx.font = '700 19px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(kdMeta.gold), 934, 64);
+  ctx.fillText(String(kdMeta.gold), 934, 52);
 
   cardRects = [];
   const cw = 280, ch = 150, gap = 18;
@@ -2034,7 +2101,7 @@ function renderArmory(t) {
     const pu = POWERUPS[i];
     const col = i % 3, row = Math.floor(i / 3);
     const x = 480 - (3 * cw + 2 * gap) / 2 + col * (cw + gap);
-    const y = 130 + row * (ch + gap);
+    const y = 110 + row * (ch + gap);
     cardRects.push({ x, y, w: cw, h: ch, idx: i });
     const sel = game.cursor === i;
     const rank = powerRank(pu.key), maxed = rank >= pu.max;
@@ -2056,7 +2123,6 @@ function renderArmory(t) {
     ctx.font = '700 17px Cinzel, Georgia, serif';
     ctx.fillStyle = sel ? UI.goldLight : UI.text;
     ctx.fillText(pu.name, x + 86, y + 40);
-    // rank pips
     for (let r2 = 0; r2 < pu.max; r2++) {
       ctx.fillStyle = r2 < rank ? UI.gold : 'rgba(255, 255, 255, 0.15)';
       ctx.fillRect(x + 86 + r2 * 18, y + 52, 13, 7);
@@ -2073,16 +2139,15 @@ function renderArmory(t) {
       ctx.fillText('UPGRADE — ' + powerPrice(pu) + 'g', x + 86, y + 116);
     }
   }
-  // back button
-  cardRects.push({ x: 380, y: 500, w: 200, h: 52, idx: -1 });
-  plate(380, 500, 200, 52, 12);
+  cardRects.push({ x: 380, y: 480, w: 200, h: 52, idx: -1 });
+  plate(380, 480, 200, 52, 12);
   ctx.textAlign = 'center';
   ctx.font = '700 16px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText('BACK  (T)', 480, 532);
+  ctx.fillText('BACK', 480, 512);
   ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
   ctx.font = '18px "VT323", monospace';
-  ctx.fillText('These blessings are permanent — every knight, every run', 480, 590);
+  ctx.fillText('These blessings are permanent — every knight, every run', 480, 580);
 }
 
 function renderMapSelect(t) {
@@ -2127,6 +2192,7 @@ function render(t) {
   ctx.beginPath(); ctx.rect(0, 0, 960, 640); ctx.clip();
 
   if (game.phase === 'select') { renderSelect(t); ctx.restore(); frameShadow(); return; }
+  if (game.phase === 'select2') { renderSelect(t, true); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'armory') { renderArmory(t); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'map') { renderMapSelect(t); ctx.restore(); frameShadow(); return; }
 
@@ -2505,13 +2571,7 @@ function render(t) {
   if (game.choices) {
     ctx.fillStyle = 'rgba(10, 5, 16, 0.72)';
     ctx.fillRect(0, 0, 960, 640);
-    ctx.textAlign = 'center';
-    ctx.fillStyle = UI.goldLight;
-    ctx.font = '800 32px Cinzel, Georgia, serif';
-    ctx.fillText('LEVEL ' + game.level + ' — CHOOSE A ROYAL GIFT', 480, 122);
-    ctx.strokeStyle = UI.plateBorder;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(300, 144); ctx.lineTo(660, 144); ctx.stroke();
+    drawScreenTitle('LEVEL ' + game.level + ' — ROYAL GIFT', 122);
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
       const cx2 = 480 + (i - 1) * 270;
@@ -2669,11 +2729,30 @@ const bushL = document.createElement('div');
 bushL.id = 'bushL';
 const bushR = document.createElement('div');
 bushR.id = 'bushR';
+const homeStats = document.createElement('div');
+homeStats.id = 'homeStats';
+function updateHomeStats() {
+  const meta = JSON.parse(localStorage.getItem('kd_meta') || '{"gold":0,"unlocked":["kenna","bramble","ember","whisper","gale"]}');
+  const st = JSON.parse(localStorage.getItem('kd_stats') || '{"playMs":0}');
+  const mins = Math.floor((st.playMs || 0) / 60000);
+  homeStats.innerHTML =
+    '<div class="hsCard">🪙 <b>' + (meta.gold || 0) + '</b>&nbsp;gold</div>' +
+    '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / 24</b>&nbsp;knights</div>' +
+    '<div class="hsCard">⏳ <b>' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm</b></div>' +
+    '<button class="hsCard" id="hsUpgrades">✦ UPGRADES</button>';
+  homeStats.querySelector('#hsUpgrades').addEventListener('click', () => {
+    hideMenu();
+    game.phase = 'armory';
+    game.cursor = 0;
+  });
+}
 function activateImageUI() {
   menuEl.classList.add('hasImage');
   imgAnchor.appendChild(bushL);
   imgAnchor.appendChild(bushR);
   imgAnchor.appendChild(bottomBar);
+  imgAnchor.appendChild(homeStats);
+  updateHomeStats();
   if (imgUIActive) return;
   imgUIActive = true;
   for (const id of ['menuTop', 'btnStack', 'iconRow', 'statCards', 'updateCard', 'questCard', 'hotspots']) {
@@ -3290,6 +3369,7 @@ const btnPlay = document.getElementById('btnPlay');
 function showMenu() {
   menuOpen = true;
   keys.clear();
+  if (typeof updateHomeStats === 'function' && imgUIActive) updateHomeStats();
   btnPlay.textContent = gameStarted ? 'Continue' : 'Play';
   menuEl.classList.remove('hidden');
 }
