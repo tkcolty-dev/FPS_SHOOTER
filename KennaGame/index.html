@@ -1980,8 +1980,27 @@ function drawPlayerSprite(p, t) {
   }
 }
 
+// optional hand-made icon art: drop a PNG at icons/<name>.png and it
+// automatically replaces the drawn emblem everywhere it appears
+const ICON_IMG = {};
+for (const k of ['sword', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave', 'coin', 'nova', 'dagger', 'gust']) {
+  const im = new Image();
+  im.src = 'icons/' + k + '.png';
+  im.onload = () => { ICON_IMG[k] = im; };
+}
+
 // upgrade icons, drawn as crisp little emblems
 function drawUpgradeIcon(kind, x, y, s, t) {
+  const im = ICON_IMG[kind];
+  if (im) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(im, -23, -23, 46, 46);
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(s, s);
