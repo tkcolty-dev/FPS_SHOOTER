@@ -581,19 +581,21 @@
     font-size: min(2vh, 1.4vw); letter-spacing: 0.06em;
     color: #f0e2c3; display: flex; gap: 0.5vw; align-items: center;
     background: linear-gradient(180deg, rgba(28, 22, 15, 0.92), rgba(13, 11, 10, 0.92));
-    border: 1px solid rgba(232, 182, 76, 0.35); border-radius: 1.2vh;
+    border: 1px solid rgba(232, 182, 76, 0.45); border-radius: 1.2vh;
     padding: 1.2vh 1.5vw;
+    box-shadow: 0 0 16px rgba(232, 182, 76, 0.22), inset 0 1px 0 rgba(255, 235, 190, 0.1);
+    text-shadow: 0 0 12px rgba(255, 217, 138, 0.45);
   }
   .hsCard b { color: #ffd98a; }
-  #hsUpgrades {
+  #hsSettings {
     cursor: pointer;
     background: linear-gradient(140deg, rgba(70, 50, 14, 0.95), rgba(32, 23, 9, 0.95));
     border: 1.5px solid #e8b64c; color: #ffd98a;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
-  #hsUpgrades:hover {
+  #hsSettings:hover {
     transform: translateY(-2px);
-    box-shadow: 0 0 18px rgba(232, 182, 76, 0.4);
+    box-shadow: 0 0 24px rgba(232, 182, 76, 0.55);
   }
   /* foreground foliage silhouettes hiding the last painted bits at the corners */
   #bushL, #bushR {
@@ -957,7 +959,7 @@ function plate(x, y, w, h, r = 10) {
 
 // ---------- persistent treasury & unlocks (like Vampire Survivors) ----------
 const kdMeta = Object.assign(
-  { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'], power: {} },
+  { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'], power: {}, mapsDone: [] },
   JSON.parse(localStorage.getItem('kd_meta') || '{}')
 );
 function saveMeta() { localStorage.setItem('kd_meta', JSON.stringify(kdMeta)); }
@@ -1032,16 +1034,70 @@ function applyHero(p, key) {
 }
 // ---------- maps ----------
 const MAPS = [
-  { key: 'meadow', name: 'ROYAL MEADOW', desc: 'Green fields of the kingdom',
+  { key: 'meadow', name: 'ROYAL MEADOW', desc: 'Green fields of the kingdom', goal: 8,
     base: '#4e8f3c', tuftA: '#5ba147', tuftB: '#447f34', stone: '#8f8b83', stoneHi: '#a9a49b',
-    flowerA: '#e8d44f', flowerB: '#eef0f2', edge: '#22391b' },
-  { key: 'courtyard', name: 'CASTLE COURTYARD', desc: 'Stone halls of the keep',
+    flowerA: '#e8d44f', flowerB: '#eef0f2', edge: '#22391b', structs: ['ruin', 'fence', 'well'] },
+  { key: 'courtyard', name: 'CASTLE COURTYARD', desc: 'Stone halls of the keep', goal: 10,
     base: '#a3937b', tuftA: '#8f8168', tuftB: '#b3a488', stone: '#6e6a63', stoneHi: '#7d7970',
-    flowerA: '#c9a86a', flowerB: '#8d7c60', edge: '#3a3128' },
-  { key: 'crypt', name: 'CURSED CRYPT', desc: 'Where the shadows are thick',
+    flowerA: '#c9a86a', flowerB: '#8d7c60', edge: '#3a3128', structs: ['pillar', 'wall', 'well'] },
+  { key: 'hall', name: 'THE GREAT HALL', desc: 'Feast tables and banners', goal: 11,
+    base: '#7d7466', tuftA: '#8a8172', tuftB: '#6e665a', stone: '#5a5348', stoneHi: '#6b6357',
+    flowerA: '#c9a86a', flowerB: '#a33d3d', edge: '#2e2a24', structs: ['pillar', 'wall', 'brazier'] },
+  { key: 'forest', name: 'DARK FOREST', desc: 'Where the wisps were born', goal: 12,
+    base: '#2f4d26', tuftA: '#3c6130', tuftB: '#26401f', stone: '#5c5a50', stoneHi: '#6d6b60',
+    flowerA: '#7fb069', flowerB: '#4a7a3a', edge: '#141f10', structs: ['tree', 'tree', 'ruin'] },
+  { key: 'crypt', name: 'CURSED CRYPT', desc: 'Where the shadows are thick', goal: 13,
     base: '#332f3d', tuftA: '#3d3848', tuftB: '#2a2632', stone: '#4a4556', stoneHi: '#5a5468',
-    flowerA: '#a855f7', flowerB: '#7e6bb0', edge: '#151218' },
+    flowerA: '#a855f7', flowerB: '#7e6bb0', edge: '#151218', structs: ['tomb', 'pillar', 'tomb'] },
+  { key: 'snow', name: 'FROZEN PASS', desc: 'The mountains north of home', goal: 14,
+    base: '#dfe7ec', tuftA: '#c3d2da', tuftB: '#aebfc9', stone: '#8fa0aa', stoneHi: '#b8c7cf',
+    flowerA: '#7dd3fc', flowerB: '#eef6fa', edge: '#5a707c', structs: ['tree', 'rock', 'rock'] },
+  { key: 'forge', name: 'MOLTEN FORGE', desc: 'Concur\'s weapon works', goal: 16,
+    base: '#3a2d28', tuftA: '#4a3a32', tuftB: '#2e2420', stone: '#55463e', stoneHi: '#6a584e',
+    flowerA: '#fb923c', flowerB: '#ef4444', edge: '#1a1210', structs: ['brazier', 'wall', 'pillar'] },
+  { key: 'throne', name: 'THE THRONE ROOM', desc: 'Concur awaits', goal: 20,
+    base: '#4a3a5e', tuftA: '#5a4870', tuftB: '#3c2f4e', stone: '#6b5a85', stoneHi: '#7d6c96',
+    flowerA: '#e8b64c', flowerB: '#ffd98a', edge: '#241b30', structs: ['pillar', 'brazier', 'wall'] },
 ];
+function mapUnlocked(i) {
+  return i === 0 || (kdMeta.mapsDone && kdMeta.mapsDone[i - 1]);
+}
+
+// ---------- solid structures ----------
+const STRUCT_TYPES = {
+  wall: { w: 150, h: 34 }, pillar: { w: 34, h: 30 }, ruin: { w: 110, h: 78 },
+  fence: { w: 120, h: 14 }, well: { w: 52, h: 42 }, tomb: { w: 54, h: 34 },
+  tree: { w: 42, h: 26 }, rock: { w: 72, h: 48 }, brazier: { w: 38, h: 30 },
+};
+let structures = [];
+function genStructures(mi) {
+  structures = [];
+  const M = MAPS[mi];
+  for (let i = 0; i < 34; i++) {
+    const x = 160 + hash2(i * 13 + mi * 7, 1) * (WORLD_W - 320);
+    const y = 200 + hash2(i * 13 + mi * 7, 2) * (WORLD_H - 380);
+    if (Math.hypot(x - WORLD_W / 2, y - WORLD_H / 2) < 280) continue;
+    const type = M.structs[Math.floor(hash2(i * 13 + mi * 7, 3) * M.structs.length)];
+    const st = STRUCT_TYPES[type];
+    structures.push({ x, y, w: st.w, h: st.h, type, seed: i });
+  }
+}
+function pushOut(px, py, r) {
+  for (const s of structures) {
+    const nx = Math.max(s.x - s.w / 2, Math.min(px, s.x + s.w / 2));
+    const ny = Math.max(s.y - s.h, Math.min(py, s.y));
+    let dx = px - nx, dy = py - ny;
+    let d2 = dx * dx + dy * dy;
+    if (d2 === 0) { dy = 1; d2 = 1; }
+    if (d2 < r * r) {
+      const d = Math.sqrt(d2);
+      px = nx + (dx / d) * r;
+      py = ny + (dy / d) * r;
+    }
+  }
+  return { x: px, y: py };
+}
+
 
 // raw key state
 const keys = new Set();
@@ -1052,13 +1108,13 @@ window.addEventListener('keydown', e => {
 
   // hero grid / armory / map selection screens
   if (game.phase === 'select' || game.phase === 'select2') {
-    const cols = 8, n = ROSTER.length;
+    const cols = 5, n = ROSTER.length;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
     if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - cols + n) % n;
     if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + cols) % n;
-    if (e.code === 'KeyQ') game.cursor = Math.max(0, game.cursor - 16);
-    if (e.code === 'KeyE') game.cursor = Math.min(n - 1, game.cursor + 16);
+    if (e.code === 'KeyQ') game.cursor = Math.max(0, game.cursor - 15);
+    if (e.code === 'KeyE') game.cursor = Math.min(n - 1, game.cursor + 15);
     if (['Space', 'Enter'].includes(e.code)) {
       if (game.phase === 'select2') confirmSelection2();
       else confirmSelection();
@@ -1078,6 +1134,8 @@ window.addEventListener('keydown', e => {
     const n = MAPS.length;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
+    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - 4 + n) % n;
+    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + 4) % n;
     if (['Space', 'Enter'].includes(e.code)) confirmSelection();
     return;
   }
@@ -1087,7 +1145,7 @@ window.addEventListener('keydown', e => {
     if (idx !== undefined && game.choices[idx]) pickUpgrade(idx);
     return;
   }
-  if (e.code === 'KeyR' && game.over) { game.phase = 'select'; game.cursor = 0; game.over = false; return; }
+  if (e.code === 'KeyR' && (game.over || game.victory)) { game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false; return; }
   // P2 joins on any arrow key — and picks their own knight
   const p2 = players[1];
   if (!p2.joined && e.code.startsWith('Arrow') && game.phase === 'run') {
@@ -1116,8 +1174,11 @@ canvas.addEventListener('click', () => {
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
       if (game.phase === 'armory') { if (c.idx >= 0) buyPower(c.idx); else { game.phase = 'select'; game.cursor = 0; } }
-      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -3) { game.cursor = Math.max(0, game.cursor - 16); }
-      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -4) { game.cursor = Math.min(ROSTER.length - 1, game.cursor + 16); }
+      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -3) { game.cursor = Math.max(0, game.cursor - 15); }
+      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -4) { game.cursor = Math.min(ROSTER.length - 1, game.cursor + 15); }
+      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -5) {
+        if (game.phase === 'select2') confirmSelection2(); else confirmSelection();
+      }
       else if (game.phase === 'select2' && c.idx >= 0) { game.cursor = c.idx; confirmSelection2(); }
       else if (game.phase === 'select' || game.phase === 'map') { game.cursor = Math.max(0, c.idx); confirmSelection(); }
       else if (game.choices) pickUpgrade(c.idx);
@@ -1144,6 +1205,10 @@ function confirmSelection() {
     game.phase = 'map';
     game.cursor = 0;
   } else if (game.phase === 'map') {
+    if (!mapUnlocked(game.cursor)) {
+      gameToast('🔒 Clear the previous battlefield first!');
+      return;
+    }
     game.mapPick = game.cursor;
     initRun();
     game.phase = 'run';
@@ -1232,6 +1297,8 @@ function initRun() {
   game.runGold = 0;
   game.payout = 0;
   game.paidOut = false;
+  game.victory = false;
+  genStructures(game.mapPick);
 }
 
 function gameToast(text) {
@@ -1393,8 +1460,18 @@ function fireWeapon(p) {
 
 // ---------- update ----------
 function update(dt) {
-  if (game.phase !== 'run' || game.over || game.choices) return;
+  if (game.phase !== 'run' || game.over || game.victory || game.choices) return;
   game.time += dt;
+  const goalSec = MAPS[game.mapPick].goal * 60;
+  if (game.time >= goalSec) {
+    game.victory = true;
+    game.payout = Math.round((game.kills * 0.6 + game.level * 12 + 150 + game.mapPick * 60) * (1 + 0.1 * powerRank('greed')));
+    kdMeta.gold += game.payout;
+    if (!kdMeta.mapsDone) kdMeta.mapsDone = [];
+    kdMeta.mapsDone[game.mapPick] = true;
+    saveMeta();
+    return;
+  }
   if (game.shake > 0) game.shake -= dt;
   if (game.hurtFlash > 0) game.hurtFlash -= dt;
 
@@ -1431,6 +1508,8 @@ function update(dt) {
       p.y += (vy / len) * p.speed * dt;
       p.x = Math.max(24, Math.min(WORLD_W - 24, p.x));
       p.y = Math.max(40, Math.min(WORLD_H - 10, p.y));
+      const pres = pushOut(p.x, p.y, 15);
+      p.x = pres.x; p.y = pres.y;
       p.animTime += dt;
     } else p.animTime = 0;
 
@@ -1491,6 +1570,7 @@ function update(dt) {
     e.kx *= Math.pow(0.02, dt); e.ky *= Math.pow(0.02, dt);
     e.x = Math.max(16, Math.min(WORLD_W - 16, e.x));
     e.y = Math.max(16, Math.min(WORLD_H - 16, e.y));
+    if (e.seed % 1 < 2) { const eres = pushOut(e.x, e.y, e.r * 0.75); e.x = eres.x; e.y = eres.y; }
 
     if (e.hp <= 0) { killEnemy(i); continue; }
 
@@ -1621,6 +1701,109 @@ function drawHeart(x, y, s, filled) {
   ctx.lineTo(x + s * 0.65, y - s * 0.05);
   ctx.closePath();
   ctx.fill();
+}
+
+// textured solid structures, base-anchored at (x, y)
+function drawStructure(s, M, t) {
+  const x = s.x, y = s.y, w = s.w;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 4, w * 0.55, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  if (s.type === 'wall') {
+    ctx.fillStyle = M.stone;
+    ctx.fillRect(x - w / 2, y - 58, w, 58);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let by = y - 58 + 12; by < y; by += 14) ctx.fillRect(x - w / 2, by, w, 2);
+    for (let k = 0; k < 5; k++) ctx.fillRect(x - w / 2 + 14 + k * 30 + (k % 2) * 12, y - 58 + 12 + (k % 3) * 14, 2, 12);
+    ctx.fillStyle = M.stoneHi;
+    ctx.fillRect(x - w / 2, y - 62, w, 8);
+  } else if (s.type === 'pillar') {
+    ctx.fillStyle = M.stone;
+    ctx.fillRect(x - 13, y - 78, 26, 78);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(x - 13, y - 78, 7, 78);
+    ctx.fillStyle = M.stoneHi;
+    ctx.fillRect(x - 18, y - 88, 36, 12);
+    ctx.fillRect(x - 16, y - 6, 32, 8);
+  } else if (s.type === 'ruin') {
+    ctx.fillStyle = M.stone;
+    ctx.fillRect(x - w / 2, y - 52, w, 52);
+    ctx.fillStyle = M.stoneHi;
+    ctx.fillRect(x - w / 2, y - 56, w * 0.4, 8);
+    ctx.fillRect(x + w * 0.05, y - 70, w * 0.25, 22);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(x - w * 0.25, y - 34, 20, 34);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let by = y - 52 + 10; by < y; by += 13) ctx.fillRect(x - w / 2, by, w, 2);
+  } else if (s.type === 'fence') {
+    ctx.fillStyle = '#6b4a2a';
+    ctx.fillRect(x - w / 2, y - 22, w, 5);
+    ctx.fillRect(x - w / 2, y - 10, w, 5);
+    for (let k = 0; k <= 4; k++) ctx.fillRect(x - w / 2 + k * (w / 4) - 3, y - 30, 6, 30);
+    ctx.fillStyle = '#8a6a3f';
+    for (let k = 0; k <= 4; k++) ctx.fillRect(x - w / 2 + k * (w / 4) - 3, y - 30, 6, 4);
+  } else if (s.type === 'well') {
+    ctx.fillStyle = M.stone;
+    ctx.beginPath(); ctx.ellipse(x, y - 10, 26, 15, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#1c2733';
+    ctx.beginPath(); ctx.ellipse(x, y - 12, 17, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#6b4a2a';
+    ctx.fillRect(x - 24, y - 58, 5, 48); ctx.fillRect(x + 19, y - 58, 5, 48);
+    ctx.fillStyle = '#8a3b30';
+    ctx.beginPath(); ctx.moveTo(x - 32, y - 54); ctx.lineTo(x, y - 74); ctx.lineTo(x + 32, y - 54); ctx.closePath(); ctx.fill();
+  } else if (s.type === 'tomb') {
+    ctx.fillStyle = M.stone;
+    ctx.fillRect(x - 20, y - 44, 40, 44);
+    ctx.beginPath(); ctx.arc(x, y - 44, 20, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(x - 12, y - 40, 24, 3);
+    ctx.fillRect(x - 8, y - 32, 16, 3);
+    ctx.fillStyle = M.stoneHi;
+    ctx.fillRect(x - 24, y - 4, 48, 6);
+  } else if (s.type === 'tree') {
+    ctx.fillStyle = '#4a3018';
+    ctx.fillRect(x - 8, y - 46, 16, 46);
+    const leaf = M.key === 'snow' ? '#3d5a4a' : '#1e3317';
+    const leafHi = M.key === 'snow' ? '#557a64' : '#2c4a20';
+    ctx.fillStyle = leaf;
+    ctx.beginPath();
+    ctx.moveTo(x - 40, y - 40); ctx.lineTo(x, y - 130); ctx.lineTo(x + 40, y - 40);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = leafHi;
+    ctx.beginPath();
+    ctx.moveTo(x - 26, y - 66); ctx.lineTo(x, y - 124); ctx.lineTo(x + 10, y - 78);
+    ctx.closePath(); ctx.fill();
+    if (M.key === 'snow') {
+      ctx.fillStyle = '#eef6fa';
+      ctx.beginPath();
+      ctx.moveTo(x - 18, y - 88); ctx.lineTo(x, y - 128); ctx.lineTo(x + 18, y - 88);
+      ctx.closePath(); ctx.fill();
+    }
+  } else if (s.type === 'rock') {
+    ctx.fillStyle = M.stone;
+    ctx.beginPath();
+    ctx.moveTo(x - 34, y); ctx.lineTo(x - 26, y - 30); ctx.lineTo(x - 4, y - 42);
+    ctx.lineTo(x + 22, y - 32); ctx.lineTo(x + 34, y); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = M.stoneHi;
+    ctx.beginPath();
+    ctx.moveTo(x - 26, y - 30); ctx.lineTo(x - 4, y - 42); ctx.lineTo(x + 4, y - 30);
+    ctx.lineTo(x - 12, y - 22); ctx.closePath(); ctx.fill();
+  } else if (s.type === 'brazier') {
+    ctx.fillStyle = '#3a3d42';
+    ctx.fillRect(x - 5, y - 34, 10, 34);
+    ctx.fillRect(x - 16, y - 42, 32, 10);
+    const fl = 0.6 + 0.4 * Math.sin(t * 9 + s.seed);
+    ctx.drawImage(GLOWS.imp, x - 26, y - 74, 52, 52);
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.moveTo(x - 10, y - 42); ctx.lineTo(x, y - 60 - 8 * fl); ctx.lineTo(x + 10, y - 42);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.moveTo(x - 5, y - 42); ctx.lineTo(x, y - 52 - 5 * fl); ctx.lineTo(x + 5, y - 42);
+    ctx.closePath(); ctx.fill();
+  }
 }
 
 // cached glow sprites (much cheaper + softer than per-frame gradients)
@@ -1861,6 +2044,28 @@ function drawUpgradeIcon(kind, x, y, s, t) {
     const oa = (t || 0) * 3;
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(Math.cos(oa) * 22, Math.sin(oa) * 22, 3, 0, 7); ctx.fill();
+  } else if (kind === 'nova') {
+    ctx.strokeStyle = '#fb923c'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#fde047'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'dagger') {
+    for (const [ox3, rot] of [[-8, -0.9], [6, -0.5]]) {
+      ctx.save(); ctx.translate(ox3, 2); ctx.rotate(rot);
+      ctx.fillStyle = '#e2d5ff'; ctx.fillRect(-2, -16, 4, 18);
+      ctx.fillStyle = '#5b3d8f'; ctx.fillRect(-4, 2, 8, 3);
+      ctx.fillStyle = '#3a2a5e'; ctx.fillRect(-1.5, 5, 3, 6);
+      ctx.restore();
+    }
+  } else if (kind === 'gust') {
+    ctx.strokeStyle = '#a3d8f4'; ctx.lineWidth = 4;
+    for (const [oy, r2] of [[-8, 10], [0, 13], [8, 9]]) {
+      ctx.beginPath(); ctx.arc(-4, oy, r2, -0.9, 0.9); ctx.stroke();
+    }
+    ctx.fillStyle = '#eef6fa';
+    ctx.beginPath(); ctx.arc(10, 0, 3, 0, Math.PI * 2); ctx.fill();
   } else if (kind === 'coin') {
     ctx.fillStyle = '#a9722c';
     ctx.beginPath(); ctx.arc(2, 2, 14, 0, Math.PI * 2); ctx.fill();
@@ -1920,10 +2125,13 @@ function renderCardScreen(t, title, items, drawItem) {
 function drawScreenBg(t) {
   const img = document.getElementById('menuBgImg');
   if (img && img.naturalWidth) {
-    const s = Math.max(960 / img.naturalWidth, 640 / img.naturalHeight);
-    const dw = img.naturalWidth * s, dh = img.naturalHeight * s;
+    // only the castle art — crop away the painted title/buttons/cards
+    const sx = img.naturalWidth * 0.30, sy = img.naturalHeight * 0.10;
+    const sw = img.naturalWidth * 0.475, sh = img.naturalHeight * 0.775;
+    const s = Math.max(960 / sw, 640 / sh);
+    const dw = sw * s, dh = sh * s;
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(img, (960 - dw) / 2, (640 - dh) / 2, dw, dh);
+    ctx.drawImage(img, sx, sy, sw, sh, (960 - dw) / 2, (640 - dh) / 2, dw, dh);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = 'rgba(10, 8, 6, 0.78)';
     ctx.fillRect(0, 0, 960, 640);
@@ -1965,29 +2173,28 @@ function drawScreenTitle(text, y) {
   ctx.stroke();
 }
 
+const WEAPON_INFO = {
+  slash:   { name: 'Valiant Slash',  icon: 'sword',  desc: 'Sweeping sword arcs' },
+  nova:    { name: 'Flame Nova',     icon: 'nova',   desc: 'A burning ring of fire' },
+  daggers: { name: 'Shadow Daggers', icon: 'dagger', desc: 'Three fast thrown blades' },
+  gust:    { name: 'Wind Gust',      icon: 'gust',   desc: 'Blasts enemies away' },
+};
+
 function renderSelect(t, forP2) {
   drawScreenBg(t);
-  drawScreenTitle(forP2 ? 'PLAYER 2 — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 64);
-
-  // treasury
-  plate(760, 24, 190, 42, 12);
-  drawUpgradeIcon('coin', 788, 45, 0.55, t);
-  ctx.textAlign = 'right';
-  ctx.font = '700 19px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(kdMeta.gold), 934, 52);
+  drawScreenTitle(forP2 ? 'PLAYER 2 — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 60);
 
   cardRects = [];
-  const cols = 8, perPage = 16, tile = 104, gap = 12;
+  const cols = 5, perPage = 15, tile = 96, gap = 11;
   const page = Math.floor(game.cursor / perPage);
   const pages = Math.ceil(ROSTER.length / perPage);
-  const gx0 = 480 - (cols * tile + (cols - 1) * gap) / 2;
+  const gx0 = 42;
   for (let k = 0; k < perPage; k++) {
     const i = page * perPage + k;
     if (i >= ROSTER.length) break;
     const rk = ROSTER[i];
     const col = k % cols, row = Math.floor(k / cols);
-    const x = gx0 + col * (tile + gap), y = 100 + row * (tile + gap);
+    const x = gx0 + col * (tile + gap), y = 96 + row * (tile + gap);
     cardRects.push({ x, y, w: tile, h: tile, idx: i });
     const sel = game.cursor === i;
     const owned = kdMeta.unlocked.includes(rk.key);
@@ -1998,91 +2205,138 @@ function renderSelect(t, forP2) {
       ctx.strokeRect(x + 2.5, y + 2.5, tile - 5, tile - 5);
       ctx.save();
       ctx.shadowColor = 'rgba(232, 182, 76, 0.55)';
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 16;
       ctx.strokeRect(x + 2.5, y + 2.5, tile - 5, tile - 5);
       ctx.restore();
     }
     const bob2 = sel ? Math.sin(t * 4) * 2 : 0;
     ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = owned ? 1 : 0.38;
-    ctx.drawImage(heroSprites[rk.key].down[1], x + tile / 2 - 34, y + 8 + bob2, 68, 68);
+    ctx.globalAlpha = owned ? 1 : 0.35;
+    ctx.drawImage(heroSprites[rk.key].down[1], x + tile / 2 - 30, y + 6 + bob2, 60, 60);
     ctx.globalAlpha = 1;
+    // weapon mini-icon in the tile corner
+    if (owned) {
+      ctx.save();
+      ctx.translate(x + tile - 16, y + 16);
+      drawUpgradeIcon(WEAPON_INFO[rk.wtype].icon, 0, 0, 0.38, t);
+      ctx.restore();
+    }
     if (!owned) {
       ctx.fillStyle = 'rgba(8, 6, 4, 0.45)';
       ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-      drawUpgradeIcon('coin', x + tile / 2 - 22, y + tile - 17, 0.32, t);
+      drawUpgradeIcon('coin', x + tile / 2 - 20, y + tile - 16, 0.3, t);
       ctx.textAlign = 'left';
-      ctx.font = '700 13px Cinzel, Georgia, serif';
+      ctx.font = '700 12px Inter, sans-serif';
       ctx.fillStyle = UI.gold;
-      ctx.fillText(String(rk.price), x + tile / 2 - 10, y + tile - 12);
+      ctx.fillText(String(rk.price), x + tile / 2 - 9, y + tile - 11);
     } else {
       ctx.textAlign = 'center';
       ctx.font = '600 9px Inter, sans-serif';
       ctx.fillStyle = sel ? UI.goldLight : UI.dim;
-      ctx.fillText(rk.name, x + tile / 2, y + tile - 9);
+      ctx.fillText(rk.name, x + tile / 2, y + tile - 8);
     }
   }
 
-  // page selector
-  const py = 100 + 2 * (tile + gap) + 6;
-  cardRects.push({ x: 352, y: py, w: 56, h: 36, idx: -3 });
-  cardRects.push({ x: 552, y: py, w: 56, h: 36, idx: -4 });
-  plate(352, py, 56, 36, 10);
-  plate(552, py, 56, 36, 10);
+  // pager under the grid
+  const py = 96 + 3 * (tile + gap) + 6;
+  cardRects.push({ x: gx0 + 90, y: py, w: 52, h: 34, idx: -3 });
+  cardRects.push({ x: gx0 + 384, y: py, w: 52, h: 34, idx: -4 });
+  plate(gx0 + 90, py, 52, 34, 10);
+  plate(gx0 + 384, py, 52, 34, 10);
   ctx.textAlign = 'center';
-  ctx.font = '700 16px Cinzel, Georgia, serif';
+  ctx.font = '700 15px Inter, sans-serif';
   ctx.fillStyle = page > 0 ? UI.goldLight : 'rgba(240, 226, 195, 0.25)';
-  ctx.fillText('◀', 380, py + 24);
+  ctx.fillText('◀', gx0 + 116, py + 23);
   ctx.fillStyle = page < pages - 1 ? UI.goldLight : 'rgba(240, 226, 195, 0.25)';
-  ctx.fillText('▶', 580, py + 24);
-  ctx.font = '700 14px Cinzel, Georgia, serif';
+  ctx.fillText('▶', gx0 + 410, py + 23);
+  ctx.font = '700 13px Inter, sans-serif';
   ctx.fillStyle = UI.text;
-  ctx.fillText('PAGE ' + (page + 1) + ' / ' + pages, 480, py + 23);
+  ctx.fillText('PAGE ' + (page + 1) + ' / ' + pages, gx0 + 263, py + 22);
 
-  // details panel
+  // ---- sidebar: the selected knight ----
   const rk = ROSTER[game.cursor];
   const owned = kdMeta.unlocked.includes(rk.key);
-  plate(70, py + 52, 820, 96, 14);
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(heroSprites[rk.key].down[1], 92, py + 62, 76, 76);
+  const sx0 = 600, sw0 = 336;
+  plate(sx0, 96, sw0, 452, 16);
+  // treasury row
+  drawUpgradeIcon('coin', sx0 + 26, 124, 0.5, t);
   ctx.textAlign = 'left';
-  ctx.font = '700 20px Cinzel, Georgia, serif';
+  ctx.font = '700 17px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(rk.name, 184, py + 86);
+  ctx.fillText(String(kdMeta.gold) + ' gold', sx0 + 46, 130);
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(sx0 + 18, 146); ctx.lineTo(sx0 + sw0 - 18, 146); ctx.stroke();
+  // big armored portrait
+  const pbob = Math.sin(t * 3) * 3;
+  ctx.imageSmoothingEnabled = false;
+  ctx.globalAlpha = owned ? 1 : 0.45;
+  ctx.drawImage(heroSprites[rk.key].down[1], sx0 + sw0 / 2 - 64, 158 + pbob, 128, 128);
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'center';
+  ctx.font = '700 22px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText(rk.name, sx0 + sw0 / 2, 322);
   ctx.font = '13px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText(rk.role, 184, py + 106);
-  const wname = { slash: 'Valiant Slash', nova: 'Flame Nova', daggers: 'Shadow Daggers', gust: 'Wind Gust' }[rk.wtype];
+  ctx.fillText(rk.role, sx0 + sw0 / 2, 344);
+  // weapon row with icon
+  const wi = WEAPON_INFO[rk.wtype];
+  ctx.beginPath();
+  ctx.arc(sx0 + 46, 386, 22, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(232, 182, 76, 0.1)';
+  ctx.fill();
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.stroke();
+  drawUpgradeIcon(wi.icon, sx0 + 46, 386, 0.6, t);
+  ctx.textAlign = 'left';
+  ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.gold;
-  ctx.font = '700 14px Cinzel, Georgia, serif';
-  ctx.fillText(wname, 184, py + 132);
+  ctx.fillText(wi.name, sx0 + 80, 380);
+  ctx.font = '12px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText(wi.desc, sx0 + 80, 398);
+  // traits
   const m = rk.mods, traits = [];
   if (m.hp > 0) traits.push('+' + m.hp + ' hearts');
   if (m.hp < 0) traits.push(m.hp + ' hearts');
   if (m.dmg) traits.push('+' + m.dmg + ' damage');
-  if (m.atkM && m.atkM < 1) traits.push('faster attacks');
-  if (m.atkM && m.atkM > 1) traits.push('slower attacks');
-  if (m.speedM && m.speedM > 1) traits.push('fleet-footed');
-  if (m.speedM && m.speedM < 1) traits.push('heavy armor');
-  if (m.magnetM) traits.push('gem sense');
-  if (m.orb) traits.push(m.orb + ' aegis shield' + (m.orb > 1 ? 's' : ''));
-  if (m.wave) traits.push('sword waves');
-  ctx.fillStyle = UI.text;
-  ctx.font = '13px Inter, sans-serif';
-  ctx.fillText(traits.length ? traits.join('  •  ') : 'a true all-rounder', 360, py + 132);
-  ctx.textAlign = 'right';
-  if (!owned) {
+  if (m.atkM && m.atkM < 1) traits.push('Faster attacks');
+  if (m.atkM && m.atkM > 1) traits.push('Slower attacks');
+  if (m.speedM && m.speedM > 1) traits.push('Fleet-footed');
+  if (m.speedM && m.speedM < 1) traits.push('Heavy armor');
+  if (m.magnetM) traits.push('Gem sense');
+  if (m.orb) traits.push('Starts with ' + m.orb + ' aegis shield' + (m.orb > 1 ? 's' : ''));
+  if (m.wave) traits.push('Slashes launch sword waves');
+  if (!traits.length) traits.push('A true all-rounder');
+  let ty2 = 424;
+  ctx.font = '12px Inter, sans-serif';
+  for (const tr of traits.slice(0, 3)) {
+    ctx.fillStyle = UI.gold;
+    ctx.fillText('◆', sx0 + 26, ty2);
+    ctx.fillStyle = UI.text;
+    ctx.fillText(tr, sx0 + 42, ty2);
+    ty2 += 19;
+  }
+  // action button
+  cardRects.push({ x: sx0 + 20, y: 496, w: sw0 - 40, h: 38, idx: -5 });
+  plate(sx0 + 20, 496, sw0 - 40, 38, 10);
+  ctx.textAlign = 'center';
+  ctx.font = '700 14px Cinzel, Georgia, serif';
+  if (owned) {
+    ctx.fillStyle = UI.goldLight;
+    ctx.fillText(forP2 ? 'JOIN THE BATTLE' : 'CHOOSE', sx0 + sw0 / 2, 520);
+  } else {
     ctx.fillStyle = kdMeta.gold >= rk.price ? UI.goldLight : '#e5484d';
-    ctx.font = '700 15px Cinzel, Georgia, serif';
-    ctx.fillText('UNLOCK — ' + rk.price + 'g', 866, py + 106);
+    ctx.fillText('UNLOCK — ' + rk.price + 'g', sx0 + sw0 / 2, 520);
   }
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
-  ctx.font = '18px "VT323", monospace';
+  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.25 * Math.sin(t * 3)})`;
+  ctx.font = '600 13px Inter, sans-serif';
   ctx.fillText(forP2
-    ? 'ARROWS to move  •  ENTER to join the battle!'
-    : 'WASD / arrows / mouse  •  SPACE or CLICK — choose or unlock  •  Q / E — pages', 480, 612);
+    ? 'Arrows to move  •  Enter to join the battle'
+    : 'WASD / arrows / mouse  •  Space or click to choose or unlock  •  Q / E — pages', 480, 606);
 }
 
 function renderArmory(t) {
@@ -2151,34 +2405,81 @@ function renderArmory(t) {
 }
 
 function renderMapSelect(t) {
-  renderCardScreen(t, 'CHOOSE THE BATTLEFIELD', MAPS, (m, x, y, w, ch2, sel) => {
-    // mini terrain preview
+  drawScreenBg(t);
+  drawScreenTitle('CHOOSE THE BATTLEFIELD', 64);
+  cardRects = [];
+  const cw = 210, chh = 208, gap = 14, cols = 4;
+  for (let i = 0; i < MAPS.length; i++) {
+    const m = MAPS[i];
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = 480 - (cols * cw + (cols - 1) * gap) / 2 + col * (cw + gap);
+    const y = 100 + row * (chh + gap);
+    cardRects.push({ x, y, w: cw, h: chh, idx: i });
+    const sel = game.cursor === i;
+    const un = mapUnlocked(i);
+    plate(x, y, cw, chh, 12);
+    if (sel) {
+      ctx.strokeStyle = UI.goldLight;
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(x + 3, y + 3, cw - 6, chh - 6);
+      ctx.save();
+      ctx.shadowColor = 'rgba(232, 182, 76, 0.5)';
+      ctx.shadowBlur = 18;
+      ctx.strokeRect(x + 3, y + 3, cw - 6, chh - 6);
+      ctx.restore();
+    }
+    // terrain preview with a little structure
     ctx.fillStyle = m.base;
-    ctx.fillRect(x + 14, y + 22, w - 28, 110);
-    for (let i = 0; i < 26; i++) {
-      const px = x + 18 + hash2(i, 11) * (w - 42);
-      const py = y + 28 + hash2(i, 13) * 96;
-      const h2 = hash2(i, 17);
-      ctx.fillStyle = h2 > 0.85 ? m.flowerA : h2 > 0.5 ? m.tuftA : m.tuftB;
-      ctx.fillRect(px, py, 5, h2 > 0.85 ? 5 : 3);
+    ctx.fillRect(x + 12, y + 12, cw - 24, 88);
+    for (let k = 0; k < 22; k++) {
+      const px = x + 16 + hash2(k, 11 + i) * (cw - 38);
+      const pyy = y + 16 + hash2(k, 13 + i) * 76;
+      const h2 = hash2(k, 17 + i);
+      ctx.fillStyle = h2 > 0.86 ? m.flowerA : h2 > 0.5 ? m.tuftA : m.tuftB;
+      ctx.fillRect(px, pyy, 5, h2 > 0.86 ? 5 : 3);
     }
+    ctx.fillStyle = m.stone;
+    ctx.fillRect(x + 26, y + 58, 44, 22);
+    ctx.fillStyle = m.stoneHi;
+    ctx.fillRect(x + 26, y + 58, 44, 6);
+    ctx.fillStyle = m.stone;
+    ctx.fillRect(x + cw - 62, y + 34, 14, 46);
     ctx.strokeStyle = m.edge;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(x + 14, y + 22, w - 28, 110);
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x + 12, y + 12, cw - 24, 88);
     ctx.textAlign = 'center';
-    ctx.fillStyle = sel ? UI.goldLight : UI.text;
-    ctx.font = '700 15px Cinzel, Georgia, serif';
-    ctx.fillText(m.name, x + w / 2, y + 165);
-    ctx.fillStyle = UI.dim;
-    ctx.font = '12px Inter, sans-serif';
-    const words = m.desc.split(' ');
-    let line = '', ly = y + 190;
-    for (const wd of words) {
-      if ((line + wd).length > 20) { ctx.fillText(line, x + w / 2, ly); ly += 16; line = ''; }
-      line += (line ? ' ' : '') + wd;
+    if (un) {
+      ctx.font = '700 14px Cinzel, Georgia, serif';
+      ctx.fillStyle = sel ? UI.goldLight : UI.text;
+      ctx.fillText(m.name, x + cw / 2, y + 124);
+      ctx.font = '11px Inter, sans-serif';
+      ctx.fillStyle = UI.dim;
+      ctx.fillText(m.desc, x + cw / 2, y + 144);
+      ctx.font = '700 11px Inter, sans-serif';
+      ctx.fillStyle = UI.gold;
+      ctx.fillText('OBJECTIVE — SURVIVE ' + m.goal + ' MIN', x + cw / 2, y + 168);
+      if (kdMeta.mapsDone && kdMeta.mapsDone[i]) {
+        ctx.fillStyle = '#4ade80';
+        ctx.fillText('✓ CLEARED', x + cw / 2, y + 190);
+      }
+    } else {
+      ctx.fillStyle = 'rgba(8, 6, 4, 0.68)';
+      ctx.fillRect(x + 1, y + 1, cw - 2, chh - 2);
+      ctx.font = '26px Georgia, serif';
+      ctx.fillStyle = UI.goldLight;
+      ctx.fillText('🔒', x + cw / 2, y + 70);
+      ctx.font = '700 13px Cinzel, Georgia, serif';
+      ctx.fillStyle = UI.text;
+      ctx.fillText('? ? ?', x + cw / 2, y + 124);
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.fillStyle = UI.dim;
+      ctx.fillText('Clear ' + MAPS[i - 1].name + ' to unlock', x + cw / 2, y + 148);
     }
-    ctx.fillText(line, x + w / 2, ly);
-  });
+  }
+  ctx.textAlign = 'center';
+  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.25 * Math.sin(t * 3)})`;
+  ctx.font = '600 13px Inter, sans-serif';
+  ctx.fillText('WASD / arrows / mouse  •  Space or click to begin', 480, 596);
 }
 
 // ---------- render ----------
@@ -2337,9 +2638,15 @@ function render(t) {
   const drawList = [];
   for (const e of enemies) drawList.push({ y: e.y, kind: 'enemy', e });
   for (const p of players) if (p.joined) drawList.push({ y: p.y, kind: 'player', p });
+  for (const s of structures) {
+    if (s.x > cam.x - 160 && s.x < cam.x + 1120 && s.y > cam.y - 160 && s.y < cam.y + 860) {
+      drawList.push({ y: s.y, kind: 'struct', s });
+    }
+  }
   drawList.sort((a, b) => a.y - b.y);
   for (const d of drawList) {
     if (d.kind === 'enemy') drawEnemy(d.e, t);
+    else if (d.kind === 'struct') drawStructure(d.s, MAPS[game.mapPick], t);
     else drawPlayerSprite(d.p, t);
   }
 
@@ -2519,6 +2826,14 @@ function render(t) {
   ctx.font = '700 13px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
   ctx.fillText(String(game.level), 586, 49);
+  // objective countdown
+  const goalSec2 = MAPS[game.mapPick].goal * 60;
+  const remain = Math.max(0, goalSec2 - game.time);
+  const om = String(Math.floor(remain / 60)).padStart(2, '0');
+  const os = String(Math.floor(remain % 60)).padStart(2, '0');
+  ctx.font = '600 11px Inter, sans-serif';
+  ctx.fillStyle = 'rgba(240, 226, 195, 0.75)';
+  ctx.fillText('OBJECTIVE — SURVIVE  ' + om + ':' + os, 480, 80);
 
   // right: banished counter with a wisp emblem
   plate(788, 10, 162, 44, 12);
@@ -2621,6 +2936,55 @@ function render(t) {
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
     ctx.font = '20px "VT323", monospace';
     ctx.fillText('PRESS 1, 2, 3  •  OR CLICK A CARD', 480, 520);
+  }
+
+  if (game.victory) {
+    ctx.fillStyle = 'rgba(6, 10, 5, 0.78)';
+    ctx.fillRect(0, 0, 960, 640);
+    plate(230, 140, 500, 350, 18);
+    for (const [dx, dy] of [[230, 140], [730, 140], [230, 490], [730, 490]]) {
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = UI.gold;
+      ctx.fillRect(-4, -4, 8, 8);
+      ctx.restore();
+    }
+    drawScreenTitle('VICTORY!', 196);
+    ctx.textAlign = 'center';
+    ctx.font = '700 17px Cinzel, Georgia, serif';
+    ctx.fillStyle = UI.goldPale;
+    ctx.fillText(MAPS[game.mapPick].name + ' IS SAFE!', 480, 238);
+    const vmm = String(Math.floor(game.time / 60)).padStart(2, '0');
+    const vss = String(Math.floor(game.time % 60)).padStart(2, '0');
+    const vrows = [
+      ['Time survived', vmm + ':' + vss],
+      ['Spirits banished', String(game.kills)],
+      ['Gold collected', game.runGold + 'g'],
+      ['Victory payout', '+' + game.payout + 'g'],
+    ];
+    let vy = 276;
+    for (const [k2, v2] of vrows) {
+      ctx.textAlign = 'left';
+      ctx.font = '15px Inter, sans-serif';
+      ctx.fillStyle = UI.dim;
+      ctx.fillText(k2, 300, vy);
+      ctx.textAlign = 'right';
+      ctx.font = '700 17px Cinzel, Georgia, serif';
+      ctx.fillStyle = UI.goldPale;
+      ctx.fillText(v2, 660, vy);
+      vy += 34;
+    }
+    if (game.mapPick < MAPS.length - 1) {
+      ctx.textAlign = 'center';
+      ctx.font = '700 15px Cinzel, Georgia, serif';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText('🔓 ' + MAPS[game.mapPick + 1].name + ' UNLOCKED!', 480, vy + 8);
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = UI.goldLight;
+    ctx.font = '600 15px Inter, sans-serif';
+    ctx.fillText('Press R — play again   •   Esc — menu', 480, 462);
   }
 
   if (game.over) {
@@ -2739,12 +3103,8 @@ function updateHomeStats() {
     '<div class="hsCard">🪙 <b>' + (meta.gold || 0) + '</b>&nbsp;gold</div>' +
     '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / 24</b>&nbsp;knights</div>' +
     '<div class="hsCard">⏳ <b>' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm</b></div>' +
-    '<button class="hsCard" id="hsUpgrades">✦ UPGRADES</button>';
-  homeStats.querySelector('#hsUpgrades').addEventListener('click', () => {
-    hideMenu();
-    game.phase = 'armory';
-    game.cursor = 0;
-  });
+    '<button class="hsCard" id="hsSettings">⚙ SETTINGS</button>';
+  homeStats.querySelector('#hsSettings').addEventListener('click', () => openPanel('settings'));
 }
 function activateImageUI() {
   menuEl.classList.add('hasImage');
@@ -3319,7 +3679,11 @@ function openPanel(name) {
 function closePanels() { panelShade.classList.add('hidden'); }
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
 panelShade.addEventListener('click', e => { if (e.target === panelShade) closePanels(); });
-document.getElementById('btnSettings').addEventListener('click', () => openPanel('settings'));
+document.getElementById('btnSettings').addEventListener('click', () => {
+  hideMenu();
+  game.phase = 'armory';
+  game.cursor = 0;
+});
 document.getElementById('btnCredits').addEventListener('click', () => openPanel('credits'));
 document.getElementById('btnPatch').addEventListener('click', () => openPanel('patch'));
 document.getElementById('icGear').addEventListener('click', () => openPanel('settings'));
