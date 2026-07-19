@@ -1307,7 +1307,8 @@ function pickUpgrade(idx) {
   const c = game.choices[idx];
   if (!c) return;
   c.apply();
-  gameToast('✨ ' + c.name + '!');
+  game.up[c.key] = upLvl(c.key) + 1;
+  gameToast('✨ ' + c.name + '  Lv ' + game.up[c.key] + '!');
   game.choices = null;
 }
 
@@ -1333,7 +1334,7 @@ const players = [
 const game = {
   phase: 'select', cursor: 0, heroPick: 'kenna', mapPick: 0,
   time: 0, kills: 0, over: false, spawnTimer: 1,
-  xp: 0, level: 1, xpNext: 10, choices: null,
+  xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
 let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [];
@@ -1342,6 +1343,7 @@ const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
 function initRun() {
   game.time = 0; game.kills = 0; game.over = false; game.spawnTimer = 1.2;
   game.xp = 0; game.level = 1; game.xpNext = 10; game.choices = null;
+  game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
   enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = [];
   for (const p of players) {
@@ -1369,27 +1371,38 @@ function gameToast(text) {
 
 // ---------- upgrades ----------
 const UPGRADES = [
-  { name: 'Sharper Blades', icon: 'sword', desc: '+1 damage for all heroes',
-    can: () => true, apply: () => players.forEach(p => p.damage += 1) },
-  { name: 'Swift Strikes', icon: 'swift', desc: 'Everyone attacks 15% faster',
-    can: () => players[0].attackEvery > 0.24, apply: () => players.forEach(p => p.attackEvery = Math.max(0.22, p.attackEvery * 0.85)) },
-  { name: 'Long Reach', icon: 'reach', desc: 'Bigger attacks, +25 range',
-    can: () => players[0].range < 300, apply: () => players.forEach(p => { p.range += 25; p.arc = Math.min(1.6, p.arc + 0.08); }) },
-  { name: 'Boots of the Wind', icon: 'boots', desc: 'Everyone moves 12% faster',
-    can: () => players[0].speed < 360, apply: () => players.forEach(p => p.speed *= 1.12) },
-  { name: 'Heart of the Kingdom', icon: 'heart', desc: '+1 max heart and heal 2',
-    can: () => players[0].maxHp < 10, apply: () => players.forEach(p => { p.maxHp += 1; p.hp = Math.min(p.maxHp, p.hp + 2); }) },
-  { name: 'Royal Magnet', icon: 'magnet', desc: 'Gems fly to you from farther',
-    can: () => players[0].magnet < 320, apply: () => players.forEach(p => p.magnet *= 1.55) },
-  { name: 'Spinning Aegis', icon: 'aegis', desc: 'An enchanted shield orbits each hero',
-    can: () => players[0].orbCount < 4, apply: () => players.forEach(p => p.orbCount += 1) },
-  { name: 'Sword Wave', icon: 'wave', desc: 'Attacks launch a flying blade',
-    can: () => players[0].wave < 3, apply: () => players.forEach(p => p.wave += 1) },
+  { key: 'sharp', name: 'Sharper Blades', icon: 'sword', max: 5, desc: '+1 damage for all heroes',
+    apply: () => players.forEach(p => p.damage += 1) },
+  { key: 'swift', name: 'Swift Strikes', icon: 'swift', max: 5, desc: 'Everyone attacks 15% faster',
+    apply: () => players.forEach(p => p.attackEvery = Math.max(0.22, p.attackEvery * 0.85)) },
+  { key: 'reach', name: 'Long Reach', icon: 'reach', max: 5, desc: 'Bigger attacks, +25 range',
+    apply: () => players.forEach(p => { p.range += 25; p.arc = Math.min(1.6, p.arc + 0.08); }) },
+  { key: 'boots', name: 'Boots of the Wind', icon: 'boots', max: 5, desc: 'Everyone moves 12% faster',
+    apply: () => players.forEach(p => p.speed *= 1.12) },
+  { key: 'heart', name: 'Heart of the Kingdom', icon: 'heart', max: 4, desc: '+1 max heart and heal 2',
+    apply: () => players.forEach(p => { p.maxHp += 1; p.hp = Math.min(p.maxHp, p.hp + 2); }) },
+  { key: 'magnet', name: 'Royal Magnet', icon: 'magnet', max: 4, desc: 'Gems fly to you from farther',
+    apply: () => players.forEach(p => p.magnet *= 1.55) },
+  { key: 'aegis', name: 'Spinning Aegis', icon: 'aegis', max: 4, desc: 'One more shield orbits each hero',
+    apply: () => players.forEach(p => p.orbCount += 1) },
+  { key: 'wave', name: 'Sword Wave', icon: 'wave', max: 3, desc: 'Attacks launch a flying blade',
+    apply: () => players.forEach(p => p.wave += 1) },
+  { key: 'thorn', name: 'Thorn Armor', icon: 'thorn', max: 3, desc: 'Enemies that touch you get hurt back',
+    apply: () => {} },
+  { key: 'frost', name: 'Frost Touch', icon: 'frost', max: 3, desc: 'Your hits chill enemies, slowing them',
+    apply: () => {} },
+  { key: 'clover', name: 'Lucky Clover', icon: 'clover', max: 3, desc: 'Chance for double-value gems',
+    apply: () => {} },
+  { key: 'phoenix', name: 'Phoenix Feather', icon: 'phoenix', max: 2, desc: 'Cheat death once — revive with 3 hearts',
+    apply: () => { game.phoenix = (game.phoenix || 0) + 1; } },
+  { key: 'rush', name: 'Gold Rush', icon: 'goldrush', max: 3, desc: '+20% gold for this battle',
+    apply: () => {} },
 ];
+function upLvl(k) { return game.up[k] || 0; }
 function levelUp() {
   game.level += 1;
   game.xpNext = 8 + game.level * 5;
-  const pool = UPGRADES.filter(u => u.can());
+  const pool = UPGRADES.filter(u => upLvl(u.key) < u.max);
   const picks = [];
   while (picks.length < 3 && pool.length) {
     picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
@@ -1442,6 +1455,10 @@ function nearestAlivePlayer(x, y) {
 function hurtEnemy(e, dmg, ang, kb) {
   e.hp -= dmg;
   e.flash = 0.12;
+  if (upLvl('frost') > 0) {
+    e.slowT = 2;
+    e.slowF = Math.pow(0.78, upLvl('frost'));
+  }
   e.kx += Math.cos(ang) * kb;
   e.ky += Math.sin(ang) * kb;
   dmgTexts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y - e.r - 6, val: Math.max(1, Math.round(dmg)), age: 0 });
@@ -1458,7 +1475,9 @@ function killEnemy(i) {
   particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.28, color: colors[e.kind], size: e.r });
   const n = e.kind === 'golem' ? 3 : 1;
   for (let k = 0; k < n; k++) {
-    gems.push({ x: e.x + (Math.random() - 0.5) * 18, y: e.y + (Math.random() - 0.5) * 18, v: Math.ceil(e.xp / n), vx: 0, vy: 0 });
+    let gv = Math.ceil(e.xp / n);
+    if (Math.random() < 0.15 * upLvl('clover')) gv *= 2;
+    gems.push({ x: e.x + (Math.random() - 0.5) * 18, y: e.y + (Math.random() - 0.5) * 18, v: gv, vx: 0, vy: 0 });
   }
   if (Math.random() < 0.045) drops.push({ x: e.x, y: e.y, kind: 'heart' });
   else if (Math.random() < 0.06) drops.push({ x: e.x, y: e.y, kind: 'coin', v: 2 + Math.floor(Math.random() * 3) + (e.kind === 'golem' ? 6 : 0) });
@@ -1630,11 +1649,13 @@ function update(dt) {
     if (e.flash > 0) e.flash -= dt;
     if (e.orbCd > 0) e.orbCd -= dt;
     e.spawnAge += dt;
+    if (e.slowT > 0) e.slowT -= dt;
     const t = nearestAlivePlayer(e.x, e.y);
     if (t) {
+      const sl = e.slowT > 0 ? e.slowF : 1;
       const d = Math.hypot(t.x - e.x, t.y - e.y) || 1;
-      e.x += ((t.x - e.x) / d) * e.speed * dt;
-      e.y += ((t.y - e.y) / d) * e.speed * dt;
+      e.x += ((t.x - e.x) / d) * e.speed * sl * dt;
+      e.y += ((t.y - e.y) / d) * e.speed * sl * dt;
     }
     e.x += e.kx * dt; e.y += e.ky * dt;
     e.kx *= Math.pow(0.02, dt); e.ky *= Math.pow(0.02, dt);
@@ -1649,8 +1670,17 @@ function update(dt) {
       t.invuln = 1.2;
       game.shake = 0.25;
       game.hurtFlash = 0.4;
+      if (upLvl('thorn') > 0) {
+        hurtEnemy(e, 2 * upLvl('thorn'), Math.atan2(e.y - t.y, e.x - t.x), 280);
+      }
       e.kx -= Math.cos(Math.atan2(t.y - e.y, t.x - e.x)) * 150;
-      if (t.hp <= 0) {
+      if (t.hp <= 0 && (game.phoenix || 0) > 0) {
+        game.phoenix--;
+        t.hp = 3;
+        t.invuln = 2.5;
+        particles.push({ x: t.x, y: t.y - 20, vx: 0, vy: 0, ring: true, life: 0.28, color: '#fb923c', size: 30 });
+        gameToast('🔥 ' + t.name + ' rises from the ashes!');
+      } else if (t.hp <= 0) {
         t.alive = false;
         t.reviveProgress = 0;
         gameToast(t.name + ' is down! Stand close to revive!');
@@ -1694,7 +1724,7 @@ function update(dt) {
     if (t && Math.hypot(t.x - dr.x, t.y - 14 - dr.y) < 26) {
       drops.splice(i, 1);
       if (dr.kind === 'coin') {
-        const g3 = Math.round(dr.v * (1 + 0.1 * powerRank('greed')));
+        const g3 = Math.round(dr.v * (1 + 0.1 * powerRank('greed')) * (1 + 0.2 * upLvl('rush')));
         kdMeta.gold += g3;
         game.runGold += g3;
         saveMeta();
@@ -2005,6 +2035,12 @@ function drawEnemy(e, t) {
   }
 
   // glowing eyes with pupils
+  if (e.slowT > 0) {
+    ctx.fillStyle = 'rgba(125, 211, 252, 0.28)';
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
   const ed = e.r * 0.34, eh = e.kind === 'brute' || e.kind === 'golem' ? 7 : 5;
   ctx.fillStyle = cols.eye;
   ctx.fillRect(-ed - 2.5, -4, 5, eh + 1);
@@ -2075,7 +2111,7 @@ function drawPlayerSprite(p, t) {
 // optional hand-made icon art: drop a PNG at icons/<name>.png and it
 // automatically replaces the drawn emblem everywhere it appears
 const ICON_IMG = {};
-for (const k of ['sword', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave', 'coin', 'nova', 'dagger', 'gust']) {
+for (const k of ['sword', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave', 'coin', 'nova', 'dagger', 'gust', 'thorn', 'frost', 'clover', 'phoenix', 'goldrush']) {
   const im = new Image();
   im.src = 'icons/' + k + '.png';
   im.onload = () => { ICON_IMG[k] = im; };
@@ -2177,6 +2213,72 @@ function drawUpgradeIcon(kind, x, y, s, t) {
     }
     ctx.fillStyle = '#eef6fa';
     ctx.beginPath(); ctx.arc(10, 0, 3, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'thorn') {
+    ctx.fillStyle = '#3f7d3a';
+    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#71a05e';
+    ctx.beginPath(); ctx.arc(-3, -4, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2d5016';
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      ctx.save();
+      ctx.translate(Math.cos(a) * 12, Math.sin(a) * 12);
+      ctx.rotate(a);
+      ctx.beginPath(); ctx.moveTo(0, -3); ctx.lineTo(8, 0); ctx.lineTo(0, 3); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  } else if (kind === 'frost') {
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = 3;
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * 15, Math.sin(a) * 15);
+      ctx.lineTo(-Math.cos(a) * 15, -Math.sin(a) * 15);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#eef6fa';
+    ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7dd3fc';
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + Math.PI / 6;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * 11, Math.sin(a) * 11, 2, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (kind === 'clover') {
+    ctx.fillStyle = '#22c55e';
+    for (const [ox3, oy3] of [[-6, -4], [6, -4], [0, -12]]) {
+      ctx.beginPath(); ctx.arc(ox3, oy3, 7, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(-1.5, -2, 3, 16);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.beginPath(); ctx.arc(-8, -7, 2.5, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'phoenix') {
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.moveTo(0, 16);
+    ctx.quadraticCurveTo(-14, 2, -4, -14);
+    ctx.quadraticCurveTo(2, -18, 6, -12);
+    ctx.quadraticCurveTo(12, 0, 0, 16);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.moveTo(0, 12);
+    ctx.quadraticCurveTo(-7, 2, -1, -8);
+    ctx.quadraticCurveTo(6, -2, 0, 12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ef4444';
+    ctx.fillRect(-1, -17, 2, 5);
+  } else if (kind === 'goldrush') {
+    for (const [ox3, oy3] of [[-8, 4], [8, 4], [0, -5]]) {
+      ctx.fillStyle = '#a9722c';
+      ctx.beginPath(); ctx.arc(ox3 + 1.5, oy3 + 1.5, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = UI.gold;
+      ctx.beginPath(); ctx.arc(ox3, oy3, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#a9722c';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(ox3, oy3, 6, 0, Math.PI * 2); ctx.stroke();
+    }
   } else if (kind === 'coin') {
     ctx.fillStyle = '#a9722c';
     ctx.beginPath(); ctx.arc(2, 2, 14, 0, Math.PI * 2); ctx.fill();
@@ -3075,13 +3177,28 @@ function render(t) {
       ctx.stroke();
       drawUpgradeIcon(c.icon, cx2, top + 72, 1.05, t);
       ctx.textAlign = 'center';
+      const lvl = upLvl(c.key);
+      if (lvl === 0) {
+        ctx.fillStyle = '#4ade80';
+        ctx.font = '700 13px Inter, sans-serif';
+        ctx.fillText('NEW!', cx2, top + 126);
+      } else {
+        const pw2 = c.max * 15;
+        for (let r2 = 0; r2 < c.max; r2++) {
+          ctx.fillStyle = r2 < lvl ? UI.gold : (r2 === lvl ? '#4ade80' : 'rgba(255, 255, 255, 0.15)');
+          ctx.fillRect(cx2 - pw2 / 2 + r2 * 15, top + 116, 11, 6);
+        }
+        ctx.fillStyle = '#4ade80';
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.fillText('Lv ' + lvl + '  →  Lv ' + (lvl + 1), cx2, top + 138);
+      }
       ctx.fillStyle = hov ? UI.goldLight : UI.text;
       ctx.font = '700 17px Cinzel, Georgia, serif';
-      ctx.fillText(c.name, cx2, top + 145);
+      ctx.fillText(c.name, cx2, top + 162);
       ctx.fillStyle = UI.dim;
       ctx.font = '15px Inter, sans-serif';
       const words = c.desc.split(' ');
-      let line = '', ly = top + 176;
+      let line = '', ly = top + 190;
       for (const wd of words) {
         if ((line + wd).length > 22) { ctx.fillText(line, cx2, ly); ly += 21; line = ''; }
         line += (line ? ' ' : '') + wd;
