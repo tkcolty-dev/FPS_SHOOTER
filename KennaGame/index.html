@@ -606,6 +606,23 @@
   }
   #bushL { left: -1%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60' preserveAspectRatio='none'%3E%3Cpath d='M0,60 L0,26 Q8,14 16,24 Q22,6 34,20 Q40,12 48,22 Q58,2 70,18 Q80,8 90,24 Q100,14 112,26 Q122,18 132,30 Q144,22 156,34 Q170,28 182,40 Q192,36 200,46 L200,60 Z' fill='%230c110b'/%3E%3Cpath d='M0,60 L0,38 Q12,28 24,36 Q36,24 50,34 Q66,22 82,34 Q98,26 114,38 Q132,32 150,42 Q170,38 200,50 L200,60 Z' fill='%23070b06'/%3E%3C/svg%3E"); }
   #bushR { right: -1%; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60' preserveAspectRatio='none'%3E%3Cpath d='M0,60 L0,26 Q8,14 16,24 Q22,6 34,20 Q40,12 48,22 Q58,2 70,18 Q80,8 90,24 Q100,14 112,26 Q122,18 132,30 Q144,22 156,34 Q170,28 182,40 Q192,36 200,46 L200,60 Z' fill='%230c110b'/%3E%3Cpath d='M0,60 L0,38 Q12,28 24,36 Q36,24 50,34 Q66,22 82,34 Q98,26 114,38 Q132,32 150,42 Q170,38 200,50 L200,60 Z' fill='%23070b06'/%3E%3C/svg%3E"); transform: scaleX(-1); }
+  /* precise hover zones centered on each painted top-right icon */
+  #menu.hasImage #iconRow {
+    display: block; position: absolute; inset: 0;
+    min-width: 0; height: auto; padding: 0;
+    background: none; border: none; box-shadow: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    pointer-events: none;
+  }
+  #menu.hasImage .iconBtn {
+    position: absolute; pointer-events: auto;
+    width: 3.4%; height: 5.6%; top: 2.95%;
+    border-radius: 12px;
+  }
+  #menu.hasImage #icDiscord { left: 83.0%; }
+  #menu.hasImage #icMail { left: 86.82%; }
+  #menu.hasImage #icBell { left: 90.62%; }
+  #menu.hasImage #icGear { left: 94.42%; }
 </style>
 </head>
 <body>
