@@ -956,6 +956,67 @@ function plate(x, y, w, h, r = 10) {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 }
+// heavier royal frame for the battle HUD: double border + gold studs
+function ornate(x, y, w, h, r = 9) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(9, 7, 5, 0.9)';
+  ctx.fill();
+  ctx.strokeStyle = '#6b5222';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.strokeStyle = '#e8b64c';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.fillStyle = '#e8b64c';
+  for (const [cx3, cy3] of [[x + 2, y + 2], [x + w - 2, y + 2], [x + 2, y + h - 2], [x + w - 2, y + h - 2]]) {
+    ctx.save();
+    ctx.translate(cx3, cy3);
+    ctx.rotate(Math.PI / 4);
+    ctx.fillRect(-2.6, -2.6, 5.2, 5.2);
+    ctx.restore();
+  }
+}
+// small winged-sword crest
+function drawCrest(x, y, s) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(s, s);
+  ctx.fillStyle = '#e8b64c';
+  for (const dir of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(dir * 6, 0);
+    ctx.lineTo(dir * 26, -8);
+    ctx.lineTo(dir * 10, -2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(dir * 6, 3);
+    ctx.lineTo(dir * 22, -1);
+    ctx.lineTo(dir * 9, 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.fillStyle = '#f4e6c8';
+  ctx.beginPath();
+  ctx.moveTo(0, -12);
+  ctx.lineTo(2.6, -2);
+  ctx.lineTo(0, 10);
+  ctx.lineTo(-2.6, -2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#e8b64c';
+  ctx.fillRect(-6, -3, 12, 3);
+  ctx.beginPath();
+  ctx.arc(0, 11, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
 
 // ---------- persistent treasury & unlocks (like Vampire Survivors) ----------
 const kdMeta = Object.assign(
@@ -1119,6 +1180,7 @@ window.addEventListener('keydown', e => {
       if (game.phase === 'select2') confirmSelection2();
       else confirmSelection();
     }
+    if (game.phase === 'select2' && e.code === 'Backspace') { game.phase = 'run'; return; }
     if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.cursor = 0; }
     return;
   }
@@ -1146,9 +1208,9 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (e.code === 'KeyR' && (game.over || game.victory)) { game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false; return; }
-  // P2 joins on any arrow key — and picks their own knight
+  // P2 joins with J — and picks their own knight
   const p2 = players[1];
-  if (!p2.joined && e.code.startsWith('Arrow') && game.phase === 'run') {
+  if (!p2.joined && e.code === 'KeyJ' && game.phase === 'run') {
     game.phase = 'select2';
     game.cursor = 0;
   }
@@ -1382,7 +1444,7 @@ function hurtEnemy(e, dmg, ang, kb) {
   e.flash = 0.12;
   e.kx += Math.cos(ang) * kb;
   e.ky += Math.sin(ang) * kb;
-  dmgTexts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y - e.r - 6, val: dmg, age: 0 });
+  dmgTexts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y - e.r - 6, val: Math.max(1, Math.round(dmg)), age: 0 });
 }
 
 function killEnemy(i) {
@@ -1498,6 +1560,14 @@ function update(dt) {
     if (keys.has(p.keymap.right)) vx += 1;
     if (keys.has(p.keymap.up)) vy -= 1;
     if (keys.has(p.keymap.down)) vy += 1;
+    if (p === players[0] && !players[1].joined) {
+      if (keys.has('ArrowLeft')) vx -= 1;
+      if (keys.has('ArrowRight')) vx += 1;
+      if (keys.has('ArrowUp')) vy -= 1;
+      if (keys.has('ArrowDown')) vy += 1;
+      vx = Math.max(-1, Math.min(1, vx));
+      vy = Math.max(-1, Math.min(1, vy));
+    }
     p.moving = vx !== 0 || vy !== 0;
     if (p.moving) {
       if (vx < 0) p.dir = 'left';
@@ -1713,11 +1783,26 @@ function drawStructure(s, M, t) {
   if (s.type === 'wall') {
     ctx.fillStyle = M.stone;
     ctx.fillRect(x - w / 2, y - 58, w, 58);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let r2 = 0; r2 < 4; r2++) {
+      for (let k = 0; k < 5; k++) {
+        const bshade = hash2(s.seed * 9 + k, r2);
+        ctx.fillStyle = bshade > 0.6 ? M.stoneHi : bshade > 0.3 ? M.stone : 'rgba(0, 0, 0, 0.12)';
+        ctx.fillRect(x - w / 2 + 2 + k * 30 + (r2 % 2) * 14, y - 56 + r2 * 14, 26, 12);
+      }
+    }
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
     for (let by = y - 58 + 12; by < y; by += 14) ctx.fillRect(x - w / 2, by, w, 2);
-    for (let k = 0; k < 5; k++) ctx.fillRect(x - w / 2 + 14 + k * 30 + (k % 2) * 12, y - 58 + 12 + (k % 3) * 14, 2, 12);
     ctx.fillStyle = M.stoneHi;
     ctx.fillRect(x - w / 2, y - 62, w, 8);
+    // moss creeping over the top and down the face
+    ctx.fillStyle = M.tuftA;
+    for (let k = 0; k < 6; k++) {
+      if (hash2(s.seed, k) > 0.4) ctx.fillRect(x - w / 2 + 6 + k * 24, y - 63, 10 + hash2(s.seed, k + 9) * 8, 4);
+    }
+    ctx.fillStyle = M.tuftB;
+    for (let k = 0; k < 3; k++) {
+      if (hash2(s.seed, k + 20) > 0.5) ctx.fillRect(x - w / 2 + 20 + k * 44, y - 56, 3, 10 + hash2(s.seed, k + 30) * 8);
+    }
   } else if (s.type === 'pillar') {
     ctx.fillStyle = M.stone;
     ctx.fillRect(x - 13, y - 78, 26, 78);
@@ -1736,6 +1821,13 @@ function drawStructure(s, M, t) {
     ctx.fillRect(x - w * 0.25, y - 34, 20, 34);
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
     for (let by = y - 52 + 10; by < y; by += 13) ctx.fillRect(x - w / 2, by, w, 2);
+    ctx.fillStyle = M.tuftA;
+    for (let k = 0; k < 4; k++) {
+      if (hash2(s.seed, k + 40) > 0.35) ctx.fillRect(x - w / 2 + 4 + k * 26, y - 56 + (k % 2) * 4, 9 + hash2(s.seed, k + 50) * 9, 4);
+    }
+    ctx.fillStyle = M.tuftB;
+    ctx.fillRect(x - w / 2 + 6, y - 46, 3, 14);
+    ctx.fillRect(x + w * 0.3, y - 50, 3, 18);
   } else if (s.type === 'fence') {
     ctx.fillStyle = '#6b4a2a';
     ctx.fillRect(x - w / 2, y - 22, w, 5);
@@ -2524,19 +2616,24 @@ function render(t) {
 
   ctx.fillStyle = M.base;
   ctx.fillRect(cam.x - 20, cam.y - 20, 1000, 680);
-  // soft mottled patches give the ground depth
-  const m0x = Math.floor(cam.x / 160), m0y = Math.floor(cam.y / 160);
+  // organic tone patches (clustered blobs, not perfect ellipses)
+  const m0x = Math.floor(cam.x / 150), m0y = Math.floor(cam.y / 150);
   for (let my = m0y; my <= m0y + 5; my++) {
-    for (let mx = m0x; mx <= m0x + 7; mx++) {
+    for (let mx = m0x; mx <= m0x + 8; mx++) {
       const hh = hash2(mx, my, 21);
-      if (hh > 0.3) continue;
-      ctx.fillStyle = hh > 0.15 ? 'rgba(255, 255, 255, 0.018)' : 'rgba(0, 0, 0, 0.028)';
-      ctx.beginPath();
-      ctx.ellipse(
-        mx * 160 + 80 + hash2(mx, my, 22) * 60 - 30,
-        my * 160 + 80 + hash2(mx, my, 23) * 60 - 30,
-        55 + hash2(mx, my, 24) * 35, 38 + hash2(mx, my, 25) * 26, 0, 0, Math.PI * 2);
-      ctx.fill();
+      if (hh > 0.55) continue;
+      const px2 = mx * 150 + hash2(mx, my, 22) * 80;
+      const py2 = my * 150 + hash2(mx, my, 23) * 80;
+      ctx.fillStyle = hh > 0.28 ? 'rgba(255, 255, 220, 0.014)' : 'rgba(12, 30, 8, 0.038)';
+      for (let b2 = 0; b2 < 2; b2++) {
+        ctx.beginPath();
+        ctx.ellipse(
+          px2 + hash2(mx * 3 + b2, my, 26) * 70 - 35,
+          py2 + hash2(mx, my * 3 + b2, 27) * 46 - 23,
+          34 + hash2(mx + b2, my, 28) * 40,
+          22 + hash2(mx, my + b2, 29) * 26, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
   const c0x = Math.floor(cam.x / 64), c0y = Math.floor(cam.y / 64);
@@ -2545,6 +2642,14 @@ function render(t) {
       const h = hash2(cx, cy);
       const px = cx * 64 + hash2(cx, cy, 3) * 44 + 8;
       const py = cy * 64 + hash2(cx, cy, 4) * 44 + 8;
+      // dense micro-texture in every cell
+      const spx = cx * 64, spy = cy * 64;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      for (let k = 0; k < 3; k++) {
+        ctx.fillRect(spx + hash2(cx + k, cy, 31) * 60, spy + hash2(cx, cy + k, 32) * 60, 2, 2);
+      }
+      ctx.fillStyle = 'rgba(255, 255, 210, 0.06)';
+      ctx.fillRect(spx + hash2(cx, cy, 33) * 60, spy + hash2(cx, cy, 34) * 60, 2, 2);
       if (h > 0.965) {
         // bush with shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
@@ -2583,17 +2688,40 @@ function render(t) {
           ctx.fillStyle = '#c9862c';
           ctx.fillRect(px + 1, py - 4, 3, 3);
         }
-      } else if (h > 0.45) {
+      } else if (h > 0.86) {
+        // daisies
+        ctx.fillStyle = M.flowerB;
+        ctx.fillRect(px - 2, py - 2, 5, 5);
+        ctx.fillRect(px + 9, py + 4, 4, 4);
+        ctx.fillStyle = '#c9862c';
+        ctx.fillRect(px, py, 2, 2);
+      } else if (h > 0.8) {
+        // yellow buds
+        ctx.fillStyle = M.flowerA;
+        ctx.fillRect(px, py, 3, 3);
+        ctx.fillRect(px + 7, py - 4, 3, 3);
+        ctx.fillRect(px + 3, py + 6, 3, 3);
+      } else if (h > 0.34) {
+        // grass tufts — three shapes
+        const v = hash2(cx, cy, 8);
         ctx.fillStyle = hash2(cx, cy, 6) > 0.5 ? M.tuftA : M.tuftB;
-        ctx.fillRect(px, py, 6, 3);
-        ctx.fillRect(px + 1, py - 3, 4, 3);
-        if (hash2(cx, cy, 7) > 0.4) {
-          ctx.fillRect(px + 12, py + 7, 5, 3);
-          ctx.fillRect(px + 13, py + 4, 3, 3);
+        if (v > 0.66) {
+          for (let b2 = 0; b2 < 3; b2++) ctx.fillRect(px + b2 * 4, py - (b2 % 2) * 4, 2, 7);
+        } else if (v > 0.33) {
+          ctx.fillRect(px, py, 6, 3);
+          ctx.fillRect(px + 1, py - 3, 4, 3);
+          ctx.fillRect(px + 10, py + 6, 5, 3);
+        } else {
+          ctx.fillRect(px, py, 3, 5);
+          ctx.fillRect(px + 5, py + 2, 3, 4);
+          ctx.fillRect(px - 4, py + 3, 3, 4);
         }
-      } else if (h < 0.035) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      } else if (h < 0.028) {
+        // pebbles with dark outline
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
         ctx.beginPath(); ctx.ellipse(px + 5, py + 6, 9, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = M.edge;
+        ctx.fillRect(px - 1, py - 1, 12, 9);
         ctx.fillStyle = M.stone;
         ctx.fillRect(px, py, 10, 7);
         ctx.fillRect(px + 11, py + 3, 5, 4);
@@ -2784,7 +2912,7 @@ function render(t) {
   let hy = 12;
   for (const p of joined) {
     const pw = Math.max(180, 76 + p.maxHp * 21);
-    plate(10, hy, pw, 46, 12);
+    ornate(10, hy, pw, 46, 12);
     ctx.save();
     ctx.beginPath();
     ctx.arc(35, hy + 23, 15, 0, Math.PI * 2);
@@ -2808,15 +2936,8 @@ function render(t) {
   }
 
   // center: timer + XP + level medallion
-  plate(362, 8, 236, 58, 12);
-  for (const [dx, dy] of [[362, 8], [598, 8], [362, 66], [598, 66]]) {
-    ctx.save();
-    ctx.translate(dx, dy);
-    ctx.rotate(Math.PI / 4);
-    ctx.fillStyle = UI.gold;
-    ctx.fillRect(-3, -3, 6, 6);
-    ctx.restore();
-  }
+  ornate(360, 10, 240, 58, 12);
+  drawCrest(480, 10, 0.85);
   const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
   const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
   ctx.textAlign = 'center';
@@ -2826,8 +2947,8 @@ function render(t) {
   ctx.fillStyle = 'rgba(10, 6, 16, 0.85)';
   ctx.fillRect(380, 46, 180, 9);
   const xg = ctx.createLinearGradient(380, 0, 560, 0);
-  xg.addColorStop(0, '#a855f7');
-  xg.addColorStop(1, UI.gold);
+  xg.addColorStop(0, '#7c3aed');
+  xg.addColorStop(1, '#c084fc');
   ctx.fillStyle = xg;
   ctx.fillRect(380, 46, 180 * Math.min(1, game.xp / game.xpNext), 9);
   ctx.strokeStyle = UI.plateBorder;
@@ -2851,11 +2972,16 @@ function render(t) {
   const om = String(Math.floor(remain / 60)).padStart(2, '0');
   const os = String(Math.floor(remain % 60)).padStart(2, '0');
   ctx.font = '600 11px Inter, sans-serif';
-  ctx.fillStyle = 'rgba(240, 226, 195, 0.75)';
-  ctx.fillText('OBJECTIVE — SURVIVE  ' + om + ':' + os, 480, 80);
+  ctx.fillStyle = 'rgba(240, 226, 195, 0.7)';
+  ctx.textAlign = 'right';
+  ctx.fillText('OBJECTIVE — SURVIVE', 498, 84);
+  ctx.textAlign = 'left';
+  ctx.font = '700 12px Inter, sans-serif';
+  ctx.fillStyle = '#4ade80';
+  ctx.fillText(om + ':' + os, 506, 84);
 
   // right: banished counter with a wisp emblem
-  plate(788, 10, 162, 44, 12);
+  ornate(788, 10, 162, 44, 12);
   ctx.fillStyle = '#3b1e63';
   ctx.beginPath(); ctx.arc(812, 32, 10, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#e9d5ff';
@@ -2867,8 +2993,18 @@ function render(t) {
   ctx.font = '700 19px Cinzel, Georgia, serif';
   ctx.fillStyle = '#c9a8ff';
   ctx.fillText(String(game.kills), 832, 46);
-  plate(788, 60, 162, 34, 12);
+  ornate(788, 60, 162, 34, 12);
   drawUpgradeIcon('coin', 812, 77, 0.42, t);
+  // bottom crest band
+  ctx.fillStyle = 'rgba(9, 7, 5, 0.85)';
+  ctx.fillRect(0, 630, 960, 10);
+  ctx.strokeStyle = '#6b5222';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, 630);
+  ctx.lineTo(960, 630);
+  ctx.stroke();
+  drawCrest(480, 628, 0.75);
   ctx.textAlign = 'right';
   ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
@@ -2876,7 +3012,7 @@ function render(t) {
 
   if (!players[1].joined) {
     ctx.font = '600 13px Inter, sans-serif';
-    const jtxt = 'P2 — press an ARROW KEY to join!';
+    const jtxt = 'Player 2 — press J to join!';
     const jw = ctx.measureText(jtxt).width + 38;
     ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 3);
     plate(12, 640 - 46, jw, 32, 16);
