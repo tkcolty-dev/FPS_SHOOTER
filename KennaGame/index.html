@@ -1276,6 +1276,17 @@ function confirmSelection() {
     game.phase = 'run';
   }
 }
+function applyRunUpgradesTo(p) {
+  p.damage += upLvl('sharp');
+  p.attackEvery = Math.max(0.22, p.attackEvery * Math.pow(0.85, upLvl('swift')));
+  p.range += 25 * upLvl('reach');
+  p.arc = Math.min(1.6, p.arc + 0.08 * upLvl('reach'));
+  p.speed *= Math.pow(1.12, upLvl('boots'));
+  p.maxHp += upLvl('heart');
+  p.magnet *= Math.pow(1.55, upLvl('magnet'));
+  p.orbCount += upLvl('aegis');
+  p.wave += upLvl('wave');
+}
 function confirmSelection2() {
   const rk = ROSTER[game.cursor];
   if (!kdMeta.unlocked.includes(rk.key)) {
@@ -1285,6 +1296,7 @@ function confirmSelection2() {
   const p2 = players[1];
   p2.joined = true;
   applyHero(p2, rk.key);
+  applyRunUpgradesTo(p2);
   p2.alive = true;
   p2.hp = p2.maxHp;
   p2.invuln = 2;
@@ -1477,10 +1489,12 @@ function killEnemy(i) {
   for (let k = 0; k < n; k++) {
     let gv = Math.ceil(e.xp / n);
     if (Math.random() < 0.15 * upLvl('clover')) gv *= 2;
-    gems.push({ x: e.x + (Math.random() - 0.5) * 18, y: e.y + (Math.random() - 0.5) * 18, v: gv, vx: 0, vy: 0 });
+    const gp = pushOut(e.x + (Math.random() - 0.5) * 18, e.y + (Math.random() - 0.5) * 18, 14);
+    gems.push({ x: gp.x, y: gp.y, v: gv, vx: 0, vy: 0 });
   }
-  if (Math.random() < 0.045) drops.push({ x: e.x, y: e.y, kind: 'heart' });
-  else if (Math.random() < 0.06) drops.push({ x: e.x, y: e.y, kind: 'coin', v: 2 + Math.floor(Math.random() * 3) + (e.kind === 'golem' ? 6 : 0) });
+  const dp = pushOut(e.x, e.y, 16);
+  if (Math.random() < 0.045) drops.push({ x: dp.x, y: dp.y, kind: 'heart' });
+  else if (Math.random() < 0.06) drops.push({ x: dp.x, y: dp.y, kind: 'coin', v: 2 + Math.floor(Math.random() * 3) + (e.kind === 'golem' ? 6 : 0) });
   enemies.splice(i, 1);
 }
 
@@ -1541,6 +1555,11 @@ function fireWeapon(p) {
 
 // ---------- update ----------
 function update(dt) {
+  // toasts tick in every phase so messages show on selection screens too
+  for (let i = toasts.length - 1; i >= 0; i--) {
+    toasts[i].age += dt;
+    if (toasts[i].age > 3) toasts.splice(i, 1);
+  }
   if (game.phase !== 'run' || game.over || game.victory || game.choices) return;
   game.time += dt;
   const goalSec = MAPS[game.mapPick].goal * 60;
@@ -1773,11 +1792,6 @@ function update(dt) {
     dmgTexts[i].y -= 34 * dt;
     if (dmgTexts[i].age > 0.7) dmgTexts.splice(i, 1);
   }
-  for (let i = toasts.length - 1; i >= 0; i--) {
-    toasts[i].age += dt;
-    if (toasts[i].age > 3) toasts.splice(i, 1);
-  }
-
   // camera
   const alive = players.filter(p => p.joined && p.alive);
   const fx = alive.length ? alive.reduce((s, p) => s + p.x, 0) / alive.length : players[0].x;
@@ -2334,6 +2348,23 @@ function renderCardScreen(t, title, items, drawItem) {
   ctx.fillText('A / D or MOUSE to choose  •  SPACE or CLICK to confirm', 480, 530);
 }
 
+// toast pills shown on any screen
+function drawToasts(t) {
+  let ty = 96;
+  for (const tst of toasts) {
+    const a = Math.min(1, tst.age * 4) * Math.min(1, (3 - tst.age));
+    ctx.font = '600 14px Inter, sans-serif';
+    const tw = ctx.measureText(tst.text).width + 42;
+    ctx.globalAlpha = a;
+    plate(480 - tw / 2, ty - 19, tw, 30, 15);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = UI.goldLight;
+    ctx.fillText(tst.text, 480, ty + 1);
+    ctx.globalAlpha = 1;
+    ty += 38;
+  }
+}
+
 // faded title art behind the game screens
 function drawScreenBg(t) {
   const img = document.getElementById('menuBgImg');
@@ -2550,6 +2581,7 @@ function renderSelect(t, forP2) {
   ctx.fillText(forP2
     ? 'Arrows to move  •  Enter to join the battle'
     : 'WASD / arrows / mouse  •  Space or click to choose or unlock  •  Q / E — pages', 480, 606);
+  drawToasts(t);
 }
 
 function renderArmory(t) {
@@ -2615,6 +2647,7 @@ function renderArmory(t) {
   ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
   ctx.font = '18px "VT323", monospace';
   ctx.fillText('These blessings are permanent — every knight, every run', 480, 580);
+  drawToasts(t);
 }
 
 function renderMapSelect(t) {
@@ -2693,6 +2726,7 @@ function renderMapSelect(t) {
   ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.25 * Math.sin(t * 3)})`;
   ctx.font = '600 13px Inter, sans-serif';
   ctx.fillText('WASD / arrows / mouse  •  Space or click to begin', 480, 596);
+  drawToasts(t);
 }
 
 // ---------- render ----------
