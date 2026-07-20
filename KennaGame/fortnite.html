@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Battle Royale — Lobby</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    height: 100vh; overflow: hidden; user-select: none;
+    font-family: 'Arial Black', 'Arial Bold', Arial, sans-serif;
+    background:
+      radial-gradient(ellipse at 70% 20%, rgba(120, 80, 220, 0.35), transparent 55%),
+      radial-gradient(ellipse at 20% 80%, rgba(40, 160, 220, 0.3), transparent 50%),
+      linear-gradient(160deg, #1a2a5e 0%, #23346e 35%, #3a2a6e 70%, #1a1440 100%);
+    color: #fff;
+  }
+  /* top bar */
+  .top {
+    display: flex; align-items: center; gap: 26px;
+    padding: 14px 28px; background: rgba(8, 10, 30, 0.55);
+  }
+  .logo {
+    font-size: 30px; font-style: italic; letter-spacing: 1px;
+    transform: skewX(-8deg);
+    text-shadow: 0 3px 0 #0a0c24, 0 6px 14px rgba(0,0,0,0.6);
+  }
+  .tabs { display: flex; gap: 20px; font-size: 15px; color: #9fb0e8; font-style: italic; }
+  .tabs .on { color: #ffe94d; border-bottom: 3px solid #ffe94d; padding-bottom: 3px; }
+  .vbucks {
+    margin-left: auto; background: rgba(0,0,0,0.4); border-radius: 20px;
+    padding: 7px 18px; font-size: 17px; color: #7fd4ff; font-style: italic;
+  }
+  /* center */
+  .stage { position: relative; height: calc(100vh - 64px); }
+  .season {
+    position: absolute; top: 34px; left: 40px; font-style: italic;
+    transform: skewX(-6deg) rotate(-2deg);
+  }
+  .season b { font-size: 44px; display: block; color: #ffe94d; text-shadow: 0 4px 0 #7a5a00, 0 8px 18px rgba(0,0,0,0.5); }
+  .season span { font-size: 18px; color: #cfd8ff; }
+  .char {
+    position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+    font-size: 170px; filter: drop-shadow(0 18px 24px rgba(0,0,0,0.55));
+  }
+  .pad {
+    position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 44px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(120, 210, 255, 0.5), transparent 70%);
+  }
+  .squad {
+    position: absolute; bottom: 90px; display: flex; gap: 16px;
+  }
+  .squad.l { left: 60px; } .squad.r { right: 60px; }
+  .slot {
+    width: 92px; height: 128px; border-radius: 10px;
+    background: rgba(255, 255, 255, 0.07);
+    border: 2px dashed rgba(160, 180, 255, 0.4);
+    display: flex; align-items: center; justify-content: center;
+    color: #9fb0e8; font-size: 34px;
+  }
+  .slot small { font-size: 11px; font-style: italic; }
+  /* play button */
+  .playwrap { position: absolute; right: 56px; top: 42%; text-align: center; }
+  .mode { font-style: italic; color: #cfd8ff; font-size: 15px; margin-bottom: 8px; }
+  #play {
+    font-family: inherit; font-size: 34px; font-style: italic; font-weight: 900;
+    color: #12240e; letter-spacing: 2px;
+    background: linear-gradient(#ffe94d, #ffc93d);
+    border: none; border-radius: 6px; padding: 18px 66px;
+    box-shadow: 0 6px 0 #a77c00, 0 12px 26px rgba(0,0,0,0.55);
+    cursor: pointer; transform: skewX(-6deg);
+  }
+  #play:hover { filter: brightness(1.08); }
+  #play:active { transform: skewX(-6deg) translateY(4px); box-shadow: 0 2px 0 #a77c00; }
+  .party { margin-top: 12px; font-size: 13px; color: #9fb0e8; font-style: italic; }
+  /* shop strip */
+  .shop {
+    position: absolute; top: 40px; right: 56px; display: flex; gap: 12px;
+  }
+  .item {
+    width: 96px; border-radius: 10px; overflow: hidden; text-align: center;
+    background: linear-gradient(180deg, rgba(150, 90, 240, 0.75), rgba(60, 30, 120, 0.85));
+    border: 2px solid rgba(255, 255, 255, 0.18); font-style: italic;
+  }
+  .item .pic { font-size: 44px; padding: 10px 0 4px; }
+  .item .nm { font-size: 11px; padding: 0 4px; }
+  .item .pr { font-size: 12px; color: #7fd4ff; padding: 4px 0 8px; }
+  .news {
+    position: absolute; left: 40px; top: 46%;
+    background: rgba(8, 10, 30, 0.6); border-left: 4px solid #ffe94d;
+    padding: 12px 18px; font-size: 13px; color: #cfd8ff; max-width: 250px;
+    font-style: italic; line-height: 1.5;
+  }
+  /* gotcha */
+  #gotcha {
+    position: fixed; inset: 0; display: none; z-index: 20;
+    background: rgba(6, 4, 18, 0.92);
+    align-items: center; justify-content: center; flex-direction: column; gap: 10px;
+  }
+  #gotcha.on { display: flex; }
+  #gotcha .big {
+    font-size: 110px; font-style: italic; color: #ffe94d;
+    transform: skewX(-8deg) rotate(-3deg);
+    text-shadow: 0 6px 0 #7a5a00, 0 16px 40px rgba(0,0,0,0.8);
+    animation: pop 0.45s cubic-bezier(0.2, 2.2, 0.4, 1) both;
+  }
+  #gotcha .small { font-size: 26px; color: #cfd8ff; font-style: italic; }
+  @keyframes pop { from { transform: scale(0.2) skewX(-8deg) rotate(-3deg); } to { transform: scale(1) skewX(-8deg) rotate(-3deg); } }
+  .confetti { position: absolute; font-size: 26px; animation: fall 2.6s linear infinite; }
+  @keyframes fall {
+    from { transform: translateY(-8vh) rotate(0); }
+    to   { transform: translateY(110vh) rotate(720deg); }
+  }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="logo">BATTLE ROYALE</div>
+    <div class="tabs">
+      <span class="on">LOBBY</span><span>PASS</span><span>LOCKER</span><span>ITEM SHOP</span><span>CAREER</span>
+    </div>
+    <div class="vbucks">🪙 13,500</div>
+  </div>
+  <div class="stage">
+    <div class="season"><b>CHAPTER 6</b><span>SEASON: STORM KINGDOM</span></div>
+    <div class="news"><b style="color:#ffe94d">NEWS:</b> Double XP weekend! The storm is angrier than ever. New llama spawns near the castle.</div>
+    <div class="shop">
+      <div class="item"><div class="pic">🦙</div><div class="nm">Lucky Llama</div><div class="pr">🪙 1,500</div></div>
+      <div class="item"><div class="pic">⛏️</div><div class="nm">Royal Pick</div><div class="pr">🪙 800</div></div>
+      <div class="item"><div class="pic">🪂</div><div class="nm">Storm Glider</div><div class="pr">🪙 1,200</div></div>
+    </div>
+    <div class="pad"></div>
+    <div class="char">🕺</div>
+    <div class="squad l">
+      <div class="slot"><small>+ INVITE</small></div>
+      <div class="slot"><small>+ INVITE</small></div>
+    </div>
+    <div class="squad r">
+      <div class="slot"><small>+ INVITE</small></div>
+      <div class="slot"><small>+ INVITE</small></div>
+    </div>
+    <div class="playwrap">
+      <div class="mode">SOLO &middot; EU-CENTRAL &middot; 🎮</div>
+      <button id="play">PLAY!</button>
+      <div class="party">Party: 1 / 4 &middot; matchmaking ready</div>
+    </div>
+  </div>
+
+  <div id="gotcha">
+    <div class="big">GOTCHA!!</div>
+    <div class="small">😂 It's fake, Mom &amp; Dad. Love you!</div>
+  </div>
+
+<script>
+// ANY click springs the trap
+document.addEventListener('click', () => {
+  const g = document.getElementById('gotcha');
+  if (g.classList.contains('on')) return;
+  g.classList.add('on');
+  const bits = ['🎉', '😂', '🦙', '✨', '🎊'];
+  for (let i = 0; i < 26; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.textContent = bits[i % bits.length];
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.animationDelay = (Math.random() * -2.6) + 's';
+    c.style.fontSize = (18 + Math.random() * 22) + 'px';
+    g.appendChild(c);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Math Fact Kingdom Deluxe - Remastered Edition</title>
+<style>
+  /* intentionally, lovingly terrible */
+  body {
+    background: #ece4d0;
+    font-family: "Times New Roman", Times, serif;
+    text-align: center;
+    margin: 0; padding: 24px;
+    color: #333;
+  }
+  .frame {
+    max-width: 640px; margin: 0 auto;
+    background: #fffdf4;
+    border: 4px ridge #b0a080;
+    padding: 18px 28px 34px;
+  }
+  h1 {
+    font-family: "Comic Sans MS", "Comic Sans", cursive;
+    color: #6b3fa0; font-size: 34px; margin: 10px 0 0;
+    text-shadow: 2px 2px 0 #e0d0f0;
+  }
+  .sub { font-style: italic; color: #777; margin: 2px 0 10px; font-size: 15px; }
+  .castle { font-size: 60px; margin: 4px; }
+  .scroll {
+    background: #f6eecf; border: 2px dashed #b09f6a;
+    display: inline-block; padding: 8px 22px; margin: 10px 0 16px;
+    font-size: 15px; color: #6a5a30;
+  }
+  .qbox {
+    font-family: "Comic Sans MS", "Comic Sans", cursive;
+    font-size: 44px; color: #2a5aa0; margin: 12px 0 6px;
+  }
+  input {
+    font-family: "Comic Sans MS", "Comic Sans", cursive;
+    font-size: 30px; width: 110px; text-align: center;
+    border: 3px inset #b0a080; background: #ffffff;
+  }
+  button {
+    font-family: "Comic Sans MS", "Comic Sans", cursive;
+    font-size: 22px; margin-top: 12px; padding: 6px 26px;
+    background: linear-gradient(#e8e0ff, #c8b0e8);
+    border: 3px outset #a080c0; cursor: pointer;
+  }
+  button:active { border-style: inset; }
+  .stars { color: #d4a017; font-size: 22px; min-height: 30px; letter-spacing: 4px; }
+  .msg { min-height: 24px; font-size: 17px; color: #2a7a2a; font-weight: bold; }
+  .footer { margin-top: 22px; font-size: 13px; color: #999; }
+  .esrb {
+    display: inline-block; border: 2px solid #333; padding: 2px 10px;
+    font-family: Arial, sans-serif; font-weight: bold; font-size: 20px;
+    background: #fff; margin-top: 10px;
+  }
+
+  /* ---- the curse ---- */
+  @keyframes shake {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-9px, 4px) rotate(-1deg); }
+    40% { transform: translate(8px, -6px) rotate(1.4deg); }
+    60% { transform: translate(-7px, -4px) rotate(-1.2deg); }
+    80% { transform: translate(9px, 5px) rotate(0.8deg); }
+  }
+  body.glitch { animation: shake 0.35s linear infinite; }
+  body.glitch .frame { filter: hue-rotate(230deg) saturate(2.4) contrast(1.25); }
+  #curse {
+    position: fixed; inset: 0; background: radial-gradient(ellipse at center, #2a1246, #0a0512);
+    color: #e9d5ff; display: none; z-index: 10;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  #curse.on { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #curseText {
+    font-size: 30px; letter-spacing: 0.06em; max-width: 720px; line-height: 1.6;
+    text-shadow: 0 0 22px rgba(168, 85, 247, 0.8);
+    padding: 0 20px;
+  }
+  .wisp {
+    position: absolute; width: 26px; height: 26px; border-radius: 50% 50% 42% 42%;
+    background: radial-gradient(circle at 35% 30%, #a855f7, #3b1e63);
+    box-shadow: 0 0 18px rgba(168, 85, 247, 0.9);
+    animation: drift 4s ease-in-out infinite alternate;
+  }
+  .wisp::before, .wisp::after {
+    content: ""; position: absolute; top: 8px; width: 4px; height: 7px; background: #e9d5ff;
+  }
+  .wisp::before { left: 6px; } .wisp::after { right: 6px; }
+  @keyframes drift {
+    from { transform: translate(0, 0); }
+    to   { transform: translate(30px, -46px); }
+  }
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+  <div class="castle">&#127984;</div>
+  <h1>Math Fact Kingdom Deluxe</h1>
+  <div class="sub">Remastered Edition &mdash; now with 4 more math facts!</div>
+  <div class="scroll">
+    <b>Step 1:</b> Concur your math facts.<br>
+    <b>Step 2:</b> Rule the kingdom.<br>
+    <b>Step 3:</b> Rule the world.
+  </div>
+  <div class="qbox" id="q">2 &divide; 1 = ?</div>
+  <input id="ans" type="number" autofocus>
+  <br>
+  <button id="go">Check my math!</button>
+  <div class="msg" id="msg">&nbsp;</div>
+  <div class="stars" id="stars"></div>
+  <div class="footer">
+    CREATED BY KENNA KUHN &middot; &copy; a long time ago<br>
+    <span class="esrb">E</span>
+  </div>
+</div>
+
+<div id="curse">
+  <div id="curseText"></div>
+</div>
+
+<script>
+// her original cover's math facts, in order
+const FACTS = [
+  { q: '2 ÷ 1 = ?', a: 2 },
+  { q: '4 × 1 = ?', a: 4 },
+  { q: '6 ÷ 3 = ?', a: 2 },
+  { q: '7 × 7 = ?', a: 49 },
+];
+let qi = 0;
+const q = document.getElementById('q');
+const ans = document.getElementById('ans');
+const msg = document.getElementById('msg');
+const stars = document.getElementById('stars');
+const praise = ['Great job!!', 'Super duper!', 'You are a math wizard!'];
+
+function check() {
+  if (Number(ans.value) === FACTS[qi].a) {
+    stars.textContent += '⭐';
+    qi++;
+    if (qi >= FACTS.length) { beginTheCurse(); return; }
+    msg.textContent = praise[(qi - 1) % praise.length];
+    q.innerHTML = FACTS[qi].q;
+  } else {
+    msg.textContent = 'Oopsie! Try again \u{1F914}';
+    msg.style.color = '#b04030';
+    setTimeout(() => { msg.style.color = '#2a7a2a'; }, 900);
+  }
+  ans.value = '';
+  ans.focus();
+}
+document.getElementById('go').addEventListener('click', check);
+ans.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
+
+// ---- the decoy only survives ~2 seconds ----
+function beginTheCurse() {
+  document.getElementById('go').disabled = true;
+  document.body.classList.add('glitch');
+  setTimeout(() => {
+    document.body.classList.remove('glitch');
+    const c = document.getElementById('curse');
+    c.classList.add('on');
+    for (let i = 0; i < 12; i++) {
+      const w = document.createElement('div');
+      w.className = 'wisp';
+      w.style.left = (5 + Math.random() * 90) + '%';
+      w.style.top = (5 + Math.random() * 90) + '%';
+      w.style.animationDelay = (Math.random() * -4) + 's';
+      w.style.animationDuration = (3 + Math.random() * 3) + 's';
+      c.appendChild(w);
+    }
+    document.getElementById('curseText').innerHTML =
+      '<span style="color:#ffd98a; font-size: 44px; font-weight: bold;">⚔ HAPPY BIRTHDAY, KENNA ⚔</span>' +
+      '<br><span style="font-size: 24px;">Your kingdom has been remastered.</span>';
+    setTimeout(() => { location.href = 'index.html'; }, 2200);
+  }, 700);
+}
+setTimeout(beginTheCurse, 2000);   // the math never stood a chance
+</script>
+</body>
+</html>
