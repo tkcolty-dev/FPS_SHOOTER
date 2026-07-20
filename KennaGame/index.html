@@ -114,11 +114,11 @@
     padding: 4.5vh 3.2vw 3.5vh;
     color: #f0e2c3;
     box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8), inset 0 0 60px rgba(0,0,0,0.35);
-    animation: panelIn 0.28s ease;
+    animation: panelIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   }
   @keyframes panelIn {
-    from { transform: scale(0.92) translateY(2vh); opacity: 0; }
-    to   { transform: scale(1) translateY(0); opacity: 1; }
+    from { transform: translateY(9vh) scale(0.97); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
   }
   .panel h2 {
     margin: 0 0 3vh; color: #e8c98f;
@@ -449,6 +449,22 @@
   #menuToast.show { opacity: 1; }
 
   .patchList p { margin: 1.6vh 0; font-size: 2.6vh; line-height: 1.4; }
+  .patchList .verHead {
+    font-family: 'Cinzel', Georgia, serif; font-weight: 800; letter-spacing: 0.12em;
+    color: #ffd98a; margin: 2.8vh 0 0.8vh; padding-top: 1.6vh;
+    border-top: 1px solid rgba(232, 182, 76, 0.18);
+  }
+  .patchList .verHead:first-child { border-top: none; padding-top: 0; margin-top: 0.4vh; }
+  .verTag {
+    display: inline-block; margin-left: 0.8vh; padding: 0.2vh 0.9vh; border-radius: 0.8vh;
+    background: #2f6d3a; color: #d9ffe0; font-size: 1.4vh; letter-spacing: 0.15em;
+    vertical-align: middle; font-family: 'Inter', sans-serif; font-weight: 700;
+  }
+  .patchList p.locked { opacity: 0.5; }
+  .patchList p.earned { color: #ffe9b8; }
+  .achProg { color: rgba(255, 255, 255, 0.55); font-size: 0.82em; margin-left: 0.5vh; }
+  .mailFrom { color: #ffd98a; font-weight: 700; }
+  .mailBody { display: block; margin-top: 0.4vh; color: rgba(255, 255, 255, 0.85); font-style: italic; }
 
   /* ===== royal polish: entrance, focus, motion, panels ===== */
   @keyframes menuRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -467,11 +483,33 @@
   @media (prefers-reduced-motion: reduce) {
     #menu * { animation: none !important; transition: none !important; }
   }
-  #menu.hasImage .panel {
-    background: linear-gradient(180deg, #211b12, #130f0b);
-    border: 1px solid rgba(232, 182, 76, 0.4);
-    border-radius: 1.8vh;
+  #menu.hasImage #panelShade {
+    background: rgba(8, 6, 10, 0.32);
+    backdrop-filter: blur(4px) saturate(1.05);
+    -webkit-backdrop-filter: blur(4px) saturate(1.05);
   }
+  #menu.hasImage .panel {
+    background: linear-gradient(180deg, rgba(13, 13, 17, 0.72), rgba(5, 5, 8, 0.82));
+    backdrop-filter: blur(18px) saturate(1.15);
+    -webkit-backdrop-filter: blur(18px) saturate(1.15);
+    border: 1px solid rgba(232, 182, 76, 0.5);
+    border-radius: 1.8vh;
+    width: min(680px, 90vw); max-height: 84vh;
+    color: #f4f3ef;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 217, 138, 0.18);
+  }
+  #menu.hasImage .panel .rowBtn { color: #f4f3ef; }
+  #menu.hasImage .panel .rowBtn.danger { color: #ffb3b6; }
+  .setSection {
+    font-family: 'Cinzel', Georgia, serif; font-weight: 800; letter-spacing: 0.18em;
+    color: #ffd98a; font-size: 1.9vh; margin: 2.4vh 0 0.2vh;
+    padding-bottom: 0.5vh; border-bottom: 1px solid rgba(232, 182, 76, 0.22);
+  }
+  #settingsPanel .row { margin: 1.6vh 0; }
+  .setSection:first-of-type { margin-top: 0.5vh; }
+  .setTog { width: 2.6vh; height: 2.6vh; accent-color: #c9a86a; cursor: pointer; }
+  .rowBtn.danger { border-color: rgba(229, 72, 77, 0.6); color: #ffb3b6; background: rgba(229, 72, 77, 0.1); }
+  .rowBtn.danger:hover { background: rgba(229, 72, 77, 0.25); }
   #menu.hasImage .panel, #menu.hasImage .panel .rowBtn { font-family: 'Inter', sans-serif; }
   #menu.hasImage .panel h2 { font-family: 'Cinzel', serif; font-size: 2.6vh; letter-spacing: 0.2em; color: #ffd98a; }
   #menu.hasImage .panel .row { font-size: 2.1vh; }
@@ -676,7 +714,7 @@
   </div>
 
   <div id="statCards">
-    <div class="statCard"><div class="scIcon">&#127942;</div><div class="scLabel">Achievements</div><div class="scVal">0 / 12</div></div>
+    <div class="statCard"><div class="scIcon">&#127942;</div><div class="scLabel">Achievements</div><div class="scVal" id="scAch">0 / 12</div></div>
     <div class="statCard"><div class="scIcon">&#128081;</div><div class="scLabel">Leaderboard</div><div class="scVal">#1 KENNA</div></div>
     <div class="statCard"><div class="scIcon">&#128202;</div><div class="scLabel">Playtime</div><div class="scVal" id="scTime">0h 0m</div></div>
   </div>
@@ -709,16 +747,26 @@
     <div class="panel" id="settingsPanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
       <h2>Settings</h2>
+      <div class="setSection">&#127925; Sound</div>
       <div class="row"><span>Music volume</span><input type="range" id="setMusic" min="0" max="100"></div>
       <div class="row"><span>Sound effects</span><input type="range" id="setSfx" min="0" max="100"></div>
-      <div class="row"><span>Screen</span><button class="rowBtn" id="setFullscreen">Toggle fullscreen</button></div>
+      <div class="setSection">&#9876; Battle</div>
+      <div class="row"><span>Screen shake</span><input type="checkbox" class="setTog" id="togShake"></div>
+      <div class="row"><span>Damage numbers</span><input type="checkbox" class="setTog" id="togDmg"></div>
+      <div class="row"><span>Red hit flash</span><input type="checkbox" class="setTog" id="togFlash"></div>
+      <div class="row"><span>Particle effects</span><input type="checkbox" class="setTog" id="togParticles"></div>
+      <div class="row"><span>FPS counter</span><input type="checkbox" class="setTog" id="togFps"></div>
+      <div class="setSection">&#128421; Screen</div>
+      <div class="row"><span>Fullscreen</span><button class="rowBtn" id="setFullscreen">Toggle fullscreen</button></div>
+      <div class="setSection">&#127984; Kingdom</div>
+      <div class="row"><span>Erase all progress</span><button class="rowBtn danger" id="setReset">Reset the kingdom&hellip;</button></div>
       <div class="row" style="justify-content:center; margin-top:3.5vh">
         <button class="rowBtn" data-close>Done</button>
       </div>
     </div>
     <div class="panel" id="achPanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
-      <h2>Achievements &mdash; 0 / 12</h2>
+      <h2>Achievements &mdash; <span id="achCount">0 / 12</span></h2>
       <div class="patchList" id="achList"></div>
       <div class="row" style="justify-content:center; margin-top:2vh">
         <button class="rowBtn" data-close>Back</button>
@@ -727,11 +775,7 @@
     <div class="panel" id="lbPanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
       <h2>Royal Leaderboard</h2>
-      <div class="patchList">
-        <p>&#128081; <b>#1 &mdash; KENNA KUHN</b> &middot; Rightful ruler of the Kingdom</p>
-        <p>&#129351; #2 &mdash; The Royal Remaster Guild &middot; loyal servants</p>
-        <p>&#10060; #3 &mdash; Concur the Sorcerer &middot; <i>disqualified for cheating</i></p>
-      </div>
+      <div class="patchList" id="lbList"></div>
       <div class="row" style="justify-content:center; margin-top:2vh">
         <button class="rowBtn" data-close>Back</button>
       </div>
@@ -746,14 +790,101 @@
     </div>
     <div class="panel" id="patchPanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
-      <h2>Patch Notes &mdash; v1.0</h2>
+      <h2>The Royal Chronicle</h2>
       <div class="patchList">
-        <p>&#9876; Kingdom rebuilt from Kenna's original <i>"Math Fact Kingdom Deluxe"</i></p>
-        <p>&#128683; All math has been banished from the realm forever</p>
-        <p>&#128220; New story: <b>The Last Knight</b> &mdash; the sorcerer Concur has turned every knight to stone</p>
-        <p>&#127984; The castle courtyard is open for exploration</p>
-        <p>&#9878; Four knights await rescue&hellip; coming soon</p>
+        <p class="verHead">v1.5 &mdash; THE LIVING CASTLE <span class="verTag">LATEST</span></p>
+        <p>&#127942; Real achievements &mdash; 12 deeds tracked and earned as you play</p>
+        <p>&#128081; The Royal Leaderboard now remembers your greatest battles</p>
+        <p>&#9993; Royal Mail &mdash; letters arrive as your legend grows</p>
+        <p>&#128276; Royal Decrees &mdash; the bell now tells you what to do next</p>
+        <p>&#9876; The quest banner tracks your true road to the throne</p>
+        <p class="verHead">v1.4 &mdash; ROYAL GIFTS</p>
+        <p>&#127873; 13 level-up gifts with ranks &mdash; thorns, frost, lucky clover, phoenix &amp; gold rush</p>
+        <p>&#10024; Clearer level-ups: NEW! badges, rank pips and icon art for every gift</p>
+        <p class="verHead">v1.3 &mdash; THE EIGHT REALMS</p>
+        <p>&#128506; Eight battlefields, from the Royal Meadow to Concur's Throne Room</p>
+        <p>&#128274; Clear each realm to unlock the next &mdash; survive to the horn to win</p>
+        <p>&#127984; Ruins, wells, tombs and braziers now stand on every field</p>
+        <p class="verHead">v1.2 &mdash; STEEL &amp; GOLD</p>
+        <p>&#128737; 24 recruitable knights, each with their own colors and talents</p>
+        <p>&#9876; Four weapons: sweeping blade, flame nova, shadow daggers, gale gust</p>
+        <p>&#129689; Gold, the royal treasury, and the Armory's permanent upgrades</p>
+        <p class="verHead">v1.1 &mdash; THE CURSE STRIKES</p>
+        <p>&#128126; Endless waves of curse-wisps, imps, brutes and golems</p>
+        <p>&#128142; XP gems, shared levels, and Royal Gifts when you level up</p>
+        <p>&#129309; A second knight can join any battle &mdash; press <b>J</b>!</p>
+        <p class="verHead">v1.0 &mdash; THE REMASTER</p>
+        <p>&#128220; Kingdom rebuilt from Kenna's original <i>"Math Fact Kingdom Deluxe"</i></p>
+        <p>&#128683; All math banished from the realm forever</p>
+        <p>&#127984; New story: <b>The Last Knight</b> &mdash; created by Kenna Kuhn</p>
       </div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+    <div class="panel" id="talePanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>The Last Knight</h2>
+      <div class="patchList">
+        <p>In a single night, the sorcerer <b>Concur</b> crept into the kingdom and spoke one terrible word &mdash; and every knight, from the mightiest champion to the newest banneret, turned to cold grey stone.</p>
+        <p>Every knight&hellip; but one.</p>
+        <p><b>Kenna Kuhn</b>, the youngest squire in the castle, was beneath his notice. Too small. Too new. <i>His mistake.</i></p>
+        <p>Now the curse pours out of the dark in endless waves of spirits, and only Kenna stands between Concur and the crown. Realm by realm she fights &mdash; the meadow, the courtyard, the great hall &mdash; gathering gold, waking frozen knights, and marching ever closer to the Throne Room.</p>
+        <p style="color:#ffd98a"><b>Step 1:</b> Concur your fears. <b>Step 2:</b> Free the knights. <b>Step 3:</b> Rule the kingdom.</p>
+      </div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+    <div class="panel" id="heroesPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>The Founding Five</h2>
+      <div class="patchList">
+        <p>&#9876; <b>KENNA</b> &middot; The Last Squire &mdash; a sweeping blade and the heart of the kingdom</p>
+        <p>&#128737; <b>SIR BRAMBLE</b> &middot; Knight of the Shield &mdash; tough as oak, guarded by orbiting aegis</p>
+        <p>&#128293; <b>DAME EMBER</b> &middot; Knight of the Flame &mdash; rings of fire burst from her blade</p>
+        <p>&#127769; <b>SIR WHISPER</b> &middot; Knight of Shadows &mdash; a storm of swift piercing daggers</p>
+        <p>&#127788; <b>DAME GALE</b> &middot; Knight of the Wind &mdash; gusts that hurl spirits from the field</p>
+        <p style="margin-top:2.2vh; color:rgba(255,255,255,0.65)">&hellip;and <b>19 more knights</b> wait to be recruited with gold in CHOOSE CHARACTER &mdash; up to <b>Queen Kenna</b> herself.</p>
+      </div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+    <div class="panel" id="roadmapPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>The Road Ahead</h2>
+      <div class="patchList">
+        <p>&#128127; <b>Bosses</b> &mdash; Concur's champions guarding each realm, and the sorcerer himself in the Throne Room</p>
+        <p>&#127918; <b>Gamepads</b> &mdash; controllers and up to 4 knights on one screen</p>
+        <p>&#127925; <b>Battle music</b> &mdash; a proper score for the war against the curse</p>
+        <p>&#127760; <b>Online battles</b> &mdash; the whole family, together from anywhere</p>
+        <p>&#127874; <b>The grand finale</b> &mdash; a certain very important birthday surprise&hellip;</p>
+      </div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+    <div class="panel" id="mailPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>Royal Mail</h2>
+      <div class="patchList" id="mailList"></div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+    <div class="panel" id="bellPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>Royal Decrees</h2>
+      <div class="patchList" id="bellList"></div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
+    <div class="panel" id="questPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>The Road to the Throne</h2>
+      <div class="patchList" id="questList"></div>
       <div class="row" style="justify-content:center; margin-top:2vh">
         <button class="rowBtn" data-close>Back</button>
       </div>
@@ -1275,6 +1406,7 @@ function confirmSelection() {
         kdMeta.unlocked.push(rk.key);
         saveMeta();
         gameToast('👑 ' + rk.name + ' has joined your order!');
+        checkAchievements();
       } else {
         gameToast('Not enough gold! (' + rk.price + 'g needed)');
       }
@@ -1321,6 +1453,8 @@ function confirmSelection2() {
   p2.y = players[0].y;
   game.phase = 'run';
   gameToast(p2.name + ' joins the fight!');
+  kdStats.coop = true;
+  checkAchievements();
 }
 function buyPower(idx) {
   const pu = POWERUPS[idx];
@@ -1331,6 +1465,7 @@ function buyPower(idx) {
   kdMeta.power[pu.key] = powerRank(pu.key) + 1;
   saveMeta();
   gameToast('✨ ' + pu.name + ' rank ' + kdMeta.power[pu.key] + '!');
+  checkAchievements();
 }
 function pickUpgrade(idx) {
   const c = game.choices[idx];
@@ -1587,6 +1722,7 @@ function update(dt) {
     if (!kdMeta.mapsDone) kdMeta.mapsDone = [];
     kdMeta.mapsDone[game.mapPick] = true;
     saveMeta();
+    recordRun(true);
     return;
   }
   if (game.shake > 0) game.shake -= dt;
@@ -1727,6 +1863,7 @@ function update(dt) {
             game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
             kdMeta.gold += game.payout;
             saveMeta();
+            recordRun(false);
           }
         }
       }
@@ -1763,6 +1900,7 @@ function update(dt) {
         const g3 = Math.round(dr.v * (1 + 0.1 * powerRank('greed')) * (1 + 0.2 * upLvl('rush')));
         kdMeta.gold += g3;
         game.runGold += g3;
+        kdStats.goldEarned = (kdStats.goldEarned || 0) + g3;
         saveMeta();
         dmgTexts.push({ x: dr.x, y: dr.y - 18, val: '+' + g3 + 'g', age: 0, gold: true });
       } else {
@@ -2762,8 +2900,9 @@ function render(t) {
   if (game.phase === 'map') { renderMapSelect(t); ctx.restore(); frameShadow(); return; }
 
   const M = MAPS[game.mapPick];
-  const shx = game.shake > 0 ? (Math.random() - 0.5) * 10 * game.shake * 4 : 0;
-  const shy = game.shake > 0 ? (Math.random() - 0.5) * 10 * game.shake * 4 : 0;
+  const shakeOn = settings.shake !== false && game.shake > 0;
+  const shx = shakeOn ? (Math.random() - 0.5) * 10 * game.shake * 4 : 0;
+  const shy = shakeOn ? (Math.random() - 0.5) * 10 * game.shake * 4 : 0;
   ctx.save();
   ctx.translate(-Math.round(cam.x + shx), -Math.round(cam.y + shy));
 
@@ -3015,6 +3154,7 @@ function render(t) {
     ctx.globalAlpha = 1;
   }
   for (const pt of particles) {
+    if (!pt.ring && settings.particles === false) continue;
     if (pt.ring) {
       const rf = 1 - pt.life / 0.28;
       ctx.strokeStyle = pt.color;
@@ -3030,7 +3170,7 @@ function render(t) {
     ctx.fillRect(pt.x - pt.size / 2, pt.y - pt.size / 2, pt.size, pt.size);
   }
   ctx.globalAlpha = 1;
-  for (const dm of dmgTexts) {
+  if (settings.dmgnums !== false) for (const dm of dmgTexts) {
     ctx.font = '19px "VT323", monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = dm.gold
@@ -3051,7 +3191,7 @@ function render(t) {
     ctx.fillStyle = 'rgba(34, 24, 66, 0.16)';
     ctx.fillRect(0, 0, 960, 640);
   }
-  if (game.hurtFlash > 0) {
+  if (settings.flash !== false && game.hurtFlash > 0) {
     const hf = game.hurtFlash / 0.4;
     const rg = ctx.createRadialGradient(480, 320, 260, 480, 320, 600);
     rg.addColorStop(0, 'rgba(220, 40, 50, 0)');
@@ -3354,6 +3494,13 @@ function render(t) {
     ctx.fillText('Press R — choose a new hero   •   Esc — menu', 480, 452);
   }
 
+  if (settings.fps) {
+    ctx.textAlign = 'left';
+    ctx.font = '13px Inter, sans-serif';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+    ctx.fillText(Math.round(fpsSmooth) + ' FPS', 12, 630);
+  }
+
   ctx.restore(); // end room transform
   frameShadow();
 }
@@ -3372,9 +3519,11 @@ let elapsed = 0;
 let menuOpen = true;
 let gameStarted = false;
 let last = performance.now();
+let fpsSmooth = 60;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  fpsSmooth += (1 / Math.max(dt, 0.001) - fpsSmooth) * 0.08;
   if (!menuOpen) {
     elapsed += dt;
     update(dt);
@@ -3955,7 +4104,7 @@ requestAnimationFrame(menuLoop);
 
 // ---- settings (persisted) ----
 const settings = Object.assign(
-  { music: 70, sfx: 80 },
+  { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false },
   JSON.parse(localStorage.getItem('kd_settings') || '{}')
 );
 function saveSettings() {
@@ -3967,9 +4116,23 @@ setMusic.value = settings.music;
 setSfx.value = settings.sfx;
 setMusic.addEventListener('input', () => { settings.music = +setMusic.value; saveSettings(); });
 setSfx.addEventListener('input', () => { settings.sfx = +setSfx.value; saveSettings(); });
+for (const [id, key] of [['togShake', 'shake'], ['togDmg', 'dmgnums'], ['togFlash', 'flash'],
+                         ['togParticles', 'particles'], ['togFps', 'fps']]) {
+  const el = document.getElementById(id);
+  el.checked = settings[key] !== false;
+  if (key === 'fps') el.checked = settings.fps === true;
+  el.addEventListener('change', () => { settings[key] = el.checked; saveSettings(); });
+}
 document.getElementById('setFullscreen').addEventListener('click', () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
+});
+document.getElementById('setReset').addEventListener('click', () => {
+  if (!confirm('Erase ALL progress — gold, knights, upgrades, achievements and records?')) return;
+  if (!confirm('The royal scribe asks one last time: really erase the whole kingdom?')) return;
+  localStorage.removeItem('kd_meta');
+  localStorage.removeItem('kd_stats');
+  location.reload();
 });
 
 // ---- top ribbon: live date + clock ----
@@ -4008,7 +4171,10 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   game.cursor = 0;
 });
 document.getElementById('btnCredits').addEventListener('click', () => openPanel('credits'));
-document.getElementById('btnPatch').addEventListener('click', () => openPanel('patch'));
+document.getElementById('btnPatch').addEventListener('click', e => {
+  e.stopPropagation();
+  openPanel(UC_SLIDES[ucIndex].panel || 'patch');
+});
 document.getElementById('icGear').addEventListener('click', () => openPanel('settings'));
 
 // ---- menu toasts + extra cards ----
@@ -4023,19 +4189,20 @@ function menuToastShow(text, secs = 3.5) {
 document.getElementById('icDiscord').addEventListener('click', () =>
   menuToastShow('\u{1F3F0} There is no royal Discord \u2014 the knights prefer carrier pigeons!'));
 document.getElementById('updateCard').addEventListener('click', () => openPanel('patch'));
-document.getElementById('icMail').addEventListener('click', () =>
-  menuToastShow("✉ One new letter: 'Dear Knight, the kingdom needs you. — K.'"));
-document.getElementById('icBell').addEventListener('click', () =>
-  menuToastShow('🔔 4 royal decrees: free Sir Bramble, Dame Ember, Sir Whisper & Dame Gale!'));
-document.getElementById('questCard').addEventListener('click', () =>
-  menuToastShow('⚔ Knights freed: 0 of 4 — press PLAY to begin your adventure!'));
+document.getElementById('icMail').addEventListener('click', () => { fillMailPanel(); openPanel('mail'); });
+document.getElementById('icBell').addEventListener('click', () => { fillBellPanel(); openPanel('bell'); });
+document.getElementById('questCard').addEventListener('click', () => { fillQuestPanel(); openPanel('quest'); });
 document.getElementById('btnExit').addEventListener('click', () => {
   window.close();
   menuToastShow('🏰 The kingdom will not let you go so easily… (close the tab to exit)');
 });
 
-// ---- playtime stat, persisted ----
-const kdStats = Object.assign({ playMs: 0 }, JSON.parse(localStorage.getItem('kd_stats') || '{}'));
+// ---- lifetime stats, persisted ----
+const kdStats = Object.assign(
+  { playMs: 0, kills: 0, runs: 0, wins: 0, goldEarned: 0, launches: 0, coop: false, ach: {}, best: [], mailRead: 0 },
+  JSON.parse(localStorage.getItem('kd_stats') || '{}')
+);
+function saveStats() { localStorage.setItem('kd_stats', JSON.stringify(kdStats)); }
 const scTime = document.getElementById('scTime');
 function fmtPlaytime(ms) {
   const m = Math.floor(ms / 60000);
@@ -4045,7 +4212,7 @@ scTime.textContent = fmtPlaytime(kdStats.playMs);
 setInterval(() => {
   if (!menuOpen) {
     kdStats.playMs += 1000;
-    if (kdStats.playMs % 10000 < 1000) localStorage.setItem('kd_stats', JSON.stringify(kdStats));
+    if (kdStats.playMs % 10000 < 1000) { saveStats(); checkAchievements(); }
   } else {
     scTime.textContent = fmtPlaytime(kdStats.playMs);
   }
@@ -4057,6 +4224,7 @@ function showMenu() {
   menuOpen = true;
   keys.clear();
   if (typeof updateHomeStats === 'function' && imgUIActive) updateHomeStats();
+  refreshMenuLive();
   btnPlay.textContent = gameStarted ? 'Continue' : 'Play';
   menuEl.classList.remove('hidden');
 }
@@ -4076,18 +4244,18 @@ window.addEventListener('keydown', e => {
 
 // ---- update-card carousel ----
 const UC_SLIDES = [
-  { head: '✦ LATEST UPDATE', title: 'v1.0 REMASTER',
-    body: "A complete visual overhaul of Kenna's original kingdom — new story, new castle, real knights.",
-    btn: 'VIEW PATCH NOTES ↗' },
+  { head: '✦ LATEST UPDATE', title: 'v1.5 THE LIVING CASTLE',
+    body: 'The castle wakes up — real achievements, a true leaderboard, royal mail and decrees. Everything you tap now tells the truth.',
+    btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
-    btn: 'READ THE TALE ↗' },
-  { head: '✦ THE HEROES', title: 'MEET THE KNIGHTS',
-    body: 'Sir Bramble the Shield, Dame Ember the Flame, Sir Whisper the Shadow and Dame Gale the Wind await rescue. Hover over them below!',
-    btn: 'THEIR OATHS ↗' },
+    btn: 'READ THE TALE ↗', panel: 'tale' },
+  { head: '✦ THE HEROES', title: 'THE FOUNDING FIVE',
+    body: 'Kenna, Bramble, Ember, Whisper and Gale — plus 19 more knights waiting to be recruited with gold, up to Queen Kenna herself.',
+    btn: 'MEET THE KNIGHTS ↗', panel: 'heroes' },
   { head: '✦ COMING SOON', title: 'THE ROAD AHEAD',
-    body: 'Sword training in the courtyard, the curse-beast guarding Sir Bramble, and the sealed Great Hall beyond.',
-    btn: 'VIEW ROADMAP ↗' },
+    body: 'Bosses guarding each realm, gamepad knights, battle music, online play — and a very special finale.',
+    btn: 'VIEW ROADMAP ↗', panel: 'roadmap' },
 ];
 let ucIndex = 0, ucTimer = null;
 const ucDotEls = Array.from(document.querySelectorAll('#ucDots i'));
@@ -4126,34 +4294,183 @@ for (const k of KNIGHT_LORE) {
   hotspotsEl.appendChild(el);
 }
 
-// ---- stat card panels + live stats ----
+// ---- living castle: achievements, leaderboard, records, mail, decrees, quest ----
 kdStats.launches = (kdStats.launches || 0) + 1;
-localStorage.setItem('kd_stats', JSON.stringify(kdStats));
+saveStats();
 panels.ach = document.getElementById('achPanel');
 panels.lb = document.getElementById('lbPanel');
 panels.stats = document.getElementById('statsPanel');
-const ACHIEVEMENTS = [
-  'Free Sir Bramble', 'Free Dame Ember', 'Free Sir Whisper', 'Free Dame Gale',
-  'Defeat Concur the Sorcerer', 'Take the Crown', 'Swing your first sword',
-  'Block 10 attacks', 'Discover a secret', 'Visit every room of the castle',
-  'Play for one hour', 'Finish The Last Knight',
+panels.tale = document.getElementById('talePanel');
+panels.heroes = document.getElementById('heroesPanel');
+panels.roadmap = document.getElementById('roadmapPanel');
+panels.mail = document.getElementById('mailPanel');
+panels.bell = document.getElementById('bellPanel');
+panels.quest = document.getElementById('questPanel');
+
+function mapsCleared() { return (kdMeta.mapsDone || []).filter(Boolean).length; }
+function armoryRanks() { return Object.values(kdMeta.power || {}).reduce((s, r) => s + r, 0); }
+
+const ACH_DEFS = [
+  { key: 'battle',  icon: '⚔', name: 'First Battle', desc: 'Fight your first battle',
+    need: () => (kdStats.runs || 0) >= 1 },
+  { key: 'meadow',  icon: '🏰', name: 'Meadow Sovereign', desc: 'Clear the Royal Meadow',
+    need: () => !!(kdMeta.mapsDone && kdMeta.mapsDone[0]) },
+  { key: 'realms4', icon: '🗺', name: 'Realm Explorer', desc: 'Free 4 of the 8 realms',
+    need: () => mapsCleared() >= 4, prog: () => mapsCleared() + ' / 4' },
+  { key: 'concur',  icon: '👑', name: 'Concur the Kingdom', desc: 'Concur all 8 realms',
+    need: () => mapsCleared() >= 8, prog: () => mapsCleared() + ' / 8' },
+  { key: 'ban100',  icon: '✨', name: 'Spirit Banisher', desc: 'Banish 100 curse-spirits',
+    need: () => (kdStats.kills || 0) >= 100, prog: () => Math.min(kdStats.kills || 0, 100) + ' / 100' },
+  { key: 'ban1000', icon: '🔥', name: 'Spirit Scourge', desc: 'Banish 1,000 curse-spirits',
+    need: () => (kdStats.kills || 0) >= 1000, prog: () => Math.min(kdStats.kills || 0, 1000) + ' / 1000' },
+  { key: 'recruit', icon: '🛡', name: 'First Recruit', desc: 'Recruit a new knight with gold',
+    need: () => (kdMeta.unlocked || []).length >= 6 },
+  { key: 'order',   icon: '⚜', name: 'The Royal Order', desc: 'Gather 12 knights in your order',
+    need: () => (kdMeta.unlocked || []).length >= 12, prog: () => (kdMeta.unlocked || []).length + ' / 12' },
+  { key: 'armory',  icon: '⚒', name: 'Armory Patron', desc: 'Forge 5 Armory upgrade ranks',
+    need: () => armoryRanks() >= 5, prog: () => armoryRanks() + ' / 5' },
+  { key: 'coop',    icon: '🤝', name: 'Shoulder to Shoulder', desc: 'A second knight joins your battle (press J!)',
+    need: () => !!kdStats.coop },
+  { key: 'rich',    icon: '🪙', name: 'Royal Treasurer', desc: 'Earn 2,000 gold in your career',
+    need: () => (kdStats.goldEarned || 0) >= 2000, prog: () => Math.min(kdStats.goldEarned || 0, 2000) + ' / 2000' },
+  { key: 'hour',    icon: '⏳', name: 'Devoted Defender', desc: 'Spend a full hour in the kingdom',
+    need: () => kdStats.playMs >= 3600000, prog: () => Math.min(60, Math.floor(kdStats.playMs / 60000)) + ' / 60 min' },
 ];
-document.getElementById('achList').innerHTML =
-  ACHIEVEMENTS.map(a => `<p>\u{1F512} ${a}</p>`).join('');
+function achEarnedCount() { return ACH_DEFS.filter(a => kdStats.ach[a.key]).length; }
+function checkAchievements() {
+  const fresh = ACH_DEFS.filter(a => !kdStats.ach[a.key] && a.need());
+  if (!fresh.length) return;
+  for (const a of fresh) kdStats.ach[a.key] = true;
+  saveStats();
+  const msg = fresh.length === 1
+    ? '🏆 Achievement unlocked: ' + fresh[0].name + '!'
+    : '🏆 ' + fresh.length + ' achievements unlocked — see the trophy card!';
+  if (menuOpen) menuToastShow(msg, 4.5); else gameToast(msg);
+  refreshMenuLive();
+}
+function fillAchPanel() {
+  document.getElementById('achCount').textContent = achEarnedCount() + ' / ' + ACH_DEFS.length;
+  document.getElementById('achList').innerHTML = ACH_DEFS.map(a => {
+    const got = !!kdStats.ach[a.key];
+    const prog = !got && a.prog ? `<span class="achProg">${a.prog()}</span>` : '';
+    return `<p class="${got ? 'earned' : 'locked'}">${got ? '✅' : '🔒'} ${a.icon} <b>${a.name}</b> — ${a.desc}${prog}</p>`;
+  }).join('');
+}
+
+// every finished battle is recorded here (called from the game loop)
+function recordRun(win) {
+  kdStats.runs = (kdStats.runs || 0) + 1;
+  if (win) kdStats.wins = (kdStats.wins || 0) + 1;
+  kdStats.kills = (kdStats.kills || 0) + game.kills;
+  kdStats.goldEarned = (kdStats.goldEarned || 0) + (game.payout || 0);
+  const heroes = players[0].name + (players[1] && players[1].joined ? ' & ' + players[1].name : '');
+  kdStats.best.push({
+    h: heroes, m: MAPS[game.mapPick].name, t: Math.floor(game.time),
+    k: game.kills, lv: game.level, w: !!win, d: new Date().toLocaleDateString(),
+  });
+  kdStats.best.sort((a, b) => b.t - a.t);
+  kdStats.best = kdStats.best.slice(0, 8);
+  saveStats();
+  checkAchievements();
+}
+
+function fmtClock(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+function fillLbPanel() {
+  const medals = ['🥇', '🥈', '🥉'];
+  const rows = (kdStats.best || []).map((r, i) =>
+    `<p>${medals[i] || '&#9876;'} <b>${r.h}</b> — ${r.m}<br>` +
+    `<span class="achProg">${r.w ? '👑 VICTORY' : '☠ fell in battle'} · survived ${fmtClock(r.t)} · ` +
+    `${r.k} spirits banished · Lv ${r.lv} · ${r.d}</span></p>`);
+  if (!rows.length) rows.push('<p>No battles recorded yet — press PLAY and make history!</p>');
+  rows.push('<p class="locked">❌ Concur the Sorcerer · <i>disqualified for cheating</i></p>');
+  document.getElementById('lbList').innerHTML = rows.join('');
+}
+
+// ---- royal mail: letters unlock as the legend grows ----
+const MAIL_LETTERS = [
+  { from: 'Kenna', open: () => true,
+    body: 'Dear Knight — the kingdom needs you. The meadow is crawling with curse-spirits and I cannot hold it alone. Grab a sword. — K.' },
+  { from: 'Sir Bramble', open: () => (kdStats.wins || 0) >= 1, hint: 'win your first battle',
+    body: 'You held the field! My shield arm is yours. Spend your gold in CHOOSE CHARACTER — the order grows stronger together.' },
+  { from: 'The Armory Keeper', open: () => armoryRanks() >= 1, hint: 'forge an Armory upgrade',
+    body: 'A fine choice. Forged steel never dulls — every rank you buy is yours in every battle to come.' },
+  { from: 'Dame Gale', open: () => mapsCleared() >= 4, hint: 'free 4 realms',
+    body: 'Half the realms breathe free again! The wind carries whispers: Concur is afraid of you. Keep marching.' },
+  { from: 'Concur the Sorcerer', open: () => mapsCleared() >= 8, hint: 'concur all 8 realms',
+    body: 'So. The little squire "concurred" my realms. Enjoy the throne while you can. I shall return. — C.' },
+];
+function fillMailPanel() {
+  document.getElementById('mailList').innerHTML = MAIL_LETTERS.map(L => L.open()
+    ? `<p class="earned">✉ <span class="mailFrom">From ${L.from}:</span><span class="mailBody">“${L.body}”</span></p>`
+    : `<p class="locked">🔏 A sealed letter — <i>${L.hint} to open it</i></p>`).join('');
+  kdStats.mailRead = MAIL_LETTERS.filter(L => L.open()).length;
+  saveStats();
+  refreshMenuLive();
+}
+
+// ---- royal decrees: live "what to do next" ----
+function bellItems() {
+  const items = [];
+  const next = MAPS.findIndex((m, i) => !((kdMeta.mapsDone || [])[i]));
+  if (next >= 0) items.push(`⚔ <b>The Crown commands:</b> clear the ${MAPS[next].name.replace(/^THE /, '')} — survive ${MAPS[next].goal} minutes`);
+  else items.push('👑 <b>Every realm is free.</b> The kingdom is yours!');
+  const buyable = ROSTER.filter(rk => rk.price > 0 && !kdMeta.unlocked.includes(rk.key) && kdMeta.gold >= rk.price);
+  if (buyable.length) items.push(`🛡 The treasury can recruit <b>${buyable.length}</b> new knight${buyable.length > 1 ? 's' : ''} — <b>${buyable[0].name}</b> awaits (${buyable[0].price}g)`);
+  const forge = POWERUPS.find(pu => powerRank(pu.key) < pu.max && kdMeta.gold >= powerPrice(pu));
+  if (forge) items.push(`⚒ The Armory can forge <b>${forge.name}</b> rank ${powerRank(forge.key) + 1} (${powerPrice(forge)}g)`);
+  if (!kdStats.coop) items.push('🤝 A second knight can join any battle — press <b>J</b>!');
+  const nextAch = ACH_DEFS.find(a => !kdStats.ach[a.key]);
+  if (nextAch) items.push(`🏆 Next deed: <b>${nextAch.name}</b> — ${nextAch.desc}`);
+  return items;
+}
+function fillBellPanel() {
+  document.getElementById('bellList').innerHTML = bellItems().map(s => `<p>${s}</p>`).join('');
+}
+
+// ---- quest: the true road to the throne ----
+function fillQuestPanel() {
+  const rows = MAPS.map((m, i) => {
+    if ((kdMeta.mapsDone || [])[i]) return `<p class="earned">✅ <b>${m.name}</b> — freed from the curse</p>`;
+    if (mapUnlocked(i)) return `<p>⚔ <b>${m.name}</b> — <i>${m.desc}</i> · survive ${m.goal} min <span class="verTag">CURRENT</span></p>`;
+    return `<p class="locked">🔒 <b>${m.name}</b> — clear the ${MAPS[i - 1].name.replace(/^THE /, '')} first</p>`;
+  });
+  rows.push(mapsCleared() >= MAPS.length
+    ? '<p style="color:#ffd98a">👑 Concur has fallen. Rule the kingdom, Queen Kenna!</p>'
+    : `<p class="achProg" style="display:block; margin-top:2vh">Realms freed: ${mapsCleared()} / ${MAPS.length}</p>`);
+  document.getElementById('questList').innerHTML = rows.join('');
+}
+
+// ---- live badges + stat card values ----
+function refreshMenuLive() {
+  const achEl = document.getElementById('scAch');
+  if (achEl) achEl.textContent = achEarnedCount() + ' / ' + ACH_DEFS.length;
+  const best = (kdStats.best || [])[0];
+  const lbVal = document.querySelectorAll('.statCard .scVal')[1];
+  if (lbVal && best) lbVal.textContent = (best.w ? '👑 ' : '') + best.h.split(' & ')[0];
+  const unread = Math.max(0, MAIL_LETTERS.filter(L => L.open()).length - (kdStats.mailRead || 0));
+  const mailBadge = document.querySelector('#icMail .badge');
+  if (mailBadge) { mailBadge.textContent = unread; mailBadge.style.display = unread ? '' : 'none'; }
+  const bellBadge = document.querySelector('#icBell .badge');
+  const n = bellItems().length;
+  if (bellBadge) { bellBadge.textContent = n; bellBadge.style.display = n ? '' : 'none'; }
+}
+checkAchievements();
+refreshMenuLive();
 function fillStatsPanel() {
-  const meta = JSON.parse(localStorage.getItem('kd_meta') || '{"gold":0,"unlocked":[]}');
   document.getElementById('statsList').innerHTML = [
-    `⏳ Time in the kingdom: <b>${fmtPlaytime(kdStats.playMs)}</b>`,
-    `⚔ Knights freed: <b>0 / 4</b>`,
-    `\u{1F3C6} Achievements earned: <b>0 / 12</b>`,
+    `\u23F3 Time in the kingdom: <b>${fmtPlaytime(kdStats.playMs)}</b>`,
+    `\u2694 Battles fought: <b>${kdStats.runs || 0}</b> \u00B7 Victories: <b>${kdStats.wins || 0}</b>`,
+    `\u{1F47F} Spirits banished: <b>${(kdStats.kills || 0).toLocaleString()}</b>`,
+    `\u{1F5FA} Realms freed: <b>${mapsCleared()} / ${MAPS.length}</b>`,
+    `\u{1F3C6} Achievements earned: <b>${achEarnedCount()} / ${ACH_DEFS.length}</b>`,
+    `\u{1FA99} Career gold: <b>${(kdStats.goldEarned || 0).toLocaleString()}g</b> \u00B7 Treasury: <b>${kdMeta.gold}g</b>`,
+    `\u2694 Knights in your order: <b>${(kdMeta.unlocked || []).length} / ${ROSTER.length}</b>`,
     `\u{1F3F0} Times the kingdom was opened: <b>${kdStats.launches}</b>`,
-    `\u{1FA99} Royal treasury: <b>${meta.gold} gold</b>`,
-    `\u2694 Knights in your order: <b>${(meta.unlocked || []).length} / 24</b>`,
   ].map(s => `<p>${s}</p>`).join('');
 }
 const statCardEls = document.querySelectorAll('.statCard');
-statCardEls[0].addEventListener('click', () => openPanel('ach'));
-statCardEls[1].addEventListener('click', () => openPanel('lb'));
+statCardEls[0].addEventListener('click', () => { fillAchPanel(); openPanel('ach'); });
+statCardEls[1].addEventListener('click', () => { fillLbPanel(); openPanel('lb'); });
 statCardEls[2].addEventListener('click', () => { fillStatsPanel(); openPanel('stats'); });
 
 // ---- menu music: soft procedural lute, obeys the music slider ----
