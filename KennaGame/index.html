@@ -2229,21 +2229,27 @@ function drawEnemy(e, t) {
 }
 
 function drawPlayerSprite(p, t) {
-  const set = heroSprites[p.heroKey];
-  const frame = p.moving ? (Math.floor(p.animTime * 8) % 2) : 1;
-  const spr = (p.dir === 'left' || p.dir === 'right') ? set.side[frame] : set[p.dir][frame];
-  const bob = (p.moving && frame === 1) ? -2 : 0;
+  if (p.dir === 'left') p.faceLeft = true;
+  else if (p.dir === 'right') p.faceLeft = false;
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.beginPath();
   ctx.ellipse(p.x, p.y - 2, 18, 7, 0, 0, Math.PI * 2);
   ctx.fill();
+  const im = SPRITE_IMG[p.heroKey];
+  const H = 56, W = im ? H * (im.width / im.height) : 0;
   if (!p.alive) {
     ctx.save();
-    ctx.translate(p.x, p.y - 18);
+    ctx.translate(p.x, p.y - 12);
     ctx.rotate(Math.PI / 2);
     ctx.globalAlpha = 0.75;
-    ctx.drawImage(spr, -32, -32);
+    if (im) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(im, -W / 2, -H + 12, W, H);
+    } else {
+      ctx.drawImage(heroSprites[p.heroKey].down[1], -32, -32);
+    }
     ctx.restore();
+    ctx.globalAlpha = 1;
     if (p.reviveProgress > 0) {
       ctx.strokeStyle = UI.goldLight;
       ctx.lineWidth = 5;
@@ -2254,14 +2260,32 @@ function drawPlayerSprite(p, t) {
     return;
   }
   if (p.invuln > 0 && Math.floor(t * 14) % 2) ctx.globalAlpha = 0.45;
-  if (p.dir === 'left') {
+  if (im) {
+    // vampire-survivors style: one hero sprite, mirrored by facing, rocking as it walks
+    const rock = p.moving ? Math.sin(p.animTime * 11) * 0.085 : 0;
+    const hop = p.moving ? Math.abs(Math.sin(p.animTime * 11)) * 3 : 0;
+    const breathe = p.moving ? 1 : 1 + Math.sin(t * 2.6) * 0.012;
     ctx.save();
-    ctx.translate(p.x + 32, p.y - 60 + bob);
-    ctx.scale(-1, 1);
-    ctx.drawImage(spr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(p.x, p.y - hop);
+    ctx.rotate(rock);
+    ctx.scale(p.faceLeft ? -1 : 1, breathe);
+    ctx.drawImage(im, -W / 2, -H, W, H);
     ctx.restore();
   } else {
-    ctx.drawImage(spr, p.x - 32, p.y - 60 + bob);
+    const set = heroSprites[p.heroKey];
+    const frame = p.moving ? (Math.floor(p.animTime * 8) % 2) : 1;
+    const spr = (p.dir === 'left' || p.dir === 'right') ? set.side[frame] : set[p.dir][frame];
+    const bob = (p.moving && frame === 1) ? -2 : 0;
+    if (p.dir === 'left') {
+      ctx.save();
+      ctx.translate(p.x + 32, p.y - 60 + bob);
+      ctx.scale(-1, 1);
+      ctx.drawImage(spr, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.drawImage(spr, p.x - 32, p.y - 60 + bob);
+    }
   }
   ctx.globalAlpha = 1;
   for (let o = 0; o < p.orbCount; o++) {
@@ -2275,6 +2299,28 @@ function drawPlayerSprite(p, t) {
     ctx.fillStyle = UI.goldPale;
     ctx.beginPath(); ctx.arc(ox - 2, oy - 3, 3, 0, Math.PI * 2); ctx.fill();
   }
+}
+
+// hand-generated knight art from the user's mockup: sprites/<key>.png
+const SPRITE_IMG = {};
+for (const rk of ROSTER) {
+  const im = new Image();
+  im.src = 'sprites/' + rk.key + '.png';
+  im.onload = () => { SPRITE_IMG[rk.key] = im; };
+}
+// draws a knight anchored at feet-center, scaled to hgt; returns false if art not loaded yet
+function drawHeroImg(key, cx, feetY, hgt, flip, alpha) {
+  const im = SPRITE_IMG[key];
+  if (!im) return false;
+  const w = hgt * (im.width / im.height);
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  if (alpha !== undefined) ctx.globalAlpha = alpha;
+  ctx.translate(cx, feetY);
+  if (flip) ctx.scale(-1, 1);
+  ctx.drawImage(im, -w / 2, -hgt, w, hgt);
+  ctx.restore();
+  return true;
 }
 
 // optional hand-made icon art: drop a PNG at icons/<name>.png and it
@@ -2579,123 +2625,189 @@ const WEAPON_INFO = {
   gust:    { name: 'Wind Gust',      icon: 'gust',   desc: 'Blasts enemies away' },
 };
 
+function roundedRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function drawLockBadge(x, y) {
+  ctx.strokeStyle = 'rgba(201, 168, 106, 0.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y - 3, 4, Math.PI, 0);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(201, 168, 106, 0.85)';
+  roundedRect(x - 6, y - 3, 12, 9, 2);
+  ctx.fill();
+  ctx.fillStyle = '#1a1510';
+  ctx.fillRect(x - 1, y - 1, 2, 4);
+}
 function renderSelect(t, forP2) {
   drawScreenBg(t);
-  drawScreenTitle(forP2 ? 'PLAYER 2 — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 60);
+  // crown ornament + flourish above the headline, like the mockup
+  ctx.textAlign = 'center';
+  ctx.fillStyle = UI.gold;
+  ctx.font = '17px Georgia, serif';
+  ctx.fillText('♛', 480, 30);
+  ctx.strokeStyle = 'rgba(232, 182, 76, 0.45)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(400, 36); ctx.quadraticCurveTo(440, 30, 466, 34);
+  ctx.moveTo(560, 36); ctx.quadraticCurveTo(520, 30, 494, 34);
+  ctx.stroke();
+  drawScreenTitle(forP2 ? 'PLAYER 2 — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 64);
 
   cardRects = [];
-  const cols = 5, perPage = 15, tile = 96, gap = 11;
+  const cols = 5, perPage = 15, cw = 100, chh = 118, gap = 10;
   const page = Math.floor(game.cursor / perPage);
   const pages = Math.ceil(ROSTER.length / perPage);
-  const gx0 = 42;
+  const gx0 = 42, gy0 = 92;
   for (let k = 0; k < perPage; k++) {
     const i = page * perPage + k;
     if (i >= ROSTER.length) break;
     const rk = ROSTER[i];
     const col = k % cols, row = Math.floor(k / cols);
-    const x = gx0 + col * (tile + gap), y = 96 + row * (tile + gap);
-    cardRects.push({ x, y, w: tile, h: tile, idx: i });
+    const x = gx0 + col * (cw + gap), y = gy0 + row * (chh + gap);
+    cardRects.push({ x, y, w: cw, h: chh, idx: i });
     const sel = game.cursor === i;
     const owned = kdMeta.unlocked.includes(rk.key);
-    plate(x, y, tile, tile, 10);
+    // card
+    roundedRect(x, y, cw, chh, 10);
+    const cg = ctx.createLinearGradient(0, y, 0, y + chh);
+    cg.addColorStop(0, 'rgba(24, 23, 27, 0.94)');
+    cg.addColorStop(1, 'rgba(12, 11, 14, 0.96)');
+    ctx.fillStyle = cg;
+    ctx.fill();
+    ctx.strokeStyle = sel ? UI.goldLight : 'rgba(70, 68, 78, 0.9)';
+    ctx.lineWidth = sel ? 2.5 : 1.5;
+    ctx.stroke();
     if (sel) {
-      ctx.strokeStyle = UI.goldLight;
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(x + 2.5, y + 2.5, tile - 5, tile - 5);
       ctx.save();
       ctx.shadowColor = 'rgba(232, 182, 76, 0.55)';
       ctx.shadowBlur = 16;
-      ctx.strokeRect(x + 2.5, y + 2.5, tile - 5, tile - 5);
+      ctx.stroke();
       ctx.restore();
     }
+    // knight art (full color even when locked, like the mockup)
     const bob2 = sel ? Math.sin(t * 4) * 2 : 0;
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = owned ? 1 : 0.35;
-    ctx.drawImage(heroSprites[rk.key].down[1], x + tile / 2 - 30, y + 6 + bob2, 60, 60);
-    ctx.globalAlpha = 1;
-    // weapon mini-icon in the tile corner
-    if (owned) {
-      ctx.save();
-      ctx.translate(x + tile - 16, y + 16);
-      drawUpgradeIcon(WEAPON_INFO[rk.wtype].icon, 0, 0, 0.38, t);
-      ctx.restore();
+    const feetY = y + (owned ? chh - 26 : chh - 30) + bob2;
+    if (!drawHeroImg(rk.key, x + cw / 2, feetY, 66, false, owned ? 1 : 0.88)) {
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = owned ? 1 : 0.6;
+      ctx.drawImage(heroSprites[rk.key].down[1], x + cw / 2 - 30, y + 8 + bob2, 60, 60);
+      ctx.globalAlpha = 1;
     }
-    if (!owned) {
-      ctx.fillStyle = 'rgba(8, 6, 4, 0.45)';
-      ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
-      drawUpgradeIcon('coin', x + tile / 2 - 20, y + tile - 16, 0.3, t);
-      ctx.textAlign = 'left';
-      ctx.font = '700 12px Inter, sans-serif';
-      ctx.fillStyle = UI.gold;
-      ctx.fillText(String(rk.price), x + tile / 2 - 9, y + tile - 11);
-    } else {
+    if (owned) {
+      // weapon mini-icon in the corner + name plate below
+      ctx.save();
+      ctx.translate(x + cw - 15, y + 15);
+      drawUpgradeIcon(WEAPON_INFO[rk.wtype].icon, 0, 0, 0.36, t);
+      ctx.restore();
       ctx.textAlign = 'center';
-      ctx.font = '600 9px Inter, sans-serif';
-      ctx.fillStyle = sel ? UI.goldLight : UI.dim;
-      ctx.fillText(rk.name, x + tile / 2, y + tile - 8);
+      ctx.font = '700 10px Cinzel, Georgia, serif';
+      ctx.fillStyle = sel ? UI.goldLight : '#d9d2c0';
+      ctx.fillText(rk.name, x + cw / 2, y + chh - 9);
+    } else {
+      drawLockBadge(x + cw - 16, y + 16);
+      drawUpgradeIcon('coin', x + cw / 2 - 20, y + chh - 14, 0.32, t);
+      ctx.textAlign = 'left';
+      ctx.font = '700 13px Inter, sans-serif';
+      ctx.fillStyle = UI.goldLight;
+      ctx.fillText(String(rk.price), x + cw / 2 - 8, y + chh - 9);
     }
   }
 
-  // pager under the grid
-  const py = 96 + 3 * (tile + gap) + 6;
-  cardRects.push({ x: gx0 + 90, y: py, w: 52, h: 34, idx: -3 });
-  cardRects.push({ x: gx0 + 384, y: py, w: 52, h: 34, idx: -4 });
-  plate(gx0 + 90, py, 52, 34, 10);
-  plate(gx0 + 384, py, 52, 34, 10);
-  ctx.textAlign = 'center';
-  ctx.font = '700 15px Inter, sans-serif';
-  ctx.fillStyle = page > 0 ? UI.goldLight : 'rgba(240, 226, 195, 0.25)';
-  ctx.fillText('◀', gx0 + 116, py + 23);
-  ctx.fillStyle = page < pages - 1 ? UI.goldLight : 'rgba(240, 226, 195, 0.25)';
-  ctx.fillText('▶', gx0 + 410, py + 23);
-  ctx.font = '700 13px Inter, sans-serif';
+  // pager: framed arrow boxes under the grid
+  const py = gy0 + 3 * (chh + gap) + 4;
+  const gridCx = gx0 + (5 * cw + 4 * gap) / 2;
+  cardRects.push({ x: gridCx - 130, y: py, w: 46, h: 32, idx: -3 });
+  cardRects.push({ x: gridCx + 84, y: py, w: 46, h: 32, idx: -4 });
+  for (const [bx, on, glyph] of [[gridCx - 130, page > 0, '◀'], [gridCx + 84, page < pages - 1, '▶']]) {
+    roundedRect(bx, py, 46, 32, 7);
+    ctx.fillStyle = 'rgba(14, 13, 16, 0.92)';
+    ctx.fill();
+    ctx.strokeStyle = on ? 'rgba(201, 168, 106, 0.7)' : 'rgba(70, 68, 78, 0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.font = '700 15px Inter, sans-serif';
+    ctx.fillStyle = on ? UI.goldLight : 'rgba(240, 226, 195, 0.25)';
+    ctx.fillText(glyph, bx + 23, py + 22);
+  }
+  ctx.font = '700 14px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.text;
-  ctx.fillText('PAGE ' + (page + 1) + ' / ' + pages, gx0 + 263, py + 22);
+  ctx.fillText('PAGE ' + (page + 1) + ' / ' + pages, gridCx, py + 22);
 
   // ---- sidebar: the selected knight ----
   const rk = ROSTER[game.cursor];
   const owned = kdMeta.unlocked.includes(rk.key);
-  const sx0 = 600, sw0 = 336;
-  plate(sx0, 96, sw0, 452, 16);
+  const sx0 = 600, sw0 = 336, scx = sx0 + sw0 / 2;
+  plate(sx0, 92, sw0, 456, 16);
   // treasury row
-  drawUpgradeIcon('coin', sx0 + 26, 124, 0.5, t);
+  drawUpgradeIcon('coin', sx0 + 28, 122, 0.55, t);
   ctx.textAlign = 'left';
-  ctx.font = '700 17px Cinzel, Georgia, serif';
+  ctx.font = '700 18px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(kdMeta.gold) + ' gold', sx0 + 46, 130);
+  ctx.fillText(kdMeta.gold + ' GOLD', sx0 + 48, 129);
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(sx0 + 18, 146); ctx.lineTo(sx0 + sw0 - 18, 146); ctx.stroke();
-  // big armored portrait
+  ctx.beginPath(); ctx.moveTo(sx0 + 18, 144); ctx.lineTo(sx0 + sw0 - 18, 144); ctx.stroke();
+  // glowing platform under the portrait, tinted to the knight's colors
+  const glow = ctx.createRadialGradient(scx, 306, 6, scx, 306, 90);
+  glow.addColorStop(0, rk.tabard + '55');
+  glow.addColorStop(0.55, rk.tabard + '22');
+  glow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(scx, 306, 92, 26, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // drifting sparkles
+  for (let sp = 0; sp < 7; sp++) {
+    const sa = t * 0.7 + sp * 0.9;
+    const sxp = scx + Math.cos(sa) * (58 + 14 * Math.sin(sp * 7));
+    const syp = 250 + Math.sin(sa * 1.3 + sp) * 46;
+    ctx.fillStyle = rk.tabard + (sp % 2 ? '77' : 'aa');
+    ctx.font = '9px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('✦', sxp, syp);
+  }
+  // big portrait
   const pbob = Math.sin(t * 3) * 3;
-  ctx.imageSmoothingEnabled = false;
-  ctx.globalAlpha = owned ? 1 : 0.45;
-  ctx.drawImage(heroSprites[rk.key].down[1], sx0 + sw0 / 2 - 64, 158 + pbob, 128, 128);
-  ctx.globalAlpha = 1;
+  if (!drawHeroImg(rk.key, scx, 306 + pbob, 148, false, owned ? 1 : 0.92)) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = owned ? 1 : 0.45;
+    ctx.drawImage(heroSprites[rk.key].down[1], scx - 64, 158 + pbob, 128, 128);
+    ctx.globalAlpha = 1;
+  }
   ctx.textAlign = 'center';
-  ctx.font = '700 22px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
-  ctx.fillText(rk.name, sx0 + sw0 / 2, 322);
+  ctx.font = '700 24px Cinzel, Georgia, serif';
+  ctx.fillStyle = '#f3ead8';
+  ctx.fillText(rk.name, scx, 348);
   ctx.font = '13px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText(rk.role, sx0 + sw0 / 2, 344);
-  // weapon row with icon
+  ctx.fillText(rk.role, scx, 368);
+  // weapon ability row (green name, like the mockup)
   const wi = WEAPON_INFO[rk.wtype];
   ctx.beginPath();
-  ctx.arc(sx0 + 46, 386, 22, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(232, 182, 76, 0.1)';
+  ctx.arc(sx0 + 46, 402, 20, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(20, 30, 16, 0.85)';
   ctx.fill();
-  ctx.strokeStyle = UI.plateBorder;
+  ctx.strokeStyle = 'rgba(140, 190, 90, 0.5)';
+  ctx.lineWidth = 1.5;
   ctx.stroke();
-  drawUpgradeIcon(wi.icon, sx0 + 46, 386, 0.6, t);
+  drawUpgradeIcon(wi.icon, sx0 + 46, 402, 0.55, t);
   ctx.textAlign = 'left';
   ctx.font = '700 15px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.gold;
-  ctx.fillText(wi.name, sx0 + 80, 380);
+  ctx.fillStyle = '#a3d977';
+  ctx.fillText(wi.name.toUpperCase(), sx0 + 76, 398);
   ctx.font = '12px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText(wi.desc, sx0 + 80, 398);
-  // traits
+  ctx.fillText(wi.desc, sx0 + 76, 415);
+  // trait bullets with green diamonds
   const m = rk.mods, traits = [];
   if (m.hp > 0) traits.push('+' + m.hp + ' hearts');
   if (m.hp < 0) traits.push(m.hp + ' hearts');
@@ -2708,34 +2820,70 @@ function renderSelect(t, forP2) {
   if (m.orb) traits.push('Starts with ' + m.orb + ' aegis shield' + (m.orb > 1 ? 's' : ''));
   if (m.wave) traits.push('Slashes launch sword waves');
   if (!traits.length) traits.push('A true all-rounder');
-  let ty2 = 424;
+  let ty2 = 440;
   ctx.font = '12px Inter, sans-serif';
   for (const tr of traits.slice(0, 3)) {
-    ctx.fillStyle = UI.gold;
-    ctx.fillText('◆', sx0 + 26, ty2);
+    ctx.fillStyle = '#8fd460';
+    ctx.fillText('◆', sx0 + 30, ty2);
     ctx.fillStyle = UI.text;
-    ctx.fillText(tr, sx0 + 42, ty2);
-    ty2 += 19;
+    ctx.fillText(tr, sx0 + 46, ty2);
+    ty2 += 18;
   }
-  // action button
-  cardRects.push({ x: sx0 + 20, y: 496, w: sw0 - 40, h: 38, idx: -5 });
-  plate(sx0 + 20, 496, sw0 - 40, 38, 10);
+  // action button: green CHOOSE like the mockup / gold UNLOCK when locked
+  const by = 498, bh = 40;
+  cardRects.push({ x: sx0 + 20, y: by, w: sw0 - 40, h: bh, idx: -5 });
+  const affordable = kdMeta.gold >= rk.price;
+  roundedRect(sx0 + 20, by, sw0 - 40, bh, 9);
+  const bg = ctx.createLinearGradient(0, by, 0, by + bh);
+  if (owned) { bg.addColorStop(0, '#3f7d3a'); bg.addColorStop(1, '#224420'); }
+  else if (affordable) { bg.addColorStop(0, '#8a6a26'); bg.addColorStop(1, '#57431a'); }
+  else { bg.addColorStop(0, '#3a3a40'); bg.addColorStop(1, '#232328'); }
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.strokeStyle = owned || affordable ? 'rgba(232, 182, 76, 0.75)' : 'rgba(90, 88, 98, 0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  ctx.beginPath();
+  ctx.moveTo(sx0 + 28, by + 2); ctx.lineTo(sx0 + sw0 - 28, by + 2);
+  ctx.stroke();
   ctx.textAlign = 'center';
-  ctx.font = '700 14px Cinzel, Georgia, serif';
+  ctx.font = '700 15px Cinzel, Georgia, serif';
   if (owned) {
-    ctx.fillStyle = UI.goldLight;
-    ctx.fillText(forP2 ? 'JOIN THE BATTLE' : 'CHOOSE', sx0 + sw0 / 2, 520);
+    ctx.fillStyle = '#eaf5e0';
+    ctx.fillText(forP2 ? 'JOIN THE BATTLE' : 'CHOOSE', scx, by + 26);
   } else {
-    ctx.fillStyle = kdMeta.gold >= rk.price ? UI.goldLight : '#e5484d';
-    ctx.fillText('UNLOCK — ' + rk.price + 'g', sx0 + sw0 / 2, 520);
+    ctx.fillStyle = affordable ? '#ffe9b8' : '#9a939f';
+    ctx.fillText('UNLOCK — ' + rk.price + 'g', scx, by + 26);
   }
 
+  // bottom control-hints pill bar
+  const hw2 = 620, hx = 480 - hw2 / 2, hy2 = 592, hh2 = 30;
+  roundedRect(hx, hy2, hw2, hh2, 15);
+  ctx.fillStyle = 'rgba(10, 9, 12, 0.82)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(201, 168, 106, 0.28)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
   ctx.textAlign = 'center';
-  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.25 * Math.sin(t * 3)})`;
-  ctx.font = '600 13px Inter, sans-serif';
-  ctx.fillText(forP2
-    ? 'Arrows to move  •  Enter to join the battle'
-    : 'WASD / arrows / mouse  •  Space or click to choose or unlock  •  Q / E — pages', 480, 606);
+  const segs = forP2
+    ? [['ARROWS', true], ['NAVIGATE', false], ['·', false], ['ENTER', true], ['JOIN', false], ['·', false], ['BACKSPACE', true], ['CANCEL', false]]
+    : [['WASD / ARROWS / MOUSE', true], ['NAVIGATE', false], ['·', false], ['CLICK', true], ['SELECT', false], ['·', false], ['Q / E', true], ['PAGES', false]];
+  let segw = 0;
+  ctx.font = '700 11px Inter, sans-serif';
+  const widths = segs.map(([s, b]) => {
+    ctx.font = b ? '700 11px Inter, sans-serif' : '11px Inter, sans-serif';
+    return ctx.measureText(s).width + 14;
+  });
+  const total = widths.reduce((a, b) => a + b, 0);
+  let cx2 = 480 - total / 2;
+  segs.forEach(([s, b], si) => {
+    ctx.font = b ? '700 11px Inter, sans-serif' : '11px Inter, sans-serif';
+    ctx.fillStyle = b ? '#f0e2c3' : 'rgba(240, 226, 195, 0.5)';
+    ctx.textAlign = 'left';
+    ctx.fillText(s, cx2 + 7, hy2 + 19);
+    cx2 += widths[si];
+  });
   drawToasts(t);
 }
 
@@ -3213,7 +3361,14 @@ function render(t) {
     ctx.fillStyle = 'rgba(232, 182, 76, 0.14)';
     ctx.fillRect(20, hy + 8, 30, 30);
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(heroSprites[p.heroKey].down[1], 19, hy + 5, 32, 32);
+    const hudIm = SPRITE_IMG[p.heroKey];
+    if (hudIm) {
+      // frame the helmet inside the circle
+      const hh = 52, hw = hh * (hudIm.width / hudIm.height);
+      ctx.drawImage(hudIm, 35 - hw / 2, hy + 10, hw, hh);
+    } else {
+      ctx.drawImage(heroSprites[p.heroKey].down[1], 19, hy + 5, 32, 32);
+    }
     ctx.restore();
     ctx.strokeStyle = p.alive ? UI.plateBorder : 'rgba(140, 140, 140, 0.5)';
     ctx.lineWidth = 2;
