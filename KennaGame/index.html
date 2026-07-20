@@ -1501,7 +1501,7 @@ const game = {
   xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [];
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [];
 const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
 
 function initRun() {
@@ -1509,7 +1509,7 @@ function initRun() {
   game.xp = 0; game.level = 1; game.xpNext = 10; game.choices = null;
   game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
-  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = [];
+  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = [];
   for (const p of players) {
     p.hp = 6; p.maxHp = 6; p.alive = true; p.invuln = 0;
     p.speed = 235; p.attackEvery = 0.6; p.range = 175; p.damage = 1; p.arc = 1.2;
@@ -1589,20 +1589,32 @@ function spawnEnemy(forceX, forceY) {
   y = Math.max(20, Math.min(WORLD_H - 20, y));
   const t = game.time, roll = Math.random();
   let kind = 'wisp';
-  if (t > 180 && roll < 0.07) kind = 'golem';
-  else if (t > 75 && roll < 0.22) kind = 'brute';
-  else if (t > 35 && roll < 0.5) kind = 'imp';
+  if (t > 200 && roll < 0.06) kind = 'charger';
+  else if (t > 180 && roll < 0.13) kind = 'golem';
+  else if (t > 140 && roll < 0.21) kind = 'splitter';
+  else if (t > 110 && roll < 0.29) kind = 'spitter';
+  else if (t > 75 && roll < 0.42) kind = 'brute';
+  else if (t > 50 && roll < 0.54) kind = 'shade';
+  else if (t > 35 && roll < 0.74) kind = 'imp';
+  if (t > 60 && Math.random() < 0.015) kind = 'gilded';  // rare golden treasure wisp
   const spec = {
-    wisp:  { r: 14, hp: 2,  speed: 58 + Math.random() * 22, xp: 1 },
-    imp:   { r: 10, hp: 1,  speed: 100 + Math.random() * 25, xp: 1 },
-    brute: { r: 20, hp: 9,  speed: 44, xp: 4 },
-    golem: { r: 27, hp: 24, speed: 30, xp: 10 },
+    wisp:     { r: 14, hp: 2,  speed: 58 + Math.random() * 22, xp: 1 },
+    imp:      { r: 10, hp: 1,  speed: 100 + Math.random() * 25, xp: 1 },
+    shade:    { r: 13, hp: 3,  speed: 64 + Math.random() * 18, xp: 2 },
+    brute:    { r: 20, hp: 9,  speed: 44, xp: 4 },
+    spitter:  { r: 15, hp: 4,  speed: 52, xp: 3 },
+    splitter: { r: 22, hp: 8,  speed: 40, xp: 4 },
+    golem:    { r: 27, hp: 24, speed: 30, xp: 10 },
+    charger:  { r: 17, hp: 6,  speed: 46, xp: 5 },
+    gilded:   { r: 12, hp: 2,  speed: 112, xp: 2 },
   }[kind];
   enemies.push({
     x, y, kind, r: spec.r, hp: spec.hp, maxHp: spec.hp,
     speed: spec.speed + Math.min(34, t * 0.2), xp: spec.xp,
     kx: 0, ky: 0, flash: 0, orbCd: 0, spawnAge: 0,
     seed: Math.random() * 100,
+    shootCd: 1.4 + Math.random(), chargeState: 'stalk', stateT: 2 + Math.random(), aimX: 0, aimY: 0,
+    life: 9,
   });
 }
 
@@ -1628,15 +1640,70 @@ function hurtEnemy(e, dmg, ang, kb) {
   dmgTexts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y - e.r - 6, val: Math.max(1, Math.round(dmg)), age: 0 });
 }
 
+function hitPlayer(t, e) {
+  t.hp -= 1;
+  t.invuln = 1.2;
+  game.shake = 0.25;
+  game.hurtFlash = 0.4;
+  if (e) {
+    if (upLvl('thorn') > 0) {
+      hurtEnemy(e, 2 * upLvl('thorn'), Math.atan2(e.y - t.y, e.x - t.x), 280);
+    }
+    e.kx -= Math.cos(Math.atan2(t.y - e.y, t.x - e.x)) * 150;
+  }
+  if (t.hp <= 0 && (game.phoenix || 0) > 0) {
+    game.phoenix--;
+    t.hp = 3;
+    t.invuln = 2.5;
+    particles.push({ x: t.x, y: t.y - 20, vx: 0, vy: 0, ring: true, life: 0.28, color: '#fb923c', size: 30 });
+    gameToast('🔥 ' + t.name + ' rises from the ashes!');
+  } else if (t.hp <= 0) {
+    t.alive = false;
+    t.reviveProgress = 0;
+    gameToast(t.name + ' is down! Stand close to revive!');
+    if (!players.some(p => p.joined && p.alive)) {
+      game.over = true;
+      if (!game.paidOut) {
+        game.paidOut = true;
+        game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
+        kdMeta.gold += game.payout;
+        saveMeta();
+        recordRun(false);
+      }
+    }
+  }
+}
+
 function killEnemy(i) {
   const e = enemies[i];
   game.kills++;
-  const colors = { wisp: '#a855f7', imp: '#fb923c', brute: '#c084fc', golem: '#94a3b8' };
+  const colors = { wisp: '#a855f7', imp: '#fb923c', brute: '#c084fc', golem: '#94a3b8',
+                   shade: '#7dd3fc', spitter: '#a3e635', splitter: '#e879f9', mite: '#e879f9',
+                   charger: '#f87171', gilded: '#fde047' };
   for (let k = 0; k < (e.kind === 'golem' ? 16 : 8); k++) {
     const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 120;
     particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5, color: colors[e.kind], size: e.kind === 'golem' ? 5 : 3 });
   }
   particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.28, color: colors[e.kind], size: e.r });
+  if (e.kind === 'splitter') {
+    // bursts into three curse-mites
+    for (let k = 0; k < 3; k++) {
+      const a = (k / 3) * Math.PI * 2 + Math.random();
+      enemies.push({
+        x: e.x + Math.cos(a) * 14, y: e.y + Math.sin(a) * 14, kind: 'mite',
+        r: 9, hp: 1, maxHp: 1, speed: 95 + Math.random() * 25, xp: 1,
+        kx: Math.cos(a) * 200, ky: Math.sin(a) * 200, flash: 0, orbCd: 0,
+        spawnAge: 0.15, seed: Math.random() * 100,
+      });
+    }
+  }
+  if (e.kind === 'gilded') {
+    for (let k = 0; k < 3; k++) {
+      const gp2 = pushOut(e.x + (Math.random() - 0.5) * 30, e.y + (Math.random() - 0.5) * 30, 16);
+      drops.push({ x: gp2.x, y: gp2.y, kind: 'coin', v: 4 + Math.floor(Math.random() * 4) });
+    }
+    gameToast('✨ A gilded wisp bursts into gold!');
+  }
   const n = e.kind === 'golem' ? 3 : 1;
   for (let k = 0; k < n; k++) {
     let gv = Math.ceil(e.xp / n);
@@ -1826,8 +1893,47 @@ function update(dt) {
     if (t) {
       const sl = e.slowT > 0 ? e.slowF : 1;
       const d = Math.hypot(t.x - e.x, t.y - e.y) || 1;
-      e.x += ((t.x - e.x) / d) * e.speed * sl * dt;
-      e.y += ((t.y - e.y) / d) * e.speed * sl * dt;
+      const dx = (t.x - e.x) / d, dy = (t.y - e.y) / d;
+      if (e.kind === 'gilded') {
+        // treasure wisp: flees, then vanishes
+        e.life -= dt;
+        if (e.life <= 0) {
+          particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.25, color: '#fde047', size: e.r });
+          enemies.splice(i, 1);
+          continue;
+        }
+        if (d < 340) { e.x -= dx * e.speed * sl * dt; e.y -= dy * e.speed * sl * dt; }
+      } else if (e.kind === 'shade') {
+        // weaves side to side as it closes in
+        const wob = Math.sin(game.time * 3.1 + e.seed) * 58;
+        e.x += (dx * e.speed * 0.85 - dy * wob) * sl * dt;
+        e.y += (dy * e.speed * 0.85 + dx * wob) * sl * dt;
+      } else if (e.kind === 'spitter') {
+        // keeps its distance and lobs curse bolts
+        if (d > 265) { e.x += dx * e.speed * sl * dt; e.y += dy * e.speed * sl * dt; }
+        else if (d < 175) { e.x -= dx * e.speed * 0.8 * sl * dt; e.y -= dy * e.speed * 0.8 * sl * dt; }
+        e.shootCd -= dt;
+        if (e.shootCd <= 0 && d < 430 && e.spawnAge > 1) {
+          e.shootCd = 2.8;
+          bolts.push({ x: e.x, y: e.y - 6, vx: dx * 168, vy: dy * 168, life: 3.2 });
+        }
+      } else if (e.kind === 'charger') {
+        // stalk -> wind up -> dash
+        e.stateT -= dt;
+        if (e.chargeState === 'stalk') {
+          e.x += dx * e.speed * sl * dt; e.y += dy * e.speed * sl * dt;
+          if (e.stateT <= 0 && d < 420) { e.chargeState = 'aim'; e.stateT = 0.7; }
+        } else if (e.chargeState === 'aim') {
+          e.aimX = dx; e.aimY = dy;
+          if (e.stateT <= 0) { e.chargeState = 'dash'; e.stateT = 0.75; }
+        } else {
+          e.x += e.aimX * 400 * sl * dt; e.y += e.aimY * 400 * sl * dt;
+          if (e.stateT <= 0) { e.chargeState = 'stalk'; e.stateT = 2.2 + Math.random(); }
+        }
+      } else {
+        e.x += dx * e.speed * sl * dt;
+        e.y += dy * e.speed * sl * dt;
+      }
     }
     e.x += e.kx * dt; e.y += e.ky * dt;
     e.kx *= Math.pow(0.02, dt); e.ky *= Math.pow(0.02, dt);
@@ -1837,36 +1943,24 @@ function update(dt) {
 
     if (e.hp <= 0) { killEnemy(i); continue; }
 
-    if (t && Math.hypot(t.x - e.x, t.y - 12 - e.y) < e.r + 14 && t.invuln <= 0) {
-      t.hp -= 1;
-      t.invuln = 1.2;
-      game.shake = 0.25;
-      game.hurtFlash = 0.4;
-      if (upLvl('thorn') > 0) {
-        hurtEnemy(e, 2 * upLvl('thorn'), Math.atan2(e.y - t.y, e.x - t.x), 280);
-      }
-      e.kx -= Math.cos(Math.atan2(t.y - e.y, t.x - e.x)) * 150;
-      if (t.hp <= 0 && (game.phoenix || 0) > 0) {
-        game.phoenix--;
-        t.hp = 3;
-        t.invuln = 2.5;
-        particles.push({ x: t.x, y: t.y - 20, vx: 0, vy: 0, ring: true, life: 0.28, color: '#fb923c', size: 30 });
-        gameToast('🔥 ' + t.name + ' rises from the ashes!');
-      } else if (t.hp <= 0) {
-        t.alive = false;
-        t.reviveProgress = 0;
-        gameToast(t.name + ' is down! Stand close to revive!');
-        if (!players.some(p => p.joined && p.alive)) {
-          game.over = true;
-          if (!game.paidOut) {
-            game.paidOut = true;
-            game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
-            kdMeta.gold += game.payout;
-            saveMeta();
-            recordRun(false);
-          }
-        }
-      }
+    if (e.kind !== 'gilded' && t && Math.hypot(t.x - e.x, t.y - 12 - e.y) < e.r + 14 && t.invuln <= 0) {
+      hitPlayer(t, e);
+    }
+  }
+
+  // enemy curse bolts
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    const b = bolts[i];
+    b.life -= dt;
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    let gone = b.life <= 0;
+    if (!gone) for (const p of players) {
+      if (!p.joined || !p.alive || p.invuln > 0) continue;
+      if (Math.hypot(p.x - b.x, (p.y - 14) - b.y) < 17) { hitPlayer(p, null); gone = true; break; }
+    }
+    if (gone) {
+      particles.push({ x: b.x, y: b.y, vx: 0, vy: 0, ring: true, life: 0.2, color: '#a3e635', size: 8 });
+      bolts.splice(i, 1);
     }
   }
 
@@ -2112,6 +2206,9 @@ function makeGlow(rgb, size) {
 const GLOWS = {
   wisp: makeGlow('168, 85, 247', 64), imp: makeGlow('251, 146, 60', 64),
   brute: makeGlow('192, 132, 252', 64), golem: makeGlow('148, 163, 184', 64),
+  shade: makeGlow('125, 211, 252', 64), spitter: makeGlow('163, 230, 53', 64),
+  splitter: makeGlow('232, 121, 249', 64), mite: makeGlow('232, 121, 249', 48),
+  charger: makeGlow('248, 113, 113', 64), gilded: makeGlow('250, 204, 21', 64),
   gemG: makeGlow('74, 222, 128', 40), gemP: makeGlow('240, 171, 252', 40),
 };
 const easeOutQ = f => 1 - (1 - f) * (1 - f);
@@ -2146,14 +2243,23 @@ function drawEnemy(e, t) {
   const bob = Math.sin(t * 5 + e.seed) * 3;
   const squash = 1 + 0.07 * Math.sin(t * 6 + e.seed);
   const cols = {
-    wisp:  { body: '#3b1e63', hi: '#6d3fae', rim: '#241140', eye: '#e9d5ff' },
-    imp:   { body: '#7c2d12', hi: '#c2410c', rim: '#4c1a08', eye: '#fed7aa' },
-    brute: { body: '#4c1d80', hi: '#7e3ff2', rim: '#2e0f52', eye: '#f3e8ff' },
-    golem: { body: '#334155', hi: '#64748b', rim: '#1e293b', eye: '#c084fc' },
+    wisp:     { body: '#3b1e63', hi: '#6d3fae', rim: '#241140', eye: '#e9d5ff' },
+    imp:      { body: '#7c2d12', hi: '#c2410c', rim: '#4c1a08', eye: '#fed7aa' },
+    brute:    { body: '#4c1d80', hi: '#7e3ff2', rim: '#2e0f52', eye: '#f3e8ff' },
+    golem:    { body: '#334155', hi: '#64748b', rim: '#1e293b', eye: '#c084fc' },
+    shade:    { body: '#1e2a4a', hi: '#3e5f8a', rim: '#111a30', eye: '#7dd3fc' },
+    spitter:  { body: '#2f4d16', hi: '#5f8a28', rim: '#1c3010', eye: '#d9f99d' },
+    splitter: { body: '#701a75', hi: '#c026d3', rim: '#4a044e', eye: '#fae8ff' },
+    mite:     { body: '#701a75', hi: '#c026d3', rim: '#4a044e', eye: '#fae8ff' },
+    charger:  { body: '#7f1d1d', hi: '#dc2626', rim: '#450a0a', eye: '#fecaca' },
+    gilded:   { body: '#a16207', hi: '#facc15', rim: '#713f12', eye: '#fef9c3' },
   }[e.kind];
 
   ctx.save();
-  ctx.globalAlpha = pop;
+  ctx.globalAlpha = e.kind === 'shade' ? pop * 0.85 : pop;
+  if (e.kind === 'charger' && e.chargeState === 'aim') {
+    ctx.translate((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5);
+  }
   ctx.translate(e.x, e.y + bob);
   ctx.scale((0.5 + 0.5 * easeOutQ(pop)) / squash, (0.5 + 0.5 * easeOutQ(pop)) * squash);
 
@@ -2202,6 +2308,53 @@ function drawEnemy(e, t) {
     ctx.fillStyle = '#556275';
     ctx.fillRect(-e.r * 0.1, e.r * 0.1, e.r * 0.4, e.r * 0.35);
   }
+  if (e.kind === 'charger') {
+    // forward-swept horns
+    ctx.fillStyle = '#fca5a5';
+    for (const s2 of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * e.r * 0.55, -e.r * 0.55);
+      ctx.lineTo(s2 * e.r * 1.15, -e.r * 1.05);
+      ctx.lineTo(s2 * e.r * 0.22, -e.r * 0.75);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  if (e.kind === 'spitter') {
+    // curse-mouth, opens wide before it spits
+    const open = e.shootCd < 0.55 ? 1 : 0.35;
+    ctx.fillStyle = '#14200a';
+    ctx.beginPath();
+    ctx.ellipse(0, e.r * 0.38, e.r * 0.34, e.r * 0.3 * open, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (open === 1) {
+      ctx.fillStyle = '#a3e635';
+      ctx.beginPath(); ctx.arc(0, e.r * 0.38, e.r * 0.12, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  if (e.kind === 'splitter') {
+    // gooey bubbles riding the blob
+    ctx.fillStyle = 'rgba(232, 121, 249, 0.5)';
+    for (const [bx2, by2, br2] of [[-0.45, -0.35, 0.2], [0.4, -0.15, 0.16], [0.05, -0.6, 0.13]]) {
+      ctx.beginPath();
+      ctx.arc(bx2 * e.r, by2 * e.r + Math.sin(t * 5 + e.seed + bx2 * 6) * 1.5, e.r * br2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (e.kind === 'gilded') {
+    // tiny crown + orbiting sparkle
+    ctx.fillStyle = '#fde047';
+    for (const s2 of [-1, 0, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * e.r * 0.42 - e.r * 0.18, -e.r * 0.85);
+      ctx.lineTo(s2 * e.r * 0.42, -e.r * 1.3);
+      ctx.lineTo(s2 * e.r * 0.42 + e.r * 0.18, -e.r * 0.85);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = '#fef9c3';
+    ctx.font = '10px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('✦', Math.cos(t * 4 + e.seed) * e.r * 1.6, Math.sin(t * 4 + e.seed) * e.r * 0.9 - e.r * 0.3);
+  }
 
   // glowing eyes with pupils
   if (e.slowT > 0) {
@@ -2220,11 +2373,17 @@ function drawEnemy(e, t) {
 
   ctx.restore();
 
-  if ((e.kind === 'brute' || e.kind === 'golem') && e.hp < e.maxHp) {
+  if ((e.kind === 'brute' || e.kind === 'golem' || e.kind === 'splitter' || e.kind === 'charger') && e.hp < e.maxHp) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(e.x - 18, e.y + bob - e.r - 13, 36, 6);
     ctx.fillStyle = '#c084fc';
     ctx.fillRect(e.x - 17, e.y + bob - e.r - 12, 34 * (e.hp / e.maxHp), 4);
+  }
+  if (e.kind === 'charger' && e.chargeState === 'aim') {
+    ctx.textAlign = 'center';
+    ctx.font = '700 16px Inter, sans-serif';
+    ctx.fillStyle = `rgba(255, 220, 120, ${0.6 + 0.4 * Math.sin(t * 18)})`;
+    ctx.fillText('!', e.x, e.y + bob - e.r - 18);
   }
 }
 
@@ -3235,6 +3394,15 @@ function render(t) {
     if (d.kind === 'enemy') drawEnemy(d.e, t);
     else if (d.kind === 'struct') drawStructure(d.s, MAPS[game.mapPick], t);
     else drawPlayerSprite(d.p, t);
+  }
+
+  // enemy curse bolts
+  for (const b of bolts) {
+    ctx.drawImage(GLOWS.spitter, b.x - 17, b.y - 17, 34, 34);
+    ctx.fillStyle = '#a3e635';
+    ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#d9f99d';
+    ctx.beginPath(); ctx.arc(b.x - 1.5, b.y - 1.5, 2.4, 0, Math.PI * 2); ctx.fill();
   }
 
   // projectiles
