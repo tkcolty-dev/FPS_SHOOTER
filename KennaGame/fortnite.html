@@ -147,26 +147,34 @@
   </div>
 
   <div id="gotcha">
-    <div class="big">GOTCHA!!</div>
-    <div class="small">😂 Got you, Mom &amp; Dad. Love you!</div>
+    <div class="big" style="font-size: 54px;">MATCHMAKING&hellip;</div>
+    <div class="small" id="mmStatus">Searching for players&hellip;</div>
   </div>
 
 <script>
-// ANY click springs the trap
-document.addEventListener('click', () => {
+// PLAY starts an endless, very convincing matchmaking loop
+let mmTimer = null;
+document.getElementById('play').addEventListener('click', e => {
+  e.stopPropagation();
   const g = document.getElementById('gotcha');
-  if (g.classList.contains('on')) return;
+  const st = document.getElementById('mmStatus');
   g.classList.add('on');
-  const bits = ['🎉', '😂', '🦙', '✨', '🎊'];
-  for (let i = 0; i < 26; i++) {
-    const c = document.createElement('div');
-    c.className = 'confetti';
-    c.textContent = bits[i % bits.length];
-    c.style.left = Math.random() * 100 + 'vw';
-    c.style.animationDelay = (Math.random() * -2.6) + 's';
-    c.style.fontSize = (18 + Math.random() * 22) + 'px';
-    g.appendChild(c);
-  }
+  let n = 1;
+  clearInterval(mmTimer);
+  mmTimer = setInterval(() => {
+    n += 1 + Math.floor(Math.random() * 4);
+    if (n < 100) {
+      st.textContent = 'Players found: ' + Math.min(99, n) + ' / 100 · storm is forming…';
+    } else {
+      st.textContent = '⚠ Server full — retrying…';
+      n = 1;
+    }
+  }, 450);
+});
+// clicking anywhere else backs out of matchmaking
+document.getElementById('gotcha').addEventListener('click', () => {
+  clearInterval(mmTimer);
+  document.getElementById('gotcha').classList.remove('on');
 });
 </script>
 </body>
