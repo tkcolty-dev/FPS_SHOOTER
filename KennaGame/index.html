@@ -4225,7 +4225,7 @@ function showMenu() {
   keys.clear();
   if (typeof updateHomeStats === 'function' && imgUIActive) updateHomeStats();
   refreshMenuLive();
-  btnPlay.textContent = gameStarted ? 'Continue' : 'Play';
+  btnPlay.querySelector('.bTitle').textContent = gameStarted ? 'Continue' : 'Play';
   menuEl.classList.remove('hidden');
 }
 function hideMenu() {
