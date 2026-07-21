@@ -599,7 +599,8 @@
   #menu.hasImage .menuBtn > * { visibility: hidden; }
   /* UPGRADES is a real labeled button — glassy plate matching the painted ones */
   #menu.hasImage #btnSettings {
-    background: rgba(15, 12, 9, 0.85);
+    background: rgba(13, 11, 9, 0.96);
+    width: 23.2% !important;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     border: 1.5px solid rgba(232, 182, 76, 0.42);
   }
@@ -626,7 +627,7 @@
   /* the top chips are REAL: live values on glassy plates that melt into the art */
   #menu.hasImage #chipDate, #menu.hasImage #chipKnights, #menu.hasImage #chipRemaster {
     color: #f0e2c3;
-    background: rgba(14, 12, 9, 0.68);
+    background: rgba(13, 11, 9, 0.94);
     backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
     border: 1px solid rgba(232, 182, 76, 0.32);
     border-radius: 1.1vh;
@@ -641,7 +642,7 @@
   }
   #menu.hasImage .iconBtn {
     color: #f0e2c3; border-radius: 1.1vh;
-    background: rgba(14, 12, 9, 0.68);
+    background: rgba(13, 11, 9, 0.94);
     backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
     border: 1px solid rgba(232, 182, 76, 0.3);
     display: flex; align-items: center; justify-content: center;
@@ -1414,6 +1415,12 @@ const POWERUPS = [
   { key: 'stride', name: 'Stride',    icon: 'boots',  max: 5, base: 180, desc: '+4% move speed per rank' },
   { key: 'lode',   name: 'Lodestone', icon: 'magnet', max: 5, base: 150, desc: '+15% gem magnet per rank' },
   { key: 'greed',  name: 'Greed',     icon: 'coin',   max: 5, base: 150, desc: '+10% gold per rank' },
+  { key: 'call',   name: 'Royal Summons', icon: 'crown', max: 1, base: 2500, desc: 'Every 2 min, ALL treasure flies to your knights' },
+  { key: 'scholar', name: 'Scholar',       icon: 'wisdom',   max: 5, base: 250, desc: '+8% gem XP per rank' },
+  { key: 'bane',    name: 'Bossbane',      icon: 'slayer',   max: 3, base: 500, desc: '+15% damage to champions per rank' },
+  { key: 'chests',  name: 'Treasure Maps', icon: 'goldrush', max: 2, base: 600, desc: '+2 chests hidden in every realm' },
+  { key: 'ember',   name: 'Emberheart',    icon: 'phoenix',  max: 1, base: 900, desc: 'Begin every battle with a Phoenix charge' },
+  { key: 'fortune', name: 'Royal Fortune', icon: 'clover',   max: 1, base: 1200, desc: 'Begin every battle with a free Royal Gift' },
 ];
 function powerRank(k) { return kdMeta.power[k] || 0; }
 function powerPrice(pu) { return pu.base * (powerRank(pu.key) + 1); }
@@ -1623,10 +1630,11 @@ window.addEventListener('keydown', e => {
   }
   if (game.phase === 'armory') {
     const n = POWERUPS.length + PETS.length;
+    const ac = n > 9 ? 4 : 3;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
-    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - 3 + n) % n;
-    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + 3) % n;
+    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - ac + n) % n;
+    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + ac) % n;
     if (['Space', 'Enter'].includes(e.code)) armoryBuy(game.cursor);
     if (e.code === 'KeyT' || e.code === 'Backspace') armoryExit();
     return;
@@ -1803,9 +1811,18 @@ function confirmSelection2() {
     gameToast('🔒 Locked — unlock with gold first!');
     return;
   }
+  // one knight per player — no twins on the battlefield
+  const slot0 = game.joinSlot || 1;
+  const takenBy = players.findIndex((q, qi) => q.joined && qi !== slot0 && q.heroKey === rk.key);
+  if (takenBy >= 0) {
+    SFX.denied();
+    gameToast('⚔ ' + rk.name + ' already rides with P' + (takenBy + 1) + '!');
+    return;
+  }
   const slot = game.joinSlot || 1;
   const p2 = players[slot];
   p2.joined = true;
+  if (slot === 0) game.heroPick = rk.key;   // P1 changed their mind — the battle honors it
   applyHero(p2, rk.key);
   applyRunUpgradesTo(p2);
   p2.alive = true;
@@ -1945,7 +1962,8 @@ function initRun() {
   // treasure chests — rare prizes, far from the spawn AND far from each other
   chests = [];
   let ctries = 0;
-  while (chests.length < 6 && ctries++ < 400) {
+  const chestGoal = 6 + 2 * powerRank('chests');
+  while (chests.length < chestGoal && ctries++ < 400) {
     const cx3 = 260 + Math.random() * (WORLD_W - 520);
     const cy3 = 260 + Math.random() * (WORLD_H - 520);
     if (Math.hypot(cx3 - WORLD_W / 2, cy3 - WORLD_H / 2) < 800) continue;
@@ -1954,6 +1972,8 @@ function initRun() {
     chests.push({ x: cp.x, y: cp.y, open: false, seed: Math.random() * 10 });
   }
   game.forgeT = 0;
+  game.phoenix = (game.phoenix || 0) + powerRank('ember');
+  game.freeGift = powerRank('fortune') > 0;
 }
 
 function gameToast(text) {
@@ -2244,6 +2264,10 @@ function spawnEnemy(forceX, forceY) {
   else if (t > 75 && roll < 0.54) kind = 'brute';
   else if (t > 50 && roll < 0.64) kind = 'shade';
   else if (t > 35 && roll < 0.8) kind = 'imp';
+  // mountain realms field their own beasts
+  const mk2 = MAPS[game.mapPick].key;
+  if ((mk2 === 'snow' || mk2 === 'lake') && t > 60 && Math.random() < 0.16) kind = 'yeti';
+  if ((mk2 === 'forge' || mk2 === 'volcano') && t > 40 && Math.random() < 0.18) kind = 'magmite';
   if (t > 60 && Math.random() < 0.015) kind = 'gilded';  // rare golden treasure wisp
   const spec = {
     wisp:      { r: 14, hp: 2,  speed: 58 + Math.random() * 22, xp: 1 },
@@ -2258,6 +2282,8 @@ function spawnEnemy(forceX, forceY) {
     warlock:   { r: 15, hp: 8,  speed: 48, xp: 7 },
     reaper:    { r: 24, hp: 40, speed: 64, xp: 16 },
     gilded:    { r: 12, hp: 2,  speed: 112, xp: 2 },
+    yeti:      { r: 24, hp: 18, speed: 42, xp: 8 },
+    magmite:   { r: 10, hp: 2,  speed: 116, xp: 2 },
   }[kind];
   // the curse hardens as the battle drags on, and later realms hit harder
   const hpBonus = Math.floor(t / 120) + Math.floor(game.mapPick / 3);
@@ -2280,6 +2306,12 @@ const BOSS_DEFS = {
   wraith: { name: 'THE WRAITH KING',     r: 44, hp: 260, speed: 52, xp: 60,  style: 'caster' },
   gummy:  { name: 'KING GUMMYGLOB',      r: 50, hp: 300, speed: 42, xp: 60,  style: 'slam' },
   concur: { name: 'CONCUR THE SORCERER', r: 46, hp: 420, speed: 56, xp: 100, style: 'caster' },
+};
+// [spawn-pace multiplier, enemy cap] per realm — early realms breathe, late realms swarm
+const MAP_SPAWN = {
+  meadow: [0.72, 140], courtyard: [0.82, 160], hall: [0.88, 170], forest: [0.95, 185],
+  crypt: [1, 195], snow: [1.08, 205], forge: [1.18, 220], throne: [1.3, 240],
+  candy: [1, 195], garden: [1.05, 205], lake: [1.15, 215], volcano: [1.28, 240],
 };
 const MAP_BOSS = ['titan', 'titan', 'wraith', 'wraith', 'wraith', 'titan', 'titan', 'concur', 'gummy', 'gummy', 'wraith', 'titan'];
 function spawnBoss() {
@@ -2325,7 +2357,10 @@ function hurtEnemy(e, dmg, ang, kb) {
   if (upLvl('fury') > 0 && players.some(p => p.joined && p.alive && p.hp <= p.maxHp / 2)) dmg += upLvl('fury');
   if (upLvl('crit') > 0 && Math.random() < 0.12 * upLvl('crit')) dmg *= 2;
   if (e.kind === 'shellback') dmg = Math.min(dmg, 1);   // armored — chip damage only
-  if (BOSS_DEFS[e.kind]) kb *= 0.1;                     // champions barely budge
+  if (BOSS_DEFS[e.kind]) {
+    kb *= 0.1;                                          // champions barely budge
+    dmg *= 1 + 0.15 * powerRank('bane');                // …but Bossbane bites them
+  }
   e.hp -= dmg;
   e.flash = 0.12;
   SFX.hit();
@@ -2415,7 +2450,8 @@ function killEnemy(i) {
                    shade: '#7dd3fc', spitter: '#a3e635', splitter: '#f472b6', mite: '#f472b6',
                    charger: '#f87171', gilded: '#fde047', shellback: '#d4a05a',
                    warlock: '#2dd4a0', reaper: '#f43f5e',
-                   titan: '#94a3b8', wraith: '#7dd3fc', gummy: '#f472b6', concur: '#34d399' };
+                   titan: '#94a3b8', wraith: '#7dd3fc', gummy: '#f472b6', concur: '#34d399',
+                   yeti: '#bfe9ff', magmite: '#fb923c' };
   for (let k = 0; k < (e.kind === 'golem' ? 16 : 8); k++) {
     const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 120;
     particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5, color: colors[e.kind], size: e.kind === 'golem' ? 5 : 3 });
@@ -2439,6 +2475,17 @@ function killEnemy(i) {
       drops.push({ x: gp2.x, y: gp2.y, kind: 'coin', v: 4 + Math.floor(Math.random() * 4) });
     }
     gameToast('✨ A gilded wisp bursts into gold!');
+  }
+  if (e.kind === 'magmite') {
+    // it pops in a burst of magma — stand back!
+    particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.3, color: '#fb923c', size: 46 });
+    for (let k = 0; k < 8; k++) {
+      const a = Math.random() * Math.PI * 2;
+      particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * 150, vy: Math.sin(a) * 150 - 40, life: 0.4, color: Math.random() < 0.5 ? '#fb923c' : '#fde047', size: 3 });
+    }
+    for (const p2 of players) {
+      if (p2.joined && p2.alive && p2.invuln <= 0 && Math.hypot(p2.x - e.x, p2.y - e.y) < 64) hitPlayer(p2, null);
+    }
   }
   if (e.kind === 'reaper') {
     for (let k = 0; k < 2; k++) {
@@ -2696,6 +2743,12 @@ function update(dt) {
   }
   if (game.phase !== 'run' || game.over || game.victory || game.choices) return;
   game.time += dt;
+  // Royal Fortune: the first gift is on the house
+  if (game.freeGift && game.time > 1.5 && !game.choices) {
+    game.freeGift = false;
+    gameToast('🍀 ROYAL FORTUNE — a gift to start the battle!');
+    levelUp();
+  }
   // Concur has fallen in the Throne Room — the story takes over after the coins settle
   if (game.endingAt && game.time >= game.endingAt && !game.over && !game.victory) {
     game.endingAt = 0;
@@ -2981,15 +3034,16 @@ function update(dt) {
         const wob = Math.sin(game.time * 3.1 + e.seed) * 58;
         e.x += (dx * e.speed * 0.85 - dy * wob) * sl * dt;
         e.y += (dy * e.speed * 0.85 + dx * wob) * sl * dt;
-      } else if (e.kind === 'spitter') {
-        // keeps its distance and lobs curse bolts
+      } else if (e.kind === 'spitter' || e.kind === 'yeti') {
+        // keeps its distance and lobs curse bolts (yetis heave slow frost boulders)
         if (d > 265) { e.x += dx * e.speed * sl * dt; e.y += dy * e.speed * sl * dt; }
         else if (d < 175) { e.x -= dx * e.speed * 0.8 * sl * dt; e.y -= dy * e.speed * 0.8 * sl * dt; }
         e.shootCd -= dt;
         if (e.shootCd <= 0 && d < 430 && e.spawnAge > 1) {
-          e.shootCd = 2.8;
+          e.shootCd = e.kind === 'yeti' ? 3.6 : 2.8;
           SFX.bolt();
-          bolts.push({ x: e.x, y: e.y - 6, vx: dx * 168, vy: dy * 168, life: 3.2 });
+          const bsp = e.kind === 'yeti' ? 120 : 168;
+          bolts.push({ x: e.x, y: e.y - 6, vx: dx * bsp, vy: dy * bsp, life: 3.2 });
         }
       } else if (e.boss && BOSS_DEFS[e.kind].style === 'slam') {
         // the slammer kings: lumber close, then smash the earth
@@ -3131,7 +3185,7 @@ function update(dt) {
     if (t) {
       const d = Math.hypot(t.x - g2.x, t.y - 14 - g2.y);
       if (d < t.magnet) {
-        const pull = 420 * (1 - d / t.magnet) + 120;
+        const pull = game.vacuumT > 0 ? 2600 : 420 * (1 - d / t.magnet) + 120;
         g2.vx += ((t.x - g2.x) / d) * pull * dt * 4;
         g2.vy += ((t.y - 14 - g2.y) / d) * pull * dt * 4;
       }
@@ -3140,7 +3194,7 @@ function update(dt) {
       if (d < 22) {
         gems.splice(i, 1);
         SFX.gem();
-        game.xp += g2.v * (1 + 0.2 * upLvl('wisdom'));
+        game.xp += g2.v * (1 + 0.2 * upLvl('wisdom')) * (1 + 0.08 * powerRank('scholar'));
         if (game.xp >= game.xpNext) { game.xp -= game.xpNext; levelUp(); }
         continue;
       }
@@ -3176,6 +3230,20 @@ function update(dt) {
       particles.push({ x: ch3.x, y: ch3.y - 10, vx: Math.cos(a) * sp2, vy: Math.sin(a) * sp2 - 70, life: 0.55, color: '#ffd98a', size: 3 });
     }
   }
+  // the Royal Summons: every two minutes, all treasure answers the call
+  if (powerRank('call') > 0) {
+    game.callT = (game.callT === undefined ? 120 : game.callT) - dt;
+    if (game.callT <= 0) {
+      game.callT = 120;
+      game.vacuumT = 1.6;
+      gameToast('🧲 THE ROYAL SUMMONS — treasure answers the call!');
+      SFX.unlock();
+      for (const p2 of players) {
+        if (p2.joined && p2.alive) particles.push({ x: p2.x, y: p2.y - 20, vx: 0, vy: 0, ring: true, life: 0.4, color: '#ffd98a', size: 70 });
+      }
+    }
+  }
+  if ((game.vacuumT || 0) > 0) game.vacuumT -= dt;
   // upgrade-powered wonders
   if (upLvl('barrier') > 0) {
     for (const p of players) {
@@ -3279,10 +3347,11 @@ function update(dt) {
     game.nextBossT += 240;
     spawnBoss();
   }
-  // spawner
+  // spawner — every realm has its own army size
+  const MB = MAP_SPAWN[MAPS[game.mapPick].key] || [1, 220];
   game.spawnTimer -= dt;
-  const interval = Math.max(0.17, (1.55 - game.time * 0.022) * (1 - game.mapPick * 0.02));
-  if (game.spawnTimer <= 0 && enemies.length < 250) {
+  const interval = Math.max(0.17, (1.55 - game.time * 0.022) * (1 - game.mapPick * 0.02)) / MB[0];
+  if (game.spawnTimer <= 0 && enemies.length < MB[1]) {
     game.spawnTimer = interval;
     spawnEnemy();
     if (game.time > 45 && Math.random() < 0.55) spawnEnemy();
@@ -3563,6 +3632,7 @@ const GLOWS = {
   reaper: makeGlow('244, 63, 94', 72),
   titan: makeGlow('148, 163, 184', 96), wraith: makeGlow('125, 211, 252', 96),
   gummy: makeGlow('244, 114, 182', 96), concur: makeGlow('52, 211, 153', 96),
+  yeti: makeGlow('190, 220, 235', 72), magmite: makeGlow('251, 110, 30', 52),
   gemG: makeGlow('74, 222, 128', 40), gemP: makeGlow('240, 171, 252', 40),
 };
 const easeOutQ = f => 1 - (1 - f) * (1 - f);
@@ -3643,6 +3713,8 @@ function drawEnemy(e, t) {
     wraith:   { body: '#233754', hi: '#4a6d9c', rim: '#131f30', eye: '#bfe9ff' },
     gummy:    { body: '#8a2458', hi: '#e0568f', rim: '#521434', eye: '#ffe1ee' },
     concur:   { body: '#0b2e26', hi: '#177a5c', rim: '#051a15', eye: '#7CFCCB' },
+    yeti:     { body: '#c9d9e2', hi: '#f0f7fa', rim: '#8fa8b5', eye: '#38bdf8' },
+    magmite:  { body: '#3a1c10', hi: '#7a2e12', rim: '#1f0e08', eye: '#fde047' },
   }[e.kind];
 
   ctx.save();
@@ -3691,7 +3763,7 @@ function drawEnemy(e, t) {
   // every kind has its own silhouette
   ctx.fillStyle = bg;
   ctx.beginPath();
-  if (e.kind === 'brute' || e.kind === 'shellback') {
+  if (e.kind === 'brute' || e.kind === 'shellback' || e.kind === 'yeti') {
     ctx.moveTo(-e.r, e.r * 0.55);
     ctx.quadraticCurveTo(-e.r * 1.1, -e.r * 0.9, 0, -e.r);
     ctx.quadraticCurveTo(e.r * 1.1, -e.r * 0.9, e.r, e.r * 0.55);
@@ -3782,6 +3854,38 @@ function drawEnemy(e, t) {
     ctx.beginPath();
     ctx.arc(0, e.r * 0.08, e.r * 0.32 + Math.sin(t * 6 + e.seed) * 1.4, 0, Math.PI * 2);
     ctx.fill();
+  }
+  if (e.kind === 'yeti') {
+    // shaggy frost fur + icicle brows
+    ctx.strokeStyle = 'rgba(240, 247, 250, 0.8)';
+    ctx.lineWidth = 2;
+    for (let k = 0; k < 6; k++) {
+      const fx2 = (k / 5 - 0.5) * e.r * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(fx2, e.r * 0.5);
+      ctx.lineTo(fx2 + Math.sin(t * 3 + k) * 2, e.r * 0.85);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#bae6fd';
+    for (const s2 of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * e.r * 0.5, -e.r * 0.5);
+      ctx.lineTo(s2 * e.r * 0.62, -e.r * 0.1);
+      ctx.lineTo(s2 * e.r * 0.34, -e.r * 0.35);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  if (e.kind === 'magmite') {
+    // molten cracks glowing through the crust
+    ctx.strokeStyle = `rgba(253, 224, 71, ${0.55 + 0.35 * Math.sin(t * 7 + e.seed)})`;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(-e.r * 0.5, -e.r * 0.3);
+    ctx.lineTo(-e.r * 0.1, 0);
+    ctx.lineTo(-e.r * 0.4, e.r * 0.4);
+    ctx.moveTo(e.r * 0.3, -e.r * 0.5);
+    ctx.lineTo(e.r * 0.15, e.r * 0.1);
+    ctx.stroke();
   }
   if (e.kind === 'brute') {
     // an ogre needs tusks
@@ -3947,7 +4051,7 @@ function drawEnemy(e, t) {
 
   ctx.restore();
 
-  if (['brute', 'golem', 'splitter', 'charger', 'shellback', 'warlock', 'reaper'].includes(e.kind) && e.hp < e.maxHp) {
+  if (['brute', 'golem', 'splitter', 'charger', 'shellback', 'warlock', 'reaper', 'yeti'].includes(e.kind) && e.hp < e.maxHp) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(e.x - 18, e.y + bob - e.r - 13, 36, 6);
     ctx.fillStyle = '#facc15';
@@ -4284,7 +4388,8 @@ function drawHeroImg(key, cx, feetY, hgt, flip, alpha) {
 // automatically replaces the drawn emblem everywhere it appears
 const ICON_IMG = {};
 for (const k of ['sword', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave', 'coin', 'nova', 'dagger', 'gust', 'thorn', 'frost', 'clover', 'phoenix', 'goldrush',
-                 'axe', 'hammer', 'bow', 'flail', 'trident', 'icestaff', 'whip', 'boomer', 'blunder', 'scepter', 'hammer2']) {
+                 'axe', 'hammer', 'bow', 'flail', 'trident', 'icestaff', 'whip', 'boomer', 'blunder', 'scepter', 'hammer2',
+                 'wisdom', 'slayer', 'fury', 'prism', 'stormray', 'dragonray', 'petcandy', 'petbook', 'petmagic']) {
   const im = new Image();
   im.src = 'icons/' + k + '.png';
   im.onload = () => { ICON_IMG[k] = im; };
@@ -5233,7 +5338,9 @@ function renderArmory(t) {
   drawScreenTitle('UPGRADES', 64);
   cardRects = [];
   const nItems = POWERUPS.length + PETS.length;
-  const cols = 3, cw = 168, chh = 112, gap = 12;
+  const cols = nItems > 9 ? 4 : 3, cw = nItems > 9 ? 160 : 168, gap = 12;
+  const aRows = Math.ceil(nItems / cols);
+  const chh = aRows >= 4 ? 96 : 112;
   const gx0 = 42, gy0 = 96;
   for (let i = 0; i < nItems; i++) {
     const it = armoryItem(i);
@@ -5260,7 +5367,9 @@ function renderArmory(t) {
     // emblem
     if (it.pet) {
       if (it.rank === 0) ctx.globalAlpha = 0.55;
-      drawPet({ def: it.pet, seed: i * 9, x: x + cw / 2, y: y + 34 }, t);
+      const pk = 'pet' + it.pet.proj;
+      if (ICON_IMG[pk]) drawUpgradeIcon(pk, x + cw / 2, y + 38, 0.85, t);
+      else drawPet({ def: it.pet, seed: i * 9, x: x + cw / 2, y: y + 34 }, t);
       ctx.globalAlpha = 1;
       if (it.rank === 0) drawLockBadge(x + cw - 16, y + 16);
     } else {
@@ -5288,10 +5397,10 @@ function renderArmory(t) {
   ctx.textAlign = 'center';
   ctx.font = '11px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText('Top: forged blessings   ·   Bottom row: royal pets who fight beside you', gx0 + (cols * cw + 2 * gap) / 2, gy0 + 3 * (chh + gap) + 14);
+  ctx.fillText('Top: forged blessings   ·   Bottom row: royal pets who fight beside you', gx0 + (cols * cw + 2 * gap) / 2, gy0 + aRows * (chh + gap) + 6);
 
   // BACK — big, obvious, clickable
-  const bkY = gy0 + 3 * (chh + gap) + 30;
+  const bkY = gy0 + aRows * (chh + gap) + 18;
   cardRects.push({ x: gx0 + 130, y: bkY, w: 260, h: 42, idx: -1 });
   roundedRect(gx0 + 130, bkY, 260, 42, 9);
   ctx.fillStyle = 'rgba(14, 13, 16, 0.92)';
@@ -5317,12 +5426,17 @@ function renderArmory(t) {
   ctx.beginPath(); ctx.moveTo(sx0 + 18, 144); ctx.lineTo(sx0 + sw0 - 18, 144); ctx.stroke();
   // big emblem
   if (it.pet) {
-    ctx.save();
-    ctx.translate(scx, 218);
-    ctx.scale(2.4, 2.4);
-    ctx.translate(-scx, -218);
-    drawPet({ def: it.pet, seed: 3, x: scx, y: 214 }, t);
-    ctx.restore();
+    const pk2 = 'pet' + it.pet.proj;
+    if (ICON_IMG[pk2]) {
+      drawUpgradeIcon(pk2, scx, 214, 2.1, t);
+    } else {
+      ctx.save();
+      ctx.translate(scx, 218);
+      ctx.scale(2.4, 2.4);
+      ctx.translate(-scx, -218);
+      drawPet({ def: it.pet, seed: 3, x: scx, y: 214 }, t);
+      ctx.restore();
+    }
   } else {
     ctx.beginPath();
     ctx.arc(scx, 212, 46, 0, Math.PI * 2);
@@ -5610,7 +5724,7 @@ function renderLobby(t) {
       : '🌐 Room ' + NET.code + ' open — online friends can still join mid-battle', CX, 428);
   }
   drawActionBtn(CX - 96, 448, 192, 46, '⚔ START BATTLE', 'green', -5);
-  drawHintsBar([['A / SPACE', true], ['START THE BATTLE', false], ['·', false], ['EXTRA PADS PRESS A', true], ['JOIN', false], ['·', false], ['Y / T', true], ['UPGRADES', false], ['·', false], ['B', true], ['BACK', false]]);
+  drawHintsBar([['🎮 START / SPACE', true], ['BEGIN', false], ['·', false], ['A', true], ['JOIN / CHANGE KNIGHT', false], ['·', false], ['Y / T', true], ['UPGRADES', false], ['·', false], ['B', true], ['BACK', false]]);
   drawToasts(t);
 }
 
@@ -6673,11 +6787,11 @@ function render(t) {
       ctx.textAlign = 'left';
       ctx.font = '15px Inter, sans-serif';
       ctx.fillStyle = UI.dim;
-      ctx.fillText(k2, 300, vy);
+      ctx.fillText(k2, CX - 180, vy);
       ctx.textAlign = 'right';
       ctx.font = '700 17px Cinzel, Georgia, serif';
       ctx.fillStyle = UI.goldPale;
-      ctx.fillText(v2, 660, vy);
+      ctx.fillText(v2, CX + 180, vy);
       vy += 34;
     }
     if (game.mapPick < MAPS.length - 1) {
@@ -6733,11 +6847,11 @@ function render(t) {
       ctx.textAlign = 'left';
       ctx.font = '15px Inter, sans-serif';
       ctx.fillStyle = UI.dim;
-      ctx.fillText(k2, 300, ry);
+      ctx.fillText(k2, CX - 180, ry);
       ctx.textAlign = 'right';
       ctx.font = '700 17px Cinzel, Georgia, serif';
       ctx.fillStyle = UI.goldPale;
-      ctx.fillText(v2, 660, ry);
+      ctx.fillText(v2, CX + 180, ry);
       ry += 36;
     }
     if (game.netGuest) {
@@ -8175,21 +8289,6 @@ function setPadFocus(el) {
   if (padFocusEl && padFocusEl !== el) padFocusEl.classList.remove('padFocus');
   padFocusEl = el || null;
   if (padFocusEl) padFocusEl.classList.add('padFocus');
-  let pc = document.getElementById('padCursor');
-  if (!pc) {
-    pc = document.createElement('div');
-    pc.id = 'padCursor';
-    pc.textContent = '▶';
-    document.body.appendChild(pc);
-  }
-  if (padFocusEl) {
-    const r = padFocusEl.getBoundingClientRect();
-    pc.style.left = (r.left - 32) + 'px';
-    pc.style.top = (r.top + r.height / 2 - 13) + 'px';
-    pc.style.display = 'block';
-  } else {
-    pc.style.display = 'none';
-  }
 }
 function navCandidates(root, sel) {
   return [...root.querySelectorAll(sel)].filter(el => el.offsetParent !== null);
@@ -8290,13 +8389,23 @@ function pollPads() {
       continue;
     }
     if (game.phase === 'lobby') {
-      if (i === 0) {
-        if (tap('a') || tap('start')) startBattle();
-        else if (tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; }
-        else if (tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; }
-      } else if (players[i] && !players[i].joined && !players[i].remote && tap('a') && !game.joinAnim) {
-        game.joinAnim = { slot: i, at: performance.now(), via: 'pad' };
-        SFX.join();
+      // START begins the battle — A only ever joins or re-picks, so no accidental launches
+      if (tap('start')) { startBattle(); continue; }
+      if (i === 0 && tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; continue; }
+      if (i === 0 && tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; continue; }
+      if (players[i] && !players[i].remote && tap('a') && !game.joinAnim) {
+        if (!players[i].joined && i !== 0) {
+          game.joinAnim = { slot: i, at: performance.now(), via: 'pad' };
+          SFX.join();
+        } else {
+          // already in the party (or P1) — A re-opens YOUR picker to change knights
+          game.fromLobby = true;
+          game.joinSlot = i;
+          game.joinVia = 'pad';
+          game.phase = 'select2';
+          game.cursor = 0;
+          SFX.pick();
+        }
       }
       continue;
     }
