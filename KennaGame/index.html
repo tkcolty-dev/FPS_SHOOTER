@@ -3896,7 +3896,7 @@ function render(t) {
   const joined = players.filter(p => p.joined);
   let hy = 12;
   for (const p of joined) {
-    const pw = Math.max(180, 76 + p.maxHp * 21);
+    const pw = Math.max(180, 76 + Math.min(p.maxHp, 12) * 21);
     ornate(10, hy, pw, 46, 12);
     ctx.save();
     ctx.beginPath();
@@ -3923,7 +3923,15 @@ function render(t) {
     ctx.font = '700 12px Cinzel, Georgia, serif';
     ctx.fillStyle = p.alive ? UI.goldPale : UI.dim;
     ctx.fillText(p.name, 60, hy + 19);
-    for (let i = 0; i < p.maxHp; i++) drawHeart(66 + i * 21, hy + 33, 9, i < p.hp);
+    if (p.maxHp <= 12) {
+      for (let i = 0; i < p.maxHp; i++) drawHeart(66 + i * 21, hy + 33, 9, i < p.hp);
+    } else {
+      // big-hearted knights get a compact counter instead of a mile of hearts
+      drawHeart(66, hy + 33, 9, p.hp > 0);
+      ctx.font = '700 13px Inter, sans-serif';
+      ctx.fillStyle = p.alive ? '#f0e2c3' : UI.dim;
+      ctx.fillText(p.hp + ' / ' + p.maxHp, 82, hy + 37);
+    }
     hy += 54;
   }
 
