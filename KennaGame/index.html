@@ -948,7 +948,8 @@
         <p>Now the curse pours out of the dark in endless waves of spirits, and only Kenna stands between Concur and the crown. Realm by realm she fights &mdash; the meadow, the courtyard, the great hall &mdash; gathering gold, waking frozen knights, and marching ever closer to the Throne Room.</p>
         <p style="color:#ffd98a"><b>Step 1:</b> Concur your fears. <b>Step 2:</b> Free the knights. <b>Step 3:</b> Rule the kingdom.</p>
       </div>
-      <div class="row" style="justify-content:center; margin-top:2vh">
+      <div class="row" style="justify-content:center; margin-top:2vh; gap:1vw">
+        <button class="rowBtn" id="btnReplayTale">&#9654; Watch the cinematic</button>
         <button class="rowBtn" data-close>Back</button>
       </div>
     </div>
@@ -1541,6 +1542,13 @@ window.addEventListener('keydown', e => {
   }
   if (menuOpen) return;
 
+  // the story holds the floor — any key turns the page
+  if (game.phase === 'intro' || game.phase === 'ending') {
+    if (['Space', 'Enter'].includes(e.code)) advanceStory();
+    else if (e.code === 'Escape') skipStory();
+    return;
+  }
+
   // hero grid / armory / map selection screens
   if (game.phase === 'select' || game.phase === 'select2') {
     const cols = 5, n = ROSTER.length;
@@ -1629,6 +1637,7 @@ canvas.addEventListener('mousemove', e => {
 });
 canvas.addEventListener('click', () => {
   if (menuOpen) return;
+  if (game.phase === 'intro' || game.phase === 'ending') { advanceStory(); return; }
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
       if (game.phase === 'lobby') {
@@ -1814,6 +1823,7 @@ function initRun() {
   game.burstTimer = 40; game.shake = 0;
   game.stompT = 0; game.crownT = 0; game.mendK = 0;
   game.arsenal = [];
+  game.endingAt = 0;
   for (const p of players) p.arsT = {};
   enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = [];
   runPets = [];
@@ -2250,6 +2260,8 @@ function killEnemy(i) {
     if (e.kind === 'concur') {
       gameToast('✨ The sorcerer bows to the TRUE ruler of the kingdom!');
       kdStats.concurDown = true;
+      // on his own throne map, his fall ends the story
+      if (game.mapPick === 7 && !game.endless && !game.netGuest) game.endingAt = game.time + 2.2;
     }
     saveStats();
     checkAchievements();
@@ -2473,6 +2485,13 @@ function update(dt) {
   }
   if (game.phase !== 'run' || game.over || game.victory || game.choices) return;
   game.time += dt;
+  // Concur has fallen in the Throne Room — the story takes over after the coins settle
+  if (game.endingAt && game.time >= game.endingAt && !game.over && !game.victory) {
+    game.endingAt = 0;
+    game.phase = 'ending';
+    game.introSlide = 0;
+    game.introAt = performance.now();
+  }
   const goalSec = MAPS[game.mapPick].goal * 60;
   if (!game.endless && game.time >= goalSec) {
     game.victory = true;
@@ -5038,6 +5057,139 @@ function renderArmory(t) {
   drawToasts(t);
 }
 
+// ---------- the story: how it began, and how it ends ----------
+const STORY_INTRO = [
+  { title: 'THE LAST KNIGHT', art: 'castle',
+    lines: ['Long ago, in a kingdom bright and brave,', 'the knights kept every shadow from the door.'] },
+  { title: 'THE CURSE', art: 'concur',
+    lines: ['Then the sorcerer CONCUR spoke one terrible word —', 'and every knight turned to cold grey stone.'] },
+  { title: 'EVERY KNIGHT… BUT ONE', art: 'kenna',
+    lines: ['KENNA KUHN — the youngest squire in the castle.', '"Too small," he thought. "Too new."', 'His mistake.'] },
+  { title: 'THE QUEST', art: 'scroll',
+    lines: ['Step 1: Concur your fears.', 'Step 2: Free the knights.', 'Step 3: Rule the kingdom.'] },
+];
+const STORY_END = [
+  { title: 'THE CROWN SHATTERS', art: 'knights',
+    lines: ['All across the realm, stone cracks and falls away —', 'and the knights breathe again. Every single one.'] },
+  { title: 'THE KINGDOM IS FREE', art: 'kenna',
+    lines: ['And every knight in it knows', 'exactly who saved them.'] },
+  { title: 'ALL HAIL QUEEN KENNA', art: 'queen',
+    lines: ['The last knight.', 'The one who never gave up.'] },
+  { title: '🎂 HAPPY BIRTHDAY KENNA!', art: 'party',
+    lines: ['Created by Kenna Kuhn', 'Remastered with love, for her birthday.'] },
+];
+function storySlides() { return game.phase === 'ending' ? STORY_END : STORY_INTRO; }
+function advanceStory() {
+  SFX.pick();
+  game.introSlide = (game.introSlide || 0) + 1;
+  game.introAt = performance.now();
+  if (game.introSlide >= storySlides().length) finishStory();
+}
+function skipStory() { finishStory(); }
+function finishStory() {
+  if (game.phase === 'ending') {
+    // the tale rolls straight into the victory horn
+    game.phase = 'run';
+    game.time = MAPS[game.mapPick].goal * 60 + 0.05;
+  } else {
+    kdStats.introSeen = true;
+    saveStats();
+    game.phase = 'select';
+    game.cursor = 0;
+  }
+  game.introSlide = 0;
+}
+function storyFireworks(t, big) {
+  for (let k = 0; k < (big ? 7 : 4); k++) {
+    const cyc = (t * 0.42 + k * 0.31) % 1;
+    const fx = 140 + ((k * 227.7) % 680);
+    const fy = 90 + ((k * 149.3) % 260);
+    const rad = cyc * 85;
+    const col = ['#ffd98a', '#f472b6', '#7dd3fc', '#8fd460', '#f0abfc', '#fb923c', '#fde047'][k % 7];
+    ctx.globalAlpha = Math.max(0, 1 - cyc) * 0.9;
+    ctx.fillStyle = col;
+    for (let d2 = 0; d2 < 10; d2++) {
+      const a = (d2 / 10) * Math.PI * 2 + k;
+      ctx.beginPath();
+      ctx.arc(fx + Math.cos(a) * rad, fy + Math.sin(a) * rad * 0.85, 2.6 - cyc * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+function renderStory(t) {
+  drawScreenBg(t);
+  ctx.fillStyle = 'rgba(6, 5, 10, 0.55)';
+  ctx.fillRect(0, 0, 960, 640);
+  const sl = storySlides()[Math.min(game.introSlide || 0, storySlides().length - 1)];
+  const age = (performance.now() - (game.introAt || 0)) / 1000;
+  const aIn = f => Math.max(0, Math.min(1, (age - f) / 0.5));
+  // the scene art
+  ctx.save();
+  ctx.globalAlpha = aIn(0.1);
+  if (sl.art === 'concur') {
+    drawEnemy({ kind: 'concur', x: 480, y: 330, r: 58, hp: 1, maxHp: 1, boss: true, spawnAge: 5, seed: 3,
+      flash: 0, slowT: 0, kx: 0, ky: 0, chargeState: 'stalk', aimX: 0, aimY: 0, elite: false }, t);
+  } else if (sl.art === 'kenna') {
+    drawHeroImg('kenna', 480, 396, 200);
+  } else if (sl.art === 'queen') {
+    drawHeroImg('queen', 480, 400, 215);
+    storyFireworks(t, false);
+  } else if (sl.art === 'knights') {
+    const row = ['bramble', 'ember', 'whisper', 'gale', 'oakheart', 'rose'];
+    row.forEach((k, i2) => drawHeroImg(k, 480 + (i2 - (row.length - 1) / 2) * 105, 386, 128));
+  } else if (sl.art === 'party') {
+    storyFireworks(t, true);
+    const row = ['bramble', 'ember', 'queen', 'whisper', 'gale'];
+    row.forEach((k, i2) => drawHeroImg(k, 480 + (i2 - 2) * 118, 400, k === 'queen' ? 190 : 130));
+  } else if (sl.art === 'scroll') {
+    // the royal parchment, straight off the back of her game case
+    roundedRect(300, 220, 360, 210, 8);
+    ctx.fillStyle = '#e8d9b0';
+    ctx.fill();
+    ctx.strokeStyle = '#a98d55';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.fillStyle = '#c9b988';
+    ctx.fillRect(300, 220, 360, 14);
+    ctx.fillRect(300, 416, 360, 14);
+    ctx.fillStyle = '#a33d3d';
+    ctx.beginPath(); ctx.arc(614, 400, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7c2b2b';
+    ctx.font = '700 12px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('K', 614, 404);
+  }
+  ctx.restore();
+  // the words
+  ctx.textAlign = 'center';
+  ctx.globalAlpha = aIn(0);
+  ctx.font = '700 30px Cinzel, Georgia, serif';
+  const tg = ctx.createLinearGradient(0, 120, 0, 155);
+  tg.addColorStop(0, '#ffe9b3');
+  tg.addColorStop(1, '#e8b64c');
+  ctx.fillStyle = tg;
+  ctx.fillText('✦  ' + sl.title + '  ✦', 480, 150);
+  ctx.globalAlpha = 1;
+  const baseY = sl.art === 'scroll' ? 268 : 470;
+  sl.lines.forEach((ln, i2) => {
+    ctx.globalAlpha = aIn(0.35 + i2 * 0.35);
+    ctx.font = sl.art === 'scroll' ? '600 17px Georgia, serif' : '16px Inter, sans-serif';
+    ctx.fillStyle = sl.art === 'scroll' ? '#4a3a1d' : '#f4f3ef';
+    ctx.fillText(ln, 480, baseY + i2 * (sl.art === 'scroll' ? 40 : 28));
+    ctx.globalAlpha = 1;
+  });
+  // slide dots
+  storySlides().forEach((s2, i2) => {
+    ctx.fillStyle = i2 === game.introSlide ? UI.goldLight : 'rgba(255, 255, 255, 0.22)';
+    ctx.beginPath();
+    ctx.arc(480 + (i2 - (storySlides().length - 1) / 2) * 22, 566, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  drawHintsBar([['A / SPACE / CLICK', true], ['CONTINUE', false], ['·', false], ['ESC / B', true], ['SKIP', false]]);
+  drawToasts(t);
+}
+
 function renderLobby(t) {
   drawScreenBg(t);
   drawScreenTitle('THE WAR COUNCIL', 84);
@@ -5206,6 +5358,7 @@ function render(t) {
   if (game.phase === 'select2') { renderSelect(t, true); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'armory') { renderArmory(t); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'map') { renderMapSelect(t); ctx.restore(); frameShadow(); return; }
+  if (game.phase === 'intro' || game.phase === 'ending') { renderStory(t); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'lobby') { renderLobby(t); ctx.restore(); frameShadow(); return; }
   if (game.netGuest && (game.netWait || !NET.snap)) {
     drawScreenBg(t);
@@ -6863,6 +7016,13 @@ document.getElementById('btnPatch').addEventListener('click', e => {
   openPanel(UC_SLIDES[ucIndex].panel || 'patch');
 });
 document.getElementById('icGear').addEventListener('click', () => openPanel('settings'));
+document.getElementById('btnReplayTale').addEventListener('click', () => {
+  closePanels();
+  hideMenu();
+  game.phase = 'intro';
+  game.introSlide = 0;
+  game.introAt = performance.now();
+});
 
 // ---- menu toasts + extra cards ----
 const menuToastEl = document.getElementById('menuToast');
@@ -6933,6 +7093,12 @@ btnPlay.addEventListener('click', () => {
   if (game.phase === 'armory') { game.phase = 'select'; game.cursor = 0; }
   if (game.over || game.victory) {
     game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false;
+  }
+  // the very first PLAY tells the tale
+  if (!kdStats.introSeen && game.phase === 'select') {
+    game.phase = 'intro';
+    game.introSlide = 0;
+    game.introAt = performance.now();
   }
   hideMenu();
 });
