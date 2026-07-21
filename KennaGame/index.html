@@ -956,6 +956,25 @@
         <button class="rowBtn" data-close>Back</button>
       </div>
     </div>
+    <div class="panel" id="onlinePanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>Battle Together</h2>
+      <div class="patchList">
+        <p style="text-align:center">Everyone on the same wifi can fight in one kingdom.<br>
+        <span style="opacity:0.65; font-size: 0.85em">The game must be running via <b>node server.js</b></span></p>
+      </div>
+      <div class="row" style="justify-content:center">
+        <button class="rowBtn" id="netHostBtn">&#127984; Host a Kingdom</button>
+      </div>
+      <div class="row" style="justify-content:center; gap: 1vw">
+        <input id="netCodeInput" maxlength="4" placeholder="CODE" style="width: 9ch; text-transform: uppercase; text-align: center; font-family: 'Cinzel', serif; font-size: 2.4vh; background: rgba(255,255,255,0.07); border: 1px solid rgba(232,182,76,0.4); border-radius: 0.8vh; color: #ffd98a; padding: 0.8vh;">
+        <button class="rowBtn" id="netJoinBtn">&#9876; Join</button>
+      </div>
+      <div class="patchList"><p id="netStatus" style="text-align:center; color:#8fd460"></p></div>
+      <div class="row" style="justify-content:center; margin-top:1vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
     <div class="panel credits-center" id="creditsPanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
       <h2>Credits</h2>
@@ -1461,8 +1480,10 @@ window.addEventListener('keydown', e => {
     if (idx !== undefined && game.choices[idx]) pickUpgrade(idx);
     return;
   }
+  // online guests don't restart or recruit P2 — the host commands the battle
+  if (game.netGuest && ['KeyR', 'KeyJ'].includes(e.code)) return;
   // after a victory, keep fighting forever — like the vampire hunters of old
-  if (['Space', 'Enter'].includes(e.code) && game.victory) {
+  if (['Space', 'Enter'].includes(e.code) && game.victory && !game.netGuest) {
     game.victory = false;
     game.endless = true;
     gameToast('∞ ENDLESS — the curse never stops. How long can you stand?');
@@ -1532,6 +1553,12 @@ function confirmSelection() {
       return;
     }
     game.heroPick = rk.key;
+    if (NET.role === 'guest') {
+      // guests join the host's battle instead of picking a map
+      netSend({ t: 'hello', heroKey: rk.key, name: rk.name });
+      startGuestRun(rk.key);
+      return;
+    }
     game.phase = 'map';
     game.cursor = 0;
   } else if (game.phase === 'map') {
@@ -1590,6 +1617,7 @@ function buyPower(idx) {
 function pickUpgrade(idx) {
   const c = game.choices[idx];
   if (!c) return;
+  if (game.netGuest) { netSend({ t: 'pick', i: idx }); SFX.pick(); return; }
   SFX.pick();
   c.apply();
   game.up[c.key] = upLvl(c.key) + 1;
@@ -1653,6 +1681,18 @@ function initRun() {
   players[0].hp = players[0].maxHp;
   players[1].joined = false;
   players[1].alive = false;
+  // online friends stay in the party across restarts
+  for (const p of players) {
+    if (p.remote) {
+      applyHero(p, p.heroKey);
+      p.joined = true;
+      p.alive = true;
+      p.hp = p.maxHp;
+      p.x = WORLD_W / 2 + 60;
+      p.y = WORLD_H / 2 + 40;
+      p.netX = p.x; p.netY = p.y;
+    }
+  }
   game.runGold = 0;
   game.payout = 0;
   game.paidOut = false;
@@ -1662,6 +1702,7 @@ function initRun() {
 
 function gameToast(text) {
   toasts.push({ text, age: 0 });
+  if (NET.role === 'host') netSend({ t: 'toast', m: text });
 }
 
 // ---------- upgrades ----------
@@ -1916,6 +1957,8 @@ function fireWeapon(p) {
 
 // ---------- update ----------
 function update(dt) {
+  // guests don't simulate — they move their own knight and follow the host's world
+  if (game.netGuest) { guestTick(dt); return; }
   // toasts tick in every phase so messages show on selection screens too
   for (let i = toasts.length - 1; i >= 0; i--) {
     toasts[i].age += dt;
@@ -1956,6 +1999,16 @@ function update(dt) {
       continue;
     }
 
+    if (p.remote) {
+      // an online friend steers this knight
+      p.moving = !!p.netMv;
+      if (p.netDir) p.dir = p.netDir;
+      if (p.netX !== undefined) {
+        p.x += (p.netX - p.x) * Math.min(1, 12 * dt);
+        p.y += (p.netY - p.y) * Math.min(1, 12 * dt);
+      }
+      if (p.moving) p.animTime += dt; else p.animTime = 0;
+    } else {
     let vx = 0, vy = 0;
     if (keys.has(p.keymap.left)) vx -= 1;
     if (keys.has(p.keymap.right)) vx += 1;
@@ -1983,6 +2036,7 @@ function update(dt) {
       p.x = pres.x; p.y = pres.y;
       p.animTime += dt;
     } else p.animTime = 0;
+    }
 
     p.attackTimer -= dt;
     if (p.attackTimer <= 0 && fireWeapon(p)) p.attackTimer = p.attackEvery;
@@ -3587,6 +3641,18 @@ function render(t) {
   if (game.phase === 'select2') { renderSelect(t, true); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'armory') { renderArmory(t); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'map') { renderMapSelect(t); ctx.restore(); frameShadow(); return; }
+  if (game.netGuest && (game.netWait || !NET.snap)) {
+    drawScreenBg(t);
+    drawScreenTitle('THE KINGDOM GATHERS', 280);
+    ctx.textAlign = 'center';
+    ctx.font = '15px Inter, sans-serif';
+    ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.25 * Math.sin(t * 3)})`;
+    ctx.fillText('Waiting for the host to ride into battle…', 480, 330);
+    drawToasts(t);
+    ctx.restore();
+    frameShadow();
+    return;
+  }
 
   const M = MAPS[game.mapPick];
   const shakeOn = settings.shake !== false && game.shake > 0;
@@ -4058,7 +4124,7 @@ function render(t) {
   ctx.textAlign = 'right';
   ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(kdMeta.gold), 938, 83);
+  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 938, 83);
 
   if (!players[1].joined) {
     ctx.font = '600 13px Inter, sans-serif';
@@ -4280,6 +4346,7 @@ let menuOpen = true;
 let gameStarted = false;
 let last = performance.now();
 let fpsSmooth = 60;
+let netTickT = 0;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -4288,6 +4355,12 @@ function loop(now) {
     elapsed += dt;
     update(dt);
     render(elapsed);
+  } else if (game.netGuest) {
+    guestTick(dt);   // keep reporting position even while the guest peeks at the menu
+  }
+  if (NET.role === 'host') {
+    netTickT -= dt;
+    if (netTickT <= 0) { netTickT = 0.1; netBroadcast(); }
   }
   requestAnimationFrame(loop);
 }
@@ -4335,8 +4408,10 @@ function updateHomeStats() {
     '<button class="hsCard" id="hsGold" title="Royal Armory — spend your gold">🪙 <b>' + (meta.gold || 0) + '</b>&nbsp;gold</button>' +
     '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / 24</b>&nbsp;knights</div>' +
     '<div class="hsCard">⏳ <b>' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm</b></div>' +
+    '<button class="hsCard" id="hsOnline">🌐 ONLINE</button>' +
     '<button class="hsCard" id="hsSettings">⚙ SETTINGS</button>';
   homeStats.querySelector('#hsSettings').addEventListener('click', () => openPanel('settings'));
+  homeStats.querySelector('#hsOnline').addEventListener('click', () => openPanel('online'));
   homeStats.querySelector('#hsGold').addEventListener('click', () => {
     hideMenu();
     game.phase = 'armory';
@@ -5082,6 +5157,7 @@ panels.roadmap = document.getElementById('roadmapPanel');
 panels.mail = document.getElementById('mailPanel');
 panels.bell = document.getElementById('bellPanel');
 panels.quest = document.getElementById('questPanel');
+panels.online = document.getElementById('onlinePanel');
 
 function mapsCleared() { return (kdMeta.mapsDone || []).filter(Boolean).length; }
 function armoryRanks() { return Object.values(kdMeta.power || {}).reduce((s, r) => s + r, 0); }
@@ -5248,6 +5324,198 @@ const statCardEls = document.querySelectorAll('.statCard');
 statCardEls[0].addEventListener('click', () => { fillAchPanel(); openPanel('ach'); });
 statCardEls[1].addEventListener('click', () => { fillLbPanel(); openPanel('lb'); });
 statCardEls[2].addEventListener('click', () => { fillStatsPanel(); openPanel('stats'); });
+
+// ---- online multiplayer (LAN, host-authoritative) ----
+const NET = { ws: null, role: null, code: '', id: 0, snap: null, sendT: 0, self: null };
+function setNetStatus(s) { document.getElementById('netStatus').textContent = s; }
+function netSend(o) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.stringify(o)); }
+function netConnect(then) {
+  if (NET.ws && NET.ws.readyState === 1) { then(); return; }
+  let ws;
+  try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host); }
+  catch { setNetStatus('⚠ Could not reach the server.'); return; }
+  ws.onopen = () => { NET.ws = ws; then(); };
+  ws.onerror = () => setNetStatus('⚠ No server found — start the game with:  node server.js');
+  ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch { return; } netMsg(m); };
+  ws.onclose = () => { if (NET.role) gameToast('🌐 Connection lost.'); };
+}
+function spawnRemote(id, heroKey, name) {
+  let p = players.find(q => q.remote && q.gid === id);
+  if (!p) {
+    p = makePlayer({ left: '', right: '', up: '', down: '' }, true);
+    p.remote = true;
+    p.gid = id;
+    players.push(p);
+  }
+  applyHero(p, kdMeta.unlocked.includes(heroKey) || ROSTER.some(r => r.key === heroKey) ? heroKey : 'kenna');
+  applyRunUpgradesTo(p);
+  p.alive = true;
+  p.hp = p.maxHp;
+  p.x = players[0].x + 40 + Math.random() * 40;
+  p.y = players[0].y + 30;
+  p.netX = p.x; p.netY = p.y;
+  gameToast('🌐 ' + (name || p.name) + ' rides with you!');
+}
+function netMsg(m) {
+  if (m.t === 'room') {
+    NET.role = 'host';
+    NET.code = m.code;
+    setNetStatus('Your kingdom code: ' + m.code + ' — friends open http://' + m.ip + ':' + m.port + ' and JOIN. Then just play!');
+  } else if (m.t === 'err') {
+    setNetStatus('⚠ ' + m.m);
+  } else if (m.t === 'joined') {
+    NET.role = 'guest';
+    NET.id = m.id;
+    setNetStatus('Joined! Pick your knight…');
+    setTimeout(() => {
+      closePanels();
+      hideMenu();
+      game.phase = 'select';
+      game.cursor = 0;
+      gameToast('🌐 Choose your knight — the battle is shared!');
+    }, 600);
+  } else if (NET.role === 'host') {
+    if (m.t === 'hello') spawnRemote(m.from, m.heroKey, m.name);
+    else if (m.t === 'pos') {
+      const p = players.find(q => q.remote && q.gid === m.from);
+      if (p) { p.netX = m.x; p.netY = m.y; p.netDir = m.dir; p.netMv = !!m.mv; }
+    } else if (m.t === 'pick') {
+      if (game.choices) pickUpgrade(Math.max(0, Math.min(2, m.i)));
+    } else if (m.t === 'guest-') {
+      const i = players.findIndex(q => q.remote && q.gid === m.id);
+      if (i >= 0) { gameToast('🌐 ' + players[i].name + ' has left.'); players.splice(i, 1); }
+    }
+  } else if (NET.role === 'guest') {
+    if (m.t === 'snap') applySnap(m);
+    else if (m.t === 'toast') gameToast(m.m);
+    else if (m.t === 'hostgone') {
+      gameToast('🌐 The host closed the kingdom.');
+      setTimeout(() => location.reload(), 2200);
+    }
+  }
+}
+function netBroadcast() {
+  if (game.phase !== 'run') { netSend({ t: 'snap', ph: 'wait' }); return; }
+  netSend({
+    t: 'snap', ph: 'run',
+    time: Math.round(game.time * 10) / 10, level: game.level, xp: game.xp, xpNext: game.xpNext,
+    kills: game.kills, gold: kdMeta.gold, map: game.mapPick,
+    vic: game.victory ? 1 : 0, over: game.over ? 1 : 0, endless: game.endless ? 1 : 0,
+    pay: game.payout || 0, rg: game.runGold || 0,
+    up: game.up,
+    ch: game.choices ? game.choices.map(c => ({ name: c.name, desc: c.desc, icon: c.icon, key: c.key })) : 0,
+    pl: players.filter(p => p.joined).map(p =>
+      [p.gid || 0, p.heroKey, Math.round(p.x), Math.round(p.y), p.hp, p.maxHp, p.alive ? 1 : 0,
+       p.faceLeft ? 1 : 0, p.moving ? 1 : 0, Math.round((p.reviveProgress || 0) * 10) / 10, p.name]),
+    en: enemies.map(e => [e.kind, Math.round(e.x), Math.round(e.y), e.r, e.hp, e.maxHp,
+      Math.round(e.seed * 10) / 10, e.chargeState === 'aim' ? 1 : 0]),
+    gm: gems.map(g => [Math.round(g.x), Math.round(g.y), g.v]),
+    dr: drops.map(d => [Math.round(d.x), Math.round(d.y), d.kind === 'coin' ? 1 : 0]),
+    wv: waves.map(w => [Math.round(w.x), Math.round(w.y), Math.round(w.ang * 100) / 100, w.kind, w.sub || 0, Math.round(w.life * 100) / 100]),
+    sl: slashes.map(s => [Math.round(s.x), Math.round(s.y), Math.round(s.ang * 100) / 100, Math.round(s.age * 100) / 100, s.r]),
+    bo: bolts.map(b => [Math.round(b.x), Math.round(b.y)]),
+    pe: runPets.map(pe => [pe.def.proj, Math.round(pe.x), Math.round(pe.y), Math.round(pe.seed)]),
+  });
+}
+function applySnap(m) {
+  NET.snap = m;
+  if (m.ph !== 'run') { game.netWait = true; return; }
+  game.netWait = false;
+  if (game.mapPick !== m.map) { game.mapPick = m.map; genStructures(m.map); }
+  game.time = m.time; game.level = m.level; game.xp = m.xp; game.xpNext = m.xpNext;
+  game.kills = m.kills; game.netGold = m.gold;
+  game.victory = !!m.vic; game.over = !!m.over; game.endless = !!m.endless;
+  game.payout = m.pay || 0; game.runGold = m.rg || 0;
+  game.up = m.up || {};
+  game.choices = m.ch ? m.ch.map(c => ({ name: c.name, desc: c.desc, icon: c.icon, key: c.key, apply() {} })) : null;
+  const nowS = performance.now() / 1000;
+  players.length = 0;
+  for (const a of m.pl) {
+    const [gid, hk, x, y, hp, maxHp, alive, fl, mv, rv, name] = a;
+    if (gid === NET.id && NET.self) {
+      NET.self.hp = hp; NET.self.maxHp = maxHp; NET.self.alive = !!alive;
+      NET.self.reviveProgress = rv; NET.self.joined = true;
+      players.push(NET.self);
+    } else {
+      players.push({
+        joined: true, remoteView: true, heroKey: hk, name, x, y, hp, maxHp,
+        alive: !!alive, faceLeft: !!fl, moving: !!mv, reviveProgress: rv,
+        invuln: 0, orbCount: 0, dir: fl ? 'left' : 'right', animTime: nowS, keymap: {},
+      });
+    }
+  }
+  enemies = m.en.map(a => ({
+    kind: a[0], x: a[1], y: a[2], r: a[3], hp: a[4], maxHp: a[5], seed: a[6],
+    chargeState: a[7] ? 'aim' : 'stalk', spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
+  }));
+  gems = m.gm.map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
+  drops = m.dr.map(a => ({ x: a[0], y: a[1], kind: a[2] ? 'coin' : 'heart', v: 2 }));
+  waves = m.wv.map(a => ({ x: a[0], y: a[1], ang: a[2], kind: a[3], sub: a[4] || undefined, life: a[5], vx: 0, vy: 0, hit: new Set(), dmg: 0 }));
+  slashes = m.sl.map(a => ({ x: a[0], y: a[1], ang: a[2], age: a[3], r: a[4] }));
+  bolts = m.bo.map(a => ({ x: a[0], y: a[1], vx: 0, vy: 0, life: 1 }));
+  runPets = m.pe.map(a => ({ def: PETS.find(p => p.proj === a[0]) || PETS[0], rank: 1, x: a[1], y: a[2], seed: a[3], cd: 9 }));
+}
+function startGuestRun(heroKey) {
+  NET.self = makePlayer({ left: '', right: '', up: '', down: '' }, true);
+  applyHero(NET.self, heroKey);
+  NET.self.gid = NET.id;
+  NET.self.x = WORLD_W / 2;
+  NET.self.y = WORLD_H / 2;
+  game.netGuest = true;
+  game.netWait = true;
+  game.phase = 'run';
+  gameStarted = true;
+}
+// guest-side movement + camera each frame (no local simulation)
+function guestTick(dt) {
+  for (let i = toasts.length - 1; i >= 0; i--) {
+    toasts[i].age += dt;
+    if (toasts[i].age > 3) toasts.splice(i, 1);
+  }
+  const s = NET.self;
+  if (!s || !NET.snap || NET.snap.ph !== 'run') return;
+  if (s.alive && !game.victory && !game.over && !game.choices && !menuOpen) {
+    let vx = 0, vy = 0;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) vx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) vx += 1;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) vy -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) vy += 1;
+    s.moving = vx !== 0 || vy !== 0;
+    if (s.moving) {
+      if (vx < 0) s.dir = 'left';
+      else if (vx > 0) s.dir = 'right';
+      else s.dir = vy < 0 ? 'up' : 'down';
+      const len = Math.hypot(vx, vy);
+      s.x = Math.max(24, Math.min(WORLD_W - 24, s.x + (vx / len) * s.speed * dt));
+      s.y = Math.max(40, Math.min(WORLD_H - 10, s.y + (vy / len) * s.speed * dt));
+      const pr = pushOut(s.x, s.y, 15);
+      s.x = pr.x; s.y = pr.y;
+      s.animTime += dt;
+    } else s.animTime = 0;
+  } else s.moving = false;
+  NET.sendT -= dt;
+  if (NET.sendT <= 0) {
+    NET.sendT = 0.08;
+    netSend({ t: 'pos', x: Math.round(s.x), y: Math.round(s.y), dir: s.dir, mv: s.moving ? 1 : 0 });
+  }
+  const alive = players.filter(p => p.joined && p.alive);
+  const fx = alive.length ? alive.reduce((q, p) => q + p.x, 0) / alive.length : s.x;
+  const fy = alive.length ? alive.reduce((q, p) => q + p.y, 0) / alive.length : s.y;
+  cam.x += ((fx - 480) - cam.x) * Math.min(1, dt * 5);
+  cam.y += ((fy - 340) - cam.y) * Math.min(1, dt * 5);
+  cam.x = Math.max(0, Math.min(WORLD_W - 960, cam.x));
+  cam.y = Math.max(0, Math.min(WORLD_H - 640, cam.y));
+}
+document.getElementById('netHostBtn').addEventListener('click', () => {
+  setNetStatus('Raising the banners…');
+  netConnect(() => netSend({ t: 'host' }));
+});
+document.getElementById('netJoinBtn').addEventListener('click', () => {
+  const code = document.getElementById('netCodeInput').value.trim().toUpperCase();
+  if (code.length !== 4) { setNetStatus('⚠ Enter the 4-letter code.'); return; }
+  setNetStatus('Riding to the gates…');
+  netConnect(() => netSend({ t: 'join', code }));
+});
 
 // ---- audio: composed music + sfx engine ----
 let audioCtx = null, musicBus = null, sfxBus = null, noiseBuf = null;
