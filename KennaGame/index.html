@@ -2031,8 +2031,6 @@ function applyChestReward(ch) {
 
 // ---------- upgrades ----------
 const UPGRADES = [
-  { key: 'shuffle', name: 'Royal Shuffle', icon: 'shuffle', max: 1, desc: 'Every level-up, knights trade players!',
-    apply: () => {} },
   { key: 'sharp', name: 'Sharper Blades', icon: 'sword', max: 7, desc: '+1 damage per rank',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.damage += 1) },
   { key: 'swift', name: 'Swift Strikes', icon: 'swift', max: 6, desc: 'Attack 18% faster',
@@ -2104,7 +2102,6 @@ function rotateHeroes() {
 function levelUp() {
   game.level += 1;
   SFX.levelup();
-  if (upLvl('shuffle') > 0) rotateHeroes();
   // each crown is MUCH harder to earn than the last — steep Vampire-Survivors ramp
   const jn = players.filter(p2 => p2.joined).length;
   game.xpNext = Math.round((10 + game.level * 9 + Math.pow(game.level, 1.8)) * Math.max(0.62, 1 - 0.13 * (jn - 1)));
