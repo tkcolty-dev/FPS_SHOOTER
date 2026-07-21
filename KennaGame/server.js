@@ -94,5 +94,6 @@ server.listen(PORT, () => {
   console.log('  ⚔  Kingdom Deluxe is live!');
   console.log('     You:      http://localhost:' + PORT);
   console.log('     Friends:  http://' + lanIP() + ':' + PORT + '  (same wifi)');
+  console.log('     Xbox:     open Edge on the Xbox → same address. Controllers just work.');
   console.log('');
 });

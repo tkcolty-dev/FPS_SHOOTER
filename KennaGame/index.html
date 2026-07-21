@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Kingdom Deluxe: The Last Knight</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#0a0a0e">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Inter:wght@400;600;700;800&family=Cinzel:wght@700;800;900&display=swap');
@@ -821,6 +824,12 @@
       <div class="row"><span>Red hit flash</span><input type="checkbox" class="setTog" id="togFlash"></div>
       <div class="row"><span>Particle effects</span><input type="checkbox" class="setTog" id="togParticles"></div>
       <div class="row"><span>FPS counter</span><input type="checkbox" class="setTog" id="togFps"></div>
+      <div class="setSection">&#127918; Controls</div>
+      <div class="row" style="font-size:1.7vh; opacity:0.85"><span>Move</span><span>WASD / arrows / left stick</span></div>
+      <div class="row" style="font-size:1.7vh; opacity:0.85"><span>Join the battle</span><span>J &middot; or press &#127918; A on any pad</span></div>
+      <div class="row" style="font-size:1.7vh; opacity:0.85"><span>Menus</span><span>&#127918; A choose &middot; B back &middot; LB/RB pages &middot; Y armory</span></div>
+      <div class="row" style="font-size:1.7vh; opacity:0.85"><span>Pause</span><span>Esc &middot; Start</span></div>
+      <div class="row" style="font-size:1.7vh; opacity:0.85"><span>Attacks</span><span>automatic &mdash; position is everything!</span></div>
       <div class="setSection">&#128421; Display</div>
       <div class="row"><span>Fullscreen</span><button class="rowBtn" id="setFullscreen">Toggle fullscreen</button></div>
       <div class="setSection">&#127984; Kingdom</div>
@@ -1492,6 +1501,7 @@ window.addEventListener('keydown', e => {
     if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - mc + n) % n;
     if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + mc) % n;
     if (['Space', 'Enter'].includes(e.code)) confirmSelection();
+    if (e.code === 'Backspace') { game.phase = 'select'; game.cursor = 0; }
     return;
   }
   // upgrade picking
@@ -3192,10 +3202,19 @@ function drawActionBtn(x, y, w, h, label, style, idx) {
   else { g.addColorStop(0, '#3a3a40'); g.addColorStop(1, '#232328'); }
   ctx.fillStyle = g;
   ctx.fill();
-  const hov = mouse.x > x && mouse.x < x + w && mouse.y > y && mouse.y < y + h;
+  const padSel = (game.victory || game.over) && game.panelPick != null &&
+    (game.victory ? [-20, -21, -22] : [-21, -22])[game.panelPick] === idx;
+  const hov = padSel || (mouse.x > x && mouse.x < x + w && mouse.y > y && mouse.y < y + h);
   ctx.strokeStyle = hov ? '#ffd98a' : 'rgba(232, 182, 76, 0.55)';
   ctx.lineWidth = hov ? 2.2 : 1.5;
   ctx.stroke();
+  if (padSel) {
+    ctx.save();
+    ctx.shadowColor = 'rgba(232, 182, 76, 0.6)';
+    ctx.shadowBlur = 14;
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.textAlign = 'center';
   ctx.font = '700 14px Cinzel, Georgia, serif';
   ctx.fillStyle = style === 'green' ? '#eaf5e0' : style === 'gold' ? '#ffe9b8' : '#d9d2c0';
@@ -5634,7 +5653,17 @@ document.getElementById('netJoinBtn').addEventListener('click', () => {
 });
 
 // ---- gamepads: Xbox controllers — and the Xbox itself, via its Edge browser ----
-const PADS = { prev: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
+/* Controller design (Xbox layout), one coherent scheme:
+   EVERYWHERE   Start = pause / resume · sticks and d-pad are interchangeable
+   HOME MENU    A or Start = Play · Y = Settings · B = close panel
+   SELECT/MAP   d-pad = navigate (holds repeat) · A = choose/unlock · B = back
+                LB/RB = pages · Y = armory (from character select)
+   ARMORY       d-pad = navigate · A = buy · B = back
+   BATTLE       left stick = move (analog) · attacks are automatic
+                extra pads press A to join as P2–P4 · Start = pause
+   LEVEL-UP     d-pad = highlight card · A = take it
+   VICTORY/DEFEAT  d-pad = highlight button · A = press it · B = menu    */
+const PADS = { prev: [{}, {}, {}, {}], rep: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
 function readPad(i) {
   const gps = navigator.getGamepads ? navigator.getGamepads() : [];
   const gp = gps[i];
@@ -5653,6 +5682,15 @@ function padTap(i, name, val) {
   PADS.prev[i][name] = val;
   return val && !was;
 }
+// directions repeat while held (0.38s delay, then every 0.14s) — grids feel right
+function dirTap(i, name, val) {
+  const st = PADS.rep[i];
+  const now = performance.now() / 1000;
+  if (!val) { delete st[name]; return false; }
+  if (st[name] === undefined) { st[name] = now + 0.38; return true; }
+  if (now >= st[name]) { st[name] = now + 0.14; return true; }
+  return false;
+}
 function synthKey(code) {
   window.dispatchEvent(new KeyboardEvent('keydown', { code }));
   keys.delete(code);   // controller taps never leave a key held down
@@ -5663,36 +5701,55 @@ function pollPads() {
     PADS['p' + i] = s;
     if (!s) continue;
     const tap = n => padTap(i, n, s[n]);
+    const dir = n => dirTap(i, n, s[n]);
     const inRun = game.phase === 'run' && !menuOpen && !game.choices && !game.victory && !game.over;
-    if (tap('start')) synthKey('Escape');
+
     if (menuOpen) {
-      if (tap('a')) btnPlay.click();
-      if (tap('bBtn')) closePanels();
+      if (tap('a') || tap('start')) btnPlay.click();      // "press A or Start"
+      else if (tap('y')) openPanel('settings');
+      else if (tap('bBtn')) closePanels();
       continue;
     }
+    if (tap('start')) { synthKey('Escape'); continue; }
+
     if (game.choices) {
       if (game.padPick === undefined || game.padPick === null) game.padPick = 1;
-      if (tap('left')) game.padPick = Math.max(0, game.padPick - 1);
-      if (tap('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
+      if (dir('left')) game.padPick = Math.max(0, game.padPick - 1);
+      if (dir('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
       if (tap('a')) pickUpgrade(game.padPick);
       continue;
     }
     if (game.victory || game.over) {
-      if (tap('a')) synthKey(game.victory ? 'Space' : 'KeyR');
-      if (tap('x')) synthKey('KeyR');
-      if (tap('bBtn')) synthKey('Escape');
+      if (game.netGuest) continue;                        // the host decides
+      const acts = game.victory ? [-20, -21, -22] : [-21, -22];
+      if (game.panelPick === undefined || game.panelPick === null) game.panelPick = 0;
+      if (dir('left')) game.panelPick = Math.max(0, game.panelPick - 1);
+      if (dir('right')) game.panelPick = Math.min(acts.length - 1, game.panelPick + 1);
+      if (tap('bBtn')) { showMenu(); game.panelPick = null; continue; }
+      if (tap('a')) {
+        const act = acts[game.panelPick];
+        game.panelPick = null;
+        if (act === -20) { game.victory = false; game.endless = true; gameToast('∞ ENDLESS — the curse never stops. How long can you stand?'); }
+        else if (act === -21) { game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false; }
+        else showMenu();
+      }
       continue;
     }
     if (!inRun) {
-      // canvas menus: d-pad or stick navigates, A confirms, B backs out, bumpers flip pages
-      if (tap('left')) synthKey('ArrowLeft');
-      if (tap('right')) synthKey('ArrowRight');
-      if (tap('up')) synthKey('ArrowUp');
-      if (tap('down')) synthKey('ArrowDown');
+      // canvas menus: d-pad/stick navigates (held = repeat), A confirms, B backs, LB/RB pages
+      if (dir('left')) synthKey('ArrowLeft');
+      if (dir('right')) synthKey('ArrowRight');
+      if (dir('up')) synthKey('ArrowUp');
+      if (dir('down')) synthKey('ArrowDown');
       if (tap('a')) synthKey('Space');
-      if (tap('bBtn')) synthKey('Backspace');
       if (tap('lb')) synthKey('KeyQ');
       if (tap('rb')) synthKey('KeyE');
+      if (tap('y') && game.phase === 'select') synthKey('KeyT');   // Y = armory
+      if (tap('bBtn')) {
+        if (game.phase === 'armory' || game.phase === 'select2') synthKey('Backspace');
+        else if (game.phase === 'map') { game.phase = 'select'; game.cursor = 0; }
+        else synthKey('Escape');                          // select -> home menu
+      }
     } else if (i >= 1 && players[i] && !players[i].joined && !players[i].remote && tap('a')) {
       // any extra controller presses A mid-battle to join as P2/P3/P4
       game.joinSlot = i;
@@ -5705,6 +5762,16 @@ window.addEventListener('gamepadconnected', e => {
   gameToast('🎮 Controller ' + (e.gamepad.index + 1) + ' connected!');
   if (menuOpen) menuToastShow('🎮 Controller connected — press A to play!');
 });
+// on an actual Xbox (Edge browser) the game goes fullscreen at the first tap
+const IS_XBOX = /Xbox/i.test(navigator.userAgent);
+if (IS_XBOX) {
+  window.addEventListener('pointerdown', () => {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, { once: true });
+  setTimeout(() => { if (menuOpen) menuToastShow('🎮 Welcome, Xbox knight! Press A to play.'); }, 1500);
+}
 
 // ---- audio: composed music + sfx engine ----
 let audioCtx = null, musicBus = null, sfxBus = null, noiseBuf = null;
