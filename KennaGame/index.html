@@ -1717,6 +1717,7 @@ canvas.addEventListener('mousemove', e => {
 canvas.addEventListener('click', () => {
   if (menuOpen) return;
   if (game.phase === 'intro' || game.phase === 'ending') { advanceStory(); return; }
+  if (game.paused && game.helpOpen) { game.helpOpen = false; SFX.pick(); return; }
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
       if (game.phase === 'lobby') {
@@ -1734,6 +1735,8 @@ canvas.addEventListener('click', () => {
       }
       else if (game.phase === 'select2' && c.idx >= 0) { game.cursor = c.idx; confirmSelection2(); }
       else if (game.phase === 'select' || game.phase === 'map') { game.cursor = Math.max(0, c.idx); confirmSelection(); }
+      else if (game.paused && game.helpOpen) { game.helpOpen = false; SFX.pick(); }
+      else if (c.idx === -33 && game.paused) { game.helpOpen = true; SFX.pick(); }
       else if (c.idx === -30 && game.paused) { togglePause(); }
       else if (c.idx === -31 && game.paused) { showMenu(); }
       else if (c.idx === -32 && game.paused) { quitRun(); }
@@ -1816,6 +1819,13 @@ function applyRunUpgradesTo(p) {
   p.magnet *= Math.pow(1.55, pUpLvl(p, 'magnet'));
   p.orbCount += pUpLvl(p, 'aegis');
   p.wave += pUpLvl(p, 'wave');
+  const gi = pUpLvl(p, 'giant');
+  if (gi) { p.maxHp += 2 * gi; p.damage += gi; p.speed *= Math.pow(0.92, gi); }
+}
+function moveSpeedOf(p) {
+  let sp = p.speed;
+  if (upLvl('tailwind') > 0 && game.time - (p.lastHurtT || -99) > 5) sp *= 1 + 0.12 * upLvl('tailwind');
+  return sp;
 }
 function confirmSelection2() {
   const rk = ROSTER[game.cursor];
@@ -2118,56 +2128,72 @@ function applyChestReward(ch) {
 
 // ---------- upgrades ----------
 const UPGRADES = [
-  { key: 'sharp', name: 'Sharper Blades', icon: 'sword', max: 7, desc: '+1 damage per rank',
+  { key: 'sharp', name: 'Sharper Blades', icon: 'sword', max: 7, desc: 'A keener edge from the royal whetstone. +1 damage to every strike',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.damage += 1) },
-  { key: 'swift', name: 'Swift Strikes', icon: 'swift', max: 6, desc: 'Attack 18% faster',
+  { key: 'swift', name: 'Swift Strikes', icon: 'swift', max: 6, desc: 'Your arm learns the rhythm of war. Attack 18% faster',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.attackEvery = Math.max(0.2, p.attackEvery * 0.82)) },
-  { key: 'reach', name: 'Long Reach', icon: 'reach', max: 6, desc: 'Bigger attacks, +30 range',
+  { key: 'reach', name: 'Long Reach', icon: 'reach', max: 6, desc: 'Strike farther and wider — +30 reach and a broader swing',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => { p.range += 30; p.arc = Math.min(1.7, p.arc + 0.09); }) },
-  { key: 'boots', name: 'Boots of the Wind', icon: 'boots', max: 6, desc: 'Move 15% faster',
+  { key: 'boots', name: 'Boots of the Wind', icon: 'boots', max: 6, desc: 'Enchanted soles carry you 15% faster across the realm',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.speed *= 1.15) },
-  { key: 'heart', name: 'Heart of the Kingdom', icon: 'heart', max: 6, desc: '+1 max heart and heal 2',
+  { key: 'heart', name: 'Heart of the Kingdom', icon: 'heart', max: 6, desc: 'The kingdom\'s love made flesh: +1 max heart, and 2 healed now',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => { p.maxHp += 1; p.hp = Math.min(p.maxHp, p.hp + 2); }) },
-  { key: 'magnet', name: 'Royal Magnet', icon: 'magnet', max: 5, desc: 'Gems fly to you from farther',
+  { key: 'magnet', name: 'Royal Magnet', icon: 'magnet', max: 5, desc: 'Spirit-gems feel your pull and fly to you from much farther away',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.magnet *= 1.65) },
-  { key: 'aegis', name: 'Spinning Aegis', icon: 'aegis', max: 5, desc: 'One more orbiting shield',
+  { key: 'aegis', name: 'Spinning Aegis', icon: 'aegis', max: 5, desc: 'Another blessed shield circles you, striking all it touches',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.orbCount += 1) },
-  { key: 'wave', name: 'Sword Wave', icon: 'wave', max: 4, desc: 'Attacks launch a flying blade',
+  { key: 'wave', name: 'Sword Wave', icon: 'wave', max: 4, desc: 'Every attack also hurls a spectral blade across the field',
     apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.wave += 1) },
-  { key: 'thorn', name: 'Thorn Armor', icon: 'thorn', max: 4, desc: 'Enemies that touch you get hurt back',
+  { key: 'thorn', name: 'Thorn Armor', icon: 'thorn', max: 4, desc: 'Cursed spines: spirits that dare touch you take 3 damage per rank',
     apply: () => {} },
-  { key: 'frost', name: 'Frost Touch', icon: 'frost', max: 4, desc: 'Your hits chill enemies, slowing them',
+  { key: 'frost', name: 'Frost Touch', icon: 'frost', max: 4, desc: 'Winter rides your weapon — every hit chills and slows the curse',
     apply: () => {} },
-  { key: 'clover', name: 'Lucky Clover', icon: 'clover', max: 4, desc: 'Chance for double-value gems',
+  { key: 'clover', name: 'Lucky Clover', icon: 'clover', max: 4, desc: '20% chance per rank that a gem is worth DOUBLE the wisdom',
     apply: () => {} },
-  { key: 'phoenix', name: 'Phoenix Feather', icon: 'phoenix', max: 3, desc: 'Cheat death once — revive with 3 hearts',
+  { key: 'phoenix', name: 'Phoenix Feather', icon: 'phoenix', max: 3, desc: 'When death comes, burn a feather instead: revive with 3 hearts',
     apply: () => { game.phoenix = (game.phoenix || 0) + 1; } },
-  { key: 'rush', name: 'Gold Rush', icon: 'goldrush', max: 4, desc: '+20% gold for this battle',
+  { key: 'rush', name: 'Gold Rush', icon: 'goldrush', max: 4, desc: 'A royal tithe: +20% gold from every coin in this battle',
     apply: () => {} },
-  { key: 'crit', name: "Knight's Edge", icon: 'crit', max: 4, desc: '12% chance to strike DOUBLE',
+  { key: 'crit', name: "Knight's Edge", icon: 'crit', max: 4, desc: 'Find the gap in their guard: 12% per rank to strike DOUBLE',
     apply: () => {} },
-  { key: 'echo', name: 'Echo Strike', icon: 'echo', max: 4, desc: 'Attacks may instantly strike again',
+  { key: 'echo', name: 'Echo Strike', icon: 'echo', max: 4, desc: '20% per rank that your attack echoes — striking again instantly',
     apply: () => {} },
-  { key: 'stomp', name: 'Battle Stomp', icon: 'stomp', max: 4, desc: 'Knights stomp — nearby foes go flying',
+  { key: 'stomp', name: 'Battle Stomp', icon: 'stomp', max: 4, desc: 'The earth answers your steps — regular stomps hurl foes away',
     apply: () => {} },
-  { key: 'crown', name: 'Storm Crown', icon: 'crown', max: 4, desc: 'Lightning smites a nearby fiend',
+  { key: 'crown', name: 'Storm Crown', icon: 'crown', max: 4, desc: 'The storm claims you as royalty — lightning smites nearby fiends',
     apply: () => {} },
-  { key: 'barrier', name: 'Royal Barrier', icon: 'barrier', max: 4, desc: 'A bubble blocks one hit, then recharges',
+  { key: 'barrier', name: 'Royal Barrier', icon: 'barrier', max: 4, desc: 'A shimmering bubble eats one hit, then slowly gathers itself again',
     apply: () => {} },
-  { key: 'plate', name: 'Steel Plate', icon: 'plate', max: 4, desc: 'Stay protected longer after a hit',
+  { key: 'plate', name: 'Steel Plate', icon: 'plate', max: 4, desc: 'Master-forged armor keeps you untouchable longer after a blow',
     apply: () => {} },
-  { key: 'mend', name: 'Soothing Light', icon: 'mend', max: 4, desc: 'Banishing spirits mends your hearts',
+  { key: 'mend', name: 'Soothing Light', icon: 'mend', max: 4, desc: 'Every banished spirit sings — enough songs mend a wounded heart',
     apply: () => {} },
-  { key: 'wisdom', name: 'Ancient Wisdom', icon: 'wisdom', max: 4, desc: 'Every gem teaches +20% more',
+  { key: 'wisdom', name: 'Ancient Wisdom', icon: 'wisdom', max: 4, desc: 'Old tomes whisper as you fight: every gem teaches +20% more',
     apply: () => {} },
-  { key: 'slayer', name: 'Giant Slayer', icon: 'slayer', max: 4, desc: '+30% damage to the big brutes',
+  { key: 'slayer', name: 'Giant Slayer', icon: 'slayer', max: 4, desc: 'The bigger they are: +30% per rank against the giant fiends',
     apply: () => {} },
-  { key: 'fury', name: 'Wounded Fury', icon: 'fury', max: 4, desc: 'Wounded knights hit +1 harder',
+  { key: 'fury', name: 'Wounded Fury', icon: 'fury', max: 4, desc: 'Pain becomes fury: while any knight is below half hearts, +1 damage',
+    apply: () => {} },
+  { key: 'tailwind', name: 'Tailwind', icon: 'tailwind', max: 3, desc: 'Untouched for 5 seconds, the wind itself carries you: +12% speed per rank',
+    apply: () => {} },
+  { key: 'giant', name: "Giant's Draught", icon: 'giantup', max: 3, desc: 'Drink deep: +2 hearts and +1 damage, but 8% slower. Worth it.',
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => { p.maxHp += 2; p.hp += 2; p.damage += 1; p.speed *= 0.92; }) },
+  { key: 'charter', name: 'Royal Charter', icon: 'charter', max: 2, desc: 'By royal decree, every coin collected also teaches +1 XP per rank',
+    apply: () => {} },
+  { key: 'orbfire', name: 'Blazing Aegis', icon: 'orbfire', max: 3, desc: 'Your orbiting shields catch fire — +1 damage per rank on every touch',
+    apply: () => {} },
+  { key: 'ward', name: 'Hourglass Ward', icon: 'ward', max: 3, desc: 'Time thickens around you — enemies nearby move 8% slower per rank',
+    apply: () => {} },
+  { key: 'rally', name: 'Rally Banner', icon: 'rally', max: 2, desc: 'The banner of the last knights: revive fallen friends 40% faster',
+    apply: () => {} },
+  { key: 'bounty', name: 'Bounty Board', icon: 'bounty', max: 3, desc: 'Wanted: the curse. Elites and champions spill extra coins per rank',
+    apply: () => {} },
+  { key: 'pierce', name: 'Piercing Shot', icon: 'pierce', max: 2, desc: 'Your projectiles punch through one extra enemy per rank',
     apply: () => {} },
 ];
 function upLvl(k) { return game.up[k] || 0; }
 // stat upgrades are personal — each knight levels their own body and blade
-const STAT_KEYS = new Set(['sharp', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave']);
+const STAT_KEYS = new Set(['sharp', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave', 'giant']);
 function pUpLvl(p, k) { return (p.up || {})[k] || 0; }
 function chooserP() {
   const p = players[game.chooser || 0];
@@ -2396,6 +2422,7 @@ function hitPlayer(t, e) {
     return;
   }
   t.hp -= 1;
+  t.lastHurtT = game.time;
   t.invuln = 1.2 + 0.25 * upLvl('plate');
   game.shake = 0.25;
   game.hurtFlash = 0.4;
@@ -2522,6 +2549,10 @@ function killEnemy(i) {
       const cp2 = pushOut(e.x + (Math.random() - 0.5) * 90, e.y + (Math.random() - 0.5) * 70, 16);
       drops.push({ x: cp2.x, y: cp2.y, kind: 'coin', v: 5 + Math.floor(Math.random() * 5) });
     }
+    for (let k = 0; k < upLvl('bounty') * 3; k++) {
+      const bp2 = pushOut(e.x + (Math.random() - 0.5) * 100, e.y + (Math.random() - 0.5) * 80, 16);
+      drops.push({ x: bp2.x, y: bp2.y, kind: 'coin', v: 5 + Math.floor(Math.random() * 4) });
+    }
     // a defeated champion always leaves a royal chest behind
     const chp = pushOut(e.x, e.y + 30, 26);
     chests.push({ x: chp.x, y: chp.y, open: false, seed: Math.random() * 10 });
@@ -2536,7 +2567,7 @@ function killEnemy(i) {
   }
   if (e.elite) {
     // gold-touched spirits always spill treasure
-    for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) {
+    for (let k = 0; k < 2 + Math.floor(Math.random() * 2) + upLvl('bounty'); k++) {
       const ep = pushOut(e.x + (Math.random() - 0.5) * 30, e.y + (Math.random() - 0.5) * 24, 16);
       drops.push({ x: ep.x, y: ep.y, kind: 'coin', v: 3 + Math.floor(Math.random() * 3) });
     }
@@ -2791,7 +2822,7 @@ function update(dt) {
     if (!p.alive) {
       const mate = players.find(q => q !== p && q.joined && q.alive);
       if (mate && Math.hypot(mate.x - p.x, mate.y - p.y) < 70) {
-        p.reviveProgress += dt;
+        p.reviveProgress += dt * (1 + 0.4 * upLvl('rally'));
         if (p.reviveProgress >= 2.5) {
           p.alive = true; p.hp = 3; p.invuln = 2; p.reviveProgress = 0;
           gameToast(p.name + ' is back on their feet!');
@@ -2837,8 +2868,9 @@ function update(dt) {
       else if (vx > 0) p.dir = 'right';
       if (vy !== 0 && vx === 0) p.dir = vy < 0 ? 'up' : 'down';
       const len = Math.hypot(vx, vy);
-      p.x += (vx / len) * p.speed * dt;
-      p.y += (vy / len) * p.speed * dt;
+      const msp = moveSpeedOf(p);
+      p.x += (vx / len) * msp * dt;
+      p.y += (vy / len) * msp * dt;
       p.x = Math.max(24, Math.min(WORLD_W - 24, p.x));
       p.y = Math.max(40, Math.min(WORLD_H - 10, p.y));
       const pres = pushOut(p.x, p.y, 15);
@@ -2883,7 +2915,8 @@ function update(dt) {
           if (e.orbCd > 0) continue;
           if (Math.hypot(e.x - ox, e.y - oy) < e.r + 15) {
             e.orbCd = 0.5;
-            hurtEnemy(e, 1, Math.atan2(e.y - p.y, e.x - p.x), 260);
+            hurtEnemy(e, 1 + upLvl('orbfire'), Math.atan2(e.y - p.y, e.x - p.x), 260);
+            if (upLvl('orbfire') > 0) particles.push({ x: ox, y: oy, vx: (Math.random() - 0.5) * 40, vy: -40, life: 0.3, color: '#fb923c', size: 2.6 });
           }
         }
       }
@@ -3001,7 +3034,10 @@ function update(dt) {
           w.life = 0; break;
         }
         if (w.kind === 'trident') { tridentChain(w, e); w.life = 0; break; }
-        if (w.kind === 'dagger' || w.kind === 'pet' || w.kind === 'pellet' || w.kind === 'spark') { w.life = 0; break; }
+        if (w.kind === 'dagger' || w.kind === 'pet' || w.kind === 'pellet' || w.kind === 'spark') {
+          if (w.kind !== 'pet' && (w.pierced || 0) < upLvl('pierce')) { w.pierced = (w.pierced || 0) + 1; continue; }
+          w.life = 0; break;
+        }
       }
     }
     if (w.life <= 0) waves.splice(i, 1);
@@ -3029,8 +3065,9 @@ function update(dt) {
     if (e.slowT > 0) e.slowT -= dt;
     const t = nearestAlivePlayer(e.x, e.y);
     if (t) {
-      const sl = e.slowT > 0 ? e.slowF : 1;
+      let sl = e.slowT > 0 ? e.slowF : 1;
       const d = Math.hypot(t.x - e.x, t.y - e.y) || 1;
+      if (upLvl('ward') > 0 && d < 170) sl *= 1 - 0.08 * upLvl('ward');
       const dx = (t.x - e.x) / d, dy = (t.y - e.y) / d;
       if (e.kind === 'gilded') {
         // treasure wisp: flees, then vanishes
@@ -3343,6 +3380,10 @@ function update(dt) {
         kdMeta.gold += g3;
         game.runGold += g3;
         kdStats.goldEarned = (kdStats.goldEarned || 0) + g3;
+        if (upLvl('charter') > 0) {
+          game.xp += upLvl('charter');
+          if (game.xp >= game.xpNext) { game.xp -= game.xpNext; levelUp(); }
+        }
         SFX.coin();
         saveMeta();
         dmgTexts.push({ x: dr.x, y: dr.y - 18, val: '+' + g3 + 'g', age: 0, gold: true });
@@ -5091,6 +5132,101 @@ function drawUpgradeIcon(kind, x, y, s, t) {
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#fde047';
     ctx.beginPath(); ctx.arc(-11, 1, 3.5, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'tailwind') {
+    ctx.strokeStyle = '#bae6fd';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    for (const [yy, ln] of [[-8, 20], [0, 26], [8, 17]]) {
+      ctx.beginPath();
+      ctx.moveTo(-ln / 2 - 4, yy);
+      ctx.lineTo(ln / 2 - 4, yy);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(ln / 2 - 4, yy - 4, 4, Math.PI * 0.5, Math.PI * 1.9);
+      ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  } else if (kind === 'giantup') {
+    ctx.fillStyle = '#c9d3dc';
+    ctx.beginPath(); ctx.arc(0, 6, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#9aa7b4';
+    ctx.beginPath(); ctx.arc(0, 6, 12, 0, Math.PI, true); ctx.fill();
+    ctx.strokeStyle = UI.gold;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-8, -4); ctx.lineTo(0, -16); ctx.lineTo(8, -4);
+    ctx.moveTo(0, -16); ctx.lineTo(0, 2);
+    ctx.stroke();
+  } else if (kind === 'charter') {
+    ctx.fillStyle = '#e8d9b0';
+    ctx.fillRect(-11, -14, 22, 26);
+    ctx.fillStyle = '#c9b988';
+    ctx.fillRect(-11, -14, 22, 4);
+    ctx.strokeStyle = '#a98d55';
+    ctx.lineWidth = 1.2;
+    for (const yy of [-5, 0, 5]) { ctx.beginPath(); ctx.moveTo(-7, yy); ctx.lineTo(7, yy); ctx.stroke(); }
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath(); ctx.arc(7, 10, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#a9722c';
+    ctx.beginPath(); ctx.arc(7, 10, 3.5, 0, Math.PI * 2); ctx.stroke();
+  } else if (kind === 'orbfire') {
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.moveTo(0, -18);
+    ctx.quadraticCurveTo(10, -6, 6, 2);
+    ctx.quadraticCurveTo(12, 0, 12, 8);
+    ctx.arc(0, 8, 12, 0, Math.PI);
+    ctx.quadraticCurveTo(-12, 0, -6, 2);
+    ctx.quadraticCurveTo(-10, -6, 0, -18);
+    ctx.fill();
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath(); ctx.arc(0, 8, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = UI.goldPale;
+    ctx.beginPath(); ctx.arc(-2, 6, 2.5, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'ward') {
+    ctx.strokeStyle = '#bae6fd';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(-9, -14); ctx.lineTo(9, -14); ctx.lineTo(-9, 14); ctx.lineTo(9, 14); ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.8)';
+    ctx.beginPath(); ctx.moveTo(-6, -11); ctx.lineTo(6, -11); ctx.lineTo(0, -1); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-4, 12); ctx.lineTo(4, 12); ctx.lineTo(0, 5); ctx.closePath(); ctx.fill();
+  } else if (kind === 'rally') {
+    ctx.fillStyle = '#6b4a2a';
+    ctx.fillRect(-10, -18, 3, 34);
+    ctx.fillStyle = '#a33d3d';
+    ctx.beginPath();
+    ctx.moveTo(-7, -17);
+    ctx.lineTo(14, -13);
+    ctx.lineTo(7, -8);
+    ctx.lineTo(14, -3);
+    ctx.lineTo(-7, 1);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath(); ctx.arc(1, -8, 3.5, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'bounty') {
+    ctx.fillStyle = '#e8d9b0';
+    ctx.fillRect(-12, -15, 24, 28);
+    ctx.fillStyle = '#4a3a1d';
+    ctx.font = '700 8px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('WANTED', 0, -7);
+    ctx.fillStyle = '#3b1e63';
+    ctx.beginPath(); ctx.arc(0, 3, 5.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = UI.gold;
+    ctx.font = '700 9px Inter, sans-serif';
+    ctx.fillText('50g', 0, 12);
+  } else if (kind === 'pierce') {
+    ctx.fillStyle = 'rgba(94, 234, 212, 0.5)';
+    ctx.beginPath(); ctx.arc(-7, 0, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9, 0, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8a5a2c';
+    ctx.fillRect(-20, -1.5, 34, 3);
+    ctx.fillStyle = '#dfe5ea';
+    ctx.beginPath(); ctx.moveTo(14, -5); ctx.lineTo(22, 0); ctx.lineTo(14, 5); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e8ddc8';
+    ctx.beginPath(); ctx.moveTo(-20, 0); ctx.lineTo(-25, -4); ctx.lineTo(-18, -1); ctx.closePath(); ctx.fill();
   } else if (kind === 'coin') {
     ctx.fillStyle = '#a9722c';
     ctx.beginPath(); ctx.arc(2, 2, 14, 0, Math.PI * 2); ctx.fill();
@@ -5250,7 +5386,7 @@ function drawActionBtn(x, y, w, h, label, style, idx) {
   ctx.fill();
   const padSel = ((game.victory || game.over) && game.panelPick != null &&
     (game.victory ? [-20, -21, -22] : [-21, -22])[game.panelPick] === idx) ||
-    (game.paused && [-30, -31, -32][game.pausePick || 0] === idx);
+    (game.paused && [-30, -33, -31, -32][game.pausePick || 0] === idx);
   const hov = padSel || (mouse.x > x && mouse.x < x + w && mouse.y > y && mouse.y < y + h);
   ctx.strokeStyle = hov ? '#ffd98a' : 'rgba(232, 182, 76, 0.55)';
   ctx.lineWidth = hov ? 2.2 : 1.5;
@@ -7136,13 +7272,51 @@ function render(t) {
       ctx.fillText('The host paused the battle…', CX, my + mh + 46);
     } else {
       const by2 = my + mh + 34;
-      drawActionBtn(CX - 240, by2, 150, 42, 'RESUME', 'green', -30);
-      drawActionBtn(CX - 75, by2, 150, 42, 'HOME MENU', 'gold', -31);
-      drawActionBtn(CX + 90, by2, 150, 42, '🏳 QUIT', 'dark', -32);
+      drawActionBtn(CX - 322, by2, 150, 42, 'RESUME', 'green', -30);
+      drawActionBtn(CX - 157, by2, 150, 42, '📖 HELP', 'dark', -33);
+      drawActionBtn(CX + 8, by2, 150, 42, 'HOME MENU', 'gold', -31);
+      drawActionBtn(CX + 173, by2, 150, 42, '🏳 QUIT', 'dark', -32);
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(240, 226, 195, 0.5)';
       ctx.font = '11px Inter, sans-serif';
       ctx.fillText('ESC or START — resume', CX, by2 + 64);
+    }
+    // ---- the royal field guide, one page over the war map ----
+    if (game.helpOpen) {
+      cardRects = [];
+      ctx.fillStyle = 'rgba(5, 4, 8, 0.93)';
+      ctx.fillRect(0, 0, ROOM_W, 640);
+      drawScreenTitle('ROYAL FIELD GUIDE', 74);
+      const HELP = [
+        ['⚔ FIGHTING', [
+          'Your knight attacks on their own — you steer, they swing.',
+          'Collect green gems for XP; level up to choose Royal Gifts.',
+          'Coins buy knights, pets and forged powers back home.']],
+        ['🎮 CONTROLS', [
+          'Move: left stick / WASD · Pause: Start / Esc',
+          'Level-ups: d-pad + A (X = reroll) · J or A: friends join',
+          'In lobby — Start begins, A changes your knight.']],
+        ['🏰 THE REALM', [
+          'Chests hold gold, gifts, and fused SUPERWEAPONS.',
+          'The shrine door heals · the forge blesses your blades.',
+          'A champion of the curse arrives at the halfway mark.']],
+        ['🤝 TOGETHER', [
+          'Gifts take turns in co-op — the screen wears the chooser\u2019s color.',
+          'Stand close to fallen friends to revive them.',
+          'Everyone builds their OWN weapons and upgrades.']],
+      ];
+      let hy3 = 118;
+      for (const [head, lines] of HELP) {
+        ctx.textAlign = 'left';
+        ctx.font = '700 15px Cinzel, Georgia, serif';
+        ctx.fillStyle = UI.goldLight;
+        ctx.fillText(head, CX - 330, hy3);
+        ctx.font = '13px Inter, sans-serif';
+        ctx.fillStyle = '#e8e4da';
+        lines.forEach((ln, li) => ctx.fillText(ln, CX - 310, hy3 + 22 + li * 20));
+        hy3 += 22 + lines.length * 20 + 16;
+      }
+      drawHintsBar([['B / ESC / CLICK', true], ['BACK TO THE WAR MAP', false]]);
     }
   }
 
@@ -7951,11 +8125,13 @@ btnPlay.addEventListener('click', () => {
 function togglePause() {
   if (game.netGuest) return false;   // online, the host holds the hourglass
   if (game.phase !== 'run' || game.choices || game.victory || game.over) return false;
+  if (game.paused && game.helpOpen) { game.helpOpen = false; SFX.pick(); return true; }
   game.paused = !game.paused;
   game.pausePick = 0;
   return true;
 }
 function quitRun() {
+  game.helpOpen = false;
   // retreat with honor: salvage a defeat payout and ride home
   if (!game.paidOut) {
     game.paidOut = true;
@@ -8631,9 +8807,13 @@ function pollPads() {
     if (game.paused) {
       if (game.netGuest) continue;
       if (dir('left')) game.pausePick = Math.max(0, (game.pausePick || 0) - 1);
-      if (dir('right')) game.pausePick = Math.min(2, (game.pausePick || 0) + 1);
+      if (game.helpOpen) {
+        if (tap('a') || tap('bBtn') || tap('start')) { game.helpOpen = false; SFX.pick(); }
+        continue;
+      }
+      if (dir('right')) game.pausePick = Math.min(3, (game.pausePick || 0) + 1);
       if (tap('bBtn')) togglePause();
-      else if (tap('a')) [togglePause, showMenu, quitRun][(game.pausePick || 0)]();
+      else if (tap('a')) [togglePause, () => { game.helpOpen = true; SFX.pick(); }, showMenu, quitRun][(game.pausePick || 0)]();
       continue;
     }
 
