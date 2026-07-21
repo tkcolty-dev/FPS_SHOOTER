@@ -3690,6 +3690,36 @@ function drawSword(bl) {
   ctx.fillRect(25, -1.3, bl - 14, 2.6);
 }
 
+function drawBossCrown(e, t) {
+  // a champion of the curse wears a crown
+  const cw = e.r * 0.62, cy2 = -e.r * (e.kind === 'wraith' || e.kind === 'concur' ? 1.28 : 1.02);
+  ctx.fillStyle = e.kind === 'concur' ? '#e8b64c' : '#c9a227';
+  ctx.beginPath();
+  ctx.moveTo(-cw, cy2);
+  ctx.lineTo(-cw, cy2 - e.r * 0.28);
+  ctx.lineTo(-cw * 0.5, cy2 - e.r * 0.1);
+  ctx.lineTo(0, cy2 - e.r * 0.38);
+  ctx.lineTo(cw * 0.5, cy2 - e.r * 0.1);
+  ctx.lineTo(cw, cy2 - e.r * 0.28);
+  ctx.lineTo(cw, cy2);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath(); ctx.arc(0, cy2 - e.r * 0.16, e.r * 0.07, 0, Math.PI * 2); ctx.fill();
+}
+function drawEnemyOverlays(e, t, bob) {
+  if (['brute', 'golem', 'splitter', 'charger', 'shellback', 'warlock', 'reaper', 'yeti'].includes(e.kind) && e.hp < e.maxHp) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillRect(e.x - 18, e.y + bob - e.r - 13, 36, 6);
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(e.x - 17, e.y + bob - e.r - 12, 34 * (e.hp / e.maxHp), 4);
+  }
+  if (e.kind === 'charger' && e.chargeState === 'aim') {
+    ctx.textAlign = 'center';
+    ctx.font = '700 16px Inter, sans-serif';
+    ctx.fillStyle = `rgba(255, 220, 120, ${0.6 + 0.4 * Math.sin(t * 18)})`;
+    ctx.fillText('!', e.x, e.y + bob - e.r - 18);
+  }
+}
 function drawEnemy(e, t) {
   const pop = Math.min(1, e.spawnAge * 3.5);
   const bob = Math.sin(t * 5 + e.seed) * 3;
@@ -3755,6 +3785,20 @@ function drawEnemy(e, t) {
     }
   }
 
+  const eim = ENEMY_IMG[e.kind === 'mite' ? 'splitter' : e.kind];
+  if (eim) {
+    // the painted monster itself
+    const ih = e.r * 2.7, iw = ih * (eim.width / eim.height);
+    if (e.flash > 0) ctx.filter = 'brightness(2.4) saturate(0.4)';
+    else if (e.slowT > 0) ctx.filter = 'saturate(0.55) brightness(1.15) hue-rotate(160deg)';
+    ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
+    ctx.filter = 'none';
+    // crown + staff extras still ride on bosses
+    if (e.boss || BOSS_DEFS[e.kind]) drawBossCrown(e, t);
+    ctx.restore();
+    drawEnemyOverlays(e, t, bob);
+    return;
+  }
   // body with top-light shading
   const bg = ctx.createRadialGradient(-e.r * 0.35, -e.r * 0.45, e.r * 0.15, 0, 0, e.r * 1.15);
   bg.addColorStop(0, e.flash > 0 ? '#ffffff' : cols.hi);
@@ -3956,22 +4000,7 @@ function drawEnemy(e, t) {
     ctx.lineTo(e.r * 0.86, -e.r * 1.1);
     ctx.closePath(); ctx.fill();
   }
-  if (e.boss || BOSS_DEFS[e.kind]) {
-    // a champion of the curse wears a crown
-    const cw = e.r * 0.62, cy2 = -e.r * (e.kind === 'wraith' || e.kind === 'concur' ? 1.28 : 1.02);
-    ctx.fillStyle = e.kind === 'concur' ? '#e8b64c' : '#c9a227';
-    ctx.beginPath();
-    ctx.moveTo(-cw, cy2);
-    ctx.lineTo(-cw, cy2 - e.r * 0.28);
-    ctx.lineTo(-cw * 0.5, cy2 - e.r * 0.1);
-    ctx.lineTo(0, cy2 - e.r * 0.38);
-    ctx.lineTo(cw * 0.5, cy2 - e.r * 0.1);
-    ctx.lineTo(cw, cy2 - e.r * 0.28);
-    ctx.lineTo(cw, cy2);
-    ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath(); ctx.arc(0, cy2 - e.r * 0.16, e.r * 0.07, 0, Math.PI * 2); ctx.fill();
-  }
+  if (e.boss || BOSS_DEFS[e.kind]) drawBossCrown(e, t);
   if (e.kind === 'charger') {
     // forward-swept horns
     ctx.fillStyle = '#fca5a5';
@@ -4050,19 +4079,7 @@ function drawEnemy(e, t) {
   ctx.stroke();
 
   ctx.restore();
-
-  if (['brute', 'golem', 'splitter', 'charger', 'shellback', 'warlock', 'reaper', 'yeti'].includes(e.kind) && e.hp < e.maxHp) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-    ctx.fillRect(e.x - 18, e.y + bob - e.r - 13, 36, 6);
-    ctx.fillStyle = '#facc15';
-    ctx.fillRect(e.x - 17, e.y + bob - e.r - 12, 34 * (e.hp / e.maxHp), 4);
-  }
-  if (e.kind === 'charger' && e.chargeState === 'aim') {
-    ctx.textAlign = 'center';
-    ctx.font = '700 16px Inter, sans-serif';
-    ctx.fillStyle = `rgba(255, 220, 120, ${0.6 + 0.4 * Math.sin(t * 18)})`;
-    ctx.fillText('!', e.x, e.y + bob - e.r - 18);
-  }
+  drawEnemyOverlays(e, t, bob);
 }
 
 function drawChest(c, t) {
@@ -4364,6 +4381,15 @@ function drawPlayerSprite(p, t) {
 
 // hand-generated knight art from the user's mockup: sprites/<key>.png
 const SPRITE_IMG = {};
+// painted monsters: monsters/<kind>.png replaces the drawn body the moment it exists
+const ENEMY_IMG = {};
+for (const ek of ['wisp', 'imp', 'shade', 'brute', 'spitter', 'splitter', 'shellback', 'golem',
+                  'charger', 'warlock', 'reaper', 'gilded', 'yeti', 'magmite',
+                  'titan', 'wraith', 'gummy', 'concur']) {
+  const im = new Image();
+  im.src = 'monsters/' + ek + '.png';
+  im.onload = () => { ENEMY_IMG[ek] = im; };
+}
 for (const rk of ROSTER) {
   const im = new Image();
   im.src = 'sprites/' + rk.key + '.png';
