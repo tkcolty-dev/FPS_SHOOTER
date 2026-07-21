@@ -641,8 +641,15 @@
     background: #0a0a0e; border-radius: 50%;
     box-shadow: 0 -18px 30px rgba(10, 10, 14, 0.7);
   }
-  /* painted bottom cards are live buttons, so no covering bar/bushes */
-  #menu.hasImage #bushL, #menu.hasImage #bushR, #menu.hasImage #bottomBar { display: none; }
+  /* painted bottom cards are live buttons — bar is a soft cinematic fade only */
+  #menu.hasImage #bushL, #menu.hasImage #bushR { display: none; }
+  #menu.hasImage #bottomBar {
+    height: 16%;
+    background: linear-gradient(180deg, rgba(8, 8, 12, 0) 0%, rgba(8, 8, 12, 0.45) 45%, rgba(8, 8, 12, 0.92) 100%);
+    box-shadow: none;
+    pointer-events: none;
+  }
+  #menu.hasImage #bottomBar::before { display: none; }
   /* the two interactive top chips light up like the painted buttons do */
   #menu.hasImage #chipKnights, #menu.hasImage #chipRemaster {
     pointer-events: auto; cursor: pointer;
@@ -1454,6 +1461,13 @@ window.addEventListener('keydown', e => {
     if (idx !== undefined && game.choices[idx]) pickUpgrade(idx);
     return;
   }
+  // after a victory, keep fighting forever — like the vampire hunters of old
+  if (['Space', 'Enter'].includes(e.code) && game.victory) {
+    game.victory = false;
+    game.endless = true;
+    gameToast('∞ ENDLESS — the curse never stops. How long can you stand?');
+    return;
+  }
   if (e.code === 'KeyR' && (game.over || game.victory)) { game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false; return; }
   // P2 joins with J — and picks their own knight
   const p2 = players[1];
@@ -1612,7 +1626,7 @@ let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = 
 const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
 
 function initRun() {
-  game.time = 0; game.kills = 0; game.over = false; game.spawnTimer = 1.2;
+  game.time = 0; game.kills = 0; game.over = false; game.endless = false; game.spawnTimer = 1.2;
   game.xp = 0; game.level = 1; game.xpNext = 10; game.choices = null;
   game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
@@ -1910,7 +1924,7 @@ function update(dt) {
   if (game.phase !== 'run' || game.over || game.victory || game.choices) return;
   game.time += dt;
   const goalSec = MAPS[game.mapPick].goal * 60;
-  if (game.time >= goalSec) {
+  if (!game.endless && game.time >= goalSec) {
     game.victory = true;
     game.payout = Math.round((game.kills * 0.6 + game.level * 12 + 150 + game.mapPick * 60) * (1 + 0.1 * powerRank('greed')));
     kdMeta.gold += game.payout;
@@ -3995,19 +4009,26 @@ function render(t) {
   ctx.font = '700 13px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
   ctx.fillText(String(game.level), 586, 49);
-  // objective countdown
-  const goalSec2 = MAPS[game.mapPick].goal * 60;
-  const remain = Math.max(0, goalSec2 - game.time);
-  const om = String(Math.floor(remain / 60)).padStart(2, '0');
-  const os = String(Math.floor(remain % 60)).padStart(2, '0');
-  ctx.font = '600 11px Inter, sans-serif';
-  ctx.fillStyle = 'rgba(240, 226, 195, 0.7)';
-  ctx.textAlign = 'right';
-  ctx.fillText('OBJECTIVE — SURVIVE', 498, 84);
-  ctx.textAlign = 'left';
-  ctx.font = '700 12px Inter, sans-serif';
-  ctx.fillStyle = '#4ade80';
-  ctx.fillText(om + ':' + os, 506, 84);
+  // objective countdown (or endless badge)
+  if (game.endless) {
+    ctx.font = '700 12px Inter, sans-serif';
+    ctx.fillStyle = '#c9a8ff';
+    ctx.textAlign = 'center';
+    ctx.fillText('∞ ENDLESS — THE CURSE NEVER STOPS', 480, 84);
+  } else {
+    const goalSec2 = MAPS[game.mapPick].goal * 60;
+    const remain = Math.max(0, goalSec2 - game.time);
+    const om = String(Math.floor(remain / 60)).padStart(2, '0');
+    const os = String(Math.floor(remain % 60)).padStart(2, '0');
+    ctx.font = '600 11px Inter, sans-serif';
+    ctx.fillStyle = 'rgba(240, 226, 195, 0.7)';
+    ctx.textAlign = 'right';
+    ctx.fillText('OBJECTIVE — SURVIVE', 498, 84);
+    ctx.textAlign = 'left';
+    ctx.font = '700 12px Inter, sans-serif';
+    ctx.fillStyle = '#4ade80';
+    ctx.fillText(om + ':' + os, 506, 84);
+  }
 
   // right: banished counter with a wisp emblem
   ornate(788, 10, 162, 44, 12);
@@ -4181,9 +4202,12 @@ function render(t) {
       ctx.fillText('🔓 ' + MAPS[game.mapPick + 1].name + ' UNLOCKED!', 480, vy + 8);
     }
     ctx.textAlign = 'center';
+    ctx.fillStyle = '#c9a8ff';
+    ctx.font = '700 15px Inter, sans-serif';
+    ctx.fillText('∞ SPACE — keep fighting, endlessly', 480, 440);
     ctx.fillStyle = UI.goldLight;
     ctx.font = '600 15px Inter, sans-serif';
-    ctx.fillText('Press R — play again   •   Esc — menu', 480, 462);
+    ctx.fillText('R — play again   •   Esc — menu', 480, 466);
   }
 
   if (game.over) {
