@@ -580,7 +580,18 @@
   #menu.hasImage .panel .rowBtn:hover,
   #menu.hasImage .panel .rowBtn.padFocus { transform: translateY(-1px); background: #2a241b; border-color: #ffd98a; box-shadow: 0 0 0 2px rgba(232,182,76,0.13), 0 7px 18px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,238,196,0.2); }
   #menu.hasImage .patchList p { border-left: 2px solid rgba(232, 182, 76, 0.25); padding-left: 1vw; }
-  #menu.hasImage .patchList p { font-size: 2vh; }
+  #menu.hasImage .patchList p { font-size: 2.12vh; line-height: 1.52; margin: 1.35vh 0; }
+  #menu.hasImage .patchList p.locked { opacity: .74; color: #d2cdc3; }
+  #menu.hasImage .patchList p.earned { color: #ffe4a3; }
+  #menu.hasImage .achProg { color: rgba(244,243,239,.7); font-size: .86em; }
+  #achPanel > .row:last-child, #lbPanel > .row:last-child, #statsPanel > .row:last-child,
+  #patchPanel > .row:last-child, #mailPanel > .row:last-child, #bellPanel > .row:last-child,
+  #questPanel > .row:last-child, #onlinePanel > .row:last-child {
+    position: sticky; bottom: -4vh; z-index: 4; margin: 1.8vh -1vw -4vh !important;
+    padding: 1.35vh 1vw 1.5vh; background: #09090b;
+    border-top: 1px solid rgba(232,182,76,.22);
+    box-shadow: 0 -12px 24px rgba(5,5,7,.92);
+  }
   #menu.hasImage .credit-name { font-family: 'Cinzel', serif; }
   #menu.hasImage .credit-role { font-size: 1.7vh; }
   .xb { display:inline-flex; width:2.25vh; height:2.25vh; border-radius:50%; align-items:center; justify-content:center; color:#0b0b0c; font-weight:900; font-size:1.45vh; margin:0 0.18vh; box-shadow:inset 0 1px 0 rgba(255,255,255,0.55), 0 1px 4px rgba(0,0,0,0.5); }
@@ -1165,6 +1176,8 @@
         <p>&#10022; Battle command HUD rebuilt: grouped weapon/gift slot trays, numbered empty slots, clearer time/XP/objective hierarchy, and a labeled treasury. Home now includes an Xbox control ribbon without touching the painted art.</p>
         <p>&#10022; The home command dock is completely new: treasury, roster, and playtime read as status at a glance, while Xbox X Online and Y Settings are now purpose-built action buttons.</p>
         <p>&#10022; Play, Upgrades, Credits, and Exit now share a fully rebuilt Royal Command stack with consistent sizing, larger TV type, opaque icon blocks, and smooth selection-only movement.</p>
+        <p>&#10022; Choose the Battlefield now uses twelve cinematic storybook realm paintings, giving every destination a distinct atmosphere while retaining live weather, lock states, objectives, and Xbox navigation.</p>
+        <p>&#10022; Live realms now use hand-painted terrain, premium enemy sprites, low defensive walls, and one shared weapon atlas across unlock cards, HUD slots, equipped art, and combat.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
         <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
@@ -1674,7 +1687,7 @@ heroSprites.queen = buildDirSprites(Object.assign({}, KENNA_PAL,
 
 // ---------- permanent power-ups (Royal Armory) ----------
 const POWERUPS = [
-  { key: 'might',  name: 'Might',     icon: 'sword',  max: 5, base: 200, desc: '+6% damage per rank' },
+  { key: 'might',  name: 'Might',     icon: 'might',  max: 5, base: 200, desc: '+6% damage per rank' },
   { key: 'vigor',  name: 'Vigor',     icon: 'heart',  max: 3, base: 300, desc: '+1 max heart per rank' },
   { key: 'haste',  name: 'Haste',     icon: 'swift',  max: 5, base: 200, desc: '+4% attack speed per rank' },
   { key: 'stride', name: 'Stride',    icon: 'boots',  max: 5, base: 180, desc: '+4% move speed per rank' },
@@ -4001,6 +4014,36 @@ function drawStructure(s, M, t) {
   }
 }
 
+// Live battle structures are low defensive walls: their visible footprint still
+// matches the unchanged collision shape, without blocky house silhouettes.
+function drawBattleWall(s, M, t) {
+  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(18,Math.min(30,s.h*.3));
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(x,y+5,w*.52,8,0,0,Math.PI*2);ctx.fill();
+  // front face
+  const face=ctx.createLinearGradient(0,y-h,0,y+2);face.addColorStop(0,M.stoneHi);face.addColorStop(1,coverTone(M.stone,-.25));
+  roundedRect(x-w/2,y-h,w,h,5);ctx.fillStyle=face;ctx.fill();
+  // bright top course gives the wall a clear top-down footprint
+  ctx.beginPath();ctx.moveTo(x-w/2+5,y-h);ctx.lineTo(x-w/2+12,y-h-8);ctx.lineTo(x+w/2-7,y-h-8);ctx.lineTo(x+w/2-1,y-h);ctx.closePath();
+  ctx.fillStyle=M.stoneHi;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=1;ctx.stroke();
+  // staggered masonry and occasional broken cap
+  ctx.strokeStyle='rgba(20,18,16,.22)';ctx.lineWidth=1;
+  for(let bx=x-w/2+18;bx<x+w/2;bx+=28){ctx.beginPath();ctx.moveTo(bx,y-h+2);ctx.lineTo(bx,y-2);ctx.stroke();}
+  ctx.beginPath();ctx.moveTo(x-w/2+2,y-h/2);ctx.lineTo(x+w/2-2,y-h/2);ctx.stroke();
+  const chip=hash2(s.seed,71)*w*.55;
+  ctx.fillStyle=M.base;ctx.beginPath();ctx.moveTo(x-w*.18+chip,y-h-9);ctx.lineTo(x-w*.12+chip,y-h+1);ctx.lineTo(x-w*.05+chip,y-h-9);ctx.closePath();ctx.fill();
+  // realm dressing keeps walls from feeling copy-pasted
+  if(M.key==='forest'||M.key==='meadow'||M.key==='garden'){
+    ctx.fillStyle=M.tuftA;for(let k=0;k<4;k++){const vx=x-w/2+12+hash2(s.seed,k)*Math.max(10,w-24);ctx.fillRect(vx,y-h-10,7,4);}
+  } else if(M.key==='forge'||M.key==='volcano'){
+    ctx.strokeStyle='rgba(251,146,60,.65)';ctx.beginPath();ctx.moveTo(x-w*.28,y-h+5);ctx.lineTo(x-w*.1,y-4);ctx.lineTo(x+w*.1,y-h+7);ctx.stroke();
+  } else if(M.key==='crypt'||M.key==='throne'){
+    ctx.fillStyle='rgba(192,132,252,.55)';ctx.font='12px Georgia,serif';ctx.textAlign='center';ctx.fillText('◇',x,y-h+14);
+  }
+  ctx.restore();
+}
+
 // cached glow sprites (much cheaper + softer than per-frame gradients)
 function makeGlow(rgb, size) {
   const c = document.createElement('canvas');
@@ -4912,6 +4955,23 @@ function drawPlayerSprite(p, t) {
     }
   }
   ctx.globalAlpha = 1;
+  // What players unlock in the menu is what they see in the fight: the same
+  // weapon atlas art rides at the knight's hand, with secondary weapons orbiting.
+  const liveWeapon = WEAPON_INFO[p.wtype];
+  if (liveWeapon) {
+    const handX = p.x + (p.faceLeft ? -27 : 27), handY = p.y - 31;
+    ctx.save();
+    ctx.globalAlpha = .94;
+    const wg=ctx.createRadialGradient(handX,handY,2,handX,handY,18); wg.addColorStop(0,'rgba(255,217,138,.24)'); wg.addColorStop(1,'rgba(255,217,138,0)');
+    ctx.fillStyle=wg;ctx.beginPath();ctx.arc(handX,handY,18,0,Math.PI*2);ctx.fill();
+    drawUpgradeIcon(liveWeapon.icon,handX,handY,.62,t);
+    ctx.restore();
+  }
+  (p.arsenal || []).slice(0,3).forEach((wt,wi) => {
+    const info = WEAPON_INFO[wt]; if (!info) return;
+    const a = t*.7 + wi*(Math.PI*2/3), ox=p.x+Math.cos(a)*33, oy=p.y-29+Math.sin(a)*17;
+    ctx.save(); ctx.globalAlpha=.78; drawUpgradeIcon(info.icon,ox,oy,.27,t); ctx.restore();
+  });
   for (let o = 0; o < p.orbCount; o++) {
     const oa = p.orbAngle + (o / p.orbCount) * Math.PI * 2;
     const ox = p.x + Math.cos(oa) * 72;
@@ -4955,14 +5015,38 @@ function drawPlayerSprite(p, t) {
 const SPRITE_IMG = {};
 // painted monsters: monsters/<kind>.png replaces the drawn body the moment it exists
 const ENEMY_IMG = {};
-const DRAWN_KINDS = new Set(['shade', 'charger', 'warlock', 'reaper', 'golem', 'concur', 'wraith']);
-for (const ek of ['wisp', 'imp', 'shade', 'brute', 'spitter', 'splitter', 'shellback', 'golem',
-                  'charger', 'warlock', 'reaper', 'gilded', 'yeti', 'magmite',
-                  'titan', 'wraith', 'gummy', 'concur']) {
+const DRAWN_KINDS = new Set();
+const ENEMY_KEYS = ['wisp', 'imp', 'shade', 'brute', 'spitter', 'splitter', 'shellback', 'golem',
+                    'charger', 'warlock', 'reaper', 'gilded', 'yeti', 'magmite',
+                    'titan', 'wraith', 'gummy', 'concur'];
+for (const ek of ENEMY_KEYS) {
   const im = new Image();
   im.src = 'monsters/' + ek + '.png';
   im.onload = () => { ENEMY_IMG[ek] = im; };
 }
+// Premium atlas overrides the individual fallbacks. Every cell is alpha-scanned,
+// tightly cropped, re-centered, and padded so horns, staffs, and flames stay intact.
+const ENEMY_ATLAS = new Image();
+ENEMY_ATLAS.onload = () => {
+  const cw = ENEMY_ATLAS.naturalWidth / 6, ch = ENEMY_ATLAS.naturalHeight / 3;
+  ENEMY_KEYS.forEach((key, i) => {
+    const scan = document.createElement('canvas'); scan.width = Math.ceil(cw); scan.height = Math.ceil(ch);
+    const sg = scan.getContext('2d', { willReadFrequently: true });
+    sg.drawImage(ENEMY_ATLAS, (i % 6) * cw, Math.floor(i / 6) * ch, cw, ch, 0, 0, scan.width, scan.height);
+    const px = sg.getImageData(0, 0, scan.width, scan.height).data;
+    let x0 = scan.width, y0 = scan.height, x1 = 0, y1 = 0;
+    for (let y = 0; y < scan.height; y++) for (let x = 0; x < scan.width; x++) {
+      if (px[(y * scan.width + x) * 4 + 3] > 18) { x0 = Math.min(x0,x); y0 = Math.min(y0,y); x1 = Math.max(x1,x); y1 = Math.max(y1,y); }
+    }
+    const out = document.createElement('canvas'); out.width = out.height = 320;
+    const og = out.getContext('2d'); og.imageSmoothingEnabled = true;
+    const bw = Math.max(1,x1-x0+1), bh = Math.max(1,y1-y0+1), scale = Math.min(286/bw,286/bh);
+    const dw = bw*scale, dh = bh*scale;
+    og.drawImage(scan,x0,y0,bw,bh,(320-dw)/2,(320-dh)/2,dw,dh);
+    ENEMY_IMG[key] = out;
+  });
+};
+ENEMY_ATLAS.src = 'enemy-atlas.png';
 for (const rk of ROSTER) {
   const im = new Image();
   im.src = 'sprites/' + rk.key + '.png';
@@ -4993,6 +5077,43 @@ for (const k of ['sword', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis',
   im.src = 'icons/' + k + '.png';
   im.onload = () => { ICON_IMG[k] = im; };
 }
+const WEAPON_ICON_KEYS = ['sword','nova','dagger','gust','axe','hammer','bow','flail','trident','icestaff','whip','boomer','blunder','scepter'];
+const WEAPON_ATLAS = new Image();
+WEAPON_ATLAS.onload = () => {
+  const cw = WEAPON_ATLAS.naturalWidth / 7, ch = WEAPON_ATLAS.naturalHeight / 2;
+  WEAPON_ICON_KEYS.forEach((key, i) => {
+    const scan = document.createElement('canvas'); scan.width = Math.ceil(cw); scan.height = Math.ceil(ch);
+    const sg = scan.getContext('2d', { willReadFrequently: true });
+    sg.drawImage(WEAPON_ATLAS,(i%7)*cw,Math.floor(i/7)*ch,cw,ch,0,0,scan.width,scan.height);
+    const px = sg.getImageData(0,0,scan.width,scan.height).data;
+    let x0=scan.width,y0=scan.height,x1=0,y1=0;
+    for(let y=0;y<scan.height;y++) for(let x=0;x<scan.width;x++) if(px[(y*scan.width+x)*4+3]>18){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
+    const out=document.createElement('canvas'); out.width=out.height=256;
+    const og=out.getContext('2d'); og.imageSmoothingEnabled=true;
+    const bw=Math.max(1,x1-x0+1), bh=Math.max(1,y1-y0+1), scale=Math.min(226/bw,226/bh);
+    const dw=bw*scale,dh=bh*scale;
+    og.drawImage(scan,x0,y0,bw,bh,(256-dw)/2,(256-dh)/2,dw,dh);
+    ICON_IMG[key]=out;
+  });
+};
+WEAPON_ATLAS.src='weapon-atlas.png';
+const BLESSING_ICON_KEYS=['might','heart','swift','boots','magnet','coin','crown','wisdom','slayer','goldrush','phoenix','clover'];
+const BLESSING_ATLAS=new Image();
+BLESSING_ATLAS.onload=()=>{
+  const cw=BLESSING_ATLAS.naturalWidth/4,ch=BLESSING_ATLAS.naturalHeight/3;
+  BLESSING_ICON_KEYS.forEach((key,i)=>{
+    const scan=document.createElement('canvas');scan.width=Math.ceil(cw);scan.height=Math.ceil(ch);
+    const sg=scan.getContext('2d',{willReadFrequently:true});
+    sg.drawImage(BLESSING_ATLAS,(i%4)*cw,Math.floor(i/4)*ch,cw,ch,0,0,scan.width,scan.height);
+    const px=sg.getImageData(0,0,scan.width,scan.height).data;
+    let x0=scan.width,y0=scan.height,x1=0,y1=0;
+    for(let y=0;y<scan.height;y++)for(let x=0;x<scan.width;x++)if(px[(y*scan.width+x)*4+3]>18){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
+    const out=document.createElement('canvas');out.width=out.height=256;const og=out.getContext('2d');og.imageSmoothingEnabled=true;
+    const bw=Math.max(1,x1-x0+1),bh=Math.max(1,y1-y0+1),scale=Math.min(226/bw,226/bh),dw=bw*scale,dh=bh*scale;
+    og.drawImage(scan,x0,y0,bw,bh,(256-dw)/2,(256-dh)/2,dw,dh);ICON_IMG[key]=out;
+  });
+};
+BLESSING_ATLAS.src='blessing-atlas.png';
 
 // upgrade icons, drawn as crisp little emblems
 function drawUpgradeIcon(kind, x, y, s, t) {
@@ -6096,8 +6217,8 @@ function renderSelect(t, forP2) {
   }
 
   drawHintsBar(forP2
-    ? [['ARROWS', true], ['NAVIGATE', false], ['·', false], ['ENTER', true], ['JOIN', false], ['·', false], ['BACKSPACE', true], ['CANCEL', false]]
-    : [['WASD / ARROWS / MOUSE', true], ['NAVIGATE', false], ['·', false], ['CLICK', true], ['SELECT', false], ['·', false], ['Q / E', true], ['PAGES', false]]);
+    ? [['D-PAD / ARROWS', true], ['NAVIGATE', false], ['·', false], ['A / ENTER', true], ['JOIN', false], ['·', false], ['B / BACKSPACE', true], ['CANCEL', false]]
+    : [['D-PAD / WASD', true], ['NAVIGATE', false], ['·', false], ['A / CLICK', true], ['SELECT', false], ['·', false], ['LB / RB · Q / E', true], ['PAGES', false]]);
   drawToasts(t);
 }
 
@@ -6152,9 +6273,12 @@ function renderArmory(t) {
       ctx.globalAlpha = 1;
       if (it.rank === 0) drawLockBadge(x + cw - 16, y + 16);
     } else {
+      const halo = ctx.createRadialGradient(x + cw / 2, y + 36, 2, x + cw / 2, y + 36, 30);
+      halo.addColorStop(0, sel ? 'rgba(255,217,138,.22)' : 'rgba(232,182,76,.13)'); halo.addColorStop(1, 'rgba(232,182,76,0)');
+      ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(x + cw / 2, y + 36, 30, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath();
       ctx.arc(x + cw / 2, y + 36, 24, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(232, 182, 76, 0.09)';
+      ctx.fillStyle = sel ? 'rgba(232,182,76,.16)' : 'rgba(232, 182, 76, 0.09)';
       ctx.fill();
       ctx.strokeStyle = UI.plateBorder;
       ctx.lineWidth = 1.5;
@@ -6170,7 +6294,7 @@ function renderArmory(t) {
     const pipsW = it.max * 15 - 4;
     for (let r2 = 0; r2 < it.max; r2++) {
       ctx.fillStyle = r2 < it.rank ? UI.gold : 'rgba(255, 255, 255, 0.16)';
-      ctx.fillRect(x + cw / 2 - pipsW / 2 + r2 * 15, y + 92, 11, 6);
+      roundedRect(x + cw / 2 - pipsW / 2 + r2 * 15, y + 92, 11, 6, 3); ctx.fill();
     }
   }
   // section hint under the pets row
@@ -6204,6 +6328,7 @@ function renderArmory(t) {
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(sx0 + 18, 144); ctx.lineTo(sx0 + sw0 - 18, 144); ctx.stroke();
+  drawStateChip(it.pet ? 'ROYAL COMPANION' : 'PERMANENT BLESSING', sx0 + sw0 - 18, 112, it.pet ? '#c9a8ff' : UI.goldLight, 'right');
   // big emblem
   if (it.pet) {
     const pk2 = 'pet' + it.pet.proj;
@@ -6218,6 +6343,9 @@ function renderArmory(t) {
       ctx.restore();
     }
   } else {
+    const bigHalo = ctx.createRadialGradient(scx, 212, 5, scx, 212, 70);
+    bigHalo.addColorStop(0, 'rgba(232,182,76,.18)'); bigHalo.addColorStop(.62, 'rgba(232,182,76,.05)'); bigHalo.addColorStop(1, 'rgba(232,182,76,0)');
+    ctx.fillStyle = bigHalo; ctx.beginPath(); ctx.arc(scx, 212, 70, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath();
     ctx.arc(scx, 212, 46, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(232, 182, 76, 0.09)';
@@ -6236,7 +6364,7 @@ function renderArmory(t) {
   const bp = it.max * 26 - 6;
   for (let r2 = 0; r2 < it.max; r2++) {
     ctx.fillStyle = r2 < it.rank ? UI.gold : 'rgba(255, 255, 255, 0.16)';
-    ctx.fillRect(scx - bp / 2 + r2 * 26, 346, 20, 9);
+    roundedRect(scx - bp / 2 + r2 * 26, 346, 20, 9, 4); ctx.fill();
   }
   ctx.font = '700 13px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.text;
@@ -6274,11 +6402,11 @@ function renderArmory(t) {
   } else {
     ctx.fillStyle = afford ? '#eaf5e0' : '#e8a0a6';
     ctx.fillText(afford
-      ? (it.pet && it.rank === 0 ? 'ADOPT — ' : 'RANK UP — ') + it.price + 'g'
+      ? 'Ⓐ  ' + (it.pet && it.rank === 0 ? 'ADOPT — ' : 'RANK UP — ') + it.price + 'g'
       : 'NEED ' + (it.price - kdMeta.gold) + 'g MORE', scx, by + 28);
   }
 
-  drawHintsBar([['HOVER', true], ['INSPECT', false], ['·', false], ['CLICK / SPACE', true], ['BUY', false], ['·', false], ['ESC / BACK', true], ['LEAVE', false]]);
+  drawHintsBar([['D-PAD / MOUSE', true], ['INSPECT', false], ['·', false], ['A / CLICK', true], ['BUY', false], ['·', false], ['B / ESC', true], ['LEAVE', false]]);
   drawToasts(t);
 }
 
@@ -6411,7 +6539,7 @@ function renderStory(t) {
     ctx.arc(CX + (i2 - (storySlides().length - 1) / 2) * 22, 566, 4, 0, Math.PI * 2);
     ctx.fill();
   });
-  drawHintsBar([['A / SPACE / CLICK', true], ['CONTINUE', false], ['·', false], ['ESC / B', true], ['SKIP', false]]);
+  drawHintsBar([['A / SPACE', true], ['CONTINUE', false], ['·', false], ['B / ESC', true], ['SKIP', false]]);
   drawToasts(t);
 }
 
@@ -6508,19 +6636,57 @@ function renderLobby(t) {
       : '🌐 Room ' + NET.code + ' open — online friends can still join mid-battle', CX, 428);
   }
   drawActionBtn(CX - 96, 448, 192, 46, '⚔ START BATTLE', 'green', -5);
-  drawHintsBar([['🎮 START / SPACE', true], ['BEGIN', false], ['·', false], ['A', true], ['JOIN / CHANGE KNIGHT', false], ['·', false], ['Y / T', true], ['UPGRADES', false], ['·', false], ['B', true], ['BACK', false]]);
+  drawHintsBar([['🎮 START / SPACE', true], ['BEGIN', false], ['·', false], ['A', true], ['JOIN / CHANGE', false], ['·', false], ['Y / T', true], ['UPGRADES', false], ['·', false], ['B', true], ['BACK', false]]);
   drawToasts(t);
 }
 
 
 // ---- realm covers: pre-rendered vistas built from the REAL game art ----
 const COVER_CACHE = {};
+const REALM_ATLAS = new Image();
+REALM_ATLAS.src = 'realm-preview-atlas.png';
+const TERRAIN_ATLAS = new Image();
+const TERRAIN_TILES = [];
+const TERRAIN_PATTERNS = [];
+TERRAIN_ATLAS.onload = () => {
+  const cw = TERRAIN_ATLAS.naturalWidth / 4, ch = TERRAIN_ATLAS.naturalHeight / 3;
+  for (let i = 0; i < 12; i++) {
+    const src = document.createElement('canvas'); src.width = src.height = 512;
+    const sg = src.getContext('2d');
+    sg.drawImage(TERRAIN_ATLAS, (i % 4) * cw + 3, Math.floor(i / 4) * ch + 3, cw - 6, ch - 6, 0, 0, 512, 512);
+    // Four mirrored quadrants make every outer edge mathematically continuous.
+    const tile = document.createElement('canvas'); tile.width = tile.height = 1024;
+    const tg = tile.getContext('2d');
+    for (let qy=0;qy<2;qy++) for(let qx=0;qx<2;qx++) {
+      tg.save(); tg.translate(qx*512+(qx?512:0),qy*512+(qy?512:0)); tg.scale(qx?-1:1,qy?-1:1); tg.drawImage(src,0,0); tg.restore();
+    }
+    TERRAIN_TILES[i] = tile;
+  }
+};
+TERRAIN_ATLAS.src = 'realm-terrain-atlas.png';
 const COVER_MOBS = {
   meadow: ['wisp', 'imp'], courtyard: ['imp', 'wisp'], hall: ['imp', 'brute'],
   forest: ['imp', 'wisp'], crypt: ['wisp', 'splitter'], snow: ['yeti', 'wisp'],
   forge: ['magmite', 'imp'], throne: ['brute', 'wisp'], candy: ['splitter', 'gummy'],
   garden: ['wisp', 'splitter'], lake: ['yeti', 'wisp'], volcano: ['magmite', 'brute'],
 };
+const COVER_MOOD = {
+  meadow:    { sky:'#88c7e8', haze:'#e7d99d', far:'#76924f', near:'#51743c', glow:'#fff1a6' },
+  courtyard: { sky:'#7299c7', haze:'#c9b989', far:'#5f7180', near:'#49545c', glow:'#ffe09a' },
+  forest:    { sky:'#31584e', haze:'#769477', far:'#294d38', near:'#173426', glow:'#d8ff9c' },
+  snow:      { sky:'#789eb7', haze:'#e3edf1', far:'#aabfc9', near:'#d9e5ea', glow:'#fffbe2' },
+  candy:     { sky:'#8ad9e7', haze:'#ffd3e7', far:'#d491c4', near:'#9ad7c9', glow:'#fff7ac' },
+  garden:    { sky:'#6b92c2', haze:'#d6b2d4', far:'#596b82', near:'#344f46', glow:'#ffd7ef' },
+  lake:      { sky:'#182d52', haze:'#6682a5', far:'#213958', near:'#11283d', glow:'#f3f0d0' },
+  volcano:   { sky:'#32141a', haze:'#a13b28', far:'#391513', near:'#1b0b09', glow:'#ff7a35' },
+};
+function coverTone(hex, amount) {
+  const n = parseInt(String(hex).replace('#', ''), 16);
+  const f = amount < 0 ? 1 + amount : 1;
+  const add = amount > 0 ? 255 * amount : 0;
+  const ch = s => Math.max(0, Math.min(255, Math.round(((n >> s) & 255) * f + add)));
+  return '#' + [ch(16), ch(8), ch(0)].map(v => v.toString(16).padStart(2, '0')).join('');
+}
 function buildMapCover(mi) {
   const m = MAPS[mi];
   const W2 = 470, H2 = 200, tt = 1.7;
@@ -6528,19 +6694,55 @@ function buildMapCover(mi) {
   cv.width = W2; cv.height = H2;
   const old = ctx;
   ctx = cv.getContext('2d');
-  // the realm's true ground
-  ctx.fillStyle = m.base;
-  ctx.fillRect(0, 0, W2, H2);
+  // illustrated cover composition: sky/interior, deep horizon, playable ground
+  const K = m.key;
+  const mood = COVER_MOOD[K];
+  const indoors = K === 'hall' || K === 'crypt' || K === 'forge' || K === 'throne';
+  if (indoors) {
+    const wall = ctx.createLinearGradient(0, 0, 0, H2);
+    const top = K === 'forge' ? '#31150c' : K === 'throne' ? '#241638' : K === 'crypt' ? '#141b20' : '#343039';
+    wall.addColorStop(0, top); wall.addColorStop(.68, m.base); wall.addColorStop(1, '#100d0c');
+    ctx.fillStyle = wall; ctx.fillRect(0, 0, W2, H2);
+    // high arches and columns create a readable interior silhouette
+    for (let ax = -12; ax < W2 + 60; ax += 94) {
+      ctx.fillStyle = 'rgba(8,7,9,.42)';
+      ctx.fillRect(ax, 0, 18, 145);
+      ctx.beginPath(); ctx.arc(ax + 47, 55, 39, Math.PI, 0); ctx.lineTo(ax + 86, 126); ctx.lineTo(ax + 8, 126); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = K === 'forge' ? 'rgba(255,105,35,.14)' : K === 'throne' ? 'rgba(203,151,255,.12)' : 'rgba(232,182,76,.08)';
+      ctx.beginPath(); ctx.arc(ax + 47, 57, 24, Math.PI, 0); ctx.lineTo(ax + 71, 122); ctx.lineTo(ax + 23, 122); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(232,182,76,.13)'; ctx.lineWidth = 1;
+    for (let fy = 128; fy < H2; fy += 18) { ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(W2, fy); ctx.stroke(); }
+    for (let fx = 20; fx < W2; fx += 52) { ctx.beginPath(); ctx.moveTo(W2/2, 112); ctx.lineTo(fx, H2); ctx.stroke(); }
+  } else {
+    const sky = ctx.createLinearGradient(0, 0, 0, H2 * .64);
+    sky.addColorStop(0, mood.sky); sky.addColorStop(1, mood.haze);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W2, H2);
+    const sun = ctx.createRadialGradient(W2*.78, 35, 2, W2*.78, 35, 44);
+    sun.addColorStop(0, mood.glow); sun.addColorStop(.18, mood.glow + 'bb'); sun.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sun; ctx.fillRect(0, 0, W2, 94);
+    // three staggered horizon layers give the tiny cards real distance
+    ctx.fillStyle = mood.far;
+    ctx.beginPath(); ctx.moveTo(0,108); ctx.lineTo(0,79); ctx.quadraticCurveTo(62,42,124,82); ctx.quadraticCurveTo(192,32,258,80); ctx.quadraticCurveTo(338,48,470,91); ctx.lineTo(470,120); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = mood.near;
+    ctx.beginPath(); ctx.moveTo(0,120); ctx.lineTo(0,99); ctx.quadraticCurveTo(74,72,150,108); ctx.quadraticCurveTo(242,70,324,108); ctx.quadraticCurveTo(398,82,470,111); ctx.lineTo(470,136); ctx.closePath(); ctx.fill();
+    const ground = ctx.createLinearGradient(0, 94, 0, H2);
+    ground.addColorStop(0, m.base); ground.addColorStop(1, coverTone(m.base, -.22));
+    ctx.fillStyle = ground; ctx.fillRect(0, 102, W2, H2 - 102);
+    // a soft road leads the eye toward the realm landmark
+    ctx.fillStyle = K === 'snow' ? 'rgba(220,230,231,.48)' : K === 'candy' ? 'rgba(255,231,194,.42)' : 'rgba(210,184,132,.22)';
+    ctx.beginPath(); ctx.moveTo(205, H2); ctx.quadraticCurveTo(250, 148, 238, 102); ctx.lineTo(254,102); ctx.quadraticCurveTo(300,151, 286,H2); ctx.closePath(); ctx.fill();
+  }
   for (let k = 0; k < 12; k++) {
     ctx.fillStyle = k % 2 ? 'rgba(255, 255, 220, 0.02)' : 'rgba(12, 30, 8, 0.05)';
     ctx.beginPath();
-    ctx.ellipse(hash2(k, mi) * W2, 40 + hash2(k, mi + 3) * (H2 - 50),
+    ctx.ellipse(hash2(k, mi) * W2, (indoors ? 116 : 108) + hash2(k, mi + 3) * (H2 - 116),
       30 + hash2(k, mi + 5) * 50, 16 + hash2(k, mi + 7) * 22, 0, 0, Math.PI * 2);
     ctx.fill();
   }
   // micro-speckle + tufts + flowers, straight from the battlefield's visual language
   for (let k = 0; k < 90; k++) {
-    const px = hash2(k, mi + 11) * W2, py = hash2(k, mi + 13) * H2;
+    const px = hash2(k, mi + 11) * W2, py = (indoors ? 112 : 104) + hash2(k, mi + 13) * (H2 - 108);
     const hh = hash2(k, mi + 17);
     if (hh > 0.93) {
       ctx.fillStyle = hh > 0.97 ? m.flowerA : m.flowerB;
@@ -6554,7 +6756,6 @@ function buildMapCover(mi) {
     }
   }
   // realm-specific backdrop band
-  const K = m.key;
   if (K === 'snow') {
     ctx.fillStyle = '#b8c7cf';
     ctx.beginPath(); ctx.moveTo(-10, 64); ctx.lineTo(96, 4); ctx.lineTo(206, 64); ctx.closePath(); ctx.fill();
@@ -6681,14 +6882,26 @@ function buildMapCover(mi) {
   return { cv, wantImgs, mobCount: mobs.length };
 }
 function drawMapScene(m, x, y, w, h, t, i) {
+  const atlasReady = REALM_ATLAS.complete && REALM_ATLAS.naturalWidth > 0;
   let cc = COVER_CACHE[i];
-  if (!cc || (cc.wantImgs < cc.mobCount && Object.keys(ENEMY_IMG).length)) {
-    cc = COVER_CACHE[i] = buildMapCover(i);
-  }
+  if (!atlasReady && (!cc || (cc.wantImgs < cc.mobCount && Object.keys(ENEMY_IMG).length))) cc = COVER_CACHE[i] = buildMapCover(i);
   ctx.save();
   roundedRect(x, y, w, h, 7);
   ctx.clip();
-  ctx.drawImage(cc.cv, x, y, w, h);
+  if (atlasReady) {
+    const cw = REALM_ATLAS.naturalWidth / 4, ch = REALM_ATLAS.naturalHeight / 3;
+    const col = i % 4, row = Math.floor(i / 4);
+    const sh = Math.min(ch - 4, (cw - 4) * h / w);
+    // Landmark-weighted crop keeps castles, peaks, and thrones in frame.
+    const focus = [0.2,0.24,0.18,0.24,0.22,0.18,0.24,0.2,0.22,0.2,0.2,0.18][i] || .22;
+    const sy = row * ch + Math.max(2, Math.min(ch - sh - 2, (ch - sh) * focus));
+    ctx.drawImage(REALM_ATLAS, col * cw + 2, sy, cw - 4, sh, x, y, w, h);
+    const polish = ctx.createLinearGradient(0, y, 0, y + h);
+    polish.addColorStop(0, 'rgba(255,248,225,.05)'); polish.addColorStop(.62, 'rgba(0,0,0,0)'); polish.addColorStop(1, 'rgba(5,4,6,.28)');
+    ctx.fillStyle = polish; ctx.fillRect(x, y, w, h);
+  } else {
+    ctx.drawImage(cc.cv, x, y, w, h);
+  }
   // living weather on top
   const K = m.key;
   if (K === 'snow') {
@@ -6847,7 +7060,7 @@ function renderMapSelect(t) {
   ctx.fillStyle = un ? '#eaf5e0' : '#9a939f';
   ctx.fillText(un ? '⚔ RIDE OUT' : '🔒 LOCKED', scx, by + 26);
 
-  drawHintsBar([['W / S or ▲▼', true], ['CHOOSE THE REALM', false], ['·', false], ['SPACE / A', true], ['RIDE OUT', false], ['·', false], ['B / BACKSPACE', true], ['BACK', false]]);
+  drawHintsBar([['D-PAD / W S', true], ['CHOOSE REALM', false], ['·', false], ['A / SPACE', true], ['RIDE OUT', false], ['·', false], ['B / BACKSPACE', true], ['BACK', false]]);
   drawToasts(t);
 }
 
@@ -6909,6 +7122,15 @@ function render(t) {
 
   ctx.fillStyle = M.base;
   ctx.fillRect(cam.x - 20, cam.y - 20, ROOM_W + 80, 680);
+  // hand-painted realm texture, cached as one repeating pattern per battlefield
+  if (TERRAIN_TILES[game.mapPick]) {
+    if (!TERRAIN_PATTERNS[game.mapPick]) TERRAIN_PATTERNS[game.mapPick] = ctx.createPattern(TERRAIN_TILES[game.mapPick], 'repeat');
+    ctx.save();
+    ctx.globalAlpha = 0.34;
+    ctx.fillStyle = TERRAIN_PATTERNS[game.mapPick];
+    ctx.fillRect(cam.x - 20, cam.y - 20, ROOM_W + 80, 680);
+    ctx.restore();
+  }
   // organic tone patches (clustered blobs, not perfect ellipses)
   const m0x = Math.floor(cam.x / 150), m0y = Math.floor(cam.y / 150);
   for (let my = m0y; my <= m0y + 5; my++) {
@@ -7218,7 +7440,7 @@ function render(t) {
   drawList.sort((a, b) => a.y - b.y);
   for (const d of drawList) {
     if (d.kind === 'enemy') drawEnemy(d.e, t);
-    else if (d.kind === 'struct') drawStructure(d.s, MAPS[game.mapPick], t);
+    else if (d.kind === 'struct') drawBattleWall(d.s, MAPS[game.mapPick], t);
     else if (d.kind === 'pet') drawPet(d.pe, t);
     else if (d.kind === 'chest') drawChest(d.c, t);
     else drawPlayerSprite(d.p, t);
@@ -9065,7 +9287,7 @@ window.addEventListener('keydown', e => {
 // ---- update-card carousel ----
 const UC_SLIDES = [
   { head: '✦ LATEST UPDATE', title: 'v2.0 VISUAL POLISH',
-    body: 'A complete royal UI refresh with grouped battle slots, clearer objectives, a rebuilt home command dock, smoother motion, sharper TV text, Xbox-native prompts, and richer menus — built for the living-room screen.',
+    body: 'A complete royal UI refresh with cinematic realm previews, grouped battle slots, clearer objectives, a rebuilt home command dock, smoother motion, sharper TV text, Xbox-native prompts, and richer menus — built for the living-room screen.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
