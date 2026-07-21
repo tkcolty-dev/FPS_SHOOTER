@@ -1513,6 +1513,7 @@ window.addEventListener('keydown', e => {
   // P2 joins with J — and picks their own knight
   const p2 = players[1];
   if (p2 && !p2.joined && e.code === 'KeyJ' && game.phase === 'run') {
+    game.joinSlot = 1;
     game.phase = 'select2';
     game.cursor = 0;
   }
@@ -1612,17 +1613,18 @@ function confirmSelection2() {
     gameToast('🔒 Locked — unlock with gold first!');
     return;
   }
-  const p2 = players[1];
+  const slot = game.joinSlot || 1;
+  const p2 = players[slot];
   p2.joined = true;
   applyHero(p2, rk.key);
   applyRunUpgradesTo(p2);
   p2.alive = true;
   p2.hp = p2.maxHp;
   p2.invuln = 2;
-  p2.x = players[0].x + 60;
-  p2.y = players[0].y;
+  p2.x = players[0].x + 40 + slot * 24;
+  p2.y = players[0].y + (slot % 2 ? 24 : -24);
   game.phase = 'run';
-  gameToast(p2.name + ' joins the fight!');
+  gameToast('P' + (slot + 1) + ' — ' + p2.name + ' joins the fight!');
   kdStats.coop = true;
   checkAchievements();
 }
@@ -1647,6 +1649,7 @@ function pickUpgrade(idx) {
   game.up[c.key] = upLvl(c.key) + 1;
   gameToast('✨ ' + c.name + '  Lv ' + game.up[c.key] + '!');
   game.choices = null;
+  game.padPick = null;
 }
 
 function makePlayer(keymap, joined) {
@@ -1666,6 +1669,8 @@ function makePlayer(keymap, joined) {
 const players = [
   makePlayer({ up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, true),
   makePlayer({ up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, false),
+  makePlayer({ up: '', down: '', left: '', right: '' }, false),   // P3 — controller only
+  makePlayer({ up: '', down: '', left: '', right: '' }, false),   // P4 — controller only
 ];
 
 const game = {
@@ -1698,13 +1703,15 @@ function initRun() {
     p.speed = 235; p.attackEvery = 0.6; p.range = 175; p.damage = 1; p.arc = 1.2;
     p.magnet = 95; p.orbCount = 0; p.wave = 0;
     p.attackTimer = Math.random() * 0.5; p.reviveProgress = 0;
-    p.x = WORLD_W / 2 + (p === players[0] ? -40 : 40);
-    p.y = WORLD_H / 2;
+    const slot = players.indexOf(p);
+    p.x = WORLD_W / 2 - 40 + slot * 34;
+    p.y = WORLD_H / 2 + (slot % 2 ? 26 : 0);
   }
   applyHero(players[0], game.heroPick);
   players[0].hp = players[0].maxHp;
-  players[1].joined = false;
-  players[1].alive = false;
+  for (let pi = 1; pi < players.length; pi++) {
+    if (!players[pi].remote) { players[pi].joined = false; players[pi].alive = false; }
+  }
   // online friends stay in the party across restarts
   for (const p of players) {
     if (p.remote) {
@@ -2055,9 +2062,15 @@ function update(dt) {
       if (keys.has('ArrowRight')) vx += 1;
       if (keys.has('ArrowUp')) vy -= 1;
       if (keys.has('ArrowDown')) vy += 1;
-      vx = Math.max(-1, Math.min(1, vx));
-      vy = Math.max(-1, Math.min(1, vy));
     }
+    // controller in the matching slot steers this knight
+    const pad = PADS['p' + players.indexOf(p)];
+    if (pad) {
+      vx += pad.ax + (pad.left ? -1 : 0) + (pad.right ? 1 : 0);
+      vy += pad.ay + (pad.up ? -1 : 0) + (pad.down ? 1 : 0);
+    }
+    vx = Math.max(-1, Math.min(1, vx));
+    vy = Math.max(-1, Math.min(1, vy));
     p.moving = vx !== 0 || vy !== 0;
     if (p.moving) {
       if (vx < 0) p.dir = 'left';
@@ -3230,7 +3243,7 @@ function renderSelect(t, forP2) {
   ctx.moveTo(400, 36); ctx.quadraticCurveTo(440, 30, 466, 34);
   ctx.moveTo(560, 36); ctx.quadraticCurveTo(520, 30, 494, 34);
   ctx.stroke();
-  drawScreenTitle(forP2 ? 'PLAYER 2 — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 64);
+  drawScreenTitle(forP2 ? 'PLAYER ' + ((game.joinSlot || 1) + 1) + ' — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 64);
 
   cardRects = [];
   const cols = 5, perPage = 15, cw = 100, chh = 118, gap = 10;
@@ -4194,9 +4207,9 @@ function render(t) {
     ctx.fillText('🌐 ROOM ' + NET.code, 946, 106);
   }
 
-  if (!game.netGuest && !(players[1] && players[1].joined)) {
+  if (!game.netGuest && players.some((p, pi) => pi > 0 && !p.joined && !p.remote)) {
     ctx.font = '600 13px Inter, sans-serif';
-    const jtxt = 'Player 2 — press J to join!';
+    const jtxt = 'Friends — press J or 🎮 A to join!';
     const jw = ctx.measureText(jtxt).width + 38;
     ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 3);
     plate(12, 640 - 46, jw, 32, 16);
@@ -4229,7 +4242,7 @@ function render(t) {
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
       const cx2 = 480 + (i - 1) * 270;
-      const hov = mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > 195 && mouse.y < 460;
+      const hov = (mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > 195 && mouse.y < 460) || game.padPick === i;
       const top = 205 - (hov ? 10 : 0);
       cardRects.push({ x: cx2 - 115, y: 195, w: 230, h: 265, idx: i });
       // cards pop in one after another
@@ -4438,6 +4451,7 @@ let netTickT = 0;
 function loop(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
+  pollPads();
   fpsSmooth += (1 / Math.max(dt, 0.001) - fpsSmooth) * 0.08;
   if (!menuOpen) {
     elapsed += dt;
@@ -5576,6 +5590,12 @@ function guestTick(dt) {
     if (keys.has('KeyD') || keys.has('ArrowRight')) vx += 1;
     if (keys.has('KeyW') || keys.has('ArrowUp')) vy -= 1;
     if (keys.has('KeyS') || keys.has('ArrowDown')) vy += 1;
+    if (PADS.p0) {
+      vx += PADS.p0.ax + (PADS.p0.left ? -1 : 0) + (PADS.p0.right ? 1 : 0);
+      vy += PADS.p0.ay + (PADS.p0.up ? -1 : 0) + (PADS.p0.down ? 1 : 0);
+    }
+    vx = Math.max(-1, Math.min(1, vx));
+    vy = Math.max(-1, Math.min(1, vy));
     s.moving = vx !== 0 || vy !== 0;
     if (s.moving) {
       if (vx < 0) s.dir = 'left';
@@ -5611,6 +5631,79 @@ document.getElementById('netJoinBtn').addEventListener('click', () => {
   if (code.length !== 4) { setNetStatus('⚠ Enter the 4-letter code.'); return; }
   setNetStatus('Riding to the gates…');
   netConnect(() => netSend({ t: 'join', code }));
+});
+
+// ---- gamepads: Xbox controllers — and the Xbox itself, via its Edge browser ----
+const PADS = { prev: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
+function readPad(i) {
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  const gp = gps[i];
+  if (!gp || !gp.connected) return null;
+  const dz = v => (Math.abs(v) > 0.24 ? v : 0);
+  const b = n => !!(gp.buttons[n] && gp.buttons[n].pressed);
+  return {
+    ax: dz(gp.axes[0] || 0), ay: dz(gp.axes[1] || 0),
+    left: b(14) || dz(gp.axes[0] || 0) < -0.5, right: b(15) || dz(gp.axes[0] || 0) > 0.5,
+    up: b(12) || dz(gp.axes[1] || 0) < -0.5, down: b(13) || dz(gp.axes[1] || 0) > 0.5,
+    a: b(0), bBtn: b(1), x: b(2), y: b(3), lb: b(4), rb: b(5), start: b(9),
+  };
+}
+function padTap(i, name, val) {
+  const was = PADS.prev[i][name];
+  PADS.prev[i][name] = val;
+  return val && !was;
+}
+function synthKey(code) {
+  window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+  keys.delete(code);   // controller taps never leave a key held down
+}
+function pollPads() {
+  for (let i = 0; i < 4; i++) {
+    const s = readPad(i);
+    PADS['p' + i] = s;
+    if (!s) continue;
+    const tap = n => padTap(i, n, s[n]);
+    const inRun = game.phase === 'run' && !menuOpen && !game.choices && !game.victory && !game.over;
+    if (tap('start')) synthKey('Escape');
+    if (menuOpen) {
+      if (tap('a')) btnPlay.click();
+      if (tap('bBtn')) closePanels();
+      continue;
+    }
+    if (game.choices) {
+      if (game.padPick === undefined || game.padPick === null) game.padPick = 1;
+      if (tap('left')) game.padPick = Math.max(0, game.padPick - 1);
+      if (tap('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
+      if (tap('a')) pickUpgrade(game.padPick);
+      continue;
+    }
+    if (game.victory || game.over) {
+      if (tap('a')) synthKey(game.victory ? 'Space' : 'KeyR');
+      if (tap('x')) synthKey('KeyR');
+      if (tap('bBtn')) synthKey('Escape');
+      continue;
+    }
+    if (!inRun) {
+      // canvas menus: d-pad or stick navigates, A confirms, B backs out, bumpers flip pages
+      if (tap('left')) synthKey('ArrowLeft');
+      if (tap('right')) synthKey('ArrowRight');
+      if (tap('up')) synthKey('ArrowUp');
+      if (tap('down')) synthKey('ArrowDown');
+      if (tap('a')) synthKey('Space');
+      if (tap('bBtn')) synthKey('Backspace');
+      if (tap('lb')) synthKey('KeyQ');
+      if (tap('rb')) synthKey('KeyE');
+    } else if (i >= 1 && players[i] && !players[i].joined && !players[i].remote && tap('a')) {
+      // any extra controller presses A mid-battle to join as P2/P3/P4
+      game.joinSlot = i;
+      game.phase = 'select2';
+      game.cursor = 0;
+    }
+  }
+}
+window.addEventListener('gamepadconnected', e => {
+  gameToast('🎮 Controller ' + (e.gamepad.index + 1) + ' connected!');
+  if (menuOpen) menuToastShow('🎮 Controller connected — press A to play!');
 });
 
 // ---- audio: composed music + sfx engine ----
