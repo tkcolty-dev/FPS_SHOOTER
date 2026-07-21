@@ -138,6 +138,10 @@
     transition: background 0.15s ease;
   }
   .panel .rowBtn:hover { background: rgba(201, 168, 106, 0.28); }
+  .panel::-webkit-scrollbar { width: 8px; }
+  .panel::-webkit-scrollbar-thumb { background: rgba(201, 168, 106, 0.4); border-radius: 4px; }
+  .panel::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 106, 0.6); }
+  .panel::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); }
   .panelX {
     position: absolute; top: 1.6vh; right: 1.2vw;
     background: none; border: none; color: #c9a86a;
@@ -1443,8 +1447,15 @@ function pushOut(px, py, r) {
 // raw key state
 const keys = new Set();
 window.addEventListener('keydown', e => {
+  // never fight the user while they type in a menu field or nudge a slider
+  if (e.target && e.target.tagName === 'INPUT') return;
   keys.add(e.code);
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  if (menuOpen && e.code === 'KeyR' && (game.over || game.victory) && !game.netGuest) {
+    game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false;
+    hideMenu();
+    return;
+  }
   if (menuOpen) return;
 
   // hero grid / armory / map selection screens
@@ -1501,7 +1512,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'KeyR' && (game.over || game.victory)) { game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false; return; }
   // P2 joins with J — and picks their own knight
   const p2 = players[1];
-  if (!p2.joined && e.code === 'KeyJ' && game.phase === 'run') {
+  if (p2 && !p2.joined && e.code === 'KeyJ' && game.phase === 'run') {
     game.phase = 'select2';
     game.cursor = 0;
   }
@@ -1861,6 +1872,16 @@ function hitPlayer(t, e) {
         kdMeta.gold += game.payout;
         saveMeta();
         recordRun(false);
+      } else if (game.endless) {
+        // the endless overtime run earns a leaderboard entry, nothing double-counts
+        const heroes = players[0].name + (players[1] && players[1].joined ? ' & ' + players[1].name : '');
+        kdStats.best.push({
+          h: heroes, m: MAPS[game.mapPick].name + ' ∞', t: Math.floor(game.time),
+          k: game.kills, lv: game.level, w: false, d: new Date().toLocaleDateString(),
+        });
+        kdStats.best.sort((a, b) => b.t - a.t);
+        kdStats.best = kdStats.best.slice(0, 8);
+        saveStats();
       }
     }
   }
@@ -1988,6 +2009,7 @@ function update(dt) {
     if (!kdMeta.mapsDone) kdMeta.mapsDone = [];
     kdMeta.mapsDone[game.mapPick] = true;
     saveMeta();
+    game.paidOut = true;   // an endless death afterwards must not pay or count twice
     playSting('victory');
     recordRun(true);
     return;
@@ -2028,7 +2050,7 @@ function update(dt) {
     if (keys.has(p.keymap.right)) vx += 1;
     if (keys.has(p.keymap.up)) vy -= 1;
     if (keys.has(p.keymap.down)) vy += 1;
-    if (p === players[0] && !players[1].joined) {
+    if (p === players[0] && !(players[1] && players[1].joined)) {
       if (keys.has('ArrowLeft')) vx -= 1;
       if (keys.has('ArrowRight')) vx += 1;
       if (keys.has('ArrowUp')) vy -= 1;
@@ -2202,7 +2224,7 @@ function update(dt) {
     e.kx *= Math.pow(0.02, dt); e.ky *= Math.pow(0.02, dt);
     e.x = Math.max(16, Math.min(WORLD_W - 16, e.x));
     e.y = Math.max(16, Math.min(WORLD_H - 16, e.y));
-    if (e.seed % 1 < 2) { const eres = pushOut(e.x, e.y, e.r * 0.75); e.x = eres.x; e.y = eres.y; }
+    { const eres = pushOut(e.x, e.y, e.r * 0.75); e.x = eres.x; e.y = eres.y; }
 
     if (e.hp <= 0) { killEnemy(i); continue; }
 
@@ -4172,7 +4194,7 @@ function render(t) {
     ctx.fillText('🌐 ROOM ' + NET.code, 946, 106);
   }
 
-  if (!players[1].joined) {
+  if (!game.netGuest && !(players[1] && players[1].joined)) {
     ctx.font = '600 13px Inter, sans-serif';
     const jtxt = 'Player 2 — press J to join!';
     const jw = ctx.measureText(jtxt).width + 38;
@@ -4472,7 +4494,7 @@ function updateHomeStats() {
   const mins = Math.floor((st.playMs || 0) / 60000);
   homeStats.innerHTML =
     '<button class="hsCard" id="hsGold" title="Royal Armory — spend your gold">🪙 <b>' + (meta.gold || 0) + '</b>&nbsp;gold</button>' +
-    '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / 24</b>&nbsp;knights</div>' +
+    '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / ' + ROSTER.length + '</b>&nbsp;knights</div>' +
     '<div class="hsCard">⏳ <b>' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm</b></div>' +
     '<button class="hsCard" id="hsOnline">🌐 ONLINE</button>' +
     '<button class="hsCard" id="hsSettings">⚙ SETTINGS</button>';
@@ -5072,12 +5094,8 @@ function openPanel(name) {
 function closePanels() { panelShade.classList.add('hidden'); }
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
 panelShade.addEventListener('click', e => { if (e.target === panelShade) closePanels(); });
-document.getElementById('btnSettings').addEventListener('click', () => {
-  hideMenu();
-  game.phase = 'armory';
-  game.armoryFrom = 'home';
-  game.cursor = 0;
-});
+// the painted button says SETTINGS, so it opens Settings (armory lives on the gold card)
+document.getElementById('btnSettings').addEventListener('click', () => openPanel('settings'));
 document.getElementById('btnCredits').addEventListener('click', () => openPanel('credits'));
 document.getElementById('btnPatch').addEventListener('click', e => {
   e.stopPropagation();
@@ -5234,7 +5252,7 @@ const ACH_DEFS = [
     need: () => (kdStats.runs || 0) >= 1 },
   { key: 'meadow',  icon: '🏰', name: 'Meadow Sovereign', desc: 'Clear the Royal Meadow',
     need: () => !!(kdMeta.mapsDone && kdMeta.mapsDone[0]) },
-  { key: 'realms4', icon: '🗺', name: 'Realm Explorer', desc: 'Free 4 of the 8 realms',
+  { key: 'realms4', icon: '🗺', name: 'Realm Explorer', desc: 'Free 4 realms of the kingdom',
     need: () => mapsCleared() >= 4, prog: () => mapsCleared() + ' / 4' },
   { key: 'concur',  icon: '👑', name: 'Concur the Kingdom', desc: 'Concur all 8 realms',
     need: () => mapsCleared() >= 8, prog: () => Math.min(8, mapsCleared()) + ' / 8' },
@@ -5524,6 +5542,7 @@ function applySnap(m) {
   enemies = m.en.map(a => ({
     kind: a[0], x: a[1], y: a[2], r: a[3], hp: a[4], maxHp: a[5], seed: a[6],
     chargeState: a[7] ? 'aim' : 'stalk', spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
+    shootCd: 9, stateT: 1, aimX: 0, aimY: 0, life: 9,
   }));
   gems = m.gm.map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
   drops = m.dr.map(a => ({ x: a[0], y: a[1], kind: a[2] ? 'coin' : 'heart', v: 2 }));
@@ -5706,6 +5725,8 @@ function musicTick() {
   sfxBus.gain.value = (settings.sfx / 100) * 0.5;
   const now = audioCtx.currentTime;
   if (now < stingUntil) { nextBarT = 0; return; }
+  // after tab-backgrounding the clock races ahead — never schedule a burst of stale bars
+  if (nextBarT && nextBarT < now) nextBarT = now + 0.05;
   const want = (!menuOpen && game.phase === 'run' && !game.over && !game.victory && !game.choices)
     ? 'battle' : 'menu';
   if (want !== musicTrack) { musicTrack = want; barIdx = 0; nextBarT = now + 0.08; }
