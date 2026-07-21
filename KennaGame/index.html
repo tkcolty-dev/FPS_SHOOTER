@@ -1202,7 +1202,7 @@ function drawCrest(x, y, s) {
 
 // ---------- persistent treasury & unlocks (like Vampire Survivors) ----------
 const kdMeta = Object.assign(
-  { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'], power: {}, mapsDone: [] },
+  { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'], power: {}, mapsDone: [], pets: {} },
   JSON.parse(localStorage.getItem('kd_meta') || '{}')
 );
 function saveMeta() { localStorage.setItem('kd_meta', JSON.stringify(kdMeta)); }
@@ -1257,6 +1257,40 @@ const POWERUPS = [
 function powerRank(k) { return kdMeta.power[k] || 0; }
 function powerPrice(pu) { return pu.base * (powerRank(pu.key) + 1); }
 
+// ---------- pets: little companions that fight beside the knights ----------
+const PETS = [
+  { key: 'sprinkle', name: 'Sprinkle', proj: 'candy', price: 350, max: 5,
+    desc: 'A sugar dragon that spits hard candy', rate: 1.05, dmg: 1 },
+  { key: 'tome', name: 'Professor Tome', proj: 'book', price: 550, max: 5,
+    desc: 'A flying spellbook that hurls heavy words', rate: 1.55, dmg: 3 },
+  { key: 'twinkle', name: 'Twinkle', proj: 'magic', price: 800, max: 5,
+    desc: 'A star spirit whose magic seeks the curse', rate: 1.35, dmg: 2 },
+];
+function petRank(k) { return (kdMeta.pets || {})[k] || 0; }
+function petPrice(p) { return Math.round(p.price * (1 + petRank(p.key) * 0.7)); }
+function buyPet(idx) {
+  const p = PETS[idx];
+  const rank = petRank(p.key);
+  if (rank >= p.max) { SFX.denied(); gameToast(p.name + ' is already at max rank!'); return; }
+  const price = petPrice(p);
+  if (kdMeta.gold < price) { SFX.denied(); gameToast('Not enough gold! (' + price + 'g needed)'); return; }
+  SFX.unlock();
+  kdMeta.gold -= price;
+  if (!kdMeta.pets) kdMeta.pets = {};
+  kdMeta.pets[p.key] = rank + 1;
+  saveMeta();
+  gameToast(rank === 0 ? '🐾 ' + p.name + ' joins the kingdom!' : '✨ ' + p.name + ' grows to rank ' + (rank + 1) + '!');
+}
+function armoryBuy(i) {
+  if (i < POWERUPS.length) buyPower(i);
+  else buyPet(i - POWERUPS.length);
+}
+function armoryExit() {
+  game.phase = 'select';
+  game.cursor = 0;
+  if (game.armoryFrom === 'home') showMenu();
+}
+
 function applyHero(p, key) {
   p.heroKey = key;
   const def = ROSTER.find(h => h.key === key);
@@ -1301,6 +1335,9 @@ const MAPS = [
   { key: 'throne', name: 'THE THRONE ROOM', desc: 'Concur awaits', goal: 20,
     base: '#4a3a5e', tuftA: '#5a4870', tuftB: '#3c2f4e', stone: '#6b5a85', stoneHi: '#7d6c96',
     flowerA: '#e8b64c', flowerB: '#ffd98a', edge: '#241b30', structs: ['pillar', 'brazier', 'wall'] },
+  { key: 'candy', name: 'CANDY MOUNTAIN', desc: 'A very serious mountain made of candy', goal: 12,
+    base: '#f29ec4', tuftA: '#fbc3da', tuftB: '#e387b0', stone: '#a9ecdc', stoneHi: '#dffbf3',
+    flowerA: '#fff3b0', flowerB: '#ffffff', edge: '#8f4a6d', structs: ['tree', 'rock', 'well'] },
 ];
 function mapUnlocked(i) {
   return i === 0 || (kdMeta.mapsDone && kdMeta.mapsDone[i - 1]);
@@ -1363,23 +1400,25 @@ window.addEventListener('keydown', e => {
       else confirmSelection();
     }
     if (game.phase === 'select2' && e.code === 'Backspace') { game.phase = 'run'; return; }
-    if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.cursor = 0; }
+    if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.armoryFrom = 'select'; game.cursor = 0; }
     return;
   }
   if (game.phase === 'armory') {
-    const n = POWERUPS.length;
+    const n = POWERUPS.length + PETS.length;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
-    if (['Space', 'Enter'].includes(e.code)) buyPower(game.cursor);
-    if (e.code === 'KeyT' || e.code === 'Backspace') { game.phase = 'select'; game.cursor = 0; }
+    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - 3 + n) % n;
+    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + 3) % n;
+    if (['Space', 'Enter'].includes(e.code)) armoryBuy(game.cursor);
+    if (e.code === 'KeyT' || e.code === 'Backspace') armoryExit();
     return;
   }
   if (game.phase === 'map') {
-    const n = MAPS.length;
+    const n = MAPS.length, mc = n > 8 ? 5 : 4;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
-    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - 4 + n) % n;
-    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + 4) % n;
+    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - mc + n) % n;
+    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + mc) % n;
     if (['Space', 'Enter'].includes(e.code)) confirmSelection();
     return;
   }
@@ -1417,7 +1456,11 @@ canvas.addEventListener('click', () => {
   if (menuOpen) return;
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
-      if (game.phase === 'armory') { if (c.idx >= 0) buyPower(c.idx); else { game.phase = 'select'; game.cursor = 0; } }
+      if (game.phase === 'armory') {
+        if (c.idx >= 0) armoryBuy(c.idx);
+        else if (c.idx === -5) armoryBuy(game.cursor);
+        else armoryExit();
+      }
       else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -3) { game.cursor = Math.max(0, game.cursor - 15); }
       else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -4) { game.cursor = Math.min(ROSTER.length - 1, game.cursor + 15); }
       else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -5) {
@@ -1539,7 +1582,7 @@ const game = {
   xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [];
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [];
 const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
 
 function initRun() {
@@ -1548,6 +1591,16 @@ function initRun() {
   game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
   enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = [];
+  runPets = [];
+  PETS.forEach((pd, i) => {
+    if (petRank(pd.key) > 0) {
+      runPets.push({
+        def: pd, rank: petRank(pd.key), idx: i,
+        x: WORLD_W / 2 - 70 - i * 30, y: WORLD_H / 2 + 40,
+        seed: i * 37 + 5, cd: 1 + i * 0.4,
+      });
+    }
+  });
   for (const p of players) {
     p.hp = 6; p.maxHp = 6; p.alive = true; p.invuln = 0;
     p.speed = 235; p.attackEvery = 0.6; p.range = 175; p.damage = 1; p.arc = 1.2;
@@ -1909,18 +1962,69 @@ function update(dt) {
     }
   }
 
+  // pets trail their knight and pelt the curse with candy, books and magic
+  const petAnchors = players.filter(p => p.joined && p.alive);
+  for (let pi = 0; pi < runPets.length; pi++) {
+    const pet = runPets[pi];
+    const owner = petAnchors[pi % Math.max(1, petAnchors.length)] || players[0];
+    const oa = game.time * 0.9 + pet.seed;
+    const tx = owner.x + Math.cos(oa) * 52 - 0;
+    const ty = owner.y - 34 + Math.sin(oa) * 30;
+    pet.x += (tx - pet.x) * Math.min(1, 4.2 * dt);
+    pet.y += (ty - pet.y) * Math.min(1, 4.2 * dt);
+    pet.cd -= dt;
+    if (pet.cd <= 0) {
+      let best = null, bd = 420 * 420;
+      for (const e of enemies) {
+        if (e.kind === 'gilded') continue;
+        const d = (e.x - pet.x) ** 2 + (e.y - pet.y) ** 2;
+        if (d < bd) { bd = d; best = e; }
+      }
+      if (best) {
+        const a = Math.atan2(best.y - pet.y, best.x - pet.x);
+        waves.push({
+          x: pet.x, y: pet.y, ang: a,
+          vx: Math.cos(a) * 430, vy: Math.sin(a) * 430,
+          dmg: pet.def.dmg + (pet.rank - 1), life: 1.1, hit: new Set(),
+          kind: 'pet', sub: pet.def.proj,
+        });
+        SFX.pet();
+        pet.cd = pet.def.rate * Math.pow(0.92, pet.rank - 1);
+      }
+    }
+  }
+
   // projectiles
   for (let i = waves.length - 1; i >= 0; i--) {
     const w = waves[i];
     w.life -= dt;
+    if (w.kind === 'pet' && w.sub === 'magic') {
+      // twinkle's magic gently seeks the nearest spirit
+      let best = null, bd = 300 * 300;
+      for (const e of enemies) {
+        const d = (e.x - w.x) ** 2 + (e.y - w.y) ** 2;
+        if (d < bd && !w.hit.has(e)) { bd = d; best = e; }
+      }
+      if (best) {
+        const a = Math.atan2(best.y - w.y, best.x - w.x);
+        const sp = Math.hypot(w.vx, w.vy);
+        const cur = Math.atan2(w.vy, w.vx);
+        let da = a - cur;
+        while (da > Math.PI) da -= 2 * Math.PI;
+        while (da < -Math.PI) da += 2 * Math.PI;
+        const na = cur + Math.max(-4 * dt, Math.min(4 * dt, da));
+        w.vx = Math.cos(na) * sp; w.vy = Math.sin(na) * sp;
+        w.ang = na;
+      }
+    }
     w.x += w.vx * dt; w.y += w.vy * dt;
     for (const e of enemies) {
       if (w.hit.has(e)) continue;
-      const rad = w.kind === 'dagger' ? e.r + 14 : e.r + 26;
+      const rad = (w.kind === 'dagger' || w.kind === 'pet') ? e.r + 14 : e.r + 26;
       if (Math.hypot(e.x - w.x, e.y - w.y) < rad) {
         w.hit.add(e);
         hurtEnemy(e, w.dmg, w.ang, w.kb || 180);
-        if (w.kind === 'dagger') { w.life = 0; break; }
+        if (w.kind === 'dagger' || w.kind === 'pet') { w.life = 0; break; }
       }
     }
     if (w.life <= 0) waves.splice(i, 1);
@@ -2415,13 +2519,26 @@ function drawEnemy(e, t) {
     ctx.arc(0, 0, e.r, 0, Math.PI * 2);
     ctx.fill();
   }
-  const ed = e.r * 0.34, eh = e.kind === 'brute' || e.kind === 'golem' ? 7 : 5;
+  // big cute eyes with shines, blush, and a little smile
+  const ed = e.r * 0.34;
+  const er = Math.max(2.6, e.r * 0.21);
   ctx.fillStyle = cols.eye;
-  ctx.fillRect(-ed - 2.5, -4, 5, eh + 1);
-  ctx.fillRect(ed - 2.5, -4, 5, eh + 1);
+  ctx.beginPath(); ctx.arc(-ed, -e.r * 0.12, er, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ed, -e.r * 0.12, er, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = cols.rim;
-  ctx.fillRect(-ed - 1, -1, 2, 2.5);
-  ctx.fillRect(ed - 1, -1, 2, 2.5);
+  ctx.beginPath(); ctx.arc(-ed + er * 0.2, -e.r * 0.08, er * 0.52, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ed + er * 0.2, -e.r * 0.08, er * 0.52, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+  ctx.beginPath(); ctx.arc(-ed - er * 0.3, -e.r * 0.2, er * 0.28, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ed - er * 0.3, -e.r * 0.2, er * 0.28, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255, 140, 160, 0.35)';
+  ctx.beginPath(); ctx.arc(-ed - er * 0.4, e.r * 0.24, er * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ed + er * 0.4, e.r * 0.24, er * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = cols.rim;
+  ctx.lineWidth = Math.max(1.2, e.r * 0.07);
+  ctx.beginPath();
+  ctx.arc(0, e.r * 0.18, e.r * 0.2, 0.3, Math.PI - 0.3);
+  ctx.stroke();
 
   ctx.restore();
 
@@ -2437,6 +2554,73 @@ function drawEnemy(e, t) {
     ctx.fillStyle = `rgba(255, 220, 120, ${0.6 + 0.4 * Math.sin(t * 18)})`;
     ctx.fillText('!', e.x, e.y + bob - e.r - 18);
   }
+}
+
+function drawPet(pe, t) {
+  const bob = Math.sin(t * 4 + pe.seed) * 3.5;
+  const x = pe.x, y = pe.y + bob;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+  ctx.beginPath();
+  ctx.ellipse(pe.x, pe.y + 26, 10, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(x, y);
+  if (pe.def.proj === 'candy') {
+    // Sprinkle the sugar dragon: pink puff, mint wings, tiny horns
+    const flap = Math.sin(t * 9 + pe.seed) * 0.5;
+    ctx.fillStyle = '#a9ecdc';
+    for (const s of [-1, 1]) {
+      ctx.save();
+      ctx.rotate(s * (0.5 + flap * 0.4));
+      ctx.beginPath(); ctx.ellipse(s * 10, -4, 8, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    ctx.fillStyle = '#f472b6';
+    ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f9a8d4';
+    ctx.beginPath(); ctx.arc(-3, -3, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s * 4, -9); ctx.lineTo(s * 6, -15); ctx.lineTo(s * 8, -9);
+      ctx.closePath(); ctx.fill();
+    }
+  } else if (pe.def.proj === 'book') {
+    // Professor Tome: a fluttering spellbook
+    const flap = Math.sin(t * 7 + pe.seed) * 0.35;
+    ctx.fillStyle = '#7c4a24';
+    ctx.save(); ctx.rotate(-0.25 - flap); ctx.fillRect(-14, -8, 14, 16); ctx.restore();
+    ctx.save(); ctx.rotate(0.25 + flap); ctx.fillRect(0, -8, 14, 16); ctx.restore();
+    ctx.fillStyle = '#f5e6c8';
+    ctx.save(); ctx.rotate(-0.22 - flap); ctx.fillRect(-12, -6, 11, 12); ctx.restore();
+    ctx.save(); ctx.rotate(0.22 + flap); ctx.fillRect(1, -6, 11, 12); ctx.restore();
+    ctx.fillStyle = '#e8b64c';
+    ctx.fillRect(-1.5, -9, 3, 18);
+  } else {
+    // Twinkle: a five-point star spirit
+    ctx.rotate(Math.sin(t * 2 + pe.seed) * 0.25);
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 6 : 13;
+      const a = -Math.PI / 2 + (i / 10) * Math.PI * 2;
+      ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fef9c3';
+    ctx.beginPath(); ctx.arc(-2, -2, 4, 0, Math.PI * 2); ctx.fill();
+  }
+  // every pet gets the same happy little face
+  ctx.fillStyle = '#241a10';
+  ctx.beginPath(); ctx.arc(-3.4, 0.5, 1.7, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(3.4, 0.5, 1.7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(-3.9, 0, 0.65, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(2.9, 0, 0.65, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#241a10';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(0, 2.6, 2.4, 0.25, Math.PI - 0.25); ctx.stroke();
+  ctx.restore();
 }
 
 function drawPlayerSprite(p, t) {
@@ -3098,69 +3282,171 @@ function renderSelect(t, forP2) {
   drawToasts(t);
 }
 
+function armoryItem(i) {
+  if (i < POWERUPS.length) {
+    const pu = POWERUPS[i];
+    return { name: pu.name, desc: pu.desc, icon: pu.icon, max: pu.max,
+             rank: powerRank(pu.key), price: powerPrice(pu), pet: null };
+  }
+  const p = PETS[i - POWERUPS.length];
+  return { name: p.name, desc: p.desc, icon: null, max: p.max,
+           rank: petRank(p.key), price: petPrice(p), pet: p };
+}
 function renderArmory(t) {
   drawScreenBg(t);
   drawScreenTitle('UPGRADES', 64);
-  plate(760, 24, 190, 42, 12);
-  drawUpgradeIcon('coin', 788, 45, 0.55, t);
-  ctx.textAlign = 'right';
-  ctx.font = '700 19px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(kdMeta.gold), 934, 52);
-
   cardRects = [];
-  const cw = 280, ch = 150, gap = 18;
-  for (let i = 0; i < POWERUPS.length; i++) {
-    const pu = POWERUPS[i];
-    const col = i % 3, row = Math.floor(i / 3);
-    const x = 480 - (3 * cw + 2 * gap) / 2 + col * (cw + gap);
-    const y = 110 + row * (ch + gap);
-    cardRects.push({ x, y, w: cw, h: ch, idx: i });
+  const nItems = POWERUPS.length + PETS.length;
+  const cols = 3, cw = 168, chh = 112, gap = 12;
+  const gx0 = 42, gy0 = 96;
+  for (let i = 0; i < nItems; i++) {
+    const it = armoryItem(i);
+    const col = i % cols, row = Math.floor(i / cols);
+    const x = gx0 + col * (cw + gap), y = gy0 + row * (chh + gap);
+    cardRects.push({ x, y, w: cw, h: chh, idx: i });
     const sel = game.cursor === i;
-    const rank = powerRank(pu.key), maxed = rank >= pu.max;
-    plate(x, y, cw, ch, 12);
+    roundedRect(x, y, cw, chh, 10);
+    const cg = ctx.createLinearGradient(0, y, 0, y + chh);
+    cg.addColorStop(0, 'rgba(24, 23, 27, 0.94)');
+    cg.addColorStop(1, 'rgba(12, 11, 14, 0.96)');
+    ctx.fillStyle = cg;
+    ctx.fill();
+    ctx.strokeStyle = sel ? UI.goldLight : 'rgba(70, 68, 78, 0.9)';
+    ctx.lineWidth = sel ? 2.5 : 1.5;
+    ctx.stroke();
     if (sel) {
-      ctx.strokeStyle = UI.goldLight;
-      ctx.lineWidth = 2.5;
-      ctx.strokeRect(x + 3, y + 3, cw - 6, ch - 6);
+      ctx.save();
+      ctx.shadowColor = 'rgba(232, 182, 76, 0.55)';
+      ctx.shadowBlur = 14;
+      ctx.stroke();
+      ctx.restore();
     }
+    // emblem
+    if (it.pet) {
+      if (it.rank === 0) ctx.globalAlpha = 0.55;
+      drawPet({ def: it.pet, seed: i * 9, x: x + cw / 2, y: y + 34 }, t);
+      ctx.globalAlpha = 1;
+      if (it.rank === 0) drawLockBadge(x + cw - 16, y + 16);
+    } else {
+      ctx.beginPath();
+      ctx.arc(x + cw / 2, y + 36, 24, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(232, 182, 76, 0.09)';
+      ctx.fill();
+      ctx.strokeStyle = UI.plateBorder;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawUpgradeIcon(it.icon, x + cw / 2, y + 36, 0.62, t);
+    }
+    ctx.textAlign = 'center';
+    ctx.font = '700 12px Cinzel, Georgia, serif';
+    ctx.fillStyle = sel ? UI.goldLight : '#d9d2c0';
+    ctx.fillText(it.name.toUpperCase(), x + cw / 2, y + 82);
+    // rank pips
+    const pipsW = it.max * 15 - 4;
+    for (let r2 = 0; r2 < it.max; r2++) {
+      ctx.fillStyle = r2 < it.rank ? UI.gold : 'rgba(255, 255, 255, 0.16)';
+      ctx.fillRect(x + cw / 2 - pipsW / 2 + r2 * 15, y + 92, 11, 6);
+    }
+  }
+  // section hint under the pets row
+  ctx.textAlign = 'center';
+  ctx.font = '11px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText('Top: forged blessings   ·   Bottom row: royal pets who fight beside you', gx0 + (cols * cw + 2 * gap) / 2, gy0 + 3 * (chh + gap) + 14);
+
+  // BACK — big, obvious, clickable
+  const bkY = gy0 + 3 * (chh + gap) + 30;
+  cardRects.push({ x: gx0 + 130, y: bkY, w: 260, h: 42, idx: -1 });
+  roundedRect(gx0 + 130, bkY, 260, 42, 9);
+  ctx.fillStyle = 'rgba(14, 13, 16, 0.92)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(201, 168, 106, 0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.font = '700 15px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText('◀  BACK', gx0 + 260, bkY + 27);
+
+  // ---- sidebar: coins on top, details of the hovered item ----
+  const it = armoryItem(game.cursor);
+  const sx0 = 600, sw0 = 336, scx = sx0 + sw0 / 2;
+  plate(sx0, 92, sw0, 456, 16);
+  drawUpgradeIcon('coin', sx0 + 28, 122, 0.55, t);
+  ctx.textAlign = 'left';
+  ctx.font = '700 18px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText(kdMeta.gold + ' GOLD', sx0 + 48, 129);
+  ctx.strokeStyle = UI.plateBorder;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(sx0 + 18, 144); ctx.lineTo(sx0 + sw0 - 18, 144); ctx.stroke();
+  // big emblem
+  if (it.pet) {
+    ctx.save();
+    ctx.translate(scx, 218);
+    ctx.scale(2.4, 2.4);
+    ctx.translate(-scx, -218);
+    drawPet({ def: it.pet, seed: 3, x: scx, y: 214 }, t);
+    ctx.restore();
+  } else {
     ctx.beginPath();
-    ctx.arc(x + 44, y + 52, 28, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(232, 182, 76, 0.1)';
+    ctx.arc(scx, 212, 46, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(232, 182, 76, 0.09)';
     ctx.fill();
     ctx.strokeStyle = UI.plateBorder;
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    drawUpgradeIcon(pu.icon, x + 44, y + 52, 0.75, t);
-    ctx.textAlign = 'left';
-    ctx.font = '700 17px Cinzel, Georgia, serif';
-    ctx.fillStyle = sel ? UI.goldLight : UI.text;
-    ctx.fillText(pu.name, x + 86, y + 40);
-    for (let r2 = 0; r2 < pu.max; r2++) {
-      ctx.fillStyle = r2 < rank ? UI.gold : 'rgba(255, 255, 255, 0.15)';
-      ctx.fillRect(x + 86 + r2 * 18, y + 52, 13, 7);
-    }
-    ctx.font = '12px Inter, sans-serif';
-    ctx.fillStyle = UI.dim;
-    ctx.fillText(pu.desc, x + 86, y + 82);
-    ctx.font = '700 14px Cinzel, Georgia, serif';
-    if (maxed) {
-      ctx.fillStyle = UI.gold;
-      ctx.fillText('MAX RANK', x + 86, y + 116);
-    } else {
-      ctx.fillStyle = kdMeta.gold >= powerPrice(pu) ? UI.goldLight : '#e5484d';
-      ctx.fillText('UPGRADE — ' + powerPrice(pu) + 'g', x + 86, y + 116);
-    }
+    drawUpgradeIcon(it.icon, scx, 212, 1.3, t);
   }
-  cardRects.push({ x: 380, y: 480, w: 200, h: 52, idx: -1 });
-  plate(380, 480, 200, 52, 12);
   ctx.textAlign = 'center';
-  ctx.font = '700 16px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
-  ctx.fillText('BACK', 480, 512);
-  ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
-  ctx.font = '18px "VT323", monospace';
-  ctx.fillText('These blessings are permanent — every knight, every run', 480, 580);
+  ctx.font = '700 22px Cinzel, Georgia, serif';
+  ctx.fillStyle = '#f3ead8';
+  ctx.fillText(it.name.toUpperCase(), scx, 306);
+  ctx.font = '13px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText(it.desc, scx, 328);
+  // rank pips, big
+  const bp = it.max * 26 - 6;
+  for (let r2 = 0; r2 < it.max; r2++) {
+    ctx.fillStyle = r2 < it.rank ? UI.gold : 'rgba(255, 255, 255, 0.16)';
+    ctx.fillRect(scx - bp / 2 + r2 * 26, 346, 20, 9);
+  }
+  ctx.font = '700 13px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.text;
+  ctx.fillText('RANK ' + it.rank + ' / ' + it.max, scx, 382);
+  if (it.pet && it.rank > 0) {
+    ctx.font = '12px Inter, sans-serif';
+    ctx.fillStyle = '#8fd460';
+    const nextDmg = it.pet.dmg + it.rank - 1;
+    ctx.fillText('Damage ' + nextDmg + ' · throws every ' + (it.pet.rate * Math.pow(0.92, it.rank - 1)).toFixed(1) + 's', scx, 404);
+  }
+  // BUY / RANK UP button
+  const by = 470, bh = 44;
+  cardRects.push({ x: sx0 + 20, y: by, w: sw0 - 40, h: bh, idx: -5 });
+  const maxed = it.rank >= it.max;
+  const afford = kdMeta.gold >= it.price;
+  roundedRect(sx0 + 20, by, sw0 - 40, bh, 9);
+  const bg = ctx.createLinearGradient(0, by, 0, by + bh);
+  if (maxed) { bg.addColorStop(0, '#3a3a40'); bg.addColorStop(1, '#232328'); }
+  else if (afford) { bg.addColorStop(0, '#3f7d3a'); bg.addColorStop(1, '#224420'); }
+  else { bg.addColorStop(0, '#4a3038'); bg.addColorStop(1, '#2a1c20'); }
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.strokeStyle = maxed ? 'rgba(90, 88, 98, 0.8)' : 'rgba(232, 182, 76, 0.75)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.font = '700 15px Cinzel, Georgia, serif';
+  if (maxed) {
+    ctx.fillStyle = '#c9c2ce';
+    ctx.fillText('MAX RANK', scx, by + 28);
+  } else {
+    ctx.fillStyle = afford ? '#eaf5e0' : '#e8a0a6';
+    ctx.fillText((it.pet && it.rank === 0 ? 'ADOPT — ' : 'RANK UP — ') + it.price + 'g', scx, by + 28);
+  }
+
+  ctx.font = '11px Inter, sans-serif';
+  ctx.fillStyle = `rgba(240, 226, 195, ${0.5 + 0.2 * Math.sin(t * 3)})`;
+  ctx.fillText('Hover with the mouse · click or SPACE to buy · ESC / BACK to leave', 480, 606);
   drawToasts(t);
 }
 
@@ -3168,7 +3454,8 @@ function renderMapSelect(t) {
   drawScreenBg(t);
   drawScreenTitle('CHOOSE THE BATTLEFIELD', 64);
   cardRects = [];
-  const cw = 210, chh = 208, gap = 14, cols = 4;
+  const cols = MAPS.length > 8 ? 5 : 4;
+  const cw = cols === 5 ? 176 : 210, chh = 208, gap = cols === 5 ? 10 : 14;
   for (let i = 0; i < MAPS.length; i++) {
     const m = MAPS[i];
     const col = i % cols, row = Math.floor(i / cols);
@@ -3209,13 +3496,13 @@ function renderMapSelect(t) {
     ctx.strokeRect(x + 12, y + 12, cw - 24, 88);
     ctx.textAlign = 'center';
     if (un) {
-      ctx.font = '700 14px Cinzel, Georgia, serif';
+      ctx.font = '700 ' + (cols === 5 ? 12 : 14) + 'px Cinzel, Georgia, serif';
       ctx.fillStyle = sel ? UI.goldLight : UI.text;
       ctx.fillText(m.name, x + cw / 2, y + 124);
-      ctx.font = '11px Inter, sans-serif';
+      ctx.font = (cols === 5 ? 9.5 : 11) + 'px Inter, sans-serif';
       ctx.fillStyle = UI.dim;
       ctx.fillText(m.desc, x + cw / 2, y + 144);
-      ctx.font = '700 11px Inter, sans-serif';
+      ctx.font = '700 ' + (cols === 5 ? 9.5 : 11) + 'px Inter, sans-serif';
       ctx.fillStyle = UI.gold;
       ctx.fillText('OBJECTIVE — SURVIVE ' + m.goal + ' MIN', x + cw / 2, y + 168);
       if (kdMeta.mapsDone && kdMeta.mapsDone[i]) {
@@ -3436,6 +3723,7 @@ function render(t) {
   const drawList = [];
   for (const e of enemies) drawList.push({ y: e.y, kind: 'enemy', e });
   for (const p of players) if (p.joined) drawList.push({ y: p.y, kind: 'player', p });
+  for (const pe of runPets) drawList.push({ y: pe.y + 30, kind: 'pet', pe });
   for (const s of structures) {
     if (s.x > cam.x - 160 && s.x < cam.x + 1120 && s.y > cam.y - 160 && s.y < cam.y + 860) {
       drawList.push({ y: s.y, kind: 'struct', s });
@@ -3445,6 +3733,7 @@ function render(t) {
   for (const d of drawList) {
     if (d.kind === 'enemy') drawEnemy(d.e, t);
     else if (d.kind === 'struct') drawStructure(d.s, MAPS[game.mapPick], t);
+    else if (d.kind === 'pet') drawPet(d.pe, t);
     else drawPlayerSprite(d.p, t);
   }
 
@@ -3474,6 +3763,41 @@ function render(t) {
       ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(1, w.life * 1.2)})`;
       ctx.lineWidth = 3;
       ctx.beginPath(); ctx.arc(-10, 0, 30, -1.0, 1.0); ctx.stroke();
+    } else if (w.kind === 'pet' && w.sub === 'candy') {
+      ctx.rotate(w.life * 14);
+      ctx.fillStyle = '#f472b6';
+      ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(-6, -1.5, 12, 3);
+      ctx.fillStyle = '#f9a8d4';
+      for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(s * 6, 0); ctx.lineTo(s * 11, -4); ctx.lineTo(s * 11, 4);
+        ctx.closePath(); ctx.fill();
+      }
+    } else if (w.kind === 'pet' && w.sub === 'book') {
+      ctx.rotate(w.life * 10);
+      ctx.fillStyle = '#7c4a24';
+      ctx.fillRect(-8, -6, 16, 12);
+      ctx.fillStyle = '#f5e6c8';
+      ctx.fillRect(-6, -4, 12, 8);
+      ctx.strokeStyle = '#b09068';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-4, -2); ctx.lineTo(4, -2);
+      ctx.moveTo(-4, 1); ctx.lineTo(4, 1);
+      ctx.stroke();
+    } else if (w.kind === 'pet' && w.sub === 'magic') {
+      ctx.drawImage(GLOWS.gilded, -14, -14, 28, 28);
+      ctx.rotate(w.life * 16);
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const r = i % 2 ? 3 : 7.5;
+        const a = (i / 8) * Math.PI * 2;
+        ctx[i ? 'lineTo' : 'moveTo'](Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath(); ctx.fill();
     } else {
       ctx.strokeStyle = `rgba(255, 250, 235, ${Math.min(1, w.life * 2)})`;
       ctx.lineWidth = 7;
@@ -4543,6 +4867,7 @@ panelShade.addEventListener('click', e => { if (e.target === panelShade) closePa
 document.getElementById('btnSettings').addEventListener('click', () => {
   hideMenu();
   game.phase = 'armory';
+  game.armoryFrom = 'home';
   game.cursor = 0;
 });
 document.getElementById('btnCredits').addEventListener('click', () => openPanel('credits'));
@@ -4609,7 +4934,11 @@ function hideMenu() {
   gameStarted = true;
   menuEl.classList.add('hidden');
 }
-btnPlay.addEventListener('click', hideMenu);
+btnPlay.addEventListener('click', () => {
+  // PLAY must never land you on the upgrade page
+  if (game.phase === 'armory') { game.phase = 'select'; game.cursor = 0; }
+  hideMenu();
+});
 window.addEventListener('keydown', e => {
   if (e.code !== 'Escape') return;
   if (!panelShade.classList.contains('hidden')) closePanels();
@@ -5008,6 +5337,7 @@ const SFX = {
   heart()   { if (audioCtx) { tone(sfxBus, 'sine', 69, audioCtx.currentTime, 0.2, 0.14); tone(sfxBus, 'sine', 76, audioCtx.currentTime + 0.1, 0.3, 0.12); } },
   hurt()    { if (audioCtx && sfxGate('hu', 200)) { tone(sfxBus, 'sawtooth', 0, audioCtx.currentTime, 0.22, 0.2, { hz: 160, slideTo: 60 }); nz(sfxBus, audioCtx.currentTime, 0.12, 0.12, { type: 'lowpass', freq: 700 }); } },
   bolt()    { if (audioCtx && sfxGate('bo', 150)) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.14, 0.07, { hz: 420, slideTo: 240 }); },
+  pet()     { if (audioCtx && sfxGate('pt', 180)) tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.09, 0.07, { hz: 880, slideTo: 1200 }); },
   levelup() { if (audioCtx) [69, 73, 76, 81].forEach((m, i) => tone(sfxBus, 'triangle', m, audioCtx.currentTime + i * 0.09, 0.35, 0.15)); },
   pick()    { if (audioCtx) tone(sfxBus, 'triangle', 81, audioCtx.currentTime, 0.14, 0.13); },
   unlock()  { if (audioCtx) [64, 69, 73, 76].forEach((m, i) => tone(sfxBus, 'triangle', m, audioCtx.currentTime + i * 0.08, 0.3, 0.14)); },
