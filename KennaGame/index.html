@@ -645,12 +645,30 @@
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
   #menu.hasImage .iconBtn {
-    color: #f0e2c3; border-radius: 1.1vh;
+    color: #e8cf9a; border-radius: 1.1vh;
     background: rgba(13, 11, 9, 0.94);
     backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
     border: 1px solid rgba(232, 182, 76, 0.3);
     display: flex; align-items: center; justify-content: center;
-    font-size: min(1.9vh, 1.25vw); line-height: 1; padding: 0;
+    padding: 0; position: relative;
+  }
+  #menu.hasImage .iconBtn svg { width: 52%; height: 52%; }
+  /* hover (or pad focus) names the button on a little plate below */
+  #menu.hasImage .iconBtn::after {
+    content: attr(data-label);
+    position: absolute; top: calc(100% + 0.8vh); left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+    white-space: nowrap; pointer-events: none;
+    font-family: 'Inter', sans-serif; font-size: min(1.5vh, 1vw); font-weight: 600;
+    color: #ffd98a; letter-spacing: 0.06em;
+    background: rgba(10, 9, 7, 0.95);
+    border: 1px solid rgba(232, 182, 76, 0.4);
+    border-radius: 0.8vh; padding: 0.5vh 0.9vw;
+    opacity: 0; transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 50;
+  }
+  #menu.hasImage .iconBtn:hover::after, #menu.hasImage .iconBtn.padFocus::after {
+    opacity: 1; transform: translateX(-50%) translateY(0);
   }
   #menu.hasImage .iconBtn .badge { visibility: hidden; }
   #menu.hasImage .iconBtn:hover {
@@ -867,10 +885,18 @@
   </div>
 
   <div id="iconRow">
-    <button class="iconBtn" id="icDiscord" title="Achievements">&#127942;</button>
-    <button class="iconBtn" id="icMail" title="Leaderboard">&#128081;</button>
-    <button class="iconBtn" id="icBell" title="Royal Records">&#128220;</button>
-    <button class="iconBtn" id="icGear" title="Settings">&#9881;</button>
+    <button class="iconBtn" id="icDiscord" data-label="Achievements">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M7 6H4a1 1 0 0 0-1 1c0 2.2 1.5 4 4 4M17 6h3a1 1 0 0 1 1 1c0 2.2-1.5 4-4 4"/></svg>
+    </button>
+    <button class="iconBtn" id="icMail" data-label="Leaderboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18M4 18V8l4 3 4-6 4 6 4-3v10"/><circle cx="12" cy="14" r="1.4" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button class="iconBtn" id="icBell" data-label="Royal Records">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h9a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+    </button>
+    <button class="iconBtn" id="icGear" data-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></svg>
+    </button>
   </div>
 
   <div id="statCards">
@@ -8054,12 +8080,13 @@ for (const [id, key] of [['togShake', 'shake'], ['togDmg', 'dmgnums'], ['togFlas
 }
 const setAnthemBtn = document.getElementById('setAnthem');
 function anthemLabel() {
-  setAnthemBtn.innerHTML = settings.anthem === 'onslaught'
-    ? '\u{1F525} Onslaught of the Curse' : '\u2694 March of the Last Knight';
+  setAnthemBtn.innerHTML = settings.anthem === 'onslaught' ? '\u{1F525} Onslaught of the Curse'
+    : settings.anthem === 'lullaby' ? '\u{1F431} Warm Kitten Lullaby'
+    : '\u2694 March of the Last Knight';
 }
 anthemLabel();
 setAnthemBtn.addEventListener('click', () => {
-  settings.anthem = settings.anthem === 'onslaught' ? 'march' : 'onslaught';
+  settings.anthem = settings.anthem === 'march' ? 'onslaught' : settings.anthem === 'onslaught' ? 'lullaby' : 'march';
   saveSettings();
   anthemLabel();
   SFX.pick();
@@ -9174,6 +9201,42 @@ function scheduleOnslaughtBar(b, t) {
     tone(musicBus, 'sawtooth', m, t + bt * O_BEAT, dur * O_BEAT * 0.9, 0.07, { att: 0.008 });
     tone(musicBus, 'sawtooth', m, t + bt * O_BEAT, dur * O_BEAT * 0.9, 0.045, { detune: 11 });
     tone(musicBus, 'square', m + 12, t + bt * O_BEAT, dur * O_BEAT * 0.85, 0.02 );
+    // a dark answer chasing the riff a beat behind
+    if (b % 2 === 1) tone(musicBus, 'triangle', m - 12, t + (bt + 0.5) * O_BEAT, dur * O_BEAT * 0.7, 0.028);
+  }
+}
+
+// "Warm Kitten Lullaby" — a soft music-box waltz for gentle knights, 3/4 at 80bpm
+const L_BEAT = 60 / 80, L_BAR = L_BEAT * 3;
+const L_ROOTS = [48, 43, 45, 40, 41, 48, 41, 48];
+const L_TUNE = [
+  [[0, 1, 76], [1, 1, 74], [2, 1, 72]],
+  [[0, 2, 74], [2, 1, 71]],
+  [[0, 1, 72], [1, 1, 71], [2, 1, 69]],
+  [[0, 3, 67]],
+  [[0, 1, 69], [1, 1, 71], [2, 1, 72]],
+  [[0, 2, 74], [2, 1, 76]],
+  [[0, 1, 77], [1, 1, 76], [2, 1, 74]],
+  [[0, 3, 72]],
+];
+function scheduleLullabyBar(b, t) {
+  const root = L_ROOTS[b % 8];
+  // a warm blanket of a chord
+  tone(musicBus, 'triangle', root, t, L_BAR * 0.98, 0.09, { att: 0.08 });
+  tone(musicBus, 'triangle', root + 7, t, L_BAR * 0.95, 0.05, { att: 0.1, detune: 4 });
+  tone(musicBus, 'triangle', root + 16, t, L_BAR * 0.92, 0.035, { att: 0.12, detune: -4 });
+  // soft rocking on beats 2 and 3
+  for (const bt of [1, 2]) tone(musicBus, 'sine', root + 12, t + bt * L_BEAT, 0.5, 0.03, { att: 0.03 });
+  // the music box sings
+  for (const [bt, dur, m] of L_TUNE[b % 8]) {
+    tone(musicBus, 'sine', m, t + bt * L_BEAT, dur * L_BEAT * 0.95, 0.11, { att: 0.004 });
+    tone(musicBus, 'sine', m + 12, t + bt * L_BEAT, dur * L_BEAT * 0.6, 0.03, { att: 0.004 });
+    tone(musicBus, 'sine', m + 24, t + bt * L_BEAT + 0.02, 0.2, 0.012 );
+  }
+  // a sleepy answer, one octave down, on the rests
+  if (b % 4 === 3) {
+    const m2 = L_TUNE[b % 8][0][2] - 12;
+    tone(musicBus, 'triangle', m2, t + 1.2 * L_BEAT, L_BEAT * 1.6, 0.05, { att: 0.05 });
   }
 }
 
@@ -9195,6 +9258,7 @@ function musicTick() {
   while (nextBarT < now + 1.3) {
     if (musicTrack === 'battle') {
       if (settings.anthem === 'onslaught') { scheduleOnslaughtBar(barIdx, nextBarT); nextBarT += O_BAR; }
+      else if (settings.anthem === 'lullaby') { scheduleLullabyBar(barIdx, nextBarT); nextBarT += L_BAR; }
       else { scheduleBattleBar(barIdx, nextBarT); nextBarT += B_BAR; }
     }
     else { scheduleMenuBar(barIdx, nextBarT); nextBarT += M_BAR; }
@@ -9299,9 +9363,8 @@ const SFX = {
     tone(sfxBus, 'sine', 88, t0 + 0.32, 0.5, 0.06, { att: 0.01 });
   } },
   denied()  { if (audioCtx) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.25, 0.1, { hz: 110 }); },
-  tick()    { if (audioCtx && sfxGate('tk', 55)) {
-    tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.045, 0.045, { hz: 1900, att: 0.002 });
-    tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.03, 0.02, { hz: 3800 });
+  tick()    { if (audioCtx && sfxGate('tk', 70)) {
+    tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.035, 0.022, { hz: 1500, att: 0.002 });
   } },
   chest()   { if (audioCtx) {
     const t0 = audioCtx.currentTime;
