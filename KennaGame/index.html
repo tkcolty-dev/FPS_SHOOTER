@@ -3920,12 +3920,51 @@ function drawEnemy(e, t) {
     ctx.fill();
   }
 
+  if (e.kind === 'wisp') {
+    // a little spirit-flame licks off the crown of its head
+    const fl2 = Math.sin(t * 8 + e.seed);
+    ctx.fillStyle = cols.hi;
+    ctx.beginPath();
+    ctx.moveTo(-e.r * 0.16, -e.r * 0.92);
+    ctx.quadraticCurveTo(fl2 * 3, -e.r * 1.5 - Math.abs(fl2) * 3, e.r * 0.16, -e.r * 0.92);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (e.kind === 'charger' && e.chargeState !== 'dash') {
+    // impatient nostril steam
+    const sp3 = (t * 1.6 + e.seed) % 1;
+    if (sp3 < 0.55) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.3 * (1 - sp3 / 0.55)})`;
+      for (const sd of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(sd * e.r * 0.3, e.r * 0.55 + sp3 * 9, 2.2 + sp3 * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
   if (e.kind === 'wisp' || e.kind === 'mite') {
     // a bright ember of curse-light burning in its heart
     ctx.fillStyle = e.kind === 'wisp' ? 'rgba(167, 243, 208, 0.4)' : 'rgba(255, 211, 229, 0.4)';
     ctx.beginPath();
     ctx.arc(0, e.r * 0.08, e.r * 0.32 + Math.sin(t * 6 + e.seed) * 1.4, 0, Math.PI * 2);
     ctx.fill();
+  }
+  if (e.kind === 'brute' || e.kind === 'yeti' || e.kind === 'golem') {
+    // stubby arms swing as the big ones lumber along
+    const sw2 = Math.sin(t * 5 + e.seed) * 0.35;
+    ctx.fillStyle = cols.body;
+    ctx.strokeStyle = cols.rim;
+    ctx.lineWidth = 1.6;
+    for (const sd of [-1, 1]) {
+      ctx.save();
+      ctx.translate(sd * e.r * 0.95, e.r * 0.05);
+      ctx.rotate(sd * (0.25 + sw2 * sd));
+      ctx.beginPath();
+      ctx.ellipse(0, e.r * 0.22, e.r * 0.22, e.r * 0.38, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
   }
   if (e.kind === 'yeti') {
     // shaggy frost fur + icicle brows
@@ -3960,13 +3999,25 @@ function drawEnemy(e, t) {
     ctx.stroke();
   }
   if (e.kind === 'brute') {
-    // an ogre needs tusks
+    // a wide grumbling underbite between the tusks
+    ctx.fillStyle = cols.rim;
+    ctx.beginPath();
+    ctx.moveTo(-e.r * 0.38, e.r * 0.3);
+    ctx.quadraticCurveTo(0, e.r * (0.42 + 0.04 * Math.sin(t * 3 + e.seed)), e.r * 0.38, e.r * 0.3);
+    ctx.quadraticCurveTo(0, e.r * 0.55, -e.r * 0.38, e.r * 0.3);
+    ctx.fill();
     ctx.fillStyle = '#f5ead6';
     for (const s2 of [-1, 1]) {
       ctx.beginPath();
       ctx.moveTo(s2 * e.r * 0.52, e.r * 0.38);
       ctx.lineTo(s2 * e.r * 0.66, -e.r * 0.08);
       ctx.lineTo(s2 * e.r * 0.28, e.r * 0.24);
+      ctx.closePath(); ctx.fill();
+      // and small teeth inside the jaw
+      ctx.beginPath();
+      ctx.moveTo(s2 * e.r * 0.18, e.r * 0.34);
+      ctx.lineTo(s2 * e.r * 0.11, e.r * 0.46);
+      ctx.lineTo(s2 * e.r * 0.04, e.r * 0.34);
       ctx.closePath(); ctx.fill();
     }
   }
@@ -4023,6 +4074,14 @@ function drawEnemy(e, t) {
     ctx.fillRect(e.r * 0.2, -e.r * 0.8, e.r * 0.45, e.r * 0.45);
     ctx.fillStyle = '#556275';
     ctx.fillRect(-e.r * 0.1, e.r * 0.1, e.r * 0.4, e.r * 0.35);
+    // moss clinging to the old stone
+    ctx.fillStyle = 'rgba(77, 124, 15, 0.5)';
+    ctx.beginPath();
+    ctx.ellipse(-e.r * 0.45, -e.r * 0.62, e.r * 0.24, e.r * 0.12, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(e.r * 0.55, e.r * 0.3, e.r * 0.16, e.r * 0.09, 0.5, 0, Math.PI * 2);
+    ctx.fill();
     // ancient cracks, amber light leaking through
     ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
     ctx.lineWidth = 1.5;
@@ -4073,6 +4132,43 @@ function drawEnemy(e, t) {
       ctx.lineTo(s2 * e.r * 0.22, -e.r * 0.75);
       ctx.closePath(); ctx.fill();
     }
+  }
+  if (e.kind === 'spitter') {
+    // toad warts catching the light
+    ctx.fillStyle = cols.hi;
+    for (const [wx2, wy2, wr2] of [[-0.55, -0.5, 0.11], [0.5, -0.62, 0.09], [0.62, -0.2, 0.08], [-0.3, -0.85, 0.08]]) {
+      ctx.beginPath();
+      ctx.arc(wx2 * e.r, wy2 * e.r, e.r * wr2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (e.kind === 'shellback') {
+    // hex lattice across the shell
+    ctx.strokeStyle = 'rgba(61, 42, 16, 0.55)';
+    ctx.lineWidth = 1.4;
+    for (const [hx2, hy2] of [[-0.4, -0.35], [0.1, -0.55], [0.45, -0.25], [-0.05, -0.1]]) {
+      ctx.beginPath();
+      for (let hk = 0; hk < 6; hk++) {
+        const ha = hk * Math.PI / 3;
+        const px3 = hx2 * e.r + Math.cos(ha) * e.r * 0.22;
+        const py3 = hy2 * e.r + Math.sin(ha) * e.r * 0.22;
+        ctx[hk ? 'lineTo' : 'moveTo'](px3, py3);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+  if (e.kind === 'splitter' || e.kind === 'mite') {
+    // a wobbling slime-core floating inside
+    const cwob = Math.sin(t * 5 + e.seed) * e.r * 0.08;
+    ctx.fillStyle = 'rgba(71, 18, 45, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(cwob, e.r * 0.1, e.r * 0.3, e.r * 0.34, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255, 211, 229, 0.5)';
+    ctx.beginPath();
+    ctx.arc(cwob - e.r * 0.08, e.r * 0.0, e.r * 0.1, 0, Math.PI * 2);
+    ctx.fill();
   }
   if (e.kind === 'spitter') {
     // curse-mouth, opens wide before it spits
