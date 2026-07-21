@@ -2384,6 +2384,16 @@ function update(dt) {
   for (let i = waves.length - 1; i >= 0; i--) {
     const w = waves[i];
     w.life -= dt;
+    // gusts shed little wind flecks as they race along
+    if (w.kind === 'gust' && Math.random() < 0.55) {
+      particles.push({
+        x: w.x - Math.cos(w.ang) * 24 + (Math.random() - 0.5) * 26,
+        y: w.y - Math.sin(w.ang) * 24 + (Math.random() - 0.5) * 26,
+        vx: -w.vx * 0.12 + (Math.random() - 0.5) * 40,
+        vy: -w.vy * 0.12 + (Math.random() - 0.5) * 40,
+        life: 0.28, color: Math.random() < 0.5 ? '#dcf5ff' : '#a3d8f4', size: 2.2,
+      });
+    }
     if (w.kind === 'pet' && w.sub === 'magic') {
       // twinkle's magic gently seeks the nearest spirit
       let best = null, bd = 300 * 300;
@@ -4815,12 +4825,34 @@ function render(t) {
       ctx.fillStyle = '#5b3d8f';
       ctx.fillRect(-13, -2, 5, 4);
     } else if (w.kind === 'gust') {
-      ctx.strokeStyle = `rgba(163, 216, 244, ${Math.min(1, w.life * 1.6)})`;
-      ctx.lineWidth = 8;
-      ctx.beginPath(); ctx.arc(0, 0, 30, -1.2, 1.2); ctx.stroke();
-      ctx.strokeStyle = `rgba(220, 245, 255, ${Math.min(1, w.life * 1.2)})`;
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(-10, 0, 30, -1.0, 1.0); ctx.stroke();
+      // a real squall: swelling crescents, curling tips, streaks racing behind
+      const grow = 1 + (1 - w.life) * 0.9;
+      const fade = Math.min(1, w.life * 1.8);
+      ctx.scale(grow, grow);
+      ctx.globalAlpha = fade;
+      ctx.drawImage(GLOWS.shade, -36, -36, 72, 72);
+      ctx.lineCap = 'round';
+      for (const [rr, off, lw, al] of [[26, 0, 6.5, 0.9], [19, -6, 3.5, 0.65], [31, -13, 2.5, 0.4]]) {
+        ctx.strokeStyle = `rgba(224, 246, 255, ${al})`;
+        ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.arc(off, 0, rr, -1.15, 1.15); ctx.stroke();
+      }
+      // the crescent tips curl over like breaking waves
+      ctx.strokeStyle = 'rgba(163, 216, 244, 0.8)';
+      ctx.lineWidth = 2.5;
+      for (const s of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(7, s * 21, 6, s > 0 ? -1.9 : -0.6, s > 0 ? 0.6 : 1.9);
+        ctx.stroke();
+      }
+      // speed streaks
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 2;
+      for (const [sy, len, ox] of [[-10, 15, -20], [0, 24, -27], [10, 13, -19]]) {
+        ctx.beginPath(); ctx.moveTo(ox - len, sy); ctx.lineTo(ox, sy); ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      ctx.globalAlpha = 1;
     } else if (w.kind === 'pet' && w.sub === 'candy') {
       ctx.rotate(w.life * 14);
       ctx.fillStyle = '#f472b6';
