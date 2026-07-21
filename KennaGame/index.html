@@ -224,10 +224,10 @@
     position: absolute; box-sizing: border-box; pointer-events: auto;
     display: flex; align-items: center; justify-content: center;
   }
-  #menu.hasImage #chipKnights { left: 1.3%; top: 2.3%; width: 22.9%; height: 7.6%; }
+  #menu.hasImage #chipKnights { left: 1.0%; top: 2.1%; width: 24.0%; height: 8.0%; }
   #menu.hasImage .chip span { margin-left: 0.35em; }
-  #menu.hasImage #chipDate { left: 34.8%; top: 2.3%; width: 26.8%; height: 7.6%; }
-  #menu.hasImage #chipRemaster { left: 65.2%; top: 2.3%; width: 15.8%; height: 7.6%; }
+  #menu.hasImage #chipDate { left: 34.2%; top: 2.1%; width: 28.2%; height: 8.0%; }
+  #menu.hasImage #chipRemaster { left: 64.8%; top: 2.1%; width: 16.8%; height: 8.0%; }
 
   #menu.hasImage .titleBlock { display: none; }
   #menu.hasImage .kicker {
@@ -637,8 +637,7 @@
   /* the top chips are REAL: live values on glassy plates that melt into the art */
   #menu.hasImage #chipDate, #menu.hasImage #chipKnights, #menu.hasImage #chipRemaster {
     color: #f0e2c3;
-    background: rgba(13, 11, 9, 0.94);
-    backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+    background: linear-gradient(180deg, #171410, #0d0b09);
     border: 1px solid rgba(232, 182, 76, 0.32);
     border-radius: 1.1vh;
     font-size: min(1.65vh, 1.1vw);
@@ -649,6 +648,7 @@
   #menu.hasImage #iconRow {
     background: none; border: none; box-shadow: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
+    transform: translateY(0.75vh);
   }
   #menu.hasImage .iconBtn {
     color: #e8cf9a; border-radius: 1.1vh;
@@ -728,10 +728,9 @@
   }
   #menu.hasImage #chipRemaster { pointer-events: none; }
   #menu.hasImage #chipKnights:hover {
-    border: 2px solid rgba(255, 217, 138, 0.7);
-    background: rgba(255, 217, 138, 0.06);
-    box-shadow: 0 0 18px rgba(232, 182, 76, 0.35);
-    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+    border: 1px solid rgba(255, 217, 138, 0.85);
+    background: rgba(20, 17, 12, 0.97);
+    box-shadow: 0 0 18px rgba(232, 182, 76, 0.4);
   }
   /* real stats on the bottom bar */
   #homeStats {
@@ -785,10 +784,9 @@
   }
   #menu.hasImage .statCard.padFocus, #menu.hasImage #updateCard.padFocus, #menu.hasImage #questCard.padFocus,
   #menu.hasImage #chipKnights.padFocus {
-    border: 2px solid rgba(255, 217, 138, 0.7);
-    background: rgba(255, 217, 138, 0.06);
-    box-shadow: 0 0 22px rgba(232, 182, 76, 0.35);
-    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+    border: 1px solid rgba(255, 217, 138, 0.85);
+    background: rgba(20, 17, 12, 0.97);
+    box-shadow: 0 0 22px rgba(232, 182, 76, 0.4);
   }
   button.hsCard.padFocus {
     transform: translateY(-2px);
