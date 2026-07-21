@@ -924,6 +924,90 @@
   #menu.hasImage #icMail { left: 86.82%; }
   #menu.hasImage #icBell { left: 90.62%; }
   #menu.hasImage #icGear { left: 94.42%; }
+
+  /* ===== 2026 home command reformat: opaque, clean, selection-only ===== */
+  #menu.hasImage #btnStack {
+    inset: auto !important; left: 1.55% !important; top: 45.7% !important;
+    width: 27.35% !important; height: 39.8% !important;
+    padding: 1.05vh .8vw !important; box-sizing: border-box;
+    display: grid !important; grid-template-rows: repeat(4, 1fr); gap: 1.45vh;
+    background: #0b0907; border-radius: 1.8vh;
+    box-shadow: 0 18px 44px rgba(0,0,0,.55), inset 0 1px rgba(255,236,196,.055);
+  }
+  #menu.hasImage #btnStack::after {
+    display: none;
+  }
+  #menu.hasImage #btnStack .menuBtn,
+  #menu.hasImage #btnStack #btnPlay,
+  #menu.hasImage #btnStack #btnSettings,
+  #menu.hasImage #btnStack #btnCredits,
+  #menu.hasImage #btnStack #btnExit {
+    position: relative !important; inset: auto !important; width: 100% !important; height: auto !important;
+    display: grid !important; grid-template-columns: 3.3vw 1fr 1.2vw; align-items: center; gap: .75vw;
+    padding: .55vh .8vw !important; overflow: hidden;
+    background: #18130d !important; border: 0 !important; border-radius: 1.05vh !important;
+    box-shadow: inset 0 1px rgba(255,236,196,.055) !important;
+    filter: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+    transform: none !important; animation: none !important;
+    transition: transform .18s cubic-bezier(.2,.8,.2,1), filter .18s ease, background .18s ease !important;
+  }
+  #menu.hasImage #btnStack .menuBtn::before,
+  #menu.hasImage #btnStack .menuBtn::after { display: none !important; }
+  #menu.hasImage #btnStack .menuBtn > * { visibility: visible !important; position: relative; z-index: 1; }
+  #menu.hasImage #btnStack .bIcon {
+    width: 3.05vw; height: 5.4vh; margin: 0 !important; display: grid; place-items: center;
+    color: #e8bd67; background: #292016; border-radius: .78vh;
+    font: 700 min(2.5vh,1.7vw) Cinzel,serif;
+  }
+  #menu.hasImage #btnStack .bText { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+  #menu.hasImage #btnStack .bTitle {
+    color: #f6ead1; font: 800 min(2.05vh,1.4vw) Cinzel,serif;
+    letter-spacing: .09em; line-height: 1; text-transform: uppercase;
+  }
+  #menu.hasImage #btnStack .bSub {
+    display: block; color: rgba(240,226,195,.58); font: 600 min(1.12vh,.77vw) Inter,sans-serif;
+    letter-spacing: .015em; margin-top: .48vh; white-space: nowrap;
+  }
+  #menu.hasImage #btnStack .bChev {
+    display: block; color: rgba(244,230,198,.38); font: 300 min(3.2vh,2.1vw) Inter,sans-serif;
+    transition: transform .18s ease, color .18s ease;
+  }
+  #menu.hasImage #btnStack .menuBtn:hover,
+  #menu.hasImage #btnStack .menuBtn:focus-visible {
+    background: #18130d !important; box-shadow: inset 0 1px rgba(255,236,196,.055) !important;
+    transform: none !important; filter: none !important;
+  }
+  @keyframes royalCommandSelect {
+    0%,100% { filter: brightness(1.08); transform: translateX(0) scale(1.015); }
+    50% { filter: brightness(1.34); transform: translateX(.28vw) scale(1.015); }
+  }
+  #menu.hasImage #btnStack .menuBtn.padFocus {
+    background: #3a2a15 !important; border: 0 !important;
+    box-shadow: inset .32vw 0 #e8b64c, inset 0 1px rgba(255,244,215,.14), 0 8px 20px rgba(0,0,0,.34) !important;
+    animation: royalCommandSelect .85s ease-in-out infinite !important;
+  }
+  #menu.hasImage #btnStack .menuBtn.padFocus .bIcon { background:#5a3e19; color:#ffe2a0; }
+  #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; transform:translateX(.18vw); }
+  #menu.hasImage #btnStack .menuBtn:active { transform: scale(.975) !important; filter: brightness(1.18) !important; }
+
+  #menu.hasImage #chipKnights, #menu.hasImage #chipDate, #menu.hasImage #chipRemaster {
+    top: 1.55% !important; height: 8.35% !important; background: #0d0b08 !important;
+    border: 0 !important; border-radius: 1vh !important;
+    box-shadow: inset 0 0 0 100px #0d0b08, 0 10px 28px rgba(0,0,0,.4), inset 0 1px rgba(255,236,196,.055) !important;
+  }
+  #menu.hasImage #chipKnights { left: 1.55% !important; width: 23.9% !important; }
+  #menu.hasImage #chipDate { left: 34.45% !important; width: 28.05% !important; }
+  #menu.hasImage #chipRemaster { left: 64.75% !important; width: 16.55% !important; }
+  #menu.hasImage #chipKnights:hover { background:#0d0b08 !important; border:0 !important; box-shadow:inset 0 0 0 100px #0d0b08, 0 10px 28px rgba(0,0,0,.4), inset 0 1px rgba(255,236,196,.055) !important; }
+  #menu.hasImage #chipKnights.padFocus { background:#332612 !important; border:0 !important; }
+  #menu.hasImage .iconBtn {
+    top: 2.55% !important; height: 6.25% !important; background:#0d0b08 !important;
+    border:0 !important; border-radius:.9vh !important; box-shadow:0 8px 22px rgba(0,0,0,.34) !important;
+    backdrop-filter:none !important; -webkit-backdrop-filter:none !important;
+  }
+  #menu.hasImage .iconBtn:hover { background:#0d0b08 !important; border:0 !important; box-shadow:0 8px 22px rgba(0,0,0,.34) !important; }
+  #menu.hasImage .iconBtn.padFocus { background:#3a2a15 !important; border:0 !important; box-shadow:inset 0 -3px #e8b64c !important; }
+  #menu.hasImage #homePadLegend { top: 86.4%; height: 4.8%; }
 </style>
 </head>
 <body>
@@ -1080,6 +1164,7 @@
         <p>&#10022; TV typography pass: cleaner canvas scaling, kerning, heavier body copy, clearer Royal Gift descriptions, and more useful affordability messages.</p>
         <p>&#10022; Battle command HUD rebuilt: grouped weapon/gift slot trays, numbered empty slots, clearer time/XP/objective hierarchy, and a labeled treasury. Home now includes an Xbox control ribbon without touching the painted art.</p>
         <p>&#10022; The home command dock is completely new: treasury, roster, and playtime read as status at a glance, while Xbox X Online and Y Settings are now purpose-built action buttons.</p>
+        <p>&#10022; Play, Upgrades, Credits, and Exit now share a fully rebuilt Royal Command stack with consistent sizing, larger TV type, opaque icon blocks, and smooth selection-only movement.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
         <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
