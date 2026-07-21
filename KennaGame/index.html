@@ -1599,6 +1599,7 @@ window.addEventListener('keydown', e => {
   if (game.choices) {
     const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
     if (idx !== undefined && game.choices[idx]) pickUpgrade(idx);
+    if (e.code === 'KeyR') rerollChoices();
     return;
   }
   // online guests don't restart or recruit P2 — the host commands the battle
@@ -1661,6 +1662,7 @@ canvas.addEventListener('click', () => {
       else if (c.idx === -20 && game.victory) { game.victory = false; game.endless = true; gameToast('∞ ENDLESS — the curse never stops. How long can you stand?'); }
       else if (c.idx === -21 && (game.victory || game.over)) { game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false; }
       else if (c.idx === -22 && (game.victory || game.over)) { showMenu(); }
+      else if (game.choices && c.idx === -6) rerollChoices();
       else if (game.choices) pickUpgrade(c.idx);
       return;
     }
@@ -1780,6 +1782,7 @@ function pickUpgrade(idx) {
   game.up[c.key] = upLvl(c.key) + 1;
   gameToast('✨ ' + c.name + '  Lv ' + game.up[c.key] + '!');
   if (evolutionReady()) gameToast('☀ The War Hammer trembles with power… open a chest!');
+  if (superReady()) gameToast('⚡ Your weapons RESONATE… open a chest to fuse them!');
   game.choices = null;
   game.padPick = null;
 }
@@ -1812,7 +1815,7 @@ const game = {
   xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [];
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [];
 const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
 
 function initRun() {
@@ -1825,9 +1828,11 @@ function initRun() {
   game.stompT = 0; game.crownT = 0; game.mendK = 0;
   game.arsenal = [];
   game.evolved = {};
+  game.supers = {};
+  game.rerolls = 0;
   game.endingAt = 0;
-  for (const p of players) p.arsT = {};
-  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = [];
+  for (const p of players) { p.arsT = {}; p.superT = {}; }
+  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = [];
   runPets = [];
   PETS.forEach((pd, i) => {
     if (petRank(pd.key) > 0) {
@@ -1894,10 +1899,54 @@ function evolutionReady() {
   const hasHammer = players.some(p2 => p2.joined && p2.wtype === 'hammer') || (game.arsenal || []).includes('hammer');
   return hasHammer && upLvl('sharp') >= 5 && !(game.evolved && game.evolved.hammer);
 }
+// ---- SUPERWEAPONS: two related weapons resonate — and fuse into a LASER ----
+const SUPER_DEFS = [
+  { key: 'prism',  name: 'THE PRISMBEAM',   icon: 'prism',     needs: ['icestaff', 'scepter'],
+    color: '#7dd3fc', core: '#e8fbff', cd: 2.6, slow: true },
+  { key: 'storm',  name: 'THE STORMCALLER', icon: 'stormray',  needs: ['trident', 'bow'],
+    color: '#fde047', core: '#fffbe0', cd: 3.0, kb: 320 },
+  { key: 'dragon', name: "DRAGON'S BREATH", icon: 'dragonray', needs: ['blunder', 'whip'],
+    color: '#fb923c', core: '#ffe8cc', cd: 3.2, burn: true },
+];
+function ownedWeapons() {
+  const set = new Set((game.arsenal || []));
+  for (const p2 of players) if (p2.joined) set.add(p2.wtype);
+  return set;
+}
+function superReady() {
+  const owned = ownedWeapons();
+  return SUPER_DEFS.find(sd => !(game.supers && game.supers[sd.key]) && sd.needs.every(w => owned.has(w)));
+}
+function fireSuper(p, sd) {
+  // hitscan laser: pick the nearest fiend, burn a line straight through the horde
+  let target = null, bd = 560 * 560;
+  for (const e of enemies) {
+    const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
+    if (d < bd) { bd = d; target = e; }
+  }
+  if (!target) return false;
+  const ang = Math.atan2(target.y - (p.y - 22), target.x - p.x);
+  beams.push({ x: p.x, y: p.y - 22, ang, len: 560, w: 26, life: 0.45, color: sd.color, core: sd.core });
+  SFX.laser();
+  for (const e of enemies) {
+    const rx = e.x - p.x, ry = e.y - (p.y - 22);
+    const u = Math.cos(ang) * rx + Math.sin(ang) * ry;
+    const v = -Math.sin(ang) * rx + Math.cos(ang) * ry;
+    if (u < 0 || u > 560 || Math.abs(v) > 13 + e.r * 0.6) continue;
+    hurtEnemy(e, p.damage * 3, ang, sd.kb || 120);
+    if (sd.slow) { e.slowT = Math.max(e.slowT || 0, 1.6); e.slowF = Math.min(e.slowF || 1, 0.6); }
+    if (sd.burn && Math.random() < 0.6) {
+      particles.push({ x: e.x, y: e.y - 8, vx: (Math.random() - 0.5) * 40, vy: -50, life: 0.35, color: '#fb923c', size: 3 });
+    }
+  }
+  return true;
+}
 
 // what's inside is decided the moment the lid opens — the wheel just builds the drama
 function rollChestReward() {
-  // an evolution outshines any ordinary treasure
+  // a fusion or evolution outshines any ordinary treasure
+  const sd = superReady();
+  if (sd) return { kind: 'super', def: sd, icon: sd.icon, label: sd.name + '!' };
   if (evolutionReady()) return { kind: 'evolve', icon: 'hammer2', label: 'THE SUNBREAKER!' };
   const luck = Math.random();
   if (luck < 0.5) return { kind: 'gold', icon: 'coin', label: 'ROYAL GOLD' };
@@ -1914,6 +1963,19 @@ function rollChestReward() {
 function applyChestReward(ch) {
   const rw = ch.reward;
   SFX.levelup();
+  if (rw.kind === 'super') {
+    game.supers = game.supers || {};
+    game.supers[rw.def.key] = true;
+    SFX.unlock();
+    game.shake = Math.max(game.shake, 0.28);
+    gameToast('⚡ ' + rw.def.needs.map(w => WEAPON_INFO[w].name).join(' + ') + ' fuse into ' + rw.def.name + '!');
+    for (let k = 0; k < 26; k++) {
+      const a = Math.random() * Math.PI * 2, sp2 = 90 + Math.random() * 180;
+      particles.push({ x: ch.x, y: ch.y - 12, vx: Math.cos(a) * sp2, vy: Math.sin(a) * sp2 - 90, life: 0.7, color: Math.random() < 0.5 ? rw.def.color : rw.def.core, size: 3.5 });
+    }
+    particles.push({ x: ch.x, y: ch.y - 12, vx: 0, vy: 0, ring: true, life: 0.42, color: rw.def.color, size: 70 });
+    return;
+  }
   if (rw.kind === 'evolve') {
     game.evolved = game.evolved || {};
     game.evolved.hammer = true;
@@ -2012,9 +2074,13 @@ function levelUp() {
   game.level += 1;
   SFX.levelup();
   if (upLvl('shuffle') > 0) rotateHeroes();
-  game.choicesAt = performance.now();
   // each crown is MUCH harder to earn than the last — steep Vampire-Survivors ramp
   game.xpNext = Math.round(10 + game.level * 9 + Math.pow(game.level, 1.8));
+  buildChoices();
+}
+function buildChoices() {
+  game.choicesAt = performance.now();
+  game.padPick = null;
   const pool = UPGRADES.filter(u => upLvl(u.key) < u.max);
   // Vampire-Survivors style: a limited arsenal — win up to 3 EXTRA weapons at level-up
   if ((game.arsenal || []).length < 3) {
@@ -2046,6 +2112,21 @@ function levelUp() {
     picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   }
   game.choices = picks;
+}
+// gold buys a fresh hand — pricier every time you shuffle
+function rerollChoices() {
+  if (!game.choices || game.netGuest) return;
+  const price = 25 * ((game.rerolls || 0) + 1);
+  if (kdMeta.gold < price) {
+    SFX.denied();
+    gameToast('Not enough gold to reroll! (' + price + 'g needed)');
+    return;
+  }
+  kdMeta.gold -= price;
+  saveMeta();
+  game.rerolls = (game.rerolls || 0) + 1;
+  SFX.pick();
+  buildChoices();
 }
 
 // ---------- enemies ----------
@@ -2618,6 +2699,15 @@ function update(dt) {
         p.arsT[wt] = W_CADENCE[wt] * 1.3 * Math.max(0.35, p.attackEvery / W_CADENCE[p.wtype]);
       }
     }
+    // superweapons: fused laser fire on their own clocks
+    for (const sd of SUPER_DEFS) {
+      if (!(game.supers && game.supers[sd.key])) continue;
+      p.superT = p.superT || {};
+      p.superT[sd.key] = (p.superT[sd.key] === undefined ? Math.random() : p.superT[sd.key]) - dt;
+      if (p.superT[sd.key] <= 0 && fireSuper(p, sd)) {
+        p.superT[sd.key] = sd.cd * Math.max(0.4, p.attackEvery / W_CADENCE[p.wtype]);
+      }
+    }
 
     if (p.orbCount > 0) {
       p.orbAngle += dt * 2.6;
@@ -2755,6 +2845,10 @@ function update(dt) {
   for (let i = novas.length - 1; i >= 0; i--) {
     novas[i].age += dt;
     if (novas[i].age > 0.35) novas.splice(i, 1);
+  }
+  for (let i = beams.length - 1; i >= 0; i--) {
+    beams[i].life -= dt;
+    if (beams[i].life <= 0) beams.splice(i, 1);
   }
 
   // enemies
@@ -4504,6 +4598,50 @@ function drawUpgradeIcon(kind, x, y, s, t) {
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(-2, -16, 2, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'prism') {
+    // crystal firing a beam of winter light
+    ctx.strokeStyle = 'rgba(125, 211, 252, 0.5)';
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(-2, -2); ctx.lineTo(18, -14); ctx.stroke();
+    ctx.strokeStyle = '#e8fbff';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-2, -2); ctx.lineTo(18, -14); ctx.stroke();
+    ctx.fillStyle = '#bae6fd';
+    ctx.beginPath();
+    ctx.moveTo(-6, -14); ctx.lineTo(4, -4); ctx.lineTo(-4, 8); ctx.lineTo(-14, -2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.beginPath();
+    ctx.moveTo(-7, -11); ctx.lineTo(-1, -6); ctx.lineTo(-8, -3);
+    ctx.closePath(); ctx.fill();
+  } else if (kind === 'stormray') {
+    ctx.strokeStyle = 'rgba(253, 224, 71, 0.5)';
+    ctx.lineWidth = 6;
+    ctx.beginPath(); ctx.moveTo(-14, 12); ctx.lineTo(16, -12); ctx.stroke();
+    ctx.strokeStyle = '#fffbe0';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-14, 12); ctx.lineTo(16, -12); ctx.stroke();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.moveTo(-2, -16); ctx.lineTo(-10, 0); ctx.lineTo(-3, 0); ctx.lineTo(-8, 14);
+    ctx.lineTo(6, -4); ctx.lineTo(-1, -4); ctx.lineTo(4, -16);
+    ctx.closePath(); ctx.fill();
+  } else if (kind === 'dragonray') {
+    ctx.strokeStyle = 'rgba(251, 146, 60, 0.55)';
+    ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(-10, 6); ctx.lineTo(17, -8); ctx.stroke();
+    ctx.strokeStyle = '#ffe8cc';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-10, 6); ctx.lineTo(17, -8); ctx.stroke();
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath();
+    ctx.moveTo(-12, 14);
+    ctx.quadraticCurveTo(-20, 2, -12, -8);
+    ctx.quadraticCurveTo(-9, -13, -6, -8);
+    ctx.quadraticCurveTo(-2, 0, -12, 14);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath(); ctx.arc(-11, 1, 3.5, 0, Math.PI * 2); ctx.fill();
   } else if (kind === 'coin') {
     ctx.fillStyle = '#a9722c';
     ctx.beginPath(); ctx.arc(2, 2, 14, 0, Math.PI * 2); ctx.fill();
@@ -5548,6 +5686,32 @@ function render(t) {
   if (cam.y + 640 > WORLD_H - 24) ctx.fillRect(cam.x - 200, WORLD_H - 24, 1360, 500);
 
   // novas (under entities)
+  // superweapon lasers — a core of light inside a colored glow
+  for (const bm of beams) {
+    const bf = Math.max(0, bm.life / 0.45);
+    ctx.save();
+    ctx.translate(bm.x, bm.y);
+    ctx.rotate(bm.ang);
+    ctx.globalAlpha = bf;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = bm.color;
+    ctx.globalAlpha = bf * 0.35;
+    ctx.lineWidth = bm.w;
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(bm.len, 0); ctx.stroke();
+    ctx.globalAlpha = bf * 0.8;
+    ctx.lineWidth = bm.w * 0.45;
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(bm.len, 0); ctx.stroke();
+    ctx.strokeStyle = bm.core;
+    ctx.globalAlpha = bf;
+    ctx.lineWidth = Math.max(2, bm.w * 0.16);
+    ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(bm.len, 0); ctx.stroke();
+    // muzzle bloom
+    ctx.fillStyle = bm.core;
+    ctx.beginPath(); ctx.arc(8, 0, bm.w * 0.4 * bf, 0, Math.PI * 2); ctx.fill();
+    ctx.lineCap = 'butt';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
   for (const nv of novas) {
     const f = nv.age / 0.35;
     if (nv.slam) {
@@ -6024,17 +6188,20 @@ function render(t) {
     ctx.fillStyle = '#fb923c';
     ctx.fillText('🔥 FORGE-BLESSED · ' + Math.ceil(game.forgeT) + 's', 480, 126);
   }
-  // the party's arsenal, worn proudly under the hero plates
-  for (let ai = 0; ai < (game.arsenal || []).length; ai++) {
-    const wt2 = game.arsenal[ai];
+  // the party's arsenal + fused superweapons, worn proudly under the hero plates
+  const medallions = (game.arsenal || [])
+    .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon)
+    .concat(SUPER_DEFS.filter(sd => game.supers && game.supers[sd.key]).map(sd => sd.icon));
+  medallions.forEach((ic, ai) => {
     const ax2 = 34 + ai * 40, ay2 = 132;
+    const isSuper = ['prism', 'stormray', 'dragonray'].includes(ic);
     ctx.fillStyle = 'rgba(9, 7, 5, 0.75)';
     ctx.beginPath(); ctx.arc(ax2, ay2, 16, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = 'rgba(232, 182, 76, 0.55)';
+    ctx.strokeStyle = isSuper ? `rgba(125, 211, 252, ${0.6 + 0.3 * Math.sin(t * 4)})` : 'rgba(232, 182, 76, 0.55)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    drawUpgradeIcon(wt2 === 'hammer' && game.evolved && game.evolved.hammer ? 'hammer2' : WEAPON_INFO[wt2].icon, ax2, ay2, 0.42, t);
-  }
+    drawUpgradeIcon(ic, ax2, ay2, 0.42, t);
+  });
   // the champion's health looms over the battle
   const bossE = enemies.find(e2 => BOSS_DEFS[e2.kind]);
   if (bossE) {
@@ -6182,6 +6349,12 @@ function render(t) {
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
     ctx.font = '700 14px Cinzel, Georgia, serif';
     ctx.fillText('CLICK A CARD', 480, 520);
+    const rrPrice = 25 * ((game.rerolls || 0) + 1);
+    drawActionBtn(388, 542, 184, 34, '🎲 REROLL · ' + rrPrice + 'g', 'dark', -6);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(240, 226, 195, 0.4)';
+    ctx.font = '10px Inter, sans-serif';
+    ctx.fillText('R key · 🎮 X', 480, 592);
   }
 
   if (game.victory) {
@@ -7516,6 +7689,7 @@ function netBroadcast() {
     gm: gems.map(g => [Math.round(g.x), Math.round(g.y), g.v]),
     dr: drops.map(d => [Math.round(d.x), Math.round(d.y), d.kind === 'coin' ? 1 : 0]),
     wv: waves.map(w => [Math.round(w.x), Math.round(w.y), Math.round(w.ang * 100) / 100, w.kind, w.sub || 0, Math.round(w.life * 100) / 100]),
+    bm: beams.map(b => [Math.round(b.x), Math.round(b.y), Math.round(b.ang * 100) / 100, b.len, b.color, b.core, Math.round(b.life * 100) / 100]),
     sl: slashes.map(s => [Math.round(s.x), Math.round(s.y), Math.round(s.ang * 100) / 100, Math.round(s.age * 100) / 100, s.r]),
     bo: bolts.map(b => [Math.round(b.x), Math.round(b.y)]),
     pe: runPets.map(pe => [pe.def.proj, Math.round(pe.x), Math.round(pe.y), Math.round(pe.seed)]),
@@ -7568,6 +7742,7 @@ function applySnap(m) {
   gems = m.gm.map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
   drops = m.dr.map(a => ({ x: a[0], y: a[1], kind: a[2] ? 'coin' : 'heart', v: 2 }));
   waves = m.wv.map(a => ({ x: a[0], y: a[1], ang: a[2], kind: a[3], sub: a[4] || undefined, life: a[5], vx: 0, vy: 0, hit: new Set(), dmg: 0 }));
+  beams = (m.bm || []).map(a => ({ x: a[0], y: a[1], ang: a[2], len: a[3], w: 26, color: a[4], core: a[5], life: a[6] }));
   slashes = m.sl.map(a => ({ x: a[0], y: a[1], ang: a[2], age: a[3], r: a[4] }));
   bolts = m.bo.map(a => ({ x: a[0], y: a[1], vx: 0, vy: 0, life: 1 }));
   runPets = m.pe.map(a => ({ def: PETS.find(p => p.proj === a[0]) || PETS[0], rank: 1, x: a[1], y: a[2], seed: a[3], cd: 9 }));
@@ -7802,6 +7977,7 @@ function pollPads() {
       if (dir('left')) game.padPick = Math.max(0, game.padPick - 1);
       if (dir('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
       if (tap('a')) pickUpgrade(game.padPick);
+      if (tap('x')) rerollChoices();
       continue;
     }
     if (game.victory || game.over) {
@@ -8028,7 +8204,19 @@ const SFX = {
   gust()    { if (audioCtx && sfxGate('gu', 120)) nz(sfxBus, audioCtx.currentTime, 0.4, 0.13, { type: 'bandpass', freq: 800, att: 0.09 }); },
   hit()     { if (audioCtx && sfxGate('ht', 50))  tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.06, 0.08, { hz: 200 + Math.random() * 60, slideTo: 120 }); },
   kill()    { if (audioCtx && sfxGate('kl', 60))  tone(sfxBus, 'triangle', 0, audioCtx.currentTime, 0.16, 0.16, { hz: 330, slideTo: 90 }); },
-  gem()     { if (audioCtx && sfxGate('gm', 40))  { const p = 660 + ((sfxLast.gmN = ((sfxLast.gmN || 0) + 1) % 8)) * 60; tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.11, 0.1, { hz: p, slideTo: p * 1.5 }); } },
+  gem()     { if (audioCtx && sfxGate('gm', 45)) {
+    // a sweet glass bell that climbs a pentatonic ladder as you chain gems
+    const nw = performance.now();
+    if (nw - (sfxLast.gmT || 0) > 900) sfxLast.gmN = 0;   // the melody resets if you stop collecting
+    sfxLast.gmT = nw;
+    const ladder = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+    const step = ladder[Math.min((sfxLast.gmN = (sfxLast.gmN || 0) + 1) - 1, ladder.length - 1)];
+    const hz = 880 * Math.pow(2, step / 12);
+    const t0 = audioCtx.currentTime;
+    tone(sfxBus, 'sine', 0, t0, 0.26, 0.11, { hz, att: 0.004 });
+    tone(sfxBus, 'sine', 0, t0, 0.13, 0.045, { hz: hz * 2, att: 0.004 });
+    tone(sfxBus, 'triangle', 0, t0 + 0.02, 0.09, 0.025, { hz: hz * 3 });
+  } },
   coin()    { if (audioCtx && sfxGate('cn', 70))  { tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.07, 0.09, { hz: 1050 }); tone(sfxBus, 'square', 0, audioCtx.currentTime + 0.07, 0.16, 0.09, { hz: 1400 }); } },
   heart()   { if (audioCtx) { tone(sfxBus, 'sine', 69, audioCtx.currentTime, 0.2, 0.14); tone(sfxBus, 'sine', 76, audioCtx.currentTime + 0.1, 0.3, 0.12); } },
   hurt()    { if (audioCtx && sfxGate('hu', 200)) { tone(sfxBus, 'sawtooth', 0, audioCtx.currentTime, 0.22, 0.2, { hz: 160, slideTo: 60 }); nz(sfxBus, audioCtx.currentTime, 0.12, 0.12, { type: 'lowpass', freq: 700 }); } },
@@ -8038,6 +8226,12 @@ const SFX = {
   pick()    { if (audioCtx) tone(sfxBus, 'triangle', 81, audioCtx.currentTime, 0.14, 0.13); },
   unlock()  { if (audioCtx) [64, 69, 73, 76].forEach((m, i) => tone(sfxBus, 'triangle', m, audioCtx.currentTime + i * 0.08, 0.3, 0.14)); },
   denied()  { if (audioCtx) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.25, 0.1, { hz: 110 }); },
+  laser()   { if (audioCtx && sfxGate('lz', 160)) {
+    const t0 = audioCtx.currentTime;
+    tone(sfxBus, 'sawtooth', 0, t0, 0.28, 0.1, { hz: 1400, slideTo: 220, att: 0.005 });
+    tone(sfxBus, 'sine', 0, t0, 0.2, 0.06, { hz: 2200, slideTo: 500 });
+    nz(sfxBus, t0, 0.1, 0.05, { type: 'highpass', freq: 3000 });
+  } },
 };
 setMusic.addEventListener('input', () => { if (musicBus) musicBus.gain.value = (settings.music / 100) * 0.42; });
 setSfx.addEventListener('input', () => { if (sfxBus) { sfxBus.gain.value = (settings.sfx / 100) * 0.5; SFX.pick(); } });
