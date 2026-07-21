@@ -623,10 +623,17 @@
   #menu.hasImage .menuBtn:hover, #menu.hasImage .menuBtn:focus-visible,
   #menu.hasImage #btnPlay:hover {
     transform: none;
-    background: rgba(255, 217, 138, 0.07);
-    border: 2px solid rgba(255, 217, 138, 0.8);
-    box-shadow: 0 0 24px rgba(232, 182, 76, 0.4), inset 0 0 18px rgba(232, 182, 76, 0.12);
-    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+    background: none;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: brightness(1.28); -webkit-backdrop-filter: brightness(1.28);
+  }
+  /* the solid UPGRADES plate brightens ITSELF — never lets the painting ghost through */
+  #menu.hasImage #btnSettings:hover, #menu.hasImage #btnSettings.padFocus {
+    background: rgba(13, 11, 9, 0.96) !important;
+    backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important;
+    filter: brightness(1.28);
+    border: 1.5px solid rgba(255, 217, 138, 0.7) !important;
   }
   #menu.hasImage .chip {
     background: none; border: none; box-shadow: none;
@@ -769,13 +776,12 @@
     transform: translateY(-2px);
     box-shadow: 0 0 24px rgba(232, 182, 76, 0.55);
   }
-  /* ── gamepad focus ring: d-pad lights painted plates up just like hover ── */
+  /* ── gamepad focus: the painted plate itself glows brighter ── */
   #menu.hasImage .menuBtn.padFocus {
     transform: none;
-    background: rgba(255, 217, 138, 0.07);
-    border: 2px solid rgba(255, 217, 138, 0.8);
-    box-shadow: 0 0 24px rgba(232, 182, 76, 0.4), inset 0 0 18px rgba(232, 182, 76, 0.12);
-    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+    background: none;
+    border: none;
+    box-shadow: none;
   }
   #menu.hasImage .iconBtn.padFocus {
     transform: none;
@@ -807,21 +813,27 @@
     0%, 100% { box-shadow: 0 0 16px rgba(232, 182, 76, 0.45); }
     50% { box-shadow: 0 0 42px rgba(255, 217, 138, 0.95); }
   }
-  #menu .padFocus { animation: padPulse 0.85s ease-in-out infinite; }
+  #menu .padFocus:not(.menuBtn) { animation: padPulse 0.85s ease-in-out infinite; }
   #menu.hasImage .menuBtn, #menu.hasImage .iconBtn, #menu.hasImage button.hsCard, #menu.hasImage #updateCard {
     transition: transform 0.14s ease;
   }
   #menu.hasImage .menuBtn.padFocus, #menu.hasImage button.hsCard.padFocus { transform: scale(1.05) !important; }
-  /* the picked plate FLASHES — brightness breathing, no chunky outline */
+  /* the picked plate FLASHES — pure brightness breathing on the painting */
   @keyframes padFlash {
-    0%, 100% { backdrop-filter: brightness(1.05); -webkit-backdrop-filter: brightness(1.05); box-shadow: 0 0 10px rgba(255, 226, 150, 0.25); }
-    50% { backdrop-filter: brightness(1.55); -webkit-backdrop-filter: brightness(1.55); box-shadow: 0 0 34px rgba(255, 226, 150, 0.8); }
+    0%, 100% { backdrop-filter: brightness(1.08); -webkit-backdrop-filter: brightness(1.08); }
+    50% { backdrop-filter: brightness(1.6); -webkit-backdrop-filter: brightness(1.6); }
   }
   #menu.hasImage .menuBtn.padFocus {
-    border: 1.5px solid rgba(255, 217, 138, 0.55) !important;
-    background: rgba(255, 227, 160, 0.05) !important;
+    border: none !important;
+    background: none !important;
+    box-shadow: none !important;
     animation: padFlash 0.75s ease-in-out infinite !important;
   }
+  @keyframes padFlashSolid {
+    0%, 100% { filter: brightness(1.05); }
+    50% { filter: brightness(1.45); }
+  }
+  #menu.hasImage #btnSettings.padFocus { animation: padFlashSolid 0.75s ease-in-out infinite !important; }
   #menu.hasImage .iconBtn.padFocus { transform: scale(1.14) !important; }
   #menu.hasImage #updateCard.padFocus { transform: scale(1.03) !important; }
   @keyframes padNudge { from { margin-left: 0; } to { margin-left: 9px; } }
@@ -8170,6 +8182,10 @@ const SONGBOOK = [
   { name: 'Candlelight Round',         style: 'lullaby',   tp: 1,  rot: 6, lite: true },
   { name: 'Dream of the Meadow',       style: 'lullaby',   tp: 7,  rot: 0 },
   { name: 'The Kingdom Rests',         style: 'lullaby',   tp: -7, rot: 2, lite: true },
+  { name: 'The Kingdom Sleeps (waltz)', style: 'waltz',    tp: 0,  rot: 0 },
+  { name: 'Sunrise Over the Keep',     style: 'waltz',     tp: 4,  rot: 2 },
+  { name: 'Kingdom Overture 🎧',       style: 'file', file: 'title' },
+  { name: 'The Long Rest 🎧',          style: 'file', file: 'ending' },
 ];
 
 // ---- settings (persisted) ----
@@ -8197,7 +8213,7 @@ const setAnthemBtn = document.getElementById('setAnthem');
 if (settings.song === undefined) settings.song = { march: 0, onslaught: 1, lullaby: 2 }[settings.anthem] || 0;
 function anthemLabel() {
   const song = SONGBOOK[settings.song % SONGBOOK.length];
-  const em = song.style === 'onslaught' ? '\u{1F525}' : song.style === 'lullaby' ? '\u{1F431}' : song.style === 'file' ? '\u{1F3A7}' : '\u2694';
+  const em = song.style === 'onslaught' ? '\u{1F525}' : song.style === 'lullaby' ? '\u{1F431}' : song.style === 'file' ? '\u{1F3A7}' : song.style === 'waltz' ? '\u{1F3F0}' : '\u2694';
   setAnthemBtn.innerHTML = em + ' ' + song.name + ' <span style="opacity:0.55">' + (settings.song % SONGBOOK.length + 1) + '/' + SONGBOOK.length + '</span>';
 }
 anthemLabel();
@@ -8208,7 +8224,7 @@ function songStep(d) {
   SFX.pick();
   // swap songs IMMEDIATELY — old notes silenced, file tracks paused, new song takes the stage
   stopMusicFiles();
-  if (musicTrack === 'battle') flushMusic();
+  flushMusic();
 }
 setAnthemBtn.addEventListener('click', () => songStep(1));
 document.getElementById('songPrev').addEventListener('click', () => songStep(-1));
@@ -9252,8 +9268,10 @@ const M_MELODY = [ // per bar: [beat, dur(beats), midi]
   [[0, 2, 69], [2, 1, 71]],
   [[0, 3, 69]],
 ];
-function scheduleMenuBar(b, t) {
-  const ch = M_CHORDS[b % 8];
+function scheduleMenuBar(b0, t) {
+  const b = b0 + (SONG_CFG.rot || 0);
+  const tp = SONG_CFG.tp || 0;
+  const ch = M_CHORDS[b % 8].map(n => n + tp);
   // warm detuned pad breathing under everything
   tone(musicBus, 'triangle', ch[0], t, M_BAR * 0.95, 0.13, { att: 0.02 });
   tone(musicBus, 'triangle', ch[0] + 12, t, M_BAR * 0.9, 0.045, { att: 0.06, detune: 6 });
@@ -9268,10 +9286,11 @@ function scheduleMenuBar(b, t) {
   for (let i = 0; i < 6; i++) {
     tone(musicBus, 'triangle', ch[arpIdx[i]], t + i * M_BEAT / 2, 0.7, 0.06);
   }
-  for (const [bt, dur, m] of M_MELODY[b % 8]) {
+  for (const [bt, dur, m0] of M_MELODY[b % 8]) {
+    const m = m0 + tp;
     tone(musicBus, 'sine', m, t + bt * M_BEAT, dur * M_BEAT * 0.95, 0.14, { att: 0.03 });
     // a distant sparkle answers the melody an octave up
-    tone(musicBus, 'sine', m + 12, t + bt * M_BEAT + 0.05, dur * M_BEAT * 0.7, 0.028, { att: 0.05 });
+    if (!SONG_CFG.lite) tone(musicBus, 'sine', m + 12, t + bt * M_BEAT + 0.05, dur * M_BEAT * 0.7, 0.028, { att: 0.05 });
   }
 }
 
@@ -9456,29 +9475,24 @@ function musicTick() {
   if (game.paused && !menuOpen && game.phase === 'run') return;
   // after tab-backgrounding the clock races ahead — never schedule a burst of stale bars
   if (nextBarT && nextBarT < now) nextBarT = now + 0.05;
-  const want = (!menuOpen && game.phase === 'run' && !game.over && !game.victory && !game.choices && !game.paused)
-    ? 'battle' : 'menu';
-  if (want !== musicTrack) { musicTrack = want; flushMusic(); nextBarT = now + 0.08; }
   if (!nextBarT) nextBarT = now + 0.08;
+  // ONE soundtrack: the chosen song follows you everywhere — home, war council, battle
+  const song = SONGBOOK[(settings.song || 0) % SONGBOOK.length];
+  if (song.style === 'file') {
+    const el = musicFile(song.file);
+    el.volume = Math.min(1, (settings.music / 100) * 0.95);
+    stopMusicFiles(song.file);
+    if (el.paused) el.play().catch(() => {});
+    nextBarT = now + 0.3;
+    return;
+  }
+  stopMusicFiles();
+  SONG_CFG = song;
   while (nextBarT < now + 1.3) {
-    if (musicTrack === 'battle') {
-      const song = SONGBOOK[(settings.song || 0) % SONGBOOK.length];
-      if (song.style === 'file') {
-        // a real recording leads the battle — the synth stands down
-        const el = musicFile(song.file);
-        el.volume = Math.min(1, (settings.music / 100) * 0.95);
-        stopMusicFiles(song.file);
-        if (el.paused) el.play().catch(() => {});
-        nextBarT = now + 0.3;
-        break;
-      }
-      stopMusicFiles();
-      SONG_CFG = song;
-      if (song.style === 'onslaught') { scheduleOnslaughtBar(barIdx, nextBarT); nextBarT += O_BAR; }
-      else if (song.style === 'lullaby') { scheduleLullabyBar(barIdx, nextBarT); nextBarT += L_BAR; }
-      else { scheduleBattleBar(barIdx, nextBarT); nextBarT += B_BAR; }
-    }
-    else { stopMusicFiles(); scheduleMenuBar(barIdx, nextBarT); nextBarT += M_BAR; }
+    if (song.style === 'onslaught') { scheduleOnslaughtBar(barIdx, nextBarT); nextBarT += O_BAR; }
+    else if (song.style === 'lullaby') { scheduleLullabyBar(barIdx, nextBarT); nextBarT += L_BAR; }
+    else if (song.style === 'waltz') { scheduleMenuBar(barIdx, nextBarT); nextBarT += M_BAR; }
+    else { scheduleBattleBar(barIdx, nextBarT); nextBarT += B_BAR; }
     barIdx++;
   }
 }
