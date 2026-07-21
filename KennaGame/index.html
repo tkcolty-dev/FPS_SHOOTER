@@ -1789,11 +1789,9 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (game.phase === 'map') {
-    const n = MAPS.length, mc = n > 10 ? 6 : n > 8 ? 5 : 4;
-    if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
-    if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
-    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - mc + n) % n;
-    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + mc) % n;
+    const n = MAPS.length;
+    if (['KeyA', 'ArrowLeft', 'KeyW', 'ArrowUp'].includes(e.code)) { game.cursor = (game.cursor + n - 1) % n; SFX.tick(); }
+    if (['KeyD', 'ArrowRight', 'KeyS', 'ArrowDown'].includes(e.code)) { game.cursor = (game.cursor + 1) % n; SFX.tick(); }
     if (['Space', 'Enter'].includes(e.code)) confirmSelection();
     if (e.code === 'Backspace') { game.phase = 'select'; game.cursor = 0; }
     return;
@@ -1865,7 +1863,12 @@ canvas.addEventListener('click', () => {
         if (game.phase === 'select2') confirmSelection2(); else confirmSelection();
       }
       else if (game.phase === 'select2' && c.idx >= 0) { game.cursor = c.idx; confirmSelection2(); }
-      else if (game.phase === 'select' || game.phase === 'map') { game.cursor = Math.max(0, c.idx); confirmSelection(); }
+      else if (game.phase === 'map' && c.idx === -5) { confirmSelection(); }
+      else if (game.phase === 'map' && c.idx >= 0) {
+        if (game.cursor === c.idx) confirmSelection();
+        else { game.cursor = c.idx; SFX.tick(); }
+      }
+      else if (game.phase === 'select') { game.cursor = Math.max(0, c.idx); confirmSelection(); }
       else if (game.paused && game.helpOpen) { game.helpOpen = false; SFX.pick(); }
       else if (c.idx === -33 && game.paused) { game.helpOpen = true; SFX.pick(); }
       else if (c.idx === -30 && game.paused) { togglePause(); }
@@ -6276,30 +6279,303 @@ function renderLobby(t) {
   drawToasts(t);
 }
 
+
+// ---- bespoke realm covers: every map is its own little painting (220x100 viewbox) ----
+function drawMapScene(m, x, y, w, h, t, i) {
+  ctx.save();
+  roundedRect(x, y, w, h, 7);
+  ctx.clip();
+  ctx.translate(x, y);
+  ctx.scale(w / 220, h / 100);
+  const gg = ctx.createLinearGradient(0, 0, 0, 100);
+  gg.addColorStop(0, m.tuftA);
+  gg.addColorStop(0.4, m.base);
+  gg.addColorStop(1, m.edge);
+  ctx.fillStyle = gg;
+  ctx.fillRect(0, 0, 220, 100);
+  const K = m.key;
+  if (K === 'meadow') {
+    // rolling hills, a well, wildflowers under a warm sun
+    ctx.fillStyle = 'rgba(255, 244, 180, 0.9)';
+    ctx.beginPath(); ctx.arc(190, 18, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = m.tuftA;
+    ctx.beginPath(); ctx.ellipse(50, 92, 90, 34, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = m.tuftB;
+    ctx.beginPath(); ctx.ellipse(180, 100, 100, 38, 0, Math.PI, 0); ctx.fill();
+    ctx.save(); ctx.translate(58, 84); ctx.scale(0.62, 0.62);
+    drawStructure({ x: 0, y: 0, w: 52, h: 42, type: 'well', seed: 3 }, m, t);
+    ctx.restore();
+    for (let k = 0; k < 14; k++) {
+      ctx.fillStyle = k % 3 ? m.flowerA : m.flowerB;
+      ctx.fillRect(12 + hash2(k, i) * 196, 66 + hash2(k, i + 9) * 28, 3, 3);
+    }
+  } else if (K === 'courtyard') {
+    // flagstones between battlements, royal banner flying
+    ctx.fillStyle = m.stone;
+    ctx.fillRect(0, 8, 220, 20);
+    ctx.fillStyle = m.stoneHi;
+    for (let k = 0; k < 8; k++) ctx.fillRect(k * 30, 2, 16, 10);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.16)';
+    ctx.lineWidth = 1;
+    for (let k = 0; k < 7; k++) {
+      ctx.beginPath(); ctx.moveTo(0, 40 + k * 10); ctx.lineTo(220, 40 + k * 10); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(20 + k * 30, 32); ctx.lineTo(8 + k * 34, 100); ctx.stroke();
+    }
+    ctx.fillStyle = '#2456a8';
+    ctx.beginPath(); ctx.moveTo(108, 12); ctx.lineTo(136, 12); ctx.lineTo(132, 46); ctx.lineTo(122, 56); ctx.lineTo(112, 46); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e8b64c';
+    ctx.beginPath(); ctx.arc(122, 32, 7, 0, Math.PI * 2); ctx.fill();
+  } else if (K === 'hall') {
+    // the great hall: banners, long feast table, brazier light
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.fillRect(0, 0, 220, 26);
+    for (let k = 0; k < 5; k++) {
+      ctx.fillStyle = k % 2 ? '#a33d3d' : '#2456a8';
+      ctx.beginPath(); ctx.moveTo(18 + k * 44, 0); ctx.lineTo(38 + k * 44, 0); ctx.lineTo(36 + k * 44, 24); ctx.lineTo(28 + k * 44, 32); ctx.lineTo(20 + k * 44, 24); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = '#6b4a2a';
+    ctx.beginPath(); ctx.moveTo(30, 62); ctx.lineTo(190, 62); ctx.lineTo(210, 92); ctx.lineTo(10, 92); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8a6238';
+    ctx.beginPath(); ctx.moveTo(30, 62); ctx.lineTo(190, 62); ctx.lineTo(196, 70); ctx.lineTo(24, 70); ctx.closePath(); ctx.fill();
+    for (const fx of [46, 108, 170]) {
+      ctx.fillStyle = '#e8d9b0';
+      ctx.beginPath(); ctx.ellipse(fx, 70, 9, 4, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.drawImage(GLOWS.imp, 6, 30, 40, 40);
+    ctx.drawImage(GLOWS.imp, 176, 30, 40, 40);
+  } else if (K === 'forest') {
+    // deep dark woods, fireflies drifting
+    for (const [tx, ts, dark] of [[24, 1.1, 0], [66, 0.8, 1], [120, 1.25, 0], [172, 0.9, 1], [204, 0.7, 0]]) {
+      ctx.fillStyle = dark ? 'rgba(10, 22, 8, 0.9)' : '#1e3317';
+      ctx.beginPath();
+      ctx.moveTo(tx - 22 * ts, 96);
+      ctx.lineTo(tx, 96 - 74 * ts);
+      ctx.lineTo(tx + 22 * ts, 96);
+      ctx.closePath(); ctx.fill();
+    }
+    for (let k = 0; k < 6; k++) {
+      const fx = 20 + hash2(k, i + 3) * 180;
+      const fy = 40 + Math.sin(t * 1.5 + k * 2) * 8 + hash2(k, i + 5) * 30;
+      ctx.fillStyle = 'rgba(220, 255, 150, ' + (0.5 + 0.4 * Math.sin(t * 3 + k)) + ')';
+      ctx.beginPath(); ctx.arc(fx, fy, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (K === 'crypt') {
+    // leaning tombstones and grave-glow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.fillRect(0, 70, 220, 30);
+    for (const [gx, ga] of [[36, -0.08], [86, 0.06], [136, -0.05], [186, 0.09]]) {
+      ctx.save(); ctx.translate(gx, 78); ctx.rotate(ga);
+      ctx.fillStyle = m.stone;
+      ctx.fillRect(-9, -26, 18, 26);
+      ctx.beginPath(); ctx.arc(0, -26, 9, Math.PI, 0); ctx.fill();
+      ctx.restore();
+    }
+    ctx.drawImage(GLOWS.wisp, 50, 44, 30, 30);
+    ctx.drawImage(GLOWS.wisp, 150, 50, 26, 26);
+    ctx.fillStyle = 'rgba(126, 87, 194, 0.9)';
+    ctx.fillRect(63, 62, 3, 7); ctx.fillRect(161, 66, 3, 6);
+    ctx.fillStyle = m.flowerA;
+    ctx.beginPath(); ctx.arc(64.5, 60, 4, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.arc(162.5, 64, 3.5, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = 'rgba(190, 180, 220, 0.12)';
+    ctx.beginPath(); ctx.ellipse(110, 88, 110, 12, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (K === 'snow') {
+    // white peaks, frosted pines, falling snow
+    ctx.fillStyle = '#b8c7cf';
+    ctx.beginPath(); ctx.moveTo(0, 54); ctx.lineTo(52, 10); ctx.lineTo(104, 54); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(90, 58); ctx.lineTo(160, 4); ctx.lineTo(226, 58); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#eef6fa';
+    ctx.beginPath(); ctx.moveTo(38, 22); ctx.lineTo(52, 10); ctx.lineTo(66, 22); ctx.lineTo(52, 30); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(144, 17); ctx.lineTo(160, 4); ctx.lineTo(176, 17); ctx.lineTo(160, 26); ctx.closePath(); ctx.fill();
+    for (const [tx, ts] of [[40, 0.7], [180, 0.85]]) {
+      ctx.fillStyle = '#3d5a4a';
+      ctx.beginPath(); ctx.moveTo(tx - 14 * ts, 92); ctx.lineTo(tx, 92 - 40 * ts); ctx.lineTo(tx + 14 * ts, 92); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#eef6fa';
+      ctx.beginPath(); ctx.moveTo(tx - 7 * ts, 92 - 22 * ts); ctx.lineTo(tx, 92 - 38 * ts); ctx.lineTo(tx + 7 * ts, 92 - 22 * ts); ctx.closePath(); ctx.fill();
+    }
+    for (let k = 0; k < 12; k++) {
+      const sx2 = (hash2(k, i) * 220 + t * (8 + k)) % 220;
+      const sy2 = (hash2(k, i + 7) * 100 + t * (14 + k * 2)) % 100;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillRect(sx2, sy2, 2, 2);
+    }
+  } else if (K === 'forge') {
+    // Concur's weapon works: furnace maw, anvil, rising embers
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillRect(0, 0, 220, 100);
+    const fg = ctx.createRadialGradient(110, 92, 6, 110, 92, 90);
+    fg.addColorStop(0, 'rgba(251, 146, 60, 0.75)');
+    fg.addColorStop(0.5, 'rgba(180, 60, 20, 0.35)');
+    fg.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = fg;
+    ctx.fillRect(0, 0, 220, 100);
+    ctx.fillStyle = '#1a1210';
+    ctx.beginPath(); ctx.moveTo(60, 100); ctx.lineTo(84, 44); ctx.lineTo(136, 44); ctx.lineTo(160, 100); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath(); ctx.moveTo(96, 100); ctx.lineTo(104, 70); ctx.arc(110, 70, 6, Math.PI, 0); ctx.lineTo(124, 100); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#494f57';
+    ctx.fillRect(24, 78, 26, 8); ctx.fillRect(30, 86, 13, 8);
+    for (let k = 0; k < 7; k++) {
+      const ey = 100 - ((t * 26 + k * 17) % 90);
+      ctx.fillStyle = 'rgba(253, 224, 71, ' + (ey / 130) + ')';
+      ctx.fillRect(88 + hash2(k, i) * 46 + Math.sin(t * 2 + k) * 4, ey, 2.5, 2.5);
+    }
+  } else if (K === 'throne') {
+    // the purple carpet runs straight to Concur's stolen throne
+    ctx.fillStyle = m.stone;
+    ctx.fillRect(0, 62, 220, 38);
+    ctx.fillStyle = '#4a2a6e';
+    ctx.beginPath(); ctx.moveTo(92, 100); ctx.lineTo(102, 46); ctx.lineTo(118, 46); ctx.lineTo(128, 100); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#e8b64c';
+    ctx.fillRect(96, 26, 28, 22);
+    ctx.beginPath(); ctx.moveTo(96, 26); ctx.lineTo(96, 12); ctx.lineTo(103, 20); ctx.lineTo(110, 8); ctx.lineTo(117, 20); ctx.lineTo(124, 12); ctx.lineTo(124, 26); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#b98a2c';
+    ctx.fillRect(92, 46, 36, 6);
+    for (const px2 of [30, 190]) {
+      ctx.fillStyle = m.stoneHi;
+      ctx.fillRect(px2 - 7, 8, 14, 62);
+      ctx.fillRect(px2 - 11, 2, 22, 8);
+    }
+    ctx.drawImage(GLOWS.warlock, 88, 4, 44, 44);
+  } else if (K === 'candy') {
+    // gumdrop hills and a candy cane the size of a tree
+    ctx.fillStyle = '#fbc3da';
+    ctx.beginPath(); ctx.ellipse(46, 100, 64, 44, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#a9ecdc';
+    ctx.beginPath(); ctx.ellipse(180, 100, 74, 52, 0, Math.PI, 0); ctx.fill();
+    for (const [gx, gy, gc] of [[28, 78, '#ff8fb3'], [70, 68, '#ffe97a'], [150, 62, '#8fe3ff'], [196, 74, '#c9a8ff']]) {
+      ctx.fillStyle = gc;
+      ctx.beginPath(); ctx.arc(gx, gy, 7, Math.PI, 0); ctx.fill();
+      ctx.fillRect(gx - 7, gy, 14, 4);
+    }
+    ctx.save(); ctx.translate(112, 20); ctx.rotate(0.12);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 64); ctx.lineTo(0, 6); ctx.arc(9, 6, 9, Math.PI, 0); ctx.stroke();
+    ctx.strokeStyle = '#e75480';
+    ctx.setLineDash([7, 7]);
+    ctx.beginPath(); ctx.moveTo(0, 64); ctx.lineTo(0, 6); ctx.arc(9, 6, 9, Math.PI, 0); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineCap = 'butt';
+    ctx.restore();
+  } else if (K === 'garden') {
+    // trimmed hedges heavy with roses
+    ctx.fillStyle = '#2d5016';
+    ctx.fillRect(6, 40, 64, 34); ctx.fillRect(150, 40, 64, 34);
+    ctx.fillStyle = '#3c6b1e';
+    ctx.fillRect(6, 40, 64, 9); ctx.fillRect(150, 40, 64, 9);
+    for (let k = 0; k < 12; k++) {
+      const rx = (k < 6 ? 12 : 156) + hash2(k, i) * 52;
+      ctx.fillStyle = k % 2 ? m.flowerA : m.flowerB;
+      ctx.beginPath(); ctx.arc(rx, 46 + hash2(k, i + 4) * 22, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.save(); ctx.translate(110, 92); ctx.scale(0.6, 0.6);
+    drawStructure({ x: 0, y: 0, w: 52, h: 42, type: 'well', seed: 5 }, m, t);
+    ctx.restore();
+    ctx.strokeStyle = '#8a6238';
+    ctx.lineWidth = 2.5;
+    for (const fy of [84, 92]) { ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(220, fy); ctx.stroke(); }
+    for (let k = 0; k < 9; k++) { ctx.beginPath(); ctx.moveTo(6 + k * 26, 80); ctx.lineTo(6 + k * 26, 96); ctx.stroke(); }
+  } else if (K === 'lake') {
+    // still black water holding the moon
+    ctx.fillStyle = '#0f2438';
+    ctx.fillRect(0, 52, 220, 48);
+    ctx.fillStyle = 'rgba(238, 246, 250, 0.95)';
+    ctx.beginPath(); ctx.arc(164, 22, 13, 0, Math.PI * 2); ctx.fill();
+    for (let k = 0; k < 8; k++) {
+      ctx.fillStyle = 'rgba(238, 246, 250, ' + (0.35 - k * 0.04) + ')';
+      const ww = 10 + k * 3 + Math.sin(t * 2 + k) * 3;
+      ctx.fillRect(164 - ww / 2, 56 + k * 5, ww, 2);
+    }
+    ctx.fillStyle = '#16324a';
+    for (let k = 0; k < 5; k++) {
+      const wx = 20 + k * 45;
+      ctx.beginPath(); ctx.ellipse(wx, 60 + (k % 2) * 14, 16, 2.2, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.strokeStyle = '#243b2a';
+    ctx.lineWidth = 2;
+    for (const rx of [16, 26, 200, 210]) {
+      ctx.beginPath(); ctx.moveTo(rx, 52); ctx.lineTo(rx + 3, 30 + (rx % 9)); ctx.stroke();
+    }
+  } else if (K === 'volcano') {
+    // the smoking peak, lava veins underfoot
+    ctx.fillStyle = '#241108';
+    ctx.beginPath(); ctx.moveTo(40, 100); ctx.lineTo(110, 12); ctx.lineTo(184, 100); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fb5a1c';
+    ctx.beginPath(); ctx.moveTo(102, 24); ctx.lineTo(110, 12); ctx.lineTo(119, 24); ctx.lineTo(114, 34); ctx.lineTo(107, 30); ctx.closePath(); ctx.fill();
+    for (let k = 0; k < 3; k++) {
+      ctx.fillStyle = 'rgba(90, 90, 90, ' + (0.35 - k * 0.1) + ')';
+      ctx.beginPath();
+      ctx.arc(110 + Math.sin(t + k) * 6 + k * 6, 8 - k * 6, 7 + k * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(251, 90, 28, ' + (0.6 + 0.3 * Math.sin(t * 3)) + ')';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(10, 88); ctx.lineTo(48, 76); ctx.lineTo(70, 88); ctx.lineTo(120, 78);
+    ctx.moveTo(140, 90); ctx.lineTo(178, 78); ctx.lineTo(206, 90);
+    ctx.stroke();
+  }
+  // shared vignette
+  const vg3 = ctx.createRadialGradient(110, 46, 24, 110, 46, 150);
+  vg3.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  vg3.addColorStop(1, 'rgba(0, 0, 0, 0.34)');
+  ctx.fillStyle = vg3;
+  ctx.fillRect(0, 0, 220, 100);
+  ctx.restore();
+}
+
 function renderMapSelect(t) {
   drawScreenBg(t);
   drawScreenTitle('CHOOSE THE BATTLEFIELD', 64);
   cardRects = [];
-  const cols = MAPS.length > 10 ? 6 : MAPS.length > 8 ? 5 : 4;
-  const cw = cols === 6 ? 150 : cols === 5 ? 176 : 210;
-  const chh = cols === 6 ? 196 : 208;
-  const gap = cols === 6 ? 8 : cols === 5 ? 10 : 14;
-  for (let i = 0; i < MAPS.length; i++) {
+  // ---- left: the atlas — big covers stacked, scrolling with the cursor ----
+  const rowH = 96, rowW = 470, rx0 = 64, ry0 = 96, visible = 5;
+  const first = Math.max(0, Math.min(MAPS.length - visible, game.cursor - 2));
+  for (let vi = 0; vi < Math.min(visible, MAPS.length); vi++) {
+    const i = first + vi;
     const m = MAPS[i];
-    const col = i % cols, row = Math.floor(i / cols);
-    const x = CX - (cols * cw + (cols - 1) * gap) / 2 + col * (cw + gap);
-    const y = 100 + row * (chh + gap);
-    cardRects.push({ x, y, w: cw, h: chh, idx: i });
+    const y = ry0 + vi * (rowH + 8);
+    cardRects.push({ x: rx0, y, w: rowW, h: rowH, idx: i });
     const sel = game.cursor === i;
     const un = mapUnlocked(i);
-    roundedRect(x, y, cw, chh, 10);
-    const mg = ctx.createLinearGradient(0, y, 0, y + chh);
-    mg.addColorStop(0, 'rgba(24, 23, 27, 0.94)');
-    mg.addColorStop(1, 'rgba(12, 11, 14, 0.96)');
-    ctx.fillStyle = mg;
+    roundedRect(rx0, y, rowW, rowH, 9);
+    ctx.fillStyle = 'rgba(12, 11, 14, 0.96)';
     ctx.fill();
+    drawMapScene(m, rx0 + 3, y + 3, rowW - 6, rowH - 6, t, i);
+    if (!un) {
+      ctx.fillStyle = 'rgba(6, 5, 3, 0.78)';
+      roundedRect(rx0 + 3, y + 3, rowW - 6, rowH - 6, 8);
+      ctx.fill();
+    }
+    const bg2 = ctx.createLinearGradient(rx0, 0, rx0 + rowW, 0);
+    bg2.addColorStop(0, 'rgba(8, 6, 4, 0.85)');
+    bg2.addColorStop(0.6, 'rgba(8, 6, 4, 0.35)');
+    bg2.addColorStop(1, 'rgba(8, 6, 4, 0)');
+    ctx.fillStyle = bg2;
+    ctx.fillRect(rx0 + 3, y + rowH - 34, rowW - 6, 31);
+    ctx.textAlign = 'left';
+    ctx.font = '700 16px Cinzel, Georgia, serif';
+    ctx.fillStyle = un ? (sel ? UI.goldLight : '#f0e8d6') : 'rgba(200, 195, 185, 0.55)';
+    ctx.fillText(un ? m.name : '? ? ?', rx0 + 18, y + rowH - 12);
+    if (un && kdMeta.mapsDone && kdMeta.mapsDone[i]) {
+      ctx.textAlign = 'right';
+      ctx.font = '700 12px Inter, sans-serif';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText('✓ CLEARED', rx0 + rowW - 14, y + 22);
+    }
+    if (!un) {
+      ctx.textAlign = 'center';
+      ctx.font = '22px Georgia, serif';
+      ctx.fillStyle = UI.goldLight;
+      ctx.fillText('🔒', rx0 + rowW / 2, y + rowH / 2 - 2);
+      ctx.font = '600 10px Inter, sans-serif';
+      ctx.fillStyle = UI.dim;
+      ctx.fillText('Clear ' + MAPS[i - 1].name + ' to unlock', rx0 + rowW / 2, y + rowH / 2 + 18);
+    }
     ctx.strokeStyle = sel ? UI.goldLight : 'rgba(70, 68, 78, 0.9)';
     ctx.lineWidth = sel ? 2.5 : 1.5;
+    roundedRect(rx0, y, rowW, rowH, 9);
     ctx.stroke();
     if (sel) {
       ctx.save();
@@ -6307,68 +6583,81 @@ function renderMapSelect(t) {
       ctx.shadowBlur = 16;
       ctx.stroke();
       ctx.restore();
-      ctx.strokeStyle = UI.goldLight;
-      ctx.lineWidth = 2.5;
-      ctx.save();
-      ctx.shadowColor = 'rgba(232, 182, 76, 0.5)';
-      ctx.shadowBlur = 18;
-      ctx.strokeRect(x + 3, y + 3, cw - 6, chh - 6);
-      ctx.restore();
-    }
-    // terrain preview with a little structure
-    ctx.fillStyle = m.base;
-    ctx.fillRect(x + 12, y + 12, cw - 24, 88);
-    for (let k = 0; k < 22; k++) {
-      const px = x + 16 + hash2(k, 11 + i) * (cw - 38);
-      const pyy = y + 16 + hash2(k, 13 + i) * 76;
-      const h2 = hash2(k, 17 + i);
-      ctx.fillStyle = h2 > 0.86 ? m.flowerA : h2 > 0.5 ? m.tuftA : m.tuftB;
-      ctx.fillRect(px, pyy, 5, h2 > 0.86 ? 5 : 3);
-    }
-    ctx.fillStyle = m.stone;
-    ctx.fillRect(x + 26, y + 58, 44, 22);
-    ctx.fillStyle = m.stoneHi;
-    ctx.fillRect(x + 26, y + 58, 44, 6);
-    ctx.fillStyle = m.stone;
-    ctx.fillRect(x + cw - 62, y + 34, 14, 46);
-    ctx.strokeStyle = m.edge;
-    ctx.lineWidth = 3;
-    ctx.strokeRect(x + 12, y + 12, cw - 24, 88);
-    ctx.textAlign = 'center';
-    if (un) {
-      ctx.font = '700 ' + (cols === 5 ? 12 : 14) + 'px Cinzel, Georgia, serif';
-      ctx.fillStyle = sel ? UI.goldLight : UI.text;
-      ctx.fillText(m.name, x + cw / 2, y + 124);
-      ctx.font = (cols === 5 ? 9.5 : 11) + 'px Inter, sans-serif';
-      ctx.fillStyle = UI.dim;
-      ctx.fillText(m.desc, x + cw / 2, y + 144);
-      ctx.font = '700 ' + (cols === 5 ? 9.5 : 11) + 'px Inter, sans-serif';
-      ctx.fillStyle = UI.gold;
-      ctx.fillText('OBJECTIVE — SURVIVE ' + m.goal + ' MIN', x + cw / 2, y + 168);
-      if (kdMeta.mapsDone && kdMeta.mapsDone[i]) {
-        ctx.fillStyle = '#4ade80';
-        ctx.fillText('✓ CLEARED', x + cw / 2, y + 190);
-      }
-    } else {
-      ctx.fillStyle = 'rgba(8, 6, 4, 0.68)';
-      ctx.fillRect(x + 1, y + 1, cw - 2, chh - 2);
-      ctx.font = '26px Georgia, serif';
-      ctx.fillStyle = UI.goldLight;
-      ctx.fillText('🔒', x + cw / 2, y + 70);
-      ctx.font = '700 13px Cinzel, Georgia, serif';
-      ctx.fillStyle = UI.text;
-      ctx.fillText('? ? ?', x + cw / 2, y + 124);
-      ctx.font = '600 ' + (cols === 6 ? 9.5 : 11) + 'px Inter, sans-serif';
-      ctx.fillStyle = UI.dim;
-      ctx.fillText('Clear ' + MAPS[i - 1].name, x + cw / 2, y + 146);
-      ctx.fillText('to unlock', x + cw / 2, y + 160);
     }
   }
-  drawHintsBar([['WASD / ARROWS / MOUSE', true], ['NAVIGATE', false], ['·', false], ['CLICK / SPACE', true], ['RIDE OUT', false]]);
+  ctx.textAlign = 'center';
+  ctx.font = '13px Inter, sans-serif';
+  ctx.fillStyle = 'rgba(240, 226, 195, 0.5)';
+  if (first > 0) ctx.fillText('▲', rx0 + rowW / 2, ry0 - 8);
+  if (first + visible < MAPS.length) ctx.fillText('▼', rx0 + rowW / 2, ry0 + visible * (rowH + 8) + 6);
+
+  // ---- right: the war ledger — everything about the chosen realm ----
+  const m = MAPS[game.cursor];
+  const un = mapUnlocked(game.cursor);
+  const sx0 = ROOM_W - 420, sw0 = 392, scx = sx0 + sw0 / 2;
+  plate(sx0, 92, sw0, 470, 16);
+  drawMapScene(m, sx0 + 16, 108, sw0 - 32, 150, t, game.cursor);
+  if (!un) {
+    ctx.fillStyle = 'rgba(6, 5, 3, 0.7)';
+    roundedRect(sx0 + 16, 108, sw0 - 32, 150, 8);
+    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.font = '30px Georgia, serif';
+    ctx.fillText('🔒', scx, 190);
+  }
+  ctx.textAlign = 'center';
+  ctx.font = '700 21px Cinzel, Georgia, serif';
+  ctx.fillStyle = un ? '#f3ead8' : UI.dim;
+  ctx.fillText(un ? m.name : '? ? ?', scx, 288);
+  ctx.font = '12px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText(un ? m.desc : 'Clear ' + MAPS[Math.max(0, game.cursor - 1)].name + ' to reveal this realm', scx, 308);
+  const bossName = BOSS_DEFS[MAP_BOSS[game.cursor] || 'titan'].name;
+  const MBv = MAP_SPAWN[m.key] || [1, 220];
+  const army = MBv[0] < 0.85 ? 'Light patrols' : MBv[0] < 1.05 ? 'Full warband' : 'Endless legion';
+  const local = { snow: 'Yetis stalk the passes', lake: 'Yetis fish these shores', forge: 'Magmites pop underfoot', volcano: 'Magmites swarm the slopes', candy: 'Living candy bounces here' }[m.key];
+  const rows = [
+    ['🎯 Objective', 'Survive ' + m.goal + ' minutes'],
+    ['👑 Champion', un ? bossName : '? ? ?'],
+    ['⚔ Army', un ? army + ' (' + MBv[1] + ' strong)' : '? ? ?'],
+  ];
+  if (local && un) rows.push(['🐾 Beware', local]);
+  if (kdMeta.mapsDone && kdMeta.mapsDone[game.cursor]) rows.push(['🏆 Status', 'CLEARED — ride for glory or gold']);
+  let ly2 = 336;
+  for (const [k2, v2] of rows) {
+    ctx.textAlign = 'left';
+    ctx.font = '600 12px Inter, sans-serif';
+    ctx.fillStyle = UI.dim;
+    ctx.fillText(k2, sx0 + 26, ly2);
+    ctx.textAlign = 'right';
+    ctx.font = '700 12px Inter, sans-serif';
+    ctx.fillStyle = k2.includes('Status') ? '#4ade80' : '#f0e2c3';
+    ctx.fillText(v2, sx0 + sw0 - 26, ly2);
+    ctx.strokeStyle = 'rgba(232, 182, 76, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx0 + 22, ly2 + 10); ctx.lineTo(sx0 + sw0 - 22, ly2 + 10); ctx.stroke();
+    ly2 += 30;
+  }
+  const by = 502, bh = 40;
+  cardRects.push({ x: sx0 + 24, y: by, w: sw0 - 48, h: bh, idx: -5 });
+  roundedRect(sx0 + 24, by, sw0 - 48, bh, 9);
+  const bg = ctx.createLinearGradient(0, by, 0, by + bh);
+  if (un) { bg.addColorStop(0, '#3f7d3a'); bg.addColorStop(1, '#224420'); }
+  else { bg.addColorStop(0, '#3a3a40'); bg.addColorStop(1, '#232328'); }
+  ctx.fillStyle = bg;
+  ctx.fill();
+  ctx.strokeStyle = un ? 'rgba(232, 182, 76, 0.75)' : 'rgba(90, 88, 98, 0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.font = '700 15px Cinzel, Georgia, serif';
+  ctx.fillStyle = un ? '#eaf5e0' : '#9a939f';
+  ctx.fillText(un ? '⚔ RIDE OUT' : '🔒 LOCKED', scx, by + 26);
+
+  drawHintsBar([['W / S or ▲▼', true], ['CHOOSE THE REALM', false], ['·', false], ['SPACE / A', true], ['RIDE OUT', false], ['·', false], ['B / BACKSPACE', true], ['BACK', false]]);
   drawToasts(t);
 }
 
-// ---------- render ----------
 function render(t) {
   if (!surroundPattern) surroundPattern = ctx.createPattern(surroundTile, 'repeat');
   ctx.fillStyle = surroundPattern;
