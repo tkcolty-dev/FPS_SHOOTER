@@ -2065,7 +2065,7 @@ const game = {
   xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [], strikes = [];
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [], strikes = [], dying = [];
 const cam = { x: WORLD_W / 2 - CX, y: WORLD_H / 2 - 320 };
 
 function initRun() {
@@ -2082,7 +2082,7 @@ function initRun() {
   game.chooser = 0;
   game.endingAt = 0;
   for (const p of players) { p.arsT = {}; p.superT = {}; p.arsenal = []; p.supers = {}; p.up = {}; p.fx = []; }
-  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = []; strikes = [];
+  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = []; strikes = []; dying = [];
   runPets = [];
   PETS.forEach((pd, i) => {
     if (petRank(pd.key) > 0) {
@@ -2627,6 +2627,7 @@ function killEnemy(i) {
   const e = enemies[i];
   game.kills++;
   SFX.kill();
+  dying.push({ kind: e.kind, x: e.x, y: e.y, r: e.r, seed: e.seed, elite: e.elite, age: 0 });
   if (upLvl('mend') > 0) {
     game.mendK = (game.mendK || 0) + 1;
     const need = [99, 22, 15, 9, 6][upLvl('mend')] || 99;
@@ -2652,6 +2653,7 @@ function killEnemy(i) {
     particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5, color: colors[e.kind], size: e.kind === 'golem' ? 5 : 3 });
   }
   particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.28, color: colors[e.kind], size: e.r });
+  dying[dying.length - 1].color = colors[e.kind];
   if (e.kind === 'splitter') {
     // bursts into three curse-mites
     for (let k = 0; k < 3; k++) {
@@ -3209,6 +3211,10 @@ function update(dt) {
   for (let i = strikes.length - 1; i >= 0; i--) {
     strikes[i].age += dt;
     if (strikes[i].age > 0.32) strikes.splice(i, 1);
+  }
+  for (let i = dying.length - 1; i >= 0; i--) {
+    dying[i].age += dt;
+    if (dying[i].age > 0.26) dying.splice(i, 1);
   }
 
   // enemies
@@ -3959,7 +3965,8 @@ function drawEnemy(e, t) {
   ctx.save();
   ctx.globalAlpha = e.kind === 'shade' ? pop * 0.85 : pop;
   ctx.translate(e.x, e.y + bob);
-  ctx.scale((0.5 + 0.5 * easeOutQ(pop)) / squash, (0.5 + 0.5 * easeOutQ(pop)) * squash);
+  const hitK = 1 + Math.max(0, e.flash) * 1.6;   // struck spirits POP
+  ctx.scale(hitK * (0.5 + 0.5 * easeOutQ(pop)) / squash, hitK * (0.5 + 0.5 * easeOutQ(pop)) * squash);
 
   // soft glow + ground shadow
   ctx.drawImage(GLOWS[e.kind], -e.r * 2.1, -e.r * 2.1, e.r * 4.2, e.r * 4.2);
@@ -3994,10 +4001,12 @@ function drawEnemy(e, t) {
     }
   }
 
-  const eim = ENEMY_IMG[e.kind === 'mite' ? 'splitter' : e.kind];
+  // the horde is a MIX: blob-sprites for the critters, hand-drawn art for the
+  // strong silhouettes (robes, scythes, hexes, diamonds)
+  const eim = DRAWN_KINDS.has(e.kind) ? null : ENEMY_IMG[e.kind === 'mite' ? 'splitter' : e.kind];
   if (eim) {
     // the painted monster itself
-    const ih = e.r * 2.7, iw = ih * (eim.width / eim.height);
+    const ih = e.r * 2.1, iw = ih * (eim.width / eim.height);
     const needsFilter = e.flash > 0 || e.slowT > 0;
     if (needsFilter) {
       ctx.filter = e.flash > 0 ? 'brightness(2.4) saturate(0.4)' : 'saturate(0.55) brightness(1.15) hue-rotate(160deg)';
@@ -4758,6 +4767,7 @@ function drawPlayerSprite(p, t) {
 const SPRITE_IMG = {};
 // painted monsters: monsters/<kind>.png replaces the drawn body the moment it exists
 const ENEMY_IMG = {};
+const DRAWN_KINDS = new Set(['shade', 'charger', 'warlock', 'reaper', 'golem', 'concur', 'wraith']);
 for (const ek of ['wisp', 'imp', 'shade', 'brute', 'spitter', 'splitter', 'shellback', 'golem',
                   'charger', 'warlock', 'reaper', 'gilded', 'yeti', 'magmite',
                   'titan', 'wraith', 'gummy', 'concur']) {
@@ -6671,6 +6681,26 @@ function render(t) {
   }
 
   const drawList = [];
+  // death pops: the slain stretch, spin and burst away in a quarter second
+  for (const d2 of dying) {
+    ctx.save();
+    ctx.translate(d2.x, d2.y);
+    const df = d2.age / 0.26;
+    ctx.globalAlpha = 1 - df;
+    ctx.rotate(df * 0.9 * (d2.seed % 2 ? 1 : -1));
+    const dk = 1 + df * 1.1;
+    ctx.scale(dk, Math.max(0.05, 1 - df * 0.7));
+    const dim = DRAWN_KINDS.has(d2.kind) ? null : ENEMY_IMG[d2.kind === 'mite' ? 'splitter' : d2.kind];
+    if (dim) {
+      const dh2 = d2.r * 2.1, dw2 = dh2 * (dim.width / dim.height);
+      ctx.drawImage(dim, -dw2 / 2, -dh2 * 0.58, dw2, dh2);
+    } else {
+      ctx.fillStyle = d2.color || '#e8e4da';
+      ctx.beginPath(); ctx.arc(0, 0, d2.r * (1 - df * 0.4), 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
   for (const e of enemies) drawList.push({ y: e.y, kind: 'enemy', e });
   for (const p of players) if (p.joined) drawList.push({ y: p.y, kind: 'player', p });
   for (const pe of runPets) drawList.push({ y: pe.y + 30, kind: 'pet', pe });
