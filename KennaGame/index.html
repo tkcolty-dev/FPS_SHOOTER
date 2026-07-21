@@ -1392,6 +1392,10 @@ function armoryBuy(i) {
   if (i < POWERUPS.length) buyPower(i);
   else buyPet(i - POWERUPS.length);
 }
+const W_CADENCE = { slash: 0.6, nova: 1.05, daggers: 0.42, gust: 0.9,
+  axe: 1.15, hammer: 1.35, bow: 0.55, flail: 0.6, trident: 0.95,
+  icestaff: 0.8, whip: 0.7, boomer: 1.05, blunder: 1.15, scepter: 0.8 };
+
 function armoryExit() {
   if (game.netGuest) {
     // guests shop mid-battle and return straight to the fight
@@ -1414,9 +1418,7 @@ function applyHero(p, key) {
   p.name = def.name;
   p.wtype = def.wtype;
   // weapon base cadence
-  p.attackEvery = { slash: 0.6, nova: 1.05, daggers: 0.42, gust: 0.9,
-    axe: 1.15, hammer: 1.35, bow: 0.55, flail: 0.6, trident: 0.95,
-    icestaff: 0.8, whip: 0.7, boomer: 1.05, blunder: 1.15, scepter: 0.8 }[def.wtype];
+  p.attackEvery = W_CADENCE[def.wtype];
   const m = def.mods;
   p.maxHp = 6 + (m.hp || 0) + powerRank('vigor');
   p.hp = p.maxHp;
@@ -1802,6 +1804,8 @@ function initRun() {
   game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
   game.stompT = 0; game.crownT = 0; game.mendK = 0;
+  game.arsenal = [];
+  for (const p of players) p.arsT = {};
   enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = [];
   runPets = [];
   PETS.forEach((pd, i) => {
@@ -1967,9 +1971,29 @@ function levelUp() {
   SFX.levelup();
   if (upLvl('shuffle') > 0) rotateHeroes();
   game.choicesAt = performance.now();
-  // each crown is harder to earn than the last — Vampire-Survivors-style ramp
-  game.xpNext = Math.round(6 + game.level * 6 + Math.pow(game.level, 1.55));
+  // each crown is MUCH harder to earn than the last — steep Vampire-Survivors ramp
+  game.xpNext = Math.round(10 + game.level * 9 + Math.pow(game.level, 1.8));
   const pool = UPGRADES.filter(u => upLvl(u.key) < u.max);
+  // Vampire-Survivors style: a limited arsenal — win up to 3 EXTRA weapons at level-up
+  if ((game.arsenal || []).length < 3) {
+    const owned = new Set([...(game.arsenal || []), ...players.filter(p2 => p2.joined).map(p2 => p2.wtype)]);
+    const wkeys = Object.keys(WEAPON_INFO)
+      .filter(k => !owned.has(k) && upLvl('w_' + k) < 1)
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 2);
+    for (const wk of wkeys) {
+      pool.push({
+        key: 'w_' + wk, weapon: wk, max: 1,
+        name: WEAPON_INFO[wk].name, icon: WEAPON_INFO[wk].icon,
+        desc: '⚔ NEW WEAPON — ' + WEAPON_INFO[wk].desc,
+        apply: () => {
+          game.arsenal = game.arsenal || [];
+          game.arsenal.push(wk);
+          gameToast('⚔ The party arms itself with the ' + WEAPON_INFO[wk].name + '!');
+        },
+      });
+    }
+  }
   const picks = [];
   while (picks.length < 3 && pool.length) {
     picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
@@ -2229,8 +2253,9 @@ function killEnemy(i) {
 }
 
 // ---------- weapons ----------
-function fireWeapon(p) {
-  if (p.wtype === 'flail') return false;   // the morning star swings itself
+function fireWeapon(p) { return fireWeaponType(p, p.wtype); }
+function fireWeaponType(p, wt) {
+  if (wt === 'flail') return false;   // the morning star swings itself
   let target = null, bd = p.range * p.range;
   for (const e of enemies) {
     const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
@@ -2239,7 +2264,7 @@ function fireWeapon(p) {
   if (!target) return false;
   const ang = Math.atan2(target.y - p.y, target.x - p.x);
 
-  if (p.wtype === 'slash') {
+  if (wt === 'slash') {
     SFX.slash();
     slashes.push({ x: p.x, y: p.y - 20, ang, age: 0, r: p.range * 0.62 });
     for (const e of enemies) {
@@ -2251,7 +2276,7 @@ function fireWeapon(p) {
       if (Math.abs(da) > p.arc) continue;
       hurtEnemy(e, p.damage, ang, 230);
     }
-  } else if (p.wtype === 'nova') {
+  } else if (wt === 'nova') {
     SFX.nova();
     const rad = 95 + p.range * 0.25;
     novas.push({ x: p.x, y: p.y - 14, r: rad, age: 0 });
@@ -2259,7 +2284,7 @@ function fireWeapon(p) {
       const d = Math.hypot(e.x - p.x, e.y - (p.y - 14));
       if (d < rad + e.r) hurtEnemy(e, p.damage + 1, Math.atan2(e.y - p.y, e.x - p.x), 260);
     }
-  } else if (p.wtype === 'daggers') {
+  } else if (wt === 'daggers') {
     SFX.daggers();
     for (let k = -1; k <= 1; k++) {
       const a2 = ang + k * 0.22;
@@ -2269,14 +2294,14 @@ function fireWeapon(p) {
         dmg: p.damage, life: 0.55, hit: new Set(), kind: 'dagger',
       });
     }
-  } else if (p.wtype === 'gust') {
+  } else if (wt === 'gust') {
     SFX.gust();
     waves.push({
       x: p.x, y: p.y - 20, ang,
       vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380,
       dmg: p.damage, life: 1.0, hit: new Set(), kind: 'gust', kb: 520,
     });
-  } else if (p.wtype === 'axe') {
+  } else if (wt === 'axe') {
     // slow, enormous, devastating sweep
     SFX.slash();
     slashes.push({ x: p.x, y: p.y - 20, ang, age: 0, r: p.range * 0.8 });
@@ -2289,7 +2314,7 @@ function fireWeapon(p) {
       if (Math.abs(da) > Math.min(2.1, p.arc + 0.9)) continue;
       hurtEnemy(e, p.damage + 2, ang, 430);
     }
-  } else if (p.wtype === 'hammer') {
+  } else if (wt === 'hammer') {
     // slam the earth — a shockwave ring around the knight
     SFX.nova();
     const rad = 80 + p.range * 0.22;
@@ -2299,21 +2324,21 @@ function fireWeapon(p) {
       const d = Math.hypot(e.x - p.x, e.y - p.y);
       if (d < rad + e.r) hurtEnemy(e, p.damage + 2, Math.atan2(e.y - p.y, e.x - p.x), 470);
     }
-  } else if (p.wtype === 'bow') {
+  } else if (wt === 'bow') {
     SFX.daggers();
     waves.push({
       x: p.x, y: p.y - 24, ang,
       vx: Math.cos(ang) * 700, vy: Math.sin(ang) * 700,
       dmg: p.damage + 1, life: 0.8, hit: new Set(), kind: 'arrow',
     });
-  } else if (p.wtype === 'trident') {
+  } else if (wt === 'trident') {
     SFX.bolt();
     waves.push({
       x: p.x, y: p.y - 22, ang,
       vx: Math.cos(ang) * 560, vy: Math.sin(ang) * 560,
       dmg: p.damage + 1, life: 0.7, hit: new Set(), kind: 'trident',
     });
-  } else if (p.wtype === 'icestaff') {
+  } else if (wt === 'icestaff') {
     SFX.daggers();
     for (const k of [-0.14, 0.14]) {
       const a2 = ang + k;
@@ -2323,7 +2348,7 @@ function fireWeapon(p) {
         dmg: p.damage, life: 0.62, hit: new Set(), kind: 'shard',
       });
     }
-  } else if (p.wtype === 'whip') {
+  } else if (wt === 'whip') {
     // one long burning lash straight through the crowd
     SFX.slash();
     waves.push({ x: p.x, y: p.y - 20, ang, vx: 0, vy: 0, dmg: 0, life: 0.22, hit: new Set(), kind: 'whip', len: p.range + 40 });
@@ -2338,14 +2363,14 @@ function fireWeapon(p) {
       const uu = 30 + Math.random() * (LEN - 40);
       particles.push({ x: p.x + Math.cos(ang) * uu, y: p.y - 20 + Math.sin(ang) * uu, vx: (Math.random() - 0.5) * 40, vy: -30 - Math.random() * 40, life: 0.3, color: Math.random() < 0.5 ? '#fb923c' : '#fde047', size: 2.6 });
     }
-  } else if (p.wtype === 'boomer') {
+  } else if (wt === 'boomer') {
     SFX.slash();
     waves.push({
       x: p.x, y: p.y - 22, ang,
       vx: Math.cos(ang) * 460, vy: Math.sin(ang) * 460,
       dmg: p.damage + 1, life: 1.4, hit: new Set(), kind: 'boomer', kb: 260, own: p,
     });
-  } else if (p.wtype === 'blunder') {
+  } else if (wt === 'blunder') {
     // a dragon-mouthed cannon coughs a cone of sparks
     SFX.nova();
     game.shake = Math.max(game.shake, 0.08);
@@ -2358,7 +2383,7 @@ function fireWeapon(p) {
         dmg: p.damage, life: 0.3, hit: new Set(), kind: 'pellet',
       });
     }
-  } else if (p.wtype === 'scepter') {
+  } else if (wt === 'scepter') {
     SFX.pet();
     for (const k of [-1, 1]) {
       const a2 = ang + k * 0.5;
@@ -2369,8 +2394,8 @@ function fireWeapon(p) {
       });
     }
   }
-  // sword-wave upgrade rides along for every hero
-  if (p.wave > 0) {
+  // sword-wave upgrade rides along for every hero (signature weapon only)
+  if (p.wave > 0 && wt === p.wtype) {
     waves.push({
       x: p.x, y: p.y - 20, ang,
       vx: Math.cos(ang) * 420, vy: Math.sin(ang) * 420,
@@ -2503,6 +2528,16 @@ function update(dt) {
       p.attackTimer = (upLvl('echo') > 0 && Math.random() < 0.2 * upLvl('echo'))
         ? p.attackEvery * 0.25 : p.attackEvery;
     }
+    // the arsenal: extra weapons won at level-up, each on its own clock
+    for (const wt of (game.arsenal || [])) {
+      if (wt === p.wtype || wt === 'flail') continue;
+      p.arsT = p.arsT || {};
+      p.arsT[wt] = (p.arsT[wt] === undefined ? Math.random() * 0.8 : p.arsT[wt]) - dt;
+      if (p.arsT[wt] <= 0 && fireWeaponType(p, wt)) {
+        // extra weapons keep pace with the hero's attack-speed blessings
+        p.arsT[wt] = W_CADENCE[wt] * 1.3 * Math.max(0.35, p.attackEvery / W_CADENCE[p.wtype]);
+      }
+    }
 
     if (p.orbCount > 0) {
       p.orbAngle += dt * 2.6;
@@ -2519,7 +2554,7 @@ function update(dt) {
         }
       }
     }
-    if (p.wtype === 'flail') {
+    if (p.wtype === 'flail' || (game.arsenal || []).includes('flail')) {
       // the morning star whirls on its chain, smacking whatever it meets
       p.flailAng = (p.flailAng || 0) + dt * 3.4;
       const fx = p.x + Math.cos(p.flailAng) * 84;
@@ -3863,7 +3898,7 @@ function drawPlayerSprite(p, t) {
     ctx.fillStyle = UI.goldPale;
     ctx.beginPath(); ctx.arc(ox - 2, oy - 3, 3, 0, Math.PI * 2); ctx.fill();
   }
-  if (p.wtype === 'flail' && p.alive) {
+  if ((p.wtype === 'flail' || (game.arsenal || []).includes('flail')) && p.alive) {
     // morning star: taut chain out to a whirling spiked ball
     const fa = p.flailAng || t * 3.4;
     const fx = p.x + Math.cos(fa) * 84;
@@ -5741,6 +5776,17 @@ function render(t) {
     ctx.font = '700 13px Cinzel, Georgia, serif';
     ctx.fillStyle = '#fb923c';
     ctx.fillText('🔥 FORGE-BLESSED · ' + Math.ceil(game.forgeT) + 's', 480, 126);
+  }
+  // the party's arsenal, worn proudly under the hero plates
+  for (let ai = 0; ai < (game.arsenal || []).length; ai++) {
+    const wt2 = game.arsenal[ai];
+    const ax2 = 34 + ai * 40, ay2 = 132;
+    ctx.fillStyle = 'rgba(9, 7, 5, 0.75)';
+    ctx.beginPath(); ctx.arc(ax2, ay2, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(232, 182, 76, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    drawUpgradeIcon(WEAPON_INFO[wt2].icon, ax2, ay2, 0.42, t);
   }
   // the champion's health looms over the battle
   const bossE = enemies.find(e2 => BOSS_DEFS[e2.kind]);
