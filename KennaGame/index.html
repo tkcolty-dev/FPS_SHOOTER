@@ -641,7 +641,18 @@
     background: #0a0a0e; border-radius: 50%;
     box-shadow: 0 -18px 30px rgba(10, 10, 14, 0.7);
   }
-  #menu.hasImage #statCards, #menu.hasImage #questCard { display: none; }
+  /* painted bottom cards are live buttons, so no covering bar/bushes */
+  #menu.hasImage #bushL, #menu.hasImage #bushR, #menu.hasImage #bottomBar { display: none; }
+  /* the two interactive top chips light up like the painted buttons do */
+  #menu.hasImage #chipKnights, #menu.hasImage #chipRemaster {
+    pointer-events: auto; cursor: pointer;
+  }
+  #menu.hasImage #chipKnights:hover, #menu.hasImage #chipRemaster:hover {
+    border: 2px solid rgba(255, 217, 138, 0.7);
+    background: rgba(255, 217, 138, 0.06);
+    box-shadow: 0 0 18px rgba(232, 182, 76, 0.35);
+    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+  }
   /* real stats on the bottom bar */
   #homeStats {
     position: absolute; left: 0; right: 0; bottom: 1.4%;
@@ -659,6 +670,15 @@
     text-shadow: 0 0 12px rgba(255, 217, 138, 0.45);
   }
   .hsCard b { color: #ffd98a; }
+  button.hsCard {
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  }
+  button.hsCard:hover {
+    transform: translateY(-2px);
+    border-color: #e8b64c;
+    box-shadow: 0 0 22px rgba(232, 182, 76, 0.5);
+  }
   #hsSettings {
     cursor: pointer;
     background: linear-gradient(140deg, rgba(70, 50, 14, 0.95), rgba(32, 23, 9, 0.95));
@@ -826,7 +846,13 @@
       <button class="panelX" data-close>&times;</button>
       <h2>The Royal Chronicle</h2>
       <div class="patchList">
-        <p class="verHead">v1.5 &mdash; THE LIVING CASTLE <span class="verTag">LATEST</span></p>
+        <p class="verHead">v1.6 &mdash; PETS &amp; CANDY <span class="verTag">LATEST</span></p>
+        <p>&#128062; Royal pets &mdash; adopt Sprinkle, Professor Tome &amp; Twinkle in the armory; they fight beside you</p>
+        <p>&#127853; CANDY MOUNTAIN &mdash; a ninth realm of sugar fields and mint rock</p>
+        <p>&#9874; The armory reforged &mdash; hover any blessing or pet for its details</p>
+        <p>&#128126; Six new spirits: weaving shades, curse-spitters, splitters, dashing chargers &mdash; and a golden treasure wisp</p>
+        <p>&#127925; True music &mdash; a menu waltz, a battle march, and sounds for every deed</p>
+        <p class="verHead">v1.5 &mdash; THE LIVING CASTLE</p>
         <p>&#127942; Real achievements &mdash; 12 deeds tracked and earned as you play</p>
         <p>&#128081; The Royal Leaderboard now remembers your greatest battles</p>
         <p>&#9993; Royal Mail &mdash; letters arrive as your legend grows</p>
@@ -1700,9 +1726,11 @@ function spawnEnemy(forceX, forceY) {
     charger:  { r: 17, hp: 6,  speed: 46, xp: 5 },
     gilded:   { r: 12, hp: 2,  speed: 112, xp: 2 },
   }[kind];
+  // the curse hardens as the battle drags on, and later realms hit harder
+  const hpBonus = Math.floor(t / 120) + Math.floor(game.mapPick / 3);
   enemies.push({
-    x, y, kind, r: spec.r, hp: spec.hp, maxHp: spec.hp,
-    speed: spec.speed + Math.min(34, t * 0.2), xp: spec.xp,
+    x, y, kind, r: spec.r, hp: spec.hp + hpBonus, maxHp: spec.hp + hpBonus,
+    speed: spec.speed + Math.min(44, t * 0.22), xp: spec.xp,
     kx: 0, ky: 0, flash: 0, orbCd: 0, spawnAge: 0,
     seed: Math.random() * 100,
     shootCd: 1.4 + Math.random(), chargeState: 'stalk', stateT: 2 + Math.random(), aimX: 0, aimY: 0,
@@ -1808,7 +1836,7 @@ function killEnemy(i) {
     gems.push({ x: gp.x, y: gp.y, v: gv, vx: 0, vy: 0 });
   }
   const dp = pushOut(e.x, e.y, 16);
-  if (Math.random() < 0.045) drops.push({ x: dp.x, y: dp.y, kind: 'heart' });
+  if (Math.random() < 0.035) drops.push({ x: dp.x, y: dp.y, kind: 'heart' });
   else if (Math.random() < 0.06) drops.push({ x: dp.x, y: dp.y, kind: 'coin', v: 2 + Math.floor(Math.random() * 3) + (e.kind === 'golem' ? 6 : 0) });
   enemies.splice(i, 1);
 }
@@ -2162,16 +2190,16 @@ function update(dt) {
 
   // spawner
   game.spawnTimer -= dt;
-  const interval = Math.max(0.2, 1.7 - game.time * 0.02);
-  if (game.spawnTimer <= 0 && enemies.length < 220) {
+  const interval = Math.max(0.17, (1.55 - game.time * 0.022) * (1 - game.mapPick * 0.02));
+  if (game.spawnTimer <= 0 && enemies.length < 250) {
     game.spawnTimer = interval;
     spawnEnemy();
-    if (game.time > 50 && Math.random() < 0.5) spawnEnemy();
-    if (game.time > 120 && Math.random() < 0.4) spawnEnemy();
+    if (game.time > 45 && Math.random() < 0.55) spawnEnemy();
+    if (game.time > 110 && Math.random() < 0.45) spawnEnemy();
   }
   game.burstTimer -= dt;
   if (game.burstTimer <= 0) {
-    game.burstTimer = 42;
+    game.burstTimer = 34;
     gameToast('⚠ A cursed horde approaches!');
     const fx = players[0].x, fy = players[0].y;
     const n = 12 + Math.floor(game.time / 30);
@@ -2519,25 +2547,26 @@ function drawEnemy(e, t) {
     ctx.arc(0, 0, e.r, 0, Math.PI * 2);
     ctx.fill();
   }
-  // big cute eyes with shines, blush, and a little smile
+  // round glowing eyes with a shine — charming, but still up to no good
   const ed = e.r * 0.34;
-  const er = Math.max(2.6, e.r * 0.21);
+  const er = Math.max(2.2, e.r * 0.17);
   ctx.fillStyle = cols.eye;
-  ctx.beginPath(); ctx.arc(-ed, -e.r * 0.12, er, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(ed, -e.r * 0.12, er, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-ed, -e.r * 0.1, er, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ed, -e.r * 0.1, er, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = cols.rim;
-  ctx.beginPath(); ctx.arc(-ed + er * 0.2, -e.r * 0.08, er * 0.52, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(ed + er * 0.2, -e.r * 0.08, er * 0.52, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.beginPath(); ctx.arc(-ed - er * 0.3, -e.r * 0.2, er * 0.28, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(ed - er * 0.3, -e.r * 0.2, er * 0.28, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255, 140, 160, 0.35)';
-  ctx.beginPath(); ctx.arc(-ed - er * 0.4, e.r * 0.24, er * 0.55, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(ed + er * 0.4, e.r * 0.24, er * 0.55, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(-ed + er * 0.2, -e.r * 0.06, er * 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ed + er * 0.2, -e.r * 0.06, er * 0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+  ctx.beginPath(); ctx.arc(-ed - er * 0.3, -e.r * 0.17, er * 0.26, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ed - er * 0.3, -e.r * 0.17, er * 0.26, 0, Math.PI * 2); ctx.fill();
+  // cross little brows
   ctx.strokeStyle = cols.rim;
-  ctx.lineWidth = Math.max(1.2, e.r * 0.07);
+  ctx.lineWidth = Math.max(1.5, e.r * 0.1);
   ctx.beginPath();
-  ctx.arc(0, e.r * 0.18, e.r * 0.2, 0.3, Math.PI - 0.3);
+  ctx.moveTo(-ed - er, -e.r * 0.1 - er * 1.5);
+  ctx.lineTo(-ed + er * 0.8, -e.r * 0.1 - er * 0.7);
+  ctx.moveTo(ed + er, -e.r * 0.1 - er * 1.5);
+  ctx.lineTo(ed - er * 0.8, -e.r * 0.1 - er * 0.7);
   ctx.stroke();
 
   ctx.restore();
@@ -4279,11 +4308,17 @@ function updateHomeStats() {
   const st = JSON.parse(localStorage.getItem('kd_stats') || '{"playMs":0}');
   const mins = Math.floor((st.playMs || 0) / 60000);
   homeStats.innerHTML =
-    '<div class="hsCard">🪙 <b>' + (meta.gold || 0) + '</b>&nbsp;gold</div>' +
+    '<button class="hsCard" id="hsGold" title="Royal Armory — spend your gold">🪙 <b>' + (meta.gold || 0) + '</b>&nbsp;gold</button>' +
     '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / 24</b>&nbsp;knights</div>' +
     '<div class="hsCard">⏳ <b>' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm</b></div>' +
     '<button class="hsCard" id="hsSettings">⚙ SETTINGS</button>';
   homeStats.querySelector('#hsSettings').addEventListener('click', () => openPanel('settings'));
+  homeStats.querySelector('#hsGold').addEventListener('click', () => {
+    hideMenu();
+    game.phase = 'armory';
+    game.armoryFrom = 'home';
+    game.cursor = 0;
+  });
 }
 function activateImageUI() {
   menuEl.classList.add('hasImage');
@@ -4899,7 +4934,12 @@ document.getElementById('icDiscord').addEventListener('click', () =>
 document.getElementById('updateCard').addEventListener('click', () => openPanel('patch'));
 document.getElementById('icMail').addEventListener('click', () => { fillMailPanel(); openPanel('mail'); });
 document.getElementById('icBell').addEventListener('click', () => { fillBellPanel(); openPanel('bell'); });
-document.getElementById('questCard').addEventListener('click', () => { fillQuestPanel(); openPanel('quest'); });
+// the painted bottom-right card says JOIN OUR DISCORD — honor the label
+document.getElementById('questCard').addEventListener('click', () =>
+  menuToastShow('\u{1F3F0} There is no royal Discord — the knights prefer carrier pigeons!'));
+// painted top chips: KNIGHTS FREED -> the quest scroll, REMASTER v1.0 -> patch notes
+document.getElementById('chipKnights').addEventListener('click', () => { fillQuestPanel(); openPanel('quest'); });
+document.getElementById('chipRemaster').addEventListener('click', () => openPanel('patch'));
 document.getElementById('btnExit').addEventListener('click', () => {
   window.close();
   menuToastShow('🏰 The kingdom will not let you go so easily… (close the tab to exit)');
@@ -4956,8 +4996,8 @@ window.addEventListener('keydown', e => {
 
 // ---- update-card carousel ----
 const UC_SLIDES = [
-  { head: '✦ LATEST UPDATE', title: 'v1.5 THE LIVING CASTLE',
-    body: 'The castle wakes up — real achievements, a true leaderboard, royal mail and decrees. Everything you tap now tells the truth.',
+  { head: '✦ LATEST UPDATE', title: 'v1.6 PETS & CANDY',
+    body: 'Adopt royal pets that fight beside you, brave six new spirits, and climb the brand-new Candy Mountain — with real music all the way.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
@@ -5030,7 +5070,7 @@ const ACH_DEFS = [
   { key: 'realms4', icon: '🗺', name: 'Realm Explorer', desc: 'Free 4 of the 8 realms',
     need: () => mapsCleared() >= 4, prog: () => mapsCleared() + ' / 4' },
   { key: 'concur',  icon: '👑', name: 'Concur the Kingdom', desc: 'Concur all 8 realms',
-    need: () => mapsCleared() >= 8, prog: () => mapsCleared() + ' / 8' },
+    need: () => mapsCleared() >= 8, prog: () => Math.min(8, mapsCleared()) + ' / 8' },
   { key: 'ban100',  icon: '✨', name: 'Spirit Banisher', desc: 'Banish 100 curse-spirits',
     need: () => (kdStats.kills || 0) >= 100, prog: () => Math.min(kdStats.kills || 0, 100) + ' / 100' },
   { key: 'ban1000', icon: '🔥', name: 'Spirit Scourge', desc: 'Banish 1,000 curse-spirits',
@@ -5146,7 +5186,7 @@ function fillQuestPanel() {
     if (mapUnlocked(i)) return `<p>⚔ <b>${m.name}</b> — <i>${m.desc}</i> · survive ${m.goal} min <span class="verTag">CURRENT</span></p>`;
     return `<p class="locked">🔒 <b>${m.name}</b> — clear the ${MAPS[i - 1].name.replace(/^THE /, '')} first</p>`;
   });
-  rows.push(mapsCleared() >= MAPS.length
+  rows.push((kdMeta.mapsDone || [])[7]
     ? '<p style="color:#ffd98a">👑 Concur has fallen. Rule the kingdom, Queen Kenna!</p>'
     : `<p class="achProg" style="display:block; margin-top:2vh">Realms freed: ${mapsCleared()} / ${MAPS.length}</p>`);
   document.getElementById('questList').innerHTML = rows.join('');
