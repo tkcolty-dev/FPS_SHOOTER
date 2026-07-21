@@ -1729,15 +1729,15 @@ function startBattle() {
   game.phase = 'run';
 }
 function applyRunUpgradesTo(p) {
-  p.damage += upLvl('sharp');
-  p.attackEvery = Math.max(0.22, p.attackEvery * Math.pow(0.85, upLvl('swift')));
-  p.range += 25 * upLvl('reach');
-  p.arc = Math.min(1.6, p.arc + 0.08 * upLvl('reach'));
-  p.speed *= Math.pow(1.12, upLvl('boots'));
-  p.maxHp += upLvl('heart');
-  p.magnet *= Math.pow(1.55, upLvl('magnet'));
-  p.orbCount += upLvl('aegis');
-  p.wave += upLvl('wave');
+  p.damage += pUpLvl(p, 'sharp');
+  p.attackEvery = Math.max(0.22, p.attackEvery * Math.pow(0.85, pUpLvl(p, 'swift')));
+  p.range += 25 * pUpLvl(p, 'reach');
+  p.arc = Math.min(1.6, p.arc + 0.08 * pUpLvl(p, 'reach'));
+  p.speed *= Math.pow(1.12, pUpLvl(p, 'boots'));
+  p.maxHp += pUpLvl(p, 'heart');
+  p.magnet *= Math.pow(1.55, pUpLvl(p, 'magnet'));
+  p.orbCount += pUpLvl(p, 'aegis');
+  p.wave += pUpLvl(p, 'wave');
 }
 function confirmSelection2() {
   const rk = ROSTER[game.cursor];
@@ -1778,11 +1778,20 @@ function pickUpgrade(idx) {
   if (!c) return;
   if (game.netGuest) { netSend({ t: 'pick', i: idx }); SFX.pick(); return; }
   SFX.pick();
-  c.apply();
-  game.up[c.key] = upLvl(c.key) + 1;
-  gameToast('✨ ' + c.name + '  Lv ' + game.up[c.key] + '!');
+  const ch = chooserP();
+  c.apply(ch);
+  let lvNow;
+  if (STAT_KEYS.has(c.key)) {
+    ch.up = ch.up || {};
+    lvNow = ch.up[c.key] = pUpLvl(ch, c.key) + 1;
+  } else {
+    lvNow = game.up[c.key] = upLvl(c.key) + 1;
+  }
+  const multi = players.filter(p2 => p2.joined).length > 1;
+  gameToast('✨ ' + (multi ? ch.name + ' — ' : '') + c.name + '  Lv ' + lvNow + '!');
   if (evolutionReady()) gameToast('☀ The War Hammer trembles with power… open a chest!');
-  if (superReady()) gameToast('⚡ Your weapons RESONATE… open a chest to fuse them!');
+  const srp = superReadyPlayer();
+  if (srp) gameToast('⚡ ' + srp.p.name + "'s weapons RESONATE… open a chest to fuse them!");
   game.choices = null;
   game.padPick = null;
 }
@@ -1826,12 +1835,12 @@ function initRun() {
   game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
   game.stompT = 0; game.crownT = 0; game.mendK = 0;
-  game.arsenal = [];
   game.evolved = {};
-  game.supers = {};
   game.rerolls = 0;
+  game.chooserRot = 0;
+  game.chooser = 0;
   game.endingAt = 0;
-  for (const p of players) { p.arsT = {}; p.superT = {}; }
+  for (const p of players) { p.arsT = {}; p.superT = {}; p.arsenal = []; p.supers = {}; p.up = {}; }
   enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = [];
   runPets = [];
   PETS.forEach((pd, i) => {
@@ -1896,8 +1905,9 @@ function gameToast(text) {
 
 // ---- weapon evolution: hammer + maxed Sharper Blades = the SUNBREAKER ----
 function evolutionReady() {
-  const hasHammer = players.some(p2 => p2.joined && p2.wtype === 'hammer') || (game.arsenal || []).includes('hammer');
-  return hasHammer && upLvl('sharp') >= 5 && !(game.evolved && game.evolved.hammer);
+  if (game.evolved && game.evolved.hammer) return false;
+  return players.some(p2 => p2.joined &&
+    (p2.wtype === 'hammer' || (p2.arsenal || []).includes('hammer')) && pUpLvl(p2, 'sharp') >= 5);
 }
 // ---- SUPERWEAPONS: two related weapons resonate — and fuse into a LASER ----
 const SUPER_DEFS = [
@@ -1908,14 +1918,14 @@ const SUPER_DEFS = [
   { key: 'dragon', name: "DRAGON'S BREATH", icon: 'dragonray', needs: ['blunder', 'whip'],
     color: '#fb923c', core: '#ffe8cc', cd: 3.2, burn: true },
 ];
-function ownedWeapons() {
-  const set = new Set((game.arsenal || []));
-  for (const p2 of players) if (p2.joined) set.add(p2.wtype);
-  return set;
-}
-function superReady() {
-  const owned = ownedWeapons();
-  return SUPER_DEFS.find(sd => !(game.supers && game.supers[sd.key]) && sd.needs.every(w => owned.has(w)));
+function superReadyPlayer() {
+  for (const p2 of players) {
+    if (!p2.joined || p2.remote) continue;
+    const owned = new Set([p2.wtype, ...(p2.arsenal || [])]);
+    const sd = SUPER_DEFS.find(d => !((p2.supers || {})[d.key]) && d.needs.every(w => owned.has(w)));
+    if (sd) return { p: p2, sd };
+  }
+  return null;
 }
 function fireSuper(p, sd) {
   // hitscan laser: pick the nearest fiend, burn a line straight through the horde
@@ -1943,15 +1953,17 @@ function fireSuper(p, sd) {
 }
 
 // what's inside is decided the moment the lid opens — the wheel just builds the drama
-function rollChestReward() {
+function rollChestReward(opener) {
   // a fusion or evolution outshines any ordinary treasure
-  const sd = superReady();
-  if (sd) return { kind: 'super', def: sd, icon: sd.icon, label: sd.name + '!' };
+  const srp = superReadyPlayer();
+  if (srp) return { kind: 'super', def: srp.sd, forP: srp.p, icon: srp.sd.icon, label: srp.sd.name + '!' };
   if (evolutionReady()) return { kind: 'evolve', icon: 'hammer2', label: 'THE SUNBREAKER!' };
   const luck = Math.random();
   if (luck < 0.5) return { kind: 'gold', icon: 'coin', label: 'ROYAL GOLD' };
   if (luck < 0.82) {
-    const pool = UPGRADES.filter(u => upLvl(u.key) < u.max && u.key !== 'shuffle');
+    const op = opener || players[0];
+    const pool = UPGRADES.filter(u =>
+      (STAT_KEYS.has(u.key) ? pUpLvl(op, u.key) : upLvl(u.key)) < u.max && u.key !== 'shuffle');
     if (pool.length) {
       const gift = pool[Math.floor(Math.random() * pool.length)];
       return { kind: 'gift', gift, icon: gift.icon, label: gift.name.toUpperCase() };
@@ -1964,8 +1976,9 @@ function applyChestReward(ch) {
   const rw = ch.reward;
   SFX.levelup();
   if (rw.kind === 'super') {
-    game.supers = game.supers || {};
-    game.supers[rw.def.key] = true;
+    const tp = rw.forP && rw.forP.joined ? rw.forP : players[0];
+    tp.supers = tp.supers || {};
+    tp.supers[rw.def.key] = true;
     SFX.unlock();
     game.shake = Math.max(game.shake, 0.28);
     gameToast('⚡ ' + rw.def.needs.map(w => WEAPON_INFO[w].name).join(' + ') + ' fuse into ' + rw.def.name + '!');
@@ -1995,9 +2008,17 @@ function applyChestReward(ch) {
     }
     gameToast('🪙 The chest spills royal gold!');
   } else if (rw.kind === 'gift') {
-    rw.gift.apply();
-    game.up[rw.gift.key] = upLvl(rw.gift.key) + 1;
-    gameToast('🎁 Chest gift: ' + rw.gift.name + '  Lv ' + game.up[rw.gift.key] + '!');
+    const op = ch.opener && ch.opener.joined ? ch.opener : players[0];
+    rw.gift.apply(op);
+    let lv2;
+    if (STAT_KEYS.has(rw.gift.key)) {
+      op.up = op.up || {};
+      lv2 = op.up[rw.gift.key] = pUpLvl(op, rw.gift.key) + 1;
+    } else {
+      lv2 = game.up[rw.gift.key] = upLvl(rw.gift.key) + 1;
+    }
+    const multi2 = players.filter(p2 => p2.joined).length > 1;
+    gameToast('🎁 Chest gift' + (multi2 ? ' for ' + op.name : '') + ': ' + rw.gift.name + '  Lv ' + lv2 + '!');
   } else {
     drops.push({ x: ch.x - 22, y: ch.y + 8, kind: 'heart' });
     drops.push({ x: ch.x + 22, y: ch.y + 8, kind: 'heart' });
@@ -2010,21 +2031,21 @@ const UPGRADES = [
   { key: 'shuffle', name: 'Royal Shuffle', icon: 'shuffle', max: 1, desc: 'Every level-up, knights trade players!',
     apply: () => {} },
   { key: 'sharp', name: 'Sharper Blades', icon: 'sword', max: 5, desc: '+1 damage for all heroes',
-    apply: () => players.forEach(p => p.damage += 1) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.damage += 1) },
   { key: 'swift', name: 'Swift Strikes', icon: 'swift', max: 5, desc: 'Everyone attacks 15% faster',
-    apply: () => players.forEach(p => p.attackEvery = Math.max(0.22, p.attackEvery * 0.85)) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.attackEvery = Math.max(0.22, p.attackEvery * 0.85)) },
   { key: 'reach', name: 'Long Reach', icon: 'reach', max: 5, desc: 'Bigger attacks, +25 range',
-    apply: () => players.forEach(p => { p.range += 25; p.arc = Math.min(1.6, p.arc + 0.08); }) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => { p.range += 25; p.arc = Math.min(1.6, p.arc + 0.08); }) },
   { key: 'boots', name: 'Boots of the Wind', icon: 'boots', max: 5, desc: 'Everyone moves 12% faster',
-    apply: () => players.forEach(p => p.speed *= 1.12) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.speed *= 1.12) },
   { key: 'heart', name: 'Heart of the Kingdom', icon: 'heart', max: 4, desc: '+1 max heart and heal 2',
-    apply: () => players.forEach(p => { p.maxHp += 1; p.hp = Math.min(p.maxHp, p.hp + 2); }) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => { p.maxHp += 1; p.hp = Math.min(p.maxHp, p.hp + 2); }) },
   { key: 'magnet', name: 'Royal Magnet', icon: 'magnet', max: 4, desc: 'Gems fly to you from farther',
-    apply: () => players.forEach(p => p.magnet *= 1.55) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.magnet *= 1.55) },
   { key: 'aegis', name: 'Spinning Aegis', icon: 'aegis', max: 4, desc: 'One more shield orbits each hero',
-    apply: () => players.forEach(p => p.orbCount += 1) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.orbCount += 1) },
   { key: 'wave', name: 'Sword Wave', icon: 'wave', max: 3, desc: 'Attacks launch a flying blade',
-    apply: () => players.forEach(p => p.wave += 1) },
+    apply: (ch) => (ch ? [ch] : players.filter(p => p.joined)).forEach(p => p.wave += 1) },
   { key: 'thorn', name: 'Thorn Armor', icon: 'thorn', max: 3, desc: 'Enemies that touch you get hurt back',
     apply: () => {} },
   { key: 'frost', name: 'Frost Touch', icon: 'frost', max: 3, desc: 'Your hits chill enemies, slowing them',
@@ -2057,6 +2078,13 @@ const UPGRADES = [
     apply: () => {} },
 ];
 function upLvl(k) { return game.up[k] || 0; }
+// stat upgrades are personal — each knight levels their own body and blade
+const STAT_KEYS = new Set(['sharp', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave']);
+function pUpLvl(p, k) { return (p.up || {})[k] || 0; }
+function chooserP() {
+  const p = players[game.chooser || 0];
+  return (p && p.joined) ? p : players[0];
+}
 function rotateHeroes() {
   const joined = players.filter(p => p.joined && p.alive);
   if (joined.length < 2) return;
@@ -2076,17 +2104,23 @@ function levelUp() {
   if (upLvl('shuffle') > 0) rotateHeroes();
   // each crown is MUCH harder to earn than the last — steep Vampire-Survivors ramp
   game.xpNext = Math.round(10 + game.level * 9 + Math.pow(game.level, 1.8));
+  // every knight takes their own turn choosing a gift
+  const joinedIdx = players.map((p2, i2) => ({ p2, i2 })).filter(o => o.p2.joined).map(o => o.i2);
+  game.chooser = joinedIdx.length ? joinedIdx[(game.chooserRot = (game.chooserRot || 0)) % joinedIdx.length] : 0;
+  game.chooserRot++;
   buildChoices();
 }
 function buildChoices() {
   game.choicesAt = performance.now();
   game.padPick = null;
-  const pool = UPGRADES.filter(u => upLvl(u.key) < u.max);
-  // Vampire-Survivors style: a limited arsenal — win up to 3 EXTRA weapons at level-up
-  if ((game.arsenal || []).length < 3) {
-    const owned = new Set([...(game.arsenal || []), ...players.filter(p2 => p2.joined).map(p2 => p2.wtype)]);
+  const ch = chooserP();
+  const pool = UPGRADES.filter(u =>
+    (STAT_KEYS.has(u.key) ? pUpLvl(ch, u.key) : upLvl(u.key)) < u.max);
+  // Vampire-Survivors style: each knight builds their OWN arsenal of up to 3 extra weapons
+  if ((ch.arsenal || []).length < 3) {
+    const owned = new Set([ch.wtype, ...(ch.arsenal || [])]);
     const wkeys = Object.keys(WEAPON_INFO)
-      .filter(k => !owned.has(k) && upLvl('w_' + k) < 1)
+      .filter(k => !owned.has(k))
       .sort(() => Math.random() - 0.5)
       .slice(0, 2);
     for (const wk of wkeys) {
@@ -2095,10 +2129,10 @@ function buildChoices() {
         name: WEAPON_INFO[wk].name, icon: WEAPON_INFO[wk].icon,
         desc: 'NEW WEAPON! ' + WEAPON_INFO[wk].desc,
         apply: () => {
-          game.arsenal = game.arsenal || [];
-          game.arsenal.push(wk);
-          gameToast('⚔ The party arms itself with the ' + WEAPON_INFO[wk].name + '!');
-          if (game.arsenal.length >= 3) {
+          ch.arsenal = ch.arsenal || [];
+          ch.arsenal.push(wk);
+          gameToast('⚔ ' + ch.name + ' takes up the ' + WEAPON_INFO[wk].name + '!');
+          if (ch.arsenal.length >= 3) {
             kdStats.fullArsenal = true;
             saveStats();
             checkAchievements();
@@ -2690,7 +2724,7 @@ function update(dt) {
         ? p.attackEvery * 0.25 : p.attackEvery;
     }
     // the arsenal: extra weapons won at level-up, each on its own clock
-    for (const wt of (game.arsenal || [])) {
+    for (const wt of (p.arsenal || [])) {
       if (wt === p.wtype || wt === 'flail') continue;
       p.arsT = p.arsT || {};
       p.arsT[wt] = (p.arsT[wt] === undefined ? Math.random() * 0.8 : p.arsT[wt]) - dt;
@@ -2701,7 +2735,7 @@ function update(dt) {
     }
     // superweapons: fused laser fire on their own clocks
     for (const sd of SUPER_DEFS) {
-      if (!(game.supers && game.supers[sd.key])) continue;
+      if (!((p.supers || {})[sd.key])) continue;
       p.superT = p.superT || {};
       p.superT[sd.key] = (p.superT[sd.key] === undefined ? Math.random() : p.superT[sd.key]) - dt;
       if (p.superT[sd.key] <= 0 && fireSuper(p, sd)) {
@@ -2724,7 +2758,7 @@ function update(dt) {
         }
       }
     }
-    if (p.wtype === 'flail' || (game.arsenal || []).includes('flail')) {
+    if (p.wtype === 'flail' || (p.arsenal || []).includes('flail')) {
       // the morning star whirls on its chain, smacking whatever it meets
       p.flailAng = (p.flailAng || 0) + dt * 3.4;
       const fx = p.x + Math.cos(p.flailAng) * 84;
@@ -3064,7 +3098,8 @@ function update(dt) {
     if (!near) continue;
     ch3.open = true;
     ch3.openT = 0;
-    ch3.reward = rollChestReward();
+    ch3.opener = near;
+    ch3.reward = rollChestReward(near);
     SFX.unlock();
     game.shake = Math.max(game.shake, 0.12);
     for (let k = 0; k < 14; k++) {
@@ -4007,10 +4042,22 @@ function drawPlayerSprite(p, t) {
     ctx.beginPath();
     ctx.ellipse(p.x, p.y - 2, 21, 9, 0, 0, Math.PI * 2);
     ctx.stroke();
+    // your color, your arrow — always know which knight is yours
+    const abob = Math.sin(t * 4.5 + slot * 1.7) * 3;
+    const ay = p.y - 72 + abob;
     ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(p.x - 8, ay - 11);
+    ctx.lineTo(p.x + 8, ay - 11);
+    ctx.lineTo(p.x, ay);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
     ctx.font = '700 10px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('P' + (slot + 1), p.x, p.y - 64);
+    ctx.fillText('P' + (slot + 1), p.x, ay - 16);
   }
   const im = SPRITE_IMG[p.heroKey];
   const H = 56, W = im ? H * (im.width / im.height) : 0;
@@ -4086,7 +4133,7 @@ function drawPlayerSprite(p, t) {
     ctx.fillStyle = UI.goldPale;
     ctx.beginPath(); ctx.arc(ox - 2, oy - 3, 3, 0, Math.PI * 2); ctx.fill();
   }
-  if ((p.wtype === 'flail' || (game.arsenal || []).includes('flail')) && p.alive) {
+  if ((p.wtype === 'flail' || (p.arsenal || []).includes('flail')) && p.alive) {
     // morning star: taut chain out to a whirling spiked ball
     const fa = p.flailAng || t * 3.4;
     const fx = p.x + Math.cos(fa) * 84;
@@ -6057,50 +6104,72 @@ function render(t) {
     ctx.fillRect(0, 0, 960, 640);
   }
 
-  // ---- HUD: royal command bar ----
+  // ---- HUD: royal command bar (shrinks so 4 knights fit) ----
   const joined = players.filter(p => p.joined);
+  const compact = joined.length >= 3;
+  const ph2 = compact ? 42 : 56, pStep = compact ? 48 : 66;
+  const heartR = compact ? 8 : 11, heartStep = compact ? 18 : 24;
+  const portR = compact ? 14 : 19;
   let hy = 10;
   for (const p of joined) {
-    const pw = Math.max(212, 94 + Math.min(p.maxHp, 12) * 24);
-    ornate(10, hy, pw, 56, 12);
+    const pcol = PLAYER_COLORS[Math.max(0, players.indexOf(p)) % 4];
+    const pw = Math.max(compact ? 170 : 212, (compact ? 76 : 94) + Math.min(p.maxHp, 12) * heartStep);
+    ornate(10, hy, pw, ph2, 12);
     // player color bar
-    ctx.fillStyle = PLAYER_COLORS[Math.max(0, players.indexOf(p)) % 4];
-    ctx.fillRect(16, hy + 10, 5, 36);
+    ctx.fillStyle = pcol;
+    ctx.fillRect(16, hy + 8, 5, ph2 - 16);
+    const pcx = compact ? 36 : 42, pcy = hy + ph2 / 2;
     ctx.save();
     ctx.beginPath();
-    ctx.arc(42, hy + 28, 19, 0, Math.PI * 2);
+    ctx.arc(pcx, pcy, portR, 0, Math.PI * 2);
     ctx.clip();
     ctx.fillStyle = 'rgba(232, 182, 76, 0.14)';
-    ctx.fillRect(23, hy + 9, 38, 38);
+    ctx.fillRect(pcx - portR, pcy - portR, portR * 2, portR * 2);
     ctx.imageSmoothingEnabled = false;
     const hudIm = SPRITE_IMG[p.heroKey];
     if (hudIm) {
       // frame the helmet inside the circle
-      const hh = 64, hw = hh * (hudIm.width / hudIm.height);
-      ctx.drawImage(hudIm, 42 - hw / 2, hy + 13, hw, hh);
+      const hh = portR * 3.4, hw = hh * (hudIm.width / hudIm.height);
+      ctx.drawImage(hudIm, pcx - hw / 2, pcy - portR + 4, hw, hh);
     } else {
-      ctx.drawImage(heroSprites[p.heroKey].down[1], 23, hy + 9, 38, 38);
+      ctx.drawImage(heroSprites[p.heroKey].down[1], pcx - portR, pcy - portR, portR * 2, portR * 2);
     }
     ctx.restore();
     ctx.strokeStyle = p.alive ? UI.plateBorder : 'rgba(140, 140, 140, 0.5)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(42, hy + 28, 19, 0, Math.PI * 2);
+    ctx.arc(pcx, pcy, portR, 0, Math.PI * 2);
     ctx.stroke();
     ctx.textAlign = 'left';
-    ctx.font = '700 15px Cinzel, Georgia, serif';
+    ctx.font = '700 ' + (compact ? 12 : 15) + 'px Cinzel, Georgia, serif';
     ctx.fillStyle = p.alive ? UI.goldPale : UI.dim;
-    ctx.fillText(p.name, 72, hy + 24);
+    const nameX = pcx + portR + 11;
+    ctx.fillText(p.name, nameX, hy + (compact ? 17 : 24));
     if (p.maxHp <= 12) {
-      for (let i = 0; i < p.maxHp; i++) drawHeart(78 + i * 24, hy + 42, 11, i < p.hp);
+      for (let i = 0; i < p.maxHp; i++) drawHeart(nameX + 6 + i * heartStep, hy + (compact ? 31 : 42), heartR, i < p.hp);
     } else {
       // big-hearted knights get a compact counter instead of a mile of hearts
-      drawHeart(78, hy + 42, 11, p.hp > 0);
-      ctx.font = '700 16px Inter, sans-serif';
+      drawHeart(nameX + 6, hy + (compact ? 31 : 42), heartR, p.hp > 0);
+      ctx.font = '700 ' + (compact ? 13 : 16) + 'px Inter, sans-serif';
       ctx.fillStyle = p.alive ? '#f0e2c3' : UI.dim;
-      ctx.fillText(p.hp + ' / ' + p.maxHp, 96, hy + 48);
+      ctx.fillText(p.hp + ' / ' + p.maxHp, nameX + 24, hy + (compact ? 36 : 48));
     }
-    hy += 66;
+    // this knight's own weapons + fusions, right beside their plate
+    const pIcons = (p.arsenal || [])
+      .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon)
+      .concat(SUPER_DEFS.filter(sd => (p.supers || {})[sd.key]).map(sd => sd.icon));
+    pIcons.forEach((ic, ai) => {
+      const mr = compact ? 10 : 13;
+      const ax2 = 10 + pw + 14 + ai * (mr * 2 + 6), ay2 = hy + ph2 / 2;
+      const isSuper = ['prism', 'stormray', 'dragonray'].includes(ic);
+      ctx.fillStyle = 'rgba(9, 7, 5, 0.75)';
+      ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = isSuper ? `rgba(125, 211, 252, ${0.6 + 0.3 * Math.sin(t * 4)})` : 'rgba(232, 182, 76, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      drawUpgradeIcon(ic, ax2, ay2, mr / 32, t);
+    });
+    hy += pStep;
   }
 
   // center: timer + XP + level medallion
@@ -6188,20 +6257,6 @@ function render(t) {
     ctx.fillStyle = '#fb923c';
     ctx.fillText('🔥 FORGE-BLESSED · ' + Math.ceil(game.forgeT) + 's', 480, 126);
   }
-  // the party's arsenal + fused superweapons, worn proudly under the hero plates
-  const medallions = (game.arsenal || [])
-    .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon)
-    .concat(SUPER_DEFS.filter(sd => game.supers && game.supers[sd.key]).map(sd => sd.icon));
-  medallions.forEach((ic, ai) => {
-    const ax2 = 34 + ai * 40, ay2 = 132;
-    const isSuper = ['prism', 'stormray', 'dragonray'].includes(ic);
-    ctx.fillStyle = 'rgba(9, 7, 5, 0.75)';
-    ctx.beginPath(); ctx.arc(ax2, ay2, 16, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = isSuper ? `rgba(125, 211, 252, ${0.6 + 0.3 * Math.sin(t * 4)})` : 'rgba(232, 182, 76, 0.55)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    drawUpgradeIcon(ic, ax2, ay2, 0.42, t);
-  });
   // the champion's health looms over the battle
   const bossE = enemies.find(e2 => BOSS_DEFS[e2.kind]);
   if (bossE) {
@@ -6277,6 +6332,16 @@ function render(t) {
     ctx.fillStyle = 'rgba(10, 5, 16, 0.72)';
     ctx.fillRect(0, 0, 960, 640);
     drawScreenTitle('LEVEL ' + game.level + ' — ROYAL GIFT', 122);
+    const gMulti = players.filter(p2 => p2.joined).length > 1;
+    const gCh = chooserP();
+    const gTint = gMulti ? PLAYER_COLORS[Math.max(0, players.indexOf(gCh)) % 4] : null;
+    if (gMulti) {
+      // whose turn it is — banner and everything below glow in their color
+      ctx.textAlign = 'center';
+      ctx.font = '700 17px Cinzel, Georgia, serif';
+      ctx.fillStyle = gTint;
+      ctx.fillText('▼  P' + (players.indexOf(gCh) + 1) + ' — ' + gCh.name + ' CHOOSES  ▼', 480, 158);
+    }
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
       const cx2 = 480 + (i - 1) * 270;
@@ -6291,7 +6356,21 @@ function render(t) {
       ctx.scale(pop, pop);
       ctx.translate(-cx2, -(top + 125));
       plate(cx2 - 115, top, 230, 250, 14);
-      if (hov) {
+      if (gTint) {
+        // the chooser's color frames every card
+        ctx.strokeStyle = gTint;
+        ctx.globalAlpha = hov ? 1 : 0.35;
+        ctx.lineWidth = hov ? 2.5 : 1.5;
+        ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+        ctx.globalAlpha = 1;
+        if (hov) {
+          ctx.save();
+          ctx.shadowColor = gTint;
+          ctx.shadowBlur = 26;
+          ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+          ctx.restore();
+        }
+      } else if (hov) {
         ctx.strokeStyle = UI.goldLight;
         ctx.lineWidth = 2.5;
         ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
@@ -6317,7 +6396,7 @@ function render(t) {
       ctx.stroke();
       drawUpgradeIcon(c.icon, cx2, top + 72, 1.05, t);
       ctx.textAlign = 'center';
-      const lvl = upLvl(c.key);
+      const lvl = STAT_KEYS.has(c.key) ? pUpLvl(gCh, c.key) : upLvl(c.key);
       if (lvl === 0) {
         ctx.fillStyle = '#4ade80';
         ctx.font = '700 13px Inter, sans-serif';
@@ -7672,7 +7751,7 @@ function netBroadcast() {
   netSend({
     t: 'snap', ph: 'run',
     time: Math.round(game.time * 10) / 10, level: game.level, xp: game.xp, xpNext: game.xpNext,
-    fg: Math.round((game.forgeT || 0) * 10) / 10,
+    fg: Math.round((game.forgeT || 0) * 10) / 10, cho: game.chooser || 0,
     kills: game.kills, gold: kdMeta.gold, map: game.mapPick,
     vic: game.victory ? 1 : 0, over: game.over ? 1 : 0, endless: game.endless ? 1 : 0,
     pz: game.paused ? 1 : 0,
@@ -7682,7 +7761,7 @@ function netBroadcast() {
     pl: players.filter(p => p.joined).map(p =>
       [p.gid || 0, p.heroKey, Math.round(p.x), Math.round(p.y), p.hp, p.maxHp, p.alive ? 1 : 0,
        p.faceLeft ? 1 : 0, p.moving ? 1 : 0, Math.round((p.reviveProgress || 0) * 10) / 10, p.name,
-       p.invuln > 0 ? 1 : 0]),
+       p.invuln > 0 ? 1 : 0, (p.arsenal || []).join('|'), Object.keys(p.supers || {}).join('|')]),
     en: enemies.map(e => [e.kind, Math.round(e.x), Math.round(e.y), e.r, e.hp, e.maxHp,
       Math.round(e.seed * 10) / 10, e.chargeState === 'dash' ? 2 : e.chargeState === 'aim' ? 1 : 0,
       Math.round((e.aimX || 0) * 100) / 100, Math.round((e.aimY || 0) * 100) / 100, e.elite ? 1 : 0]),
@@ -7703,6 +7782,7 @@ function applySnap(m) {
   if (game.mapPick !== m.map) { game.mapPick = m.map; genStructures(m.map); }
   game.time = m.time; game.level = m.level; game.xp = m.xp; game.xpNext = m.xpNext;
   game.forgeT = m.fg || 0;
+  game.chooser = m.cho || 0;
   game.kills = m.kills; game.netGold = m.gold;
   game.victory = !!m.vic; game.over = !!m.over; game.endless = !!m.endless;
   game.paused = !!m.pz;
@@ -7717,19 +7797,24 @@ function applySnap(m) {
   const nowS = performance.now() / 1000;
   players.length = 0;
   for (const a of m.pl) {
-    const [gid, hk, x, y, hp, maxHp, alive, fl, mv, rv, name, inv] = a;
+    const [gid, hk, x, y, hp, maxHp, alive, fl, mv, rv, name, inv, arsS, supS] = a;
+    const ars = arsS ? arsS.split('|') : [];
+    const sup = {};
+    if (supS) for (const sk of supS.split('|')) sup[sk] = true;
     if (gid === NET.id && NET.self) {
       if (NET.self.hp > hp && NET.self.alive) { SFX.hurt(); game.hurtFlash = 0.4; }
       NET.self.name = name;
       NET.self.hp = hp; NET.self.maxHp = maxHp; NET.self.alive = !!alive;
       NET.self.invuln = inv ? 0.6 : 0;
       NET.self.reviveProgress = rv; NET.self.joined = true;
+      NET.self.arsenal = ars; NET.self.supers = sup;
       players.push(NET.self);
     } else {
       players.push({
         joined: true, remoteView: true, heroKey: hk, name, x, y, hp, maxHp,
         alive: !!alive, faceLeft: !!fl, moving: !!mv, reviveProgress: rv,
         invuln: inv ? 0.6 : 0, orbCount: 0, dir: fl ? 'left' : 'right', animTime: nowS, keymap: {},
+        arsenal: ars, supers: sup,
       });
     }
   }
@@ -7973,6 +8058,8 @@ function pollPads() {
     }
 
     if (game.choices) {
+      // it's ONE knight's turn — their pad steers (pad 0 can always help out)
+      if (i !== 0 && i !== (game.chooser || 0)) continue;
       if (game.padPick === undefined || game.padPick === null) game.padPick = 1;
       if (dir('left')) game.padPick = Math.max(0, game.padPick - 1);
       if (dir('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
