@@ -3985,7 +3985,8 @@ function drawEnemy(e, t) {
   const hitK = 1 + Math.max(0, e.flash) * 1.6;   // struck spirits POP
   ctx.scale(hitK * (0.5 + 0.5 * easeOutQ(pop)) / squash, hitK * (0.5 + 0.5 * easeOutQ(pop)) * squash);
 
-  // soft glow + ground shadow
+  // Shared stage treatment: painted and drawn monsters sit on the same
+  // ink-shadow so pale bodies stay legible on every realm.
   ctx.drawImage(GLOWS[e.kind], -e.r * 2.1, -e.r * 2.1, e.r * 4.2, e.r * 4.2);
   if (e.elite) {
     // the golden mark of an elite
@@ -4001,10 +4002,15 @@ function drawEnemy(e, t) {
     ctx.textAlign = 'center';
     ctx.fillText('✦', Math.cos(sa) * e.r * 1.5, Math.sin(sa) * e.r * 0.8 - e.r * 0.5);
   }
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.fillStyle = 'rgba(8, 5, 12, 0.52)';
   ctx.beginPath();
-  ctx.ellipse(0, e.r * 1.15 - bob * 0.5, e.r * 0.9, e.r * 0.32, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, e.r * 1.12 - bob * 0.5, e.r * 1.02, Math.max(5, e.r * 0.34), 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 226, 160, 0.16)';
+  ctx.lineWidth = Math.max(1.2, e.r * 0.055);
+  ctx.beginPath();
+  ctx.ellipse(0, e.r * 1.1 - bob * 0.5, e.r * 1.06, Math.max(6, e.r * 0.38), 0, 0, Math.PI * 2);
+  ctx.stroke();
 
   // the charger points its nose along the charge — rears back to aim, stretches to lunge
   if (e.kind === 'charger' && e.chargeState !== 'stalk' && (e.aimX || e.aimY)) {
@@ -4648,12 +4654,22 @@ function drawPet(pe, t) {
 function drawPlayerSprite(p, t) {
   if (p.dir === 'left') p.faceLeft = true;
   else if (p.dir === 'right') p.faceLeft = false;
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillStyle = 'rgba(0,0,0,0.48)';
   ctx.beginPath();
   ctx.ellipse(p.x, p.y - 2, 18, 7, 0, 0, Math.PI * 2);
   ctx.fill();
   // with friends in the fight, every knight wears their player's color
   const slot = players.indexOf(p);
+  if (slot >= 0 && p.alive) {
+    const col = PLAYER_COLORS[slot % 4];
+    ctx.globalAlpha = 0.72 + Math.sin(t * 3.2 + slot) * 0.08;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - 2, 21, 9, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   if (slot >= 0 && players.filter(q => q.joined).length > 1) {
     const col = PLAYER_COLORS[slot % 4];
     ctx.strokeStyle = col;
@@ -6985,6 +7001,9 @@ function render(t) {
   // enemy curse bolts
   for (const b of bolts) {
     ctx.drawImage(GLOWS.spitter, b.x - 17, b.y - 17, 34, 34);
+    ctx.strokeStyle = 'rgba(12, 18, 5, 0.9)';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(b.x, b.y, 7.5, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = '#a3e635';
     ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#d9f99d';
@@ -7214,8 +7233,12 @@ function render(t) {
   }
   ctx.globalAlpha = 1;
   if (settings.dmgnums !== false) for (const dm of dmgTexts) {
-    ctx.font = '19px "VT323", monospace';
+    ctx.font = '700 20px "VT323", monospace';
     ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = `rgba(12, 8, 16, ${Math.max(0, 0.85 * (1 - dm.age / 0.7))})`;
+    ctx.lineWidth = 4;
+    ctx.strokeText(dm.val, dm.x, dm.y);
     ctx.fillStyle = dm.gold
       ? `rgba(255, 208, 80, ${1 - dm.age / 0.7})`
       : `rgba(255, 233, 184, ${1 - dm.age / 0.7})`;
