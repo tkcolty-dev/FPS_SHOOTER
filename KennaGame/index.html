@@ -597,18 +597,22 @@
     border-radius: 1.8vh;
   }
   #menu.hasImage .menuBtn > * { visibility: hidden; }
-  /* UPGRADES is a real labeled button — glassy plate matching the painted ones */
+  /* UPGRADES is a real labeled button — inset + styled to twin the painted plates */
   #menu.hasImage #btnSettings {
-    background: rgba(13, 11, 9, 0.96);
+    left: 2.45%; width: 24.75%; top: 58.25%; height: 7.6%;
+    background: rgba(16, 14, 11, 0.94);
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    border: 1.5px solid rgba(232, 182, 76, 0.42);
-    border-radius: 1.8vh;
+    border: 1px solid rgba(232, 182, 76, 0.3);
+    border-radius: 1.4vh;
   }
   #menu.hasImage #btnSettings > * { visibility: visible; }
-  #menu.hasImage #btnSettings .bTitle { font-size: min(2.1vh, 1.4vw); }
-  #menu.hasImage #btnSettings .bSub { font-size: min(1.3vh, 0.9vw); }
-  #menu.hasImage #btnSettings .bIcon { font-size: min(2.2vh, 1.5vw); }
-  #menu.hasImage #btnSettings .bChev { font-size: min(2vh, 1.4vw); }
+  #menu.hasImage #btnSettings .bTitle {
+    font-family: 'Inter', sans-serif; font-weight: 700;
+    font-size: min(1.75vh, 1.2vw); letter-spacing: 0.16em; color: #f2f0ea;
+  }
+  #menu.hasImage #btnSettings .bSub { font-size: min(1.25vh, 0.88vw); letter-spacing: 0.02em; }
+  #menu.hasImage #btnSettings .bIcon { font-size: min(2vh, 1.35vw); }
+  #menu.hasImage #btnSettings .bChev { font-size: min(1.9vh, 1.3vw); display: inline; color: rgba(255, 255, 255, 0.5); }
   #menu.hasImage .menuBtn::before, #menu.hasImage #btnPlay::after { display: none; }
   #menu.hasImage .menuBtn:hover, #menu.hasImage .menuBtn:focus-visible,
   #menu.hasImage #btnPlay:hover {
@@ -906,6 +910,7 @@
       <div class="setSection">&#127925; Audio</div>
       <div class="row"><span>Music volume</span><input type="range" id="setMusic" min="0" max="100"></div>
       <div class="row"><span>Sound effects</span><input type="range" id="setSfx" min="0" max="100"></div>
+      <div class="row"><span>Battle anthem</span><button class="rowBtn" id="setAnthem">&#9876; March of the Last Knight</button></div>
       <div class="setSection">&#9876; Battle</div>
       <div class="row"><span>Screen shake</span><input type="checkbox" class="setTog" id="togShake"></div>
       <div class="row"><span>Damage numbers</span><input type="checkbox" class="setTog" id="togDmg"></div>
@@ -1619,6 +1624,7 @@ window.addEventListener('keydown', e => {
   // hero grid / armory / map selection screens
   if (game.phase === 'select2' && game.joinVia === 'pad' && !e.__pad) return;   // that picker belongs to a controller
   if (game.phase === 'select' || game.phase === 'select2') {
+    if (['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.code)) SFX.tick();
     const cols = 5, n = ROSTER.length;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
@@ -3229,7 +3235,7 @@ function update(dt) {
     ch3.openT = 0;
     ch3.opener = near;
     ch3.reward = rollChestReward(near);
-    SFX.unlock();
+    SFX.chest();
     game.shake = Math.max(game.shake, 0.12);
     for (let k = 0; k < 14; k++) {
       const a = Math.random() * Math.PI * 2, sp2 = 60 + Math.random() * 130;
@@ -7766,7 +7772,7 @@ requestAnimationFrame(menuLoop);
 
 // ---- settings (persisted) ----
 const settings = Object.assign(
-  { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false },
+  { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false, anthem: 'march' },
   JSON.parse(localStorage.getItem('kd_settings') || '{}')
 );
 function saveSettings() {
@@ -7785,6 +7791,20 @@ for (const [id, key] of [['togShake', 'shake'], ['togDmg', 'dmgnums'], ['togFlas
   if (key === 'fps') el.checked = settings.fps === true;
   el.addEventListener('change', () => { settings[key] = el.checked; saveSettings(); });
 }
+const setAnthemBtn = document.getElementById('setAnthem');
+function anthemLabel() {
+  setAnthemBtn.innerHTML = settings.anthem === 'onslaught'
+    ? '\u{1F525} Onslaught of the Curse' : '\u2694 March of the Last Knight';
+}
+anthemLabel();
+setAnthemBtn.addEventListener('click', () => {
+  settings.anthem = settings.anthem === 'onslaught' ? 'march' : 'onslaught';
+  saveSettings();
+  anthemLabel();
+  SFX.pick();
+  // swap the song mid-battle right away
+  if (musicTrack === 'battle') { barIdx = 0; nextBarT = 0; }
+});
 document.getElementById('setFullscreen').addEventListener('click', () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
@@ -8482,8 +8502,10 @@ const PANEL_NAV_SEL = 'button, input[type=range], input[type=checkbox]';
 let padFocusEl = null;
 function setPadFocus(el) {
   if (padFocusEl && padFocusEl !== el) padFocusEl.classList.remove('padFocus');
+  const moved = el && el !== padFocusEl;
   padFocusEl = el || null;
   if (padFocusEl) padFocusEl.classList.add('padFocus');
+  if (moved && typeof SFX !== 'undefined') SFX.tick();
 }
 function navCandidates(root, sel) {
   return [...root.querySelectorAll(sel)].filter(el => el.offsetParent !== null);
@@ -8843,6 +8865,50 @@ function scheduleBattleBar(b, t) {
   }
 }
 
+// "Onslaught of the Curse" — the intense anthem, 4/4 at 152bpm, phrygian fire
+const O_BEAT = 60 / 152, O_BAR = O_BEAT * 4;
+const O_ROOTS = [40, 40, 41, 40, 43, 41, 38, 40];
+const O_RIFF = [
+  [[0, 0.5, 64], [0.5, 0.25, 64], [0.75, 0.25, 65], [1, 0.5, 64], [1.5, 0.5, 62], [2, 0.75, 64], [3, 1, 60]],
+  [[0, 0.5, 65], [0.5, 0.25, 65], [0.75, 0.25, 67], [1, 0.5, 65], [1.5, 0.5, 64], [2, 1.5, 62]],
+  [[0, 0.5, 64], [0.5, 0.25, 64], [0.75, 0.25, 65], [1, 0.5, 64], [1.5, 0.5, 62], [2, 0.75, 64], [3, 0.5, 67], [3.5, 0.5, 65]],
+  [[0, 1, 64], [1, 0.5, 60], [1.5, 0.5, 62], [2, 2, 64]],
+  [[0, 0.5, 72], [0.5, 0.25, 71], [0.75, 0.25, 72], [1, 0.5, 74], [1.5, 0.5, 72], [2, 0.75, 71], [3, 1, 67]],
+  [[0, 0.5, 71], [0.5, 0.25, 72], [0.75, 0.25, 74], [1, 1, 76], [2, 0.5, 74], [2.5, 0.5, 72], [3, 1, 71]],
+  [[0, 0.5, 72], [0.5, 0.25, 71], [0.75, 0.25, 72], [1, 0.5, 74], [1.5, 0.5, 76], [2, 2, 77]],
+  [[0, 0.5, 76], [0.5, 0.5, 74], [1, 0.5, 72], [1.5, 0.5, 71], [2, 1, 72], [3, 1, 64]],
+];
+function scheduleOnslaughtBar(b, t) {
+  const root = O_ROOTS[b % 8];
+  // relentless four-on-the-floor + galloping sub
+  for (let bt = 0; bt < 4; bt++) tone(musicBus, 'sine', 0, t + bt * O_BEAT, 0.11, 0.5, { hz: 155, slideTo: 42 });
+  tone(musicBus, 'sine', root - 12, t, O_BAR * 0.48, 0.1, { att: 0.008 });
+  tone(musicBus, 'sine', root - 12, t + O_BAR * 0.5, O_BAR * 0.45, 0.08, { att: 0.008 });
+  // snare 2+4, ghost 16th before 3, roll into every 4th bar
+  for (const bt of [1, 3]) {
+    nz(musicBus, t + bt * O_BEAT, 0.09, 0.26, { freq: 1500 });
+    tone(musicBus, 'triangle', 0, t + bt * O_BEAT, 0.06, 0.13, { hz: 200 });
+  }
+  nz(musicBus, t + 1.75 * O_BEAT, 0.05, 0.1, { freq: 1700 });
+  if (b % 4 === 3) for (let i = 0; i < 6; i++) nz(musicBus, t + (2.5 + i * 0.25) * O_BEAT, 0.045, 0.08 + i * 0.03, { freq: 1600 });
+  // 16th hats, accents pushed
+  for (let i = 0; i < 16; i++) {
+    nz(musicBus, t + i * O_BEAT / 4, 0.022, i % 4 === 2 ? 0.075 : 0.035, { freq: 7000 });
+  }
+  // driving 8th-note power bass + chord stab on the and-of-2
+  for (let i = 0; i < 8; i++) {
+    tone(musicBus, 'square', root + (i === 3 ? 1 : i === 6 ? -2 : 0), t + i * O_BEAT / 2, 0.16, 0.11);
+  }
+  tone(musicBus, 'sawtooth', root + 12, t + 2.5 * O_BEAT, 0.3, 0.05, { att: 0.01, detune: -6 });
+  tone(musicBus, 'sawtooth', root + 19, t + 2.5 * O_BEAT, 0.3, 0.045, { att: 0.01, detune: 6 });
+  // the riff — doubled saw + octave scream up top
+  for (const [bt, dur, m] of O_RIFF[b % 8]) {
+    tone(musicBus, 'sawtooth', m, t + bt * O_BEAT, dur * O_BEAT * 0.9, 0.07, { att: 0.008 });
+    tone(musicBus, 'sawtooth', m, t + bt * O_BEAT, dur * O_BEAT * 0.9, 0.045, { detune: 11 });
+    tone(musicBus, 'square', m + 12, t + bt * O_BEAT, dur * O_BEAT * 0.85, 0.02 );
+  }
+}
+
 function musicTick() {
   if (!audioCtx) return;
   musicBus.gain.linearRampToValueAtTime((settings.music / 100) * 0.42, audioCtx.currentTime + 0.4);
@@ -8859,7 +8925,10 @@ function musicTick() {
   if (want !== musicTrack) { musicTrack = want; barIdx = 0; nextBarT = now + 0.08; }
   if (!nextBarT) nextBarT = now + 0.08;
   while (nextBarT < now + 1.3) {
-    if (musicTrack === 'battle') { scheduleBattleBar(barIdx, nextBarT); nextBarT += B_BAR; }
+    if (musicTrack === 'battle') {
+      if (settings.anthem === 'onslaught') { scheduleOnslaughtBar(barIdx, nextBarT); nextBarT += O_BAR; }
+      else { scheduleBattleBar(barIdx, nextBarT); nextBarT += B_BAR; }
+    }
     else { scheduleMenuBar(barIdx, nextBarT); nextBarT += M_BAR; }
     barIdx++;
   }
@@ -8891,9 +8960,24 @@ function sfxGate(k, ms) {
   return true;
 }
 const SFX = {
-  slash()   { if (audioCtx && sfxGate('sl', 90))  nz(sfxBus, audioCtx.currentTime, 0.16, 0.16, { freq: 2400, att: 0.02 }); },
-  nova()    { if (audioCtx && sfxGate('nv', 120)) { nz(sfxBus, audioCtx.currentTime, 0.3, 0.2, { type: 'lowpass', freq: 900 }); tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.3, 0.2, { hz: 220, slideTo: 70 }); } },
-  daggers() { if (audioCtx && sfxGate('dg', 90))  nz(sfxBus, audioCtx.currentTime, 0.08, 0.12, { freq: 4200 }); },
+  slash()   { if (audioCtx && sfxGate('sl', 90)) {
+    const t0 = audioCtx.currentTime;
+    nz(sfxBus, t0, 0.16, 0.14, { freq: 2400, att: 0.02 });
+    tone(sfxBus, 'sine', 0, t0, 0.14, 0.06, { hz: 900, slideTo: 280, att: 0.01 });
+  } },
+  nova()    { if (audioCtx && sfxGate('nv', 120)) {
+    const t0 = audioCtx.currentTime;
+    nz(sfxBus, t0, 0.3, 0.18, { type: 'lowpass', freq: 900 });
+    tone(sfxBus, 'sine', 0, t0, 0.34, 0.24, { hz: 200, slideTo: 48 });
+    tone(sfxBus, 'triangle', 0, t0 + 0.02, 0.16, 0.06, { hz: 520, slideTo: 180 });
+  } },
+  daggers() { if (audioCtx && sfxGate('dg', 90)) {
+    const t0 = audioCtx.currentTime;
+    for (let k = 0; k < 3; k++) {
+      nz(sfxBus, t0 + k * 0.035, 0.05, 0.09, { freq: 4200 + k * 500 });
+      tone(sfxBus, 'sine', 0, t0 + k * 0.035, 0.05, 0.03, { hz: 1600 + k * 300, slideTo: 2400 + k * 300 });
+    }
+  } },
   gust()    { if (audioCtx && sfxGate('gu', 120)) nz(sfxBus, audioCtx.currentTime, 0.4, 0.13, { type: 'bandpass', freq: 800, att: 0.09 }); },
   hit()     { if (audioCtx && sfxGate('ht', 50))  tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.06, 0.08, { hz: 200 + Math.random() * 60, slideTo: 120 }); },
   kill()    { if (audioCtx && sfxGate('kl', 60)) {
@@ -8947,6 +9031,16 @@ const SFX = {
     tone(sfxBus, 'sine', 88, t0 + 0.32, 0.5, 0.06, { att: 0.01 });
   } },
   denied()  { if (audioCtx) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.25, 0.1, { hz: 110 }); },
+  tick()    { if (audioCtx && sfxGate('tk', 55)) {
+    tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.045, 0.045, { hz: 1900, att: 0.002 });
+    tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.03, 0.02, { hz: 3800 });
+  } },
+  chest()   { if (audioCtx) {
+    const t0 = audioCtx.currentTime;
+    tone(sfxBus, 'square', 0, t0, 0.16, 0.05, { hz: 90, slideTo: 160 });
+    nz(sfxBus, t0 + 0.03, 0.09, 0.06, { type: 'bandpass', freq: 500 });
+    tone(sfxBus, 'sine', 0, t0 + 0.14, 0.22, 0.08, { hz: 620, slideTo: 940 });
+  } },
   join()    { if (audioCtx) {
     const t0 = audioCtx.currentTime;
     tone(sfxBus, 'sine', 0, t0, 0.16, 0.13, { hz: 1046 });
