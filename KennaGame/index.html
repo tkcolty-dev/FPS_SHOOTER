@@ -1405,9 +1405,11 @@ function confirmSelection() {
         kdMeta.gold -= rk.price;
         kdMeta.unlocked.push(rk.key);
         saveMeta();
+        SFX.unlock();
         gameToast('👑 ' + rk.name + ' has joined your order!');
         checkAchievements();
       } else {
+        SFX.denied();
         gameToast('Not enough gold! (' + rk.price + 'g needed)');
       }
       return;
@@ -1458,9 +1460,10 @@ function confirmSelection2() {
 }
 function buyPower(idx) {
   const pu = POWERUPS[idx];
-  if (powerRank(pu.key) >= pu.max) { gameToast(pu.name + ' is already at max rank!'); return; }
+  if (powerRank(pu.key) >= pu.max) { SFX.denied(); gameToast(pu.name + ' is already at max rank!'); return; }
   const price = powerPrice(pu);
-  if (kdMeta.gold < price) { gameToast('Not enough gold! (' + price + 'g needed)'); return; }
+  if (kdMeta.gold < price) { SFX.denied(); gameToast('Not enough gold! (' + price + 'g needed)'); return; }
+  SFX.unlock();
   kdMeta.gold -= price;
   kdMeta.power[pu.key] = powerRank(pu.key) + 1;
   saveMeta();
@@ -1470,6 +1473,7 @@ function buyPower(idx) {
 function pickUpgrade(idx) {
   const c = game.choices[idx];
   if (!c) return;
+  SFX.pick();
   c.apply();
   game.up[c.key] = upLvl(c.key) + 1;
   gameToast('✨ ' + c.name + '  Lv ' + game.up[c.key] + '!');
@@ -1565,6 +1569,7 @@ const UPGRADES = [
 function upLvl(k) { return game.up[k] || 0; }
 function levelUp() {
   game.level += 1;
+  SFX.levelup();
   game.xpNext = 8 + game.level * 5;
   const pool = UPGRADES.filter(u => upLvl(u.key) < u.max);
   const picks = [];
@@ -1631,6 +1636,7 @@ function nearestAlivePlayer(x, y) {
 function hurtEnemy(e, dmg, ang, kb) {
   e.hp -= dmg;
   e.flash = 0.12;
+  SFX.hit();
   if (upLvl('frost') > 0) {
     e.slowT = 2;
     e.slowF = Math.pow(0.78, upLvl('frost'));
@@ -1645,6 +1651,7 @@ function hitPlayer(t, e) {
   t.invuln = 1.2;
   game.shake = 0.25;
   game.hurtFlash = 0.4;
+  SFX.hurt();
   if (e) {
     if (upLvl('thorn') > 0) {
       hurtEnemy(e, 2 * upLvl('thorn'), Math.atan2(e.y - t.y, e.x - t.x), 280);
@@ -1663,6 +1670,7 @@ function hitPlayer(t, e) {
     gameToast(t.name + ' is down! Stand close to revive!');
     if (!players.some(p => p.joined && p.alive)) {
       game.over = true;
+      playSting('defeat');
       if (!game.paidOut) {
         game.paidOut = true;
         game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
@@ -1677,6 +1685,7 @@ function hitPlayer(t, e) {
 function killEnemy(i) {
   const e = enemies[i];
   game.kills++;
+  SFX.kill();
   const colors = { wisp: '#a855f7', imp: '#fb923c', brute: '#c084fc', golem: '#94a3b8',
                    shade: '#7dd3fc', spitter: '#a3e635', splitter: '#e879f9', mite: '#e879f9',
                    charger: '#f87171', gilded: '#fde047' };
@@ -1728,6 +1737,7 @@ function fireWeapon(p) {
   const ang = Math.atan2(target.y - p.y, target.x - p.x);
 
   if (p.wtype === 'slash') {
+    SFX.slash();
     slashes.push({ x: p.x, y: p.y - 20, ang, age: 0, r: p.range * 0.62 });
     for (const e of enemies) {
       const d = Math.hypot(e.x - p.x, e.y - (p.y - 10));
@@ -1739,6 +1749,7 @@ function fireWeapon(p) {
       hurtEnemy(e, p.damage, ang, 230);
     }
   } else if (p.wtype === 'nova') {
+    SFX.nova();
     const rad = 95 + p.range * 0.25;
     novas.push({ x: p.x, y: p.y - 14, r: rad, age: 0 });
     for (const e of enemies) {
@@ -1746,6 +1757,7 @@ function fireWeapon(p) {
       if (d < rad + e.r) hurtEnemy(e, p.damage + 1, Math.atan2(e.y - p.y, e.x - p.x), 260);
     }
   } else if (p.wtype === 'daggers') {
+    SFX.daggers();
     for (let k = -1; k <= 1; k++) {
       const a2 = ang + k * 0.22;
       waves.push({
@@ -1755,6 +1767,7 @@ function fireWeapon(p) {
       });
     }
   } else if (p.wtype === 'gust') {
+    SFX.gust();
     waves.push({
       x: p.x, y: p.y - 20, ang,
       vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380,
@@ -1789,6 +1802,7 @@ function update(dt) {
     if (!kdMeta.mapsDone) kdMeta.mapsDone = [];
     kdMeta.mapsDone[game.mapPick] = true;
     saveMeta();
+    playSting('victory');
     recordRun(true);
     return;
   }
@@ -1915,6 +1929,7 @@ function update(dt) {
         e.shootCd -= dt;
         if (e.shootCd <= 0 && d < 430 && e.spawnAge > 1) {
           e.shootCd = 2.8;
+          SFX.bolt();
           bolts.push({ x: e.x, y: e.y - 6, vx: dx * 168, vy: dy * 168, life: 3.2 });
         }
       } else if (e.kind === 'charger') {
@@ -1979,6 +1994,7 @@ function update(dt) {
       g2.vx *= Math.pow(0.1, dt); g2.vy *= Math.pow(0.1, dt);
       if (d < 22) {
         gems.splice(i, 1);
+        SFX.gem();
         game.xp += g2.v;
         if (game.xp >= game.xpNext) { game.xp -= game.xpNext; levelUp(); }
         continue;
@@ -1995,10 +2011,12 @@ function update(dt) {
         kdMeta.gold += g3;
         game.runGold += g3;
         kdStats.goldEarned = (kdStats.goldEarned || 0) + g3;
+        SFX.coin();
         saveMeta();
         dmgTexts.push({ x: dr.x, y: dr.y - 18, val: '+' + g3 + 'g', age: 0, gold: true });
       } else {
         t.hp = Math.min(t.maxHp, t.hp + 2);
+        SFX.heart();
         gameToast('❤ ' + t.name + ' recovers!');
       }
     }
@@ -4796,49 +4814,173 @@ statCardEls[0].addEventListener('click', () => { fillAchPanel(); openPanel('ach'
 statCardEls[1].addEventListener('click', () => { fillLbPanel(); openPanel('lb'); });
 statCardEls[2].addEventListener('click', () => { fillStatsPanel(); openPanel('stats'); });
 
-// ---- menu music: soft procedural lute, obeys the music slider ----
-let audioCtx = null, musicGain = null, musicTimer = null;
-const LUTE_SCALE = [220, 246.9, 261.6, 293.7, 329.6, 392, 440, 523.3]; // A minor-ish
-function pluck(freq, when, vel) {
-  const o = audioCtx.createOscillator();
-  const gn = audioCtx.createGain();
-  o.type = 'triangle';
-  o.frequency.value = freq;
-  gn.gain.setValueAtTime(0, when);
-  gn.gain.linearRampToValueAtTime(vel, when + 0.015);
-  gn.gain.exponentialRampToValueAtTime(0.001, when + 1.1);
-  o.connect(gn); gn.connect(musicGain);
-  o.start(when); o.stop(when + 1.2);
-}
-function schedulePhrase(t0) {
-  const step = 0.42;
-  for (let i = 0; i < 16; i++) {
-    if (hash2(Math.floor(t0), i) < 0.3) continue;  // gentle, sparse
-    const n = LUTE_SCALE[Math.floor(hash2(Math.floor(t0 * 7), i * 3) * LUTE_SCALE.length)];
-    pluck(n, t0 + i * step, 0.16 + 0.1 * hash2(i, 99));
-    if (i % 8 === 0) pluck(n / 2, t0 + i * step, 0.12);  // low drone
-  }
-  return t0 + 16 * step;
-}
-function startMusic() {
+// ---- audio: composed music + sfx engine ----
+let audioCtx = null, musicBus = null, sfxBus = null, noiseBuf = null;
+let musicTimer = null, musicTrack = '', barIdx = 0, nextBarT = 0, stingUntil = 0;
+const NF = n => 440 * Math.pow(2, (n - 69) / 12);
+
+function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  musicGain = audioCtx.createGain();
-  musicGain.connect(audioCtx.destination);
-  musicGain.gain.value = (settings.music / 100) * 0.5;
-  let next = audioCtx.currentTime + 0.1;
-  next = schedulePhrase(next);
-  musicTimer = setInterval(() => {
-    const target = menuOpen ? (settings.music / 100) * 0.5 : 0;
-    musicGain.gain.linearRampToValueAtTime(target, audioCtx.currentTime + 0.6);
-    while (next < audioCtx.currentTime + 8) next = schedulePhrase(next);
-  }, 1000);
+  musicBus = audioCtx.createGain(); musicBus.connect(audioCtx.destination);
+  sfxBus = audioCtx.createGain(); sfxBus.connect(audioCtx.destination);
+  musicBus.gain.value = (settings.music / 100) * 0.42;
+  sfxBus.gain.value = (settings.sfx / 100) * 0.5;
+  noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  musicTimer = setInterval(musicTick, 300);
+  musicTick();
 }
-window.addEventListener('pointerdown', startMusic, { once: true });
-window.addEventListener('keydown', startMusic, { once: true });
-setMusic.addEventListener('input', () => {
-  if (musicGain && menuOpen) musicGain.gain.value = (settings.music / 100) * 0.5;
-});
+window.addEventListener('pointerdown', initAudio, { once: true });
+window.addEventListener('keydown', initAudio, { once: true });
+
+function tone(bus, type, midi, t, dur, vol, opt) {
+  opt = opt || {};
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(opt.hz || NF(midi), t);
+  if (opt.slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, opt.slideTo), t + dur);
+  if (opt.detune) o.detune.value = opt.detune;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + (opt.att || 0.008));
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(bus);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function nz(bus, t, dur, vol, opt) {
+  opt = opt || {};
+  const s = audioCtx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+  const g = audioCtx.createGain(), f = audioCtx.createBiquadFilter();
+  f.type = opt.type || 'highpass'; f.frequency.value = opt.freq || 1000;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(vol, t + (opt.att || 0.005));
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f); f.connect(g); g.connect(bus);
+  s.start(t, Math.random()); s.stop(t + dur + 0.05);
+}
+
+// "The Kingdom Sleeps" — menu waltz, 3/4 at 92bpm, A minor
+const M_BEAT = 60 / 92, M_BAR = M_BEAT * 3;
+const M_CHORDS = [ // [bass, three chord tones]
+  [45, 57, 60, 64], [41, 53, 57, 60], [48, 55, 60, 64], [43, 55, 59, 62],
+  [45, 57, 60, 64], [41, 53, 57, 60], [40, 52, 56, 59], [45, 57, 60, 64],
+];
+const M_MELODY = [ // per bar: [beat, dur(beats), midi]
+  [[0, 2, 76], [2, 1, 72]],
+  [[0, 1.5, 74], [1.5, 0.5, 71], [2, 1, 67]],
+  [[0, 2, 72], [2, 1, 76]],
+  [[0, 3, 74]],
+  [[0, 1, 76], [1, 1, 77], [2, 1, 76]],
+  [[0, 1.5, 74], [1.5, 0.5, 72], [2, 1, 71]],
+  [[0, 2, 69], [2, 1, 71]],
+  [[0, 3, 69]],
+];
+function scheduleMenuBar(b, t) {
+  const ch = M_CHORDS[b % 8];
+  tone(musicBus, 'triangle', ch[0], t, M_BAR * 0.95, 0.15, { att: 0.02 });
+  const arpIdx = [1, 2, 3, 2, 3, 2];
+  for (let i = 0; i < 6; i++) {
+    tone(musicBus, 'triangle', ch[arpIdx[i]], t + i * M_BEAT / 2, 0.7, 0.075);
+  }
+  for (const [bt, dur, m] of M_MELODY[b % 8]) {
+    tone(musicBus, 'sine', m, t + bt * M_BEAT, dur * M_BEAT * 0.95, 0.14, { att: 0.03 });
+  }
+}
+
+// "March of the Last Knight" — battle, 4/4 at 132bpm
+const B_BEAT = 60 / 132, B_BAR = B_BEAT * 4;
+const B_ROOTS = [45, 45, 41, 41, 48, 43, 40, 40];
+const B_BASSPAT = [0, 0, 7, 0, 12, 0, 7, 5];
+const B_LEAD = [
+  [[0, 0.5, 69], [0.75, 0.25, 72], [1, 0.5, 74], [1.5, 0.5, 76], [2.5, 0.5, 74], [3, 1, 72]],
+  [[0, 1.5, 71], [2, 0.5, 69], [2.5, 0.5, 71], [3, 1, 72]],
+  [[0, 0.5, 69], [0.75, 0.25, 72], [1, 0.5, 77], [1.5, 0.5, 76], [2.5, 0.5, 74], [3, 1, 72]],
+  [[0, 2, 74], [2, 1, 72], [3, 0.5, 71]],
+  [[0, 0.5, 67], [0.75, 0.25, 72], [1, 0.5, 76], [1.5, 0.5, 79], [2.5, 1, 76]],
+  [[0, 0.5, 74], [1, 0.5, 71], [1.5, 0.5, 67], [2, 1, 71], [3, 1, 74]],
+  [[0, 1, 68], [1, 0.5, 71], [1.5, 0.5, 76], [2, 2, 71]],
+  [[0, 0.5, 76], [0.5, 0.5, 74], [1, 0.5, 72], [1.5, 0.5, 71], [2, 2, 69]],
+];
+function scheduleBattleBar(b, t) {
+  const root = B_ROOTS[b % 8];
+  for (const bt of [0, 2]) tone(musicBus, 'sine', 0, t + bt * B_BEAT, 0.13, 0.5, { hz: 150, slideTo: 45 });
+  if (b % 2 === 1) tone(musicBus, 'sine', 0, t + 3.5 * B_BEAT, 0.11, 0.4, { hz: 140, slideTo: 45 });
+  for (const bt of [1, 3]) {
+    nz(musicBus, t + bt * B_BEAT, 0.1, 0.22, { freq: 1400 });
+    tone(musicBus, 'triangle', 0, t + bt * B_BEAT, 0.07, 0.12, { hz: 190 });
+  }
+  for (let i = 0; i < 8; i++) {
+    nz(musicBus, t + i * B_BEAT / 2, 0.03, i % 2 ? 0.05 : 0.09, { freq: 6500 });
+    tone(musicBus, 'square', root + B_BASSPAT[i], t + i * B_BEAT / 2, 0.2, 0.1);
+  }
+  for (const [bt, dur, m] of B_LEAD[b % 8]) {
+    tone(musicBus, 'sawtooth', m, t + bt * B_BEAT, dur * B_BEAT * 0.92, 0.06, { att: 0.012 });
+    tone(musicBus, 'square', m, t + bt * B_BEAT, dur * B_BEAT * 0.92, 0.035, { detune: 8 });
+  }
+}
+
+function musicTick() {
+  if (!audioCtx) return;
+  musicBus.gain.linearRampToValueAtTime((settings.music / 100) * 0.42, audioCtx.currentTime + 0.4);
+  sfxBus.gain.value = (settings.sfx / 100) * 0.5;
+  const now = audioCtx.currentTime;
+  if (now < stingUntil) { nextBarT = 0; return; }
+  const want = (!menuOpen && game.phase === 'run' && !game.over && !game.victory && !game.choices)
+    ? 'battle' : 'menu';
+  if (want !== musicTrack) { musicTrack = want; barIdx = 0; nextBarT = now + 0.08; }
+  if (!nextBarT) nextBarT = now + 0.08;
+  while (nextBarT < now + 1.3) {
+    if (musicTrack === 'battle') { scheduleBattleBar(barIdx, nextBarT); nextBarT += B_BAR; }
+    else { scheduleMenuBar(barIdx, nextBarT); nextBarT += M_BAR; }
+    barIdx++;
+  }
+}
+
+function playSting(kind) {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime + 0.05;
+  if (kind === 'victory') {
+    stingUntil = audioCtx.currentTime + 2.6;
+    [72, 76, 79, 84].forEach((m, i) => {
+      tone(sfxBus, 'sawtooth', m, t + i * 0.14, 0.5, 0.16);
+      tone(sfxBus, 'triangle', m, t + i * 0.14, 0.5, 0.14);
+    });
+    for (const m of [72, 76, 79, 84]) tone(sfxBus, 'sawtooth', m, t + 0.62, 1.5, 0.1, { att: 0.02 });
+  } else {
+    stingUntil = audioCtx.currentTime + 2.8;
+    [64, 62, 59, 57].forEach((m, i) => tone(sfxBus, 'triangle', m, t + i * 0.5, 0.9, 0.17, { att: 0.03 }));
+    tone(sfxBus, 'sine', 33, t, 2.4, 0.2, { att: 0.05 });
+  }
+}
+
+// ---- sound effects (all throttled, all obey the SFX slider) ----
+const sfxLast = {};
+function sfxGate(k, ms) {
+  const n = performance.now();
+  if (sfxLast[k] && n - sfxLast[k] < ms) return false;
+  sfxLast[k] = n;
+  return true;
+}
+const SFX = {
+  slash()   { if (audioCtx && sfxGate('sl', 90))  nz(sfxBus, audioCtx.currentTime, 0.16, 0.16, { freq: 2400, att: 0.02 }); },
+  nova()    { if (audioCtx && sfxGate('nv', 120)) { nz(sfxBus, audioCtx.currentTime, 0.3, 0.2, { type: 'lowpass', freq: 900 }); tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.3, 0.2, { hz: 220, slideTo: 70 }); } },
+  daggers() { if (audioCtx && sfxGate('dg', 90))  nz(sfxBus, audioCtx.currentTime, 0.08, 0.12, { freq: 4200 }); },
+  gust()    { if (audioCtx && sfxGate('gu', 120)) nz(sfxBus, audioCtx.currentTime, 0.4, 0.13, { type: 'bandpass', freq: 800, att: 0.09 }); },
+  hit()     { if (audioCtx && sfxGate('ht', 50))  tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.06, 0.08, { hz: 200 + Math.random() * 60, slideTo: 120 }); },
+  kill()    { if (audioCtx && sfxGate('kl', 60))  tone(sfxBus, 'triangle', 0, audioCtx.currentTime, 0.16, 0.16, { hz: 330, slideTo: 90 }); },
+  gem()     { if (audioCtx && sfxGate('gm', 40))  { const p = 660 + ((sfxLast.gmN = ((sfxLast.gmN || 0) + 1) % 8)) * 60; tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.11, 0.1, { hz: p, slideTo: p * 1.5 }); } },
+  coin()    { if (audioCtx && sfxGate('cn', 70))  { tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.07, 0.09, { hz: 1050 }); tone(sfxBus, 'square', 0, audioCtx.currentTime + 0.07, 0.16, 0.09, { hz: 1400 }); } },
+  heart()   { if (audioCtx) { tone(sfxBus, 'sine', 69, audioCtx.currentTime, 0.2, 0.14); tone(sfxBus, 'sine', 76, audioCtx.currentTime + 0.1, 0.3, 0.12); } },
+  hurt()    { if (audioCtx && sfxGate('hu', 200)) { tone(sfxBus, 'sawtooth', 0, audioCtx.currentTime, 0.22, 0.2, { hz: 160, slideTo: 60 }); nz(sfxBus, audioCtx.currentTime, 0.12, 0.12, { type: 'lowpass', freq: 700 }); } },
+  bolt()    { if (audioCtx && sfxGate('bo', 150)) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.14, 0.07, { hz: 420, slideTo: 240 }); },
+  levelup() { if (audioCtx) [69, 73, 76, 81].forEach((m, i) => tone(sfxBus, 'triangle', m, audioCtx.currentTime + i * 0.09, 0.35, 0.15)); },
+  pick()    { if (audioCtx) tone(sfxBus, 'triangle', 81, audioCtx.currentTime, 0.14, 0.13); },
+  unlock()  { if (audioCtx) [64, 69, 73, 76].forEach((m, i) => tone(sfxBus, 'triangle', m, audioCtx.currentTime + i * 0.08, 0.3, 0.14)); },
+  denied()  { if (audioCtx) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.25, 0.1, { hz: 110 }); },
+};
+setMusic.addEventListener('input', () => { if (musicBus) musicBus.gain.value = (settings.music / 100) * 0.42; });
+setSfx.addEventListener('input', () => { if (sfxBus) { sfxBus.gain.value = (settings.sfx / 100) * 0.5; SFX.pick(); } });
 
 // clicking a menu button should not leave a lingering focus ring
 document.querySelectorAll('#menu button').forEach(b =>
