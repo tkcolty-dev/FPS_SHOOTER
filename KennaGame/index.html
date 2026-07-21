@@ -2493,9 +2493,17 @@ function update(dt) {
           if (e.stateT <= 0 && d < 420) { e.chargeState = 'aim'; e.stateT = 0.7; }
         } else if (e.chargeState === 'aim') {
           e.aimX = dx; e.aimY = dy;
+          // hooves pawing the dirt behind it
+          if (Math.random() < 0.35) {
+            particles.push({ x: e.x - dx * e.r, y: e.y - dy * e.r * 0.4 + 4, vx: -dx * 45 + (Math.random() - 0.5) * 30, vy: -18 * Math.random(), life: 0.32, color: '#a89578', size: 2.6 });
+          }
           if (e.stateT <= 0) { e.chargeState = 'dash'; e.stateT = 0.75; }
         } else {
           e.x += e.aimX * 400 * sl * dt; e.y += e.aimY * 400 * sl * dt;
+          // dust storms off its heels mid-dash
+          if (Math.random() < 0.7) {
+            particles.push({ x: e.x - e.aimX * e.r, y: e.y + (Math.random() - 0.5) * 12, vx: -e.aimX * 70 + (Math.random() - 0.5) * 30, vy: (Math.random() - 0.5) * 34, life: 0.26, color: Math.random() < 0.3 ? '#e8ddc8' : '#a89578', size: 3 });
+          }
           if (e.stateT <= 0) { e.chargeState = 'stalk'; e.stateT = 2.2 + Math.random(); }
         }
       } else {
@@ -3015,9 +3023,6 @@ function drawEnemy(e, t) {
 
   ctx.save();
   ctx.globalAlpha = e.kind === 'shade' ? pop * 0.85 : pop;
-  if (e.kind === 'charger' && e.chargeState === 'aim') {
-    ctx.translate((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 2.5);
-  }
   ctx.translate(e.x, e.y + bob);
   ctx.scale((0.5 + 0.5 * easeOutQ(pop)) / squash, (0.5 + 0.5 * easeOutQ(pop)) * squash);
 
@@ -3027,6 +3032,18 @@ function drawEnemy(e, t) {
   ctx.beginPath();
   ctx.ellipse(0, e.r * 1.15 - bob * 0.5, e.r * 0.9, e.r * 0.32, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // the charger points its nose along the charge — rears back to aim, stretches to lunge
+  if (e.kind === 'charger' && e.chargeState !== 'stalk' && (e.aimX || e.aimY)) {
+    ctx.rotate(Math.atan2(e.aimY, e.aimX) + Math.PI / 2);
+    if (e.chargeState === 'aim') {
+      const wind = 1 - Math.max(0, e.stateT) / 0.7;
+      ctx.translate(Math.sin(t * 38) * 1.8 * wind, 6 * wind);
+      ctx.scale(1 + 0.1 * wind, 1 - 0.08 * wind);
+    } else {
+      ctx.scale(0.86, 1.18);
+    }
+  }
 
   // body with top-light shading
   const bg = ctx.createRadialGradient(-e.r * 0.35, -e.r * 0.45, e.r * 0.15, 0, 0, e.r * 1.15);
@@ -6544,7 +6561,8 @@ function netBroadcast() {
        p.faceLeft ? 1 : 0, p.moving ? 1 : 0, Math.round((p.reviveProgress || 0) * 10) / 10, p.name,
        p.invuln > 0 ? 1 : 0]),
     en: enemies.map(e => [e.kind, Math.round(e.x), Math.round(e.y), e.r, e.hp, e.maxHp,
-      Math.round(e.seed * 10) / 10, e.chargeState === 'aim' ? 1 : 0]),
+      Math.round(e.seed * 10) / 10, e.chargeState === 'dash' ? 2 : e.chargeState === 'aim' ? 1 : 0,
+      Math.round((e.aimX || 0) * 100) / 100, Math.round((e.aimY || 0) * 100) / 100]),
     gm: gems.map(g => [Math.round(g.x), Math.round(g.y), g.v]),
     dr: drops.map(d => [Math.round(d.x), Math.round(d.y), d.kind === 'coin' ? 1 : 0]),
     wv: waves.map(w => [Math.round(w.x), Math.round(w.y), Math.round(w.ang * 100) / 100, w.kind, w.sub || 0, Math.round(w.life * 100) / 100]),
@@ -6593,7 +6611,8 @@ function applySnap(m) {
   }
   enemies = m.en.map(a => ({
     kind: a[0], x: a[1], y: a[2], r: a[3], hp: a[4], maxHp: a[5], seed: a[6],
-    chargeState: a[7] ? 'aim' : 'stalk', spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
+    chargeState: a[7] === 2 ? 'dash' : a[7] === 1 ? 'aim' : 'stalk',
+    aimX: a[8] || 0, aimY: a[9] || 0, spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
     shootCd: 9, stateT: 1, aimX: 0, aimY: 0, life: 9,
   }));
   gems = m.gm.map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
