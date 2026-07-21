@@ -20,8 +20,7 @@
   #wrap { position: relative; }
   canvas {
     display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
+    image-rendering: auto;
   }
   #game { display: block; }
 
@@ -1042,6 +1041,7 @@
         <p>&#10022; Hand-drawn monsters now share the blob sprites&rsquo; bold two-tone paint language while using less per-frame rendering work.</p>
         <p>&#10022; Full royal interface refresh: clearer selected, locked, ready, rank, and action states across heroes, realms, upgrades, lobby, pause, gifts, HUD, and settings.</p>
         <p>&#10022; Eased scene reveals, responsive button sheen, smooth panel focus, and Xbox-colored A/B/X/Y prompts make every choice feel better on console.</p>
+        <p>&#10022; TV typography pass: cleaner canvas scaling, kerning, heavier body copy, clearer Royal Gift descriptions, and more useful affordability messages.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
         <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
@@ -1207,6 +1207,8 @@ const COLS = 15, ROWS = 10;
 const canvas = document.getElementById('game');
 let ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
+if ('textRendering' in ctx) ctx.textRendering = 'optimizeLegibility';
+if ('fontKerning' in ctx) ctx.fontKerning = 'normal';
 
 // The canvas fills the whole window; the 960x640 room is scaled up and
 // centered inside it, with a dark stone surround instead of black bars.
@@ -1220,6 +1222,8 @@ function fitCanvas() {
   view.ox = (canvas.width - ROOM_W * view.scale) / 2;
   view.oy = (canvas.height - ROOM_H * view.scale) / 2;
   ctx.imageSmoothingEnabled = false;
+  if ('textRendering' in ctx) ctx.textRendering = 'optimizeLegibility';
+  if ('fontKerning' in ctx) ctx.fontKerning = 'normal';
 }
 window.addEventListener('resize', fitCanvas);
 fitCanvas();
@@ -5885,7 +5889,7 @@ function renderSelect(t, forP2) {
   ctx.font = '700 24px Cinzel, Georgia, serif';
   ctx.fillStyle = '#f3ead8';
   ctx.fillText(rk.name, scx, 348);
-  ctx.font = '13px Inter, sans-serif';
+  ctx.font = '600 13px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
   ctx.fillText(rk.role, scx, 368);
   if (owned) {
@@ -5912,7 +5916,7 @@ function renderSelect(t, forP2) {
   ctx.fillStyle = '#a3d977';
   ctx.fillText(wi.name.toUpperCase(), sx0 + 76, 398);
   ctx.textAlign = 'left';
-  wrapText(wi.desc, sx0 + 76, 413, sw0 - 100, '12px Inter, sans-serif', '10.5px Inter, sans-serif', 14, 2, UI.dim);
+  wrapText(wi.desc, sx0 + 76, 413, sw0 - 100, '600 12px Inter, sans-serif', '600 10.5px Inter, sans-serif', 14, 2, UI.dim);
   // trait bullets with green diamonds
   const m = rk.mods, traits = [];
   if (m.hp > 0) traits.push('+' + m.hp + ' hearts');
@@ -5927,7 +5931,7 @@ function renderSelect(t, forP2) {
   if (m.wave) traits.push('Slashes launch sword waves');
   if (!traits.length) traits.push('A true all-rounder');
   let ty2 = 440;
-  ctx.font = '12px Inter, sans-serif';
+  ctx.font = '600 12px Inter, sans-serif';
   for (const tr of traits.slice(0, 2)) {
     ctx.fillStyle = '#8fd460';
     ctx.fillText('◆', sx0 + 30, ty2);
@@ -6104,7 +6108,7 @@ function renderArmory(t) {
   ctx.font = '700 22px Cinzel, Georgia, serif';
   ctx.fillStyle = '#f3ead8';
   ctx.fillText(it.name.toUpperCase(), scx, 306);
-  wrapText(it.desc, scx, 322, sw0 - 56, '13px Inter, sans-serif', '11.5px Inter, sans-serif', 17, 2, UI.dim);
+  wrapText(it.desc, scx, 322, sw0 - 56, '600 13px Inter, sans-serif', '600 11.5px Inter, sans-serif', 17, 2, UI.dim);
   // rank pips, big
   const bp = it.max * 26 - 6;
   for (let r2 = 0; r2 < it.max; r2++) {
@@ -6114,6 +6118,10 @@ function renderArmory(t) {
   ctx.font = '700 13px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.text;
   ctx.fillText('RANK ' + it.rank + ' / ' + it.max, scx, 382);
+  if (it.rank < it.max) {
+    drawStateChip('NEXT · RANK ' + (it.rank + 1), scx, 394, kdMeta.gold >= it.price ? UI.green : UI.goldLight, 'right');
+    drawStateChip(it.price + ' GOLD', scx + 8, 394, kdMeta.gold >= it.price ? UI.green : UI.danger);
+  }
   if (it.pet && it.rank > 0) {
     ctx.font = '12px Inter, sans-serif';
     ctx.fillStyle = '#8fd460';
@@ -6142,7 +6150,9 @@ function renderArmory(t) {
     ctx.fillText('MAX RANK', scx, by + 28);
   } else {
     ctx.fillStyle = afford ? '#eaf5e0' : '#e8a0a6';
-    ctx.fillText((it.pet && it.rank === 0 ? 'ADOPT — ' : 'RANK UP — ') + it.price + 'g', scx, by + 28);
+    ctx.fillText(afford
+      ? (it.pet && it.rank === 0 ? 'ADOPT — ' : 'RANK UP — ') + it.price + 'g'
+      : 'NEED ' + (it.price - kdMeta.gold) + 'g MORE', scx, by + 28);
   }
 
   drawHintsBar([['HOVER', true], ['INSPECT', false], ['·', false], ['CLICK / SPACE', true], ['BUY', false], ['·', false], ['ESC / BACK', true], ['LEAVE', false]]);
@@ -6266,7 +6276,7 @@ function renderStory(t) {
   const baseY = sl.art === 'scroll' ? 268 : 470;
   sl.lines.forEach((ln, i2) => {
     ctx.globalAlpha = aIn(0.35 + i2 * 0.35);
-    ctx.font = sl.art === 'scroll' ? '600 17px Georgia, serif' : '16px Inter, sans-serif';
+    ctx.font = sl.art === 'scroll' ? '600 17px Georgia, serif' : '600 16px Inter, sans-serif';
     ctx.fillStyle = sl.art === 'scroll' ? '#4a3a1d' : '#f4f3ef';
     ctx.fillText(ln, CX, baseY + i2 * (sl.art === 'scroll' ? 40 : 28));
     ctx.globalAlpha = 1;
@@ -7623,6 +7633,7 @@ function render(t) {
     }
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
+      const gLvl = STAT_KEYS.has(c.key) ? pUpLvl(gCh, c.key) : upLvl(c.key);
       const cx2 = CX + (i - 1) * 270;
       const hov = (mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > 195 && mouse.y < 460) || game.padPick === i;
       const top = 205 - (hov ? 10 : 0);
@@ -7635,6 +7646,8 @@ function render(t) {
       ctx.scale(pop, pop);
       ctx.translate(-cx2, -(top + 125));
       plate(cx2 - 115, top, 230, 250, 14);
+      drawStateChip(hov ? 'YOUR PICK' : gLvl === 0 ? 'NEW' : 'UPGRADE', cx2 + 103, top + 13,
+        hov ? UI.goldLight : gLvl === 0 ? UI.green : '#c9b7ff', 'right');
       if (gTint) {
         // the chooser's color frames every card
         ctx.strokeStyle = gTint;
@@ -7675,7 +7688,7 @@ function render(t) {
       ctx.stroke();
       drawUpgradeIcon(c.icon, cx2, top + 72, 1.05, t);
       ctx.textAlign = 'center';
-      const lvl = STAT_KEYS.has(c.key) ? pUpLvl(gCh, c.key) : upLvl(c.key);
+      const lvl = gLvl;
       if (lvl === 0) {
         ctx.fillStyle = '#4ade80';
         ctx.font = '700 13px Inter, sans-serif';
@@ -7693,7 +7706,7 @@ function render(t) {
       ctx.fillStyle = hov ? UI.goldLight : UI.text;
       ctx.font = '700 17px Cinzel, Georgia, serif';
       ctx.fillText(c.name, cx2, top + 162);
-      wrapText(c.desc, cx2, top + 188, 206, '14px Inter, sans-serif', '12px Inter, sans-serif', 20, 3, UI.dim);
+      wrapText(c.desc, cx2, top + 188, 206, '600 14px Inter, sans-serif', '600 12px Inter, sans-serif', 20, 3, UI.dim);
       ctx.restore();
     }
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
@@ -7735,7 +7748,7 @@ function render(t) {
     let vy = 276;
     for (const [k2, v2] of vrows) {
       ctx.textAlign = 'left';
-      ctx.font = '15px Inter, sans-serif';
+      ctx.font = '600 15px Inter, sans-serif';
       ctx.fillStyle = UI.dim;
       ctx.fillText(k2, CX - 180, vy);
       ctx.textAlign = 'right';
@@ -7795,7 +7808,7 @@ function render(t) {
     let ry = 264;
     for (const [k2, v2] of rows) {
       ctx.textAlign = 'left';
-      ctx.font = '15px Inter, sans-serif';
+      ctx.font = '600 15px Inter, sans-serif';
       ctx.fillStyle = UI.dim;
       ctx.fillText(k2, CX - 180, ry);
       ctx.textAlign = 'right';
@@ -8006,7 +8019,7 @@ function render(t) {
         ctx.font = '700 15px Cinzel, Georgia, serif';
         ctx.fillStyle = UI.goldLight;
         ctx.fillText(head, CX - 330, hy3);
-        ctx.font = '13px Inter, sans-serif';
+        ctx.font = '600 13px Inter, sans-serif';
         ctx.fillStyle = '#e8e4da';
         lines.forEach((ln, li) => ctx.fillText(ln, CX - 310, hy3 + 22 + li * 20));
         hy3 += 22 + lines.length * 20 + 16;
@@ -8907,7 +8920,7 @@ window.addEventListener('keydown', e => {
 // ---- update-card carousel ----
 const UC_SLIDES = [
   { head: '✦ LATEST UPDATE', title: 'v2.0 VISUAL POLISH',
-    body: 'A complete royal UI refresh with clearer choices, smooth scene reveals, richer black-glass panels, Xbox-native prompts, a sharper battle HUD, and bolder foes — built for the living-room screen.',
+    body: 'A complete royal UI refresh with clearer choices, smoother motion, sharper TV text, Xbox-native prompts, richer black-glass panels, and a bolder battle HUD — built for the living-room screen.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
