@@ -600,9 +600,9 @@
   /* UPGRADES is a real labeled button — glassy plate matching the painted ones */
   #menu.hasImage #btnSettings {
     background: rgba(13, 11, 9, 0.96);
-    width: 23.2% !important;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
     border: 1.5px solid rgba(232, 182, 76, 0.42);
+    border-radius: 1.8vh;
   }
   #menu.hasImage #btnSettings > * { visibility: visible; }
   #menu.hasImage #btnSettings .bTitle { font-size: min(2.1vh, 1.4vw); }
@@ -773,6 +773,12 @@
     50% { box-shadow: 0 0 42px rgba(255, 217, 138, 0.95); }
   }
   #menu .padFocus { animation: padPulse 0.85s ease-in-out infinite; }
+  #menu.hasImage .menuBtn, #menu.hasImage .iconBtn, #menu.hasImage button.hsCard, #menu.hasImage #updateCard {
+    transition: transform 0.14s ease;
+  }
+  #menu.hasImage .menuBtn.padFocus, #menu.hasImage button.hsCard.padFocus { transform: scale(1.05) !important; }
+  #menu.hasImage .iconBtn.padFocus { transform: scale(1.14) !important; }
+  #menu.hasImage #updateCard.padFocus { transform: scale(1.03) !important; }
   @keyframes padNudge { from { margin-left: 0; } to { margin-left: 9px; } }
   #padCursor {
     position: fixed; z-index: 80; pointer-events: none; display: none;
@@ -7730,6 +7736,7 @@ setInterval(() => {
 const btnPlay = document.getElementById('btnPlay');
 function showMenu() {
   menuOpen = true;
+  setPadFocus(document.getElementById('btnPlay'));
   game.paused = false;   // the menu supersedes the pause screen
   keys.clear();
   if (typeof updateHomeStats === 'function' && imgUIActive) updateHomeStats();
@@ -8800,6 +8807,8 @@ document.querySelectorAll('#menu button').forEach(b =>
   b.addEventListener('click', () => b.blur()));
 
 // debug handle for automated testing
+// PLAY glows from the very first frame — Start/A always has a lit target
+if (menuOpen) setPadFocus(document.getElementById('btnPlay'));
 window.__game = { players, enemies: () => enemies, game, keys, get menuOpen() { return menuOpen; }, hideMenu, showMenu,
   chests: () => chests, structures: () => structures, world: () => [WORLD_W, WORLD_H] };
 </script>
