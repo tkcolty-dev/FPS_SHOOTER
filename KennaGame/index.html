@@ -1459,6 +1459,15 @@ const MAPS = [
   { key: 'candy', name: 'CANDY MOUNTAIN', desc: 'A very serious mountain made of candy', goal: 12,
     base: '#f29ec4', tuftA: '#fbc3da', tuftB: '#e387b0', stone: '#a9ecdc', stoneHi: '#dffbf3',
     flowerA: '#fff3b0', flowerB: '#ffffff', edge: '#8f4a6d', structs: ['tree', 'rock', 'well'] },
+  { key: 'garden', name: 'ROYAL GARDENS', desc: 'The queen\'s prize roses, overrun', goal: 14,
+    base: '#3f7d4a', tuftA: '#4f9459', tuftB: '#33663c', stone: '#9a948a', stoneHi: '#b3ada2',
+    flowerA: '#e75480', flowerB: '#f9a8d4', edge: '#1d3a23', structs: ['fence', 'well', 'tree'] },
+  { key: 'lake', name: 'MOONLIT LAKE', desc: 'Still water, restless spirits', goal: 16,
+    base: '#28425c', tuftA: '#32526f', tuftB: '#1f3549', stone: '#5c718a', stoneHi: '#71879f',
+    flowerA: '#7dd3fc', flowerB: '#bae6fd', edge: '#101f2e', structs: ['rock', 'tree', 'ruin'] },
+  { key: 'volcano', name: 'ASHEN PEAK', desc: 'The mountain that never sleeps', goal: 18,
+    base: '#4a2c24', tuftA: '#5c382c', tuftB: '#38211b', stone: '#5e4a42', stoneHi: '#755c50',
+    flowerA: '#fb923c', flowerB: '#fde047', edge: '#20110c', structs: ['rock', 'brazier', 'ruin'] },
 ];
 function mapUnlocked(i) {
   return i === 0 || (kdMeta.mapsDone && kdMeta.mapsDone[i - 1]);
@@ -1569,7 +1578,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (game.phase === 'map') {
-    const n = MAPS.length, mc = n > 8 ? 5 : 4;
+    const n = MAPS.length, mc = n > 10 ? 6 : n > 8 ? 5 : 4;
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
     if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - mc + n) % n;
@@ -1990,6 +1999,11 @@ function levelUp() {
           game.arsenal = game.arsenal || [];
           game.arsenal.push(wk);
           gameToast('⚔ The party arms itself with the ' + WEAPON_INFO[wk].name + '!');
+          if (game.arsenal.length >= 3) {
+            kdStats.fullArsenal = true;
+            saveStats();
+            checkAchievements();
+          }
         },
       });
     }
@@ -2043,9 +2057,12 @@ function spawnEnemy(forceX, forceY) {
   }[kind];
   // the curse hardens as the battle drags on, and later realms hit harder
   const hpBonus = Math.floor(t / 120) + Math.floor(game.mapPick / 3);
+  // after 2½ minutes, gold-touched ELITES stalk the field — triple-tough, triple rewards
+  const elite = kind !== 'gilded' && t > 150 && Math.random() < 0.06;
+  const hp0 = (spec.hp + hpBonus) * (elite ? 3 : 1);
   enemies.push({
-    x, y, kind, r: spec.r, hp: spec.hp + hpBonus, maxHp: spec.hp + hpBonus,
-    speed: spec.speed + Math.min(44, t * 0.22), xp: spec.xp,
+    x, y, kind, r: spec.r * (elite ? 1.18 : 1), hp: hp0, maxHp: hp0, elite,
+    speed: (spec.speed + Math.min(44, t * 0.22)) * (elite ? 1.12 : 1), xp: spec.xp * (elite ? 3 : 1),
     kx: 0, ky: 0, flash: 0, orbCd: 0, spawnAge: 0,
     seed: Math.random() * 100,
     shootCd: 1.4 + Math.random(), chargeState: 'stalk', stateT: 2 + Math.random(), aimX: 0, aimY: 0,
@@ -2060,7 +2077,7 @@ const BOSS_DEFS = {
   gummy:  { name: 'KING GUMMYGLOB',      r: 50, hp: 300, speed: 42, xp: 60,  style: 'slam' },
   concur: { name: 'CONCUR THE SORCERER', r: 46, hp: 420, speed: 56, xp: 100, style: 'caster' },
 };
-const MAP_BOSS = ['titan', 'titan', 'wraith', 'wraith', 'wraith', 'titan', 'titan', 'concur', 'gummy'];
+const MAP_BOSS = ['titan', 'titan', 'wraith', 'wraith', 'wraith', 'titan', 'titan', 'concur', 'gummy', 'gummy', 'wraith', 'titan'];
 function spawnBoss() {
   game.bossWave = (game.bossWave || 0) + 1;
   let bk = MAP_BOSS[game.mapPick] || 'titan';
@@ -2229,7 +2246,13 @@ function killEnemy(i) {
   if (BOSS_DEFS[e.kind]) {
     game.shake = 0.4;
     gameToast('👑 ' + BOSS_DEFS[e.kind].name + ' IS VANQUISHED!');
-    if (e.kind === 'concur') gameToast('✨ The sorcerer bows to the TRUE ruler of the kingdom!');
+    kdStats.bossKills = (kdStats.bossKills || 0) + 1;
+    if (e.kind === 'concur') {
+      gameToast('✨ The sorcerer bows to the TRUE ruler of the kingdom!');
+      kdStats.concurDown = true;
+    }
+    saveStats();
+    checkAchievements();
     for (let k = 0; k < 10; k++) {
       const cp2 = pushOut(e.x + (Math.random() - 0.5) * 90, e.y + (Math.random() - 0.5) * 70, 16);
       drops.push({ x: cp2.x, y: cp2.y, kind: 'coin', v: 5 + Math.floor(Math.random() * 5) });
@@ -2245,6 +2268,13 @@ function killEnemy(i) {
     if (Math.random() < 0.15 * upLvl('clover')) gv *= 2;
     const gp = pushOut(e.x + (Math.random() - 0.5) * 18, e.y + (Math.random() - 0.5) * 18, 14);
     gems.push({ x: gp.x, y: gp.y, v: gv, vx: 0, vy: 0 });
+  }
+  if (e.elite) {
+    // gold-touched spirits always spill treasure
+    for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) {
+      const ep = pushOut(e.x + (Math.random() - 0.5) * 30, e.y + (Math.random() - 0.5) * 24, 16);
+      drops.push({ x: ep.x, y: ep.y, kind: 'coin', v: 3 + Math.floor(Math.random() * 3) });
+    }
   }
   const dp = pushOut(e.x, e.y, 16);
   if (Math.random() < 0.035) drops.push({ x: dp.x, y: dp.y, kind: 'heart' });
@@ -3346,6 +3376,20 @@ function drawEnemy(e, t) {
 
   // soft glow + ground shadow
   ctx.drawImage(GLOWS[e.kind], -e.r * 2.1, -e.r * 2.1, e.r * 4.2, e.r * 4.2);
+  if (e.elite) {
+    // the golden mark of an elite
+    ctx.drawImage(GLOWS.gilded, -e.r * 2.3, -e.r * 2.3, e.r * 4.6, e.r * 4.6);
+    ctx.strokeStyle = `rgba(253, 224, 71, ${0.55 + 0.3 * Math.sin(t * 6 + e.seed)})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, e.r * 1.3, 0, Math.PI * 2);
+    ctx.stroke();
+    const sa = t * 3 + e.seed;
+    ctx.fillStyle = '#fde047';
+    ctx.font = '9px Georgia, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('✦', Math.cos(sa) * e.r * 1.5, Math.sin(sa) * e.r * 0.8 - e.r * 0.5);
+  }
   ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
   ctx.beginPath();
   ctx.ellipse(0, e.r * 1.15 - bob * 0.5, e.r * 0.9, e.r * 0.32, 0, 0, Math.PI * 2);
@@ -5060,8 +5104,10 @@ function renderMapSelect(t) {
   drawScreenBg(t);
   drawScreenTitle('CHOOSE THE BATTLEFIELD', 64);
   cardRects = [];
-  const cols = MAPS.length > 8 ? 5 : 4;
-  const cw = cols === 5 ? 176 : 210, chh = 208, gap = cols === 5 ? 10 : 14;
+  const cols = MAPS.length > 10 ? 6 : MAPS.length > 8 ? 5 : 4;
+  const cw = cols === 6 ? 150 : cols === 5 ? 176 : 210;
+  const chh = cols === 6 ? 196 : 208;
+  const gap = cols === 6 ? 8 : cols === 5 ? 10 : 14;
   for (let i = 0; i < MAPS.length; i++) {
     const m = MAPS[i];
     const col = i % cols, row = Math.floor(i / cols);
@@ -5136,9 +5182,10 @@ function renderMapSelect(t) {
       ctx.font = '700 13px Cinzel, Georgia, serif';
       ctx.fillStyle = UI.text;
       ctx.fillText('? ? ?', x + cw / 2, y + 124);
-      ctx.font = '600 11px Inter, sans-serif';
+      ctx.font = '600 ' + (cols === 6 ? 9.5 : 11) + 'px Inter, sans-serif';
       ctx.fillStyle = UI.dim;
-      ctx.fillText('Clear ' + MAPS[i - 1].name + ' to unlock', x + cw / 2, y + 148);
+      ctx.fillText('Clear ' + MAPS[i - 1].name, x + cw / 2, y + 146);
+      ctx.fillText('to unlock', x + cw / 2, y + 160);
     }
   }
   drawHintsBar([['WASD / ARROWS / MOUSE', true], ['NAVIGATE', false], ['·', false], ['CLICK / SPACE', true], ['RIDE OUT', false]]);
@@ -7015,6 +7062,16 @@ const ACH_DEFS = [
     need: () => (kdStats.goldEarned || 0) >= 2000, prog: () => Math.min(kdStats.goldEarned || 0, 2000) + ' / 2000' },
   { key: 'hour',    icon: '⏳', name: 'Devoted Defender', desc: 'Spend a full hour in the kingdom',
     need: () => kdStats.playMs >= 3600000, prog: () => Math.min(60, Math.floor(kdStats.playMs / 60000)) + ' / 60 min' },
+  { key: 'boss1',   icon: '🗡', name: 'Champion Slayer', desc: 'Banish a champion of the curse',
+    need: () => (kdStats.bossKills || 0) >= 1 },
+  { key: 'boss10',  icon: '☠', name: 'Kingslayer', desc: 'Banish 10 champions of the curse',
+    need: () => (kdStats.bossKills || 0) >= 10, prog: () => Math.min(kdStats.bossKills || 0, 10) + ' / 10' },
+  { key: 'sorcerer', icon: '🧙', name: 'The Spell Breaks', desc: 'Defeat Concur the Sorcerer himself',
+    need: () => !!kdStats.concurDown },
+  { key: 'walkingArmory', icon: '⚔', name: 'Walking Armory', desc: 'Carry 3 extra weapons in one battle',
+    need: () => !!kdStats.fullArsenal },
+  { key: 'worldTour', icon: '🌍', name: 'To Every Corner', desc: 'Free all 12 realms of the kingdom',
+    need: () => mapsCleared() >= 12, prog: () => mapsCleared() + ' / 12' },
 ];
 function achEarnedCount() { return ACH_DEFS.filter(a => kdStats.ach[a.key]).length; }
 function checkAchievements() {
@@ -7242,7 +7299,7 @@ function netBroadcast() {
        p.invuln > 0 ? 1 : 0]),
     en: enemies.map(e => [e.kind, Math.round(e.x), Math.round(e.y), e.r, e.hp, e.maxHp,
       Math.round(e.seed * 10) / 10, e.chargeState === 'dash' ? 2 : e.chargeState === 'aim' ? 1 : 0,
-      Math.round((e.aimX || 0) * 100) / 100, Math.round((e.aimY || 0) * 100) / 100]),
+      Math.round((e.aimX || 0) * 100) / 100, Math.round((e.aimY || 0) * 100) / 100, e.elite ? 1 : 0]),
     gm: gems.map(g => [Math.round(g.x), Math.round(g.y), g.v]),
     dr: drops.map(d => [Math.round(d.x), Math.round(d.y), d.kind === 'coin' ? 1 : 0]),
     wv: waves.map(w => [Math.round(w.x), Math.round(w.y), Math.round(w.ang * 100) / 100, w.kind, w.sub || 0, Math.round(w.life * 100) / 100]),
@@ -7292,7 +7349,7 @@ function applySnap(m) {
   enemies = m.en.map(a => ({
     kind: a[0], x: a[1], y: a[2], r: a[3], hp: a[4], maxHp: a[5], seed: a[6],
     chargeState: a[7] === 2 ? 'dash' : a[7] === 1 ? 'aim' : 'stalk',
-    aimX: a[8] || 0, aimY: a[9] || 0, spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
+    aimX: a[8] || 0, aimY: a[9] || 0, elite: !!a[10], spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
     shootCd: 9, stateT: 1, aimX: 0, aimY: 0, life: 9,
   }));
   gems = m.gm.map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
