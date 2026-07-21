@@ -9056,8 +9056,17 @@ let musicTimer = null, musicTrack = '', barIdx = 0, nextBarT = 0, stingUntil = 0
 const NF = n => 440 * Math.pow(2, (n - 69) / 12);
 
 function initAudio() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // browsers love to hand out SUSPENDED contexts — every gesture nudges it awake
+  if (audioCtx) {
+    if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    return;
+  }
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (err) {
+    audioCtx = null;
+    return;
+  }
   musicBus = audioCtx.createGain(); musicBus.connect(audioCtx.destination);
   sfxBus = audioCtx.createGain(); sfxBus.connect(audioCtx.destination);
   musicBus.gain.value = (settings.music / 100) * 0.42;
@@ -9066,10 +9075,15 @@ function initAudio() {
   const d = noiseBuf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   musicTimer = setInterval(musicTick, 300);
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   musicTick();
 }
-window.addEventListener('pointerdown', initAudio, { once: true });
-window.addEventListener('keydown', initAudio, { once: true });
+// NOT once: any tap or key revives audio if the browser ever suspends it
+window.addEventListener('pointerdown', initAudio);
+window.addEventListener('keydown', initAudio);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+});
 
 function tone(bus, type, midi, t, dur, vol, opt) {
   opt = opt || {};
