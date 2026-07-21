@@ -310,11 +310,12 @@
     transition: transform 0.18s ease, color 0.18s ease;
   }
   #menu.hasImage #btnExit { display: flex; }
+  /* PLAY sits dark like its siblings — the painted plate is the visual;
+     it lights up ONLY via the selection flash */
   #menu.hasImage #btnPlay {
-    background: linear-gradient(140deg, rgba(70, 50, 14, 0.97), rgba(32, 23, 9, 0.92));
-    border: 1px solid #e8b64c;
-    box-shadow: inset 0 0 0 1px rgba(255, 233, 184, 0.25), inset 0 1px 0 rgba(255, 235, 190, 0.2),
-                0 0 26px rgba(232, 182, 76, 0.3), 0 8px 26px rgba(0, 0, 0, 0.5);
+    background: none;
+    border: none;
+    box-shadow: none;
   }
   #menu.hasImage #btnPlay::after {
     content: ''; position: absolute; top: 0; bottom: 0; width: 40%;
@@ -5719,13 +5720,35 @@ function renderSelect(t, forP2) {
   ctx.font = '700 18px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
   ctx.fillText(kdMeta.gold + ' GOLD', sx0 + 48, 129);
-  // the knight's rank, right beside the treasury
+  // the upgrade button lives beside the treasury, right where the rank reads
   if (owned) {
-    ctx.textAlign = 'right';
-    ctx.font = '700 14px Cinzel, Georgia, serif';
-    ctx.fillStyle = kRank(rk.key) >= K_RANK_MAX ? '#ffd98a' : '#c8afff';
-    ctx.fillText(kRank(rk.key) >= K_RANK_MAX ? '★ MAX' : '⭐ RANK ' + kRank(rk.key), sx0 + sw0 - 22, 129);
-    ctx.textAlign = 'left';
+    const krr0 = kRank(rk.key);
+    if (krr0 < K_RANK_MAX) {
+      const cost0 = kRankCost(rk);
+      const can0 = kdMeta.gold >= cost0;
+      const uw0 = 150, ux0 = sx0 + sw0 - uw0 - 18, uy0 = 108;
+      cardRects.push({ x: ux0, y: uy0, w: uw0, h: 28, idx: -7 });
+      roundedRect(ux0, uy0, uw0, 28, 7);
+      const ug0 = ctx.createLinearGradient(0, uy0, 0, uy0 + 28);
+      if (can0) { ug0.addColorStop(0, '#6a4e8f'); ug0.addColorStop(1, '#3c2b55'); }
+      else { ug0.addColorStop(0, '#3a3a40'); ug0.addColorStop(1, '#232328'); }
+      ctx.fillStyle = ug0;
+      ctx.fill();
+      ctx.strokeStyle = can0 ? 'rgba(200, 175, 255, 0.7)' : 'rgba(90, 88, 98, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.font = '700 12px Cinzel, Georgia, serif';
+      ctx.fillStyle = can0 ? '#e9ddff' : '#9a939f';
+      ctx.fillText('⭐ UPGRADE — ' + cost0 + 'g', ux0 + uw0 / 2, uy0 + 19);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.textAlign = 'right';
+      ctx.font = '700 14px Cinzel, Georgia, serif';
+      ctx.fillStyle = '#ffd98a';
+      ctx.fillText('★ MAX RANK', sx0 + sw0 - 22, 129);
+      ctx.textAlign = 'left';
+    }
   }
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
@@ -5811,35 +5834,10 @@ function renderSelect(t, forP2) {
     ctx.fillText(tr, sx0 + 46, ty2);
     ty2 += 18;
   }
-  // the veteran's path: what the NEXT rank grants, and the button to buy it
-  if (owned) {
-    const krr = kRank(rk.key);
-    if (krr < K_RANK_MAX) {
-      const cost = kRankCost(rk);
-      const canUp = kdMeta.gold >= cost;
-      ctx.textAlign = 'left';
-      wrapText('NEXT — RANK ' + (krr + 1) + ': ' + K_RANK_DESC[krr], sx0 + 30, ty2 + 4, sw0 - 60, '11px Inter, sans-serif', '10px Inter, sans-serif', 13, 1, '#ffd98a');
-      const uy = ty2 + 12, uh = 30;
-      cardRects.push({ x: sx0 + 20, y: uy, w: sw0 - 40, h: uh, idx: -7 });
-      roundedRect(sx0 + 20, uy, sw0 - 40, uh, 8);
-      const ug = ctx.createLinearGradient(0, uy, 0, uy + uh);
-      if (canUp) { ug.addColorStop(0, '#6a4e8f'); ug.addColorStop(1, '#3c2b55'); }
-      else { ug.addColorStop(0, '#3a3a40'); ug.addColorStop(1, '#232328'); }
-      ctx.fillStyle = ug;
-      ctx.fill();
-      ctx.strokeStyle = canUp ? 'rgba(200, 175, 255, 0.7)' : 'rgba(90, 88, 98, 0.8)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.textAlign = 'center';
-      ctx.font = '700 13px Cinzel, Georgia, serif';
-      ctx.fillStyle = canUp ? '#e9ddff' : '#9a939f';
-      ctx.fillText('⭐ UPGRADE — ' + cost + 'g  (X / U)', scx, uy + 20);
-      ctx.textAlign = 'left';
-    } else {
-      ctx.font = '700 12px Cinzel, Georgia, serif';
-      ctx.fillStyle = '#ffd98a';
-      ctx.fillText('★ MAX RANK — a living legend', sx0 + 30, ty2 + 12);
-    }
+  // the veteran's path: what the NEXT rank grants (the button sits up by the gold)
+  if (owned && kRank(rk.key) < K_RANK_MAX) {
+    ctx.textAlign = 'left';
+    wrapText('NEXT — RANK ' + (kRank(rk.key) + 1) + ': ' + K_RANK_DESC[kRank(rk.key)] + '  ·  X / U', sx0 + 30, ty2 + 6, sw0 - 60, '11px Inter, sans-serif', '10px Inter, sans-serif', 13, 1, '#ffd98a');
   }
   // action button: green CHOOSE like the mockup / gold UNLOCK when locked
   const by = 498, bh = 40;
