@@ -1468,6 +1468,25 @@ const W_CADENCE = { slash: 0.6, nova: 1.05, daggers: 0.42, gust: 0.9,
   axe: 1.15, hammer: 1.35, bow: 0.55, flail: 0.6, trident: 0.95,
   icestaff: 0.8, whip: 0.7, boomer: 1.05, blunder: 1.15, scepter: 0.8 };
 
+// ---- knight ranks: unlocked knights keep growing with gold ----
+const K_RANK_MAX = 5;
+const K_RANK_DESC = ['+1 heart', '+1 damage', '5% faster attacks', '+1 heart', '+1 damage & 8% swifter'];
+function kRank(key) { return (kdMeta.kRank || {})[key] || 0; }
+function kRankCost(rk) { return Math.round((rk.price || 150) * 0.5 + 90) * (kRank(rk.key) + 1); }
+function upgradeKnight(rk) {
+  const r = kRank(rk.key);
+  if (r >= K_RANK_MAX) { SFX.denied(); gameToast(rk.name + ' is already at MAX rank!'); return; }
+  const cost = kRankCost(rk);
+  if (kdMeta.gold < cost) { SFX.denied(); gameToast('Not enough gold! (' + cost + 'g needed)'); return; }
+  kdMeta.gold -= cost;
+  kdMeta.kRank = kdMeta.kRank || {};
+  kdMeta.kRank[rk.key] = r + 1;
+  saveMeta();
+  SFX.unlock();
+  gameToast('⭐ ' + rk.name + ' rises to RANK ' + (r + 1) + ' — ' + K_RANK_DESC[r] + '!');
+  checkAchievements();
+}
+
 function armoryExit() {
   if (game.netGuest) {
     // guests shop mid-battle and return straight to the fight
@@ -1490,6 +1509,7 @@ function applyHero(p, key) {
   p.name = def.name;
   p.wtype = def.wtype;
   p.sigTier = def.sig || 1;
+  p.kRank = kRank(key);
   // weapon base cadence
   p.attackEvery = W_CADENCE[def.wtype];
   const m = def.mods;
@@ -1502,6 +1522,14 @@ function applyHero(p, key) {
   p.magnet = 95 * (m.magnetM || 1) * (1 + 0.15 * powerRank('lode'));
   p.orbCount = m.orb || 0;
   p.wave = m.wave || 0;
+  // knight ranks bought with gold — the veteran's edge
+  const kr = p.kRank || 0;
+  if (kr >= 1) p.maxHp += 1;
+  if (kr >= 2) p.damage += 1;
+  if (kr >= 3) p.attackEvery *= 0.95;
+  if (kr >= 4) p.maxHp += 1;
+  if (kr >= 5) { p.damage += 1; p.speed *= 1.08; }
+  p.hp = p.maxHp;
 }
 // ---------- maps ----------
 const MAPS = [
@@ -1636,6 +1664,10 @@ window.addEventListener('keydown', e => {
       if (game.phase === 'select2') confirmSelection2();
       else confirmSelection();
     }
+    if (e.code === 'KeyU') {
+      const urk = ROSTER[game.cursor];
+      if (kdMeta.unlocked.includes(urk.key)) upgradeKnight(urk);
+    }
     if (game.phase === 'select2' && e.code === 'Backspace') { game.phase = game.fromLobby ? 'lobby' : 'run'; game.fromLobby = false; return; }
     if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.armoryFrom = 'select'; game.selCursor = game.cursor; game.cursor = 0; }
     return;
@@ -1727,6 +1759,10 @@ canvas.addEventListener('click', () => {
         if (c.idx >= 0) armoryBuy(c.idx);
         else if (c.idx === -5) armoryBuy(game.cursor);
         else armoryExit();
+      }
+      else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -7) {
+        const urk2 = ROSTER[game.cursor];
+        if (kdMeta.unlocked.includes(urk2.key)) upgradeKnight(urk2);
       }
       else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -3) { game.cursor = Math.max(0, game.cursor - 15); }
       else if ((game.phase === 'select' || game.phase === 'select2') && c.idx === -4) { game.cursor = Math.min(ROSTER.length - 1, game.cursor + 15); }
@@ -1830,7 +1866,18 @@ function moveSpeedOf(p) {
 function confirmSelection2() {
   const rk = ROSTER[game.cursor];
   if (!kdMeta.unlocked.includes(rk.key)) {
-    gameToast('🔒 Locked — unlock with gold first!');
+    // A unlocks right here — no kicking players back to the main roster
+    if (kdMeta.gold >= rk.price) {
+      kdMeta.gold -= rk.price;
+      kdMeta.unlocked.push(rk.key);
+      saveMeta();
+      SFX.unlock();
+      gameToast('👑 ' + rk.name + ' has joined your order! Press again to ride.');
+      checkAchievements();
+    } else {
+      SFX.denied();
+      gameToast('Not enough gold! (' + rk.price + 'g needed)');
+    }
     return;
   }
   // one knight per player — no twins on the battlefield
@@ -5586,6 +5633,15 @@ function renderSelect(t, forP2) {
   ctx.font = '13px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
   ctx.fillText(rk.role, scx, 368);
+  if (owned) {
+    // rank stars — the veteran's badge
+    const krr = kRank(rk.key);
+    ctx.font = '13px Georgia, serif';
+    for (let st2 = 0; st2 < K_RANK_MAX; st2++) {
+      ctx.fillStyle = st2 < krr ? '#ffd98a' : 'rgba(255, 255, 255, 0.18)';
+      ctx.fillText('★', scx + (st2 - 2) * 18, 384);
+    }
+  }
   // weapon ability row (green name, like the mockup)
   const wi = WEAPON_INFO[rk.wtype];
   ctx.beginPath();
@@ -5618,12 +5674,43 @@ function renderSelect(t, forP2) {
   if (!traits.length) traits.push('A true all-rounder');
   let ty2 = 440;
   ctx.font = '12px Inter, sans-serif';
-  for (const tr of traits.slice(0, 3)) {
+  for (const tr of traits.slice(0, 2)) {
     ctx.fillStyle = '#8fd460';
     ctx.fillText('◆', sx0 + 30, ty2);
     ctx.fillStyle = UI.text;
     ctx.fillText(tr, sx0 + 46, ty2);
     ty2 += 18;
+  }
+  // the veteran's path: what the NEXT rank grants, and the button to buy it
+  if (owned) {
+    const krr = kRank(rk.key);
+    if (krr < K_RANK_MAX) {
+      const cost = kRankCost(rk);
+      const canUp = kdMeta.gold >= cost;
+      ctx.font = '11px Inter, sans-serif';
+      ctx.fillStyle = '#ffd98a';
+      ctx.fillText('NEXT — RANK ' + (krr + 1) + ': ' + K_RANK_DESC[krr], sx0 + 30, ty2 + 4);
+      const uy = ty2 + 12, uh = 30;
+      cardRects.push({ x: sx0 + 20, y: uy, w: sw0 - 40, h: uh, idx: -7 });
+      roundedRect(sx0 + 20, uy, sw0 - 40, uh, 8);
+      const ug = ctx.createLinearGradient(0, uy, 0, uy + uh);
+      if (canUp) { ug.addColorStop(0, '#6a4e8f'); ug.addColorStop(1, '#3c2b55'); }
+      else { ug.addColorStop(0, '#3a3a40'); ug.addColorStop(1, '#232328'); }
+      ctx.fillStyle = ug;
+      ctx.fill();
+      ctx.strokeStyle = canUp ? 'rgba(200, 175, 255, 0.7)' : 'rgba(90, 88, 98, 0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      ctx.font = '700 13px Cinzel, Georgia, serif';
+      ctx.fillStyle = canUp ? '#e9ddff' : '#9a939f';
+      ctx.fillText('⭐ UPGRADE — ' + cost + 'g  (X / U)', scx, uy + 20);
+      ctx.textAlign = 'left';
+    } else {
+      ctx.font = '700 12px Cinzel, Georgia, serif';
+      ctx.fillStyle = '#ffd98a';
+      ctx.fillText('★ MAX RANK — a living legend', sx0 + 30, ty2 + 12);
+    }
   }
   // action button: green CHOOSE like the mockup / gold UNLOCK when locked
   const by = 498, bh = 40;
@@ -8854,6 +8941,7 @@ function pollPads() {
       if (tap('a')) synthKey('Space');
       if (tap('lb')) synthKey('KeyQ');
       if (tap('rb')) synthKey('KeyE');
+      if (tap('x') && (game.phase === 'select' || game.phase === 'select2')) synthKey('KeyU');
       if (tap('y') && (game.phase === 'select' || game.phase === 'lobby')) synthKey('KeyT');   // Y = upgrades
       if (tap('bBtn')) {
         if (game.phase === 'armory' || game.phase === 'select2') synthKey('Backspace');
