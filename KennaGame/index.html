@@ -438,6 +438,17 @@
 
   /* footer */
   #menu.hasImage .menuFoot { display: none; }
+  #homePadLegend { display: none; }
+  #menu.hasImage #homePadLegend {
+    position: absolute; left: 2.15%; top: 85.3%; width: 25.4%; height: 5.2%;
+    box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 0.65vw;
+    color: rgba(244, 234, 213, 0.72); background: #0d0b09;
+    border: 1px solid rgba(232, 182, 76, 0.34); border-radius: 1.1vh;
+    font: 700 min(1.35vh, 0.92vw) Inter, sans-serif; letter-spacing: 0.04em;
+    box-shadow: inset 0 1px 0 rgba(255,235,190,0.08), 0 7px 22px rgba(0,0,0,0.42);
+    z-index: 8;
+  }
+  .dpadKey { color:#f4ead5; border:1px solid rgba(232,182,76,0.42); border-radius:0.6vh; padding:0.25vh 0.42vw; background:#191510; }
   #menu.hasImage .mfBig {
     display: block; font-family: 'Cinzel', serif; font-weight: 800;
     font-size: min(2.3vh, 1.65vw); letter-spacing: 0.3em; color: #ffd98a;
@@ -576,7 +587,7 @@
   .xb.a { background:#6ccf5f; } .xb.b { background:#ef6268; }
   .xb.x { background:#65a9ef; } .xb.y { background:#f2ce57; }
 
-  #imgAnchor { position: absolute; pointer-events: none; }
+  #imgAnchor { position: absolute; z-index: 2; pointer-events: none; }
   #imgAnchor > * { pointer-events: auto; }
   #imgAnchor #hotspots { pointer-events: none; }
   #imgAnchor .hotspot { pointer-events: auto; }
@@ -617,12 +628,19 @@
   /* UPGRADES is a real labeled button — inset + styled to twin the painted plates */
   #menu.hasImage #btnSettings {
     left: 2.45%; width: 24.75%; top: 58.25%; height: 7.6%;
-    background: rgba(16, 14, 11, 0.94);
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    z-index: 6;
+    background: #100e0b;
+    box-shadow: inset 0 0 0 100px #100e0b;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
     border: 1px solid rgba(232, 182, 76, 0.3);
     border-radius: 1.4vh;
   }
   #menu.hasImage #btnSettings > * { visibility: visible; }
+  #menu.hasImage #btnSettings::after {
+    content: ''; position: absolute; inset: 0; z-index: 0;
+    background: #100e0b; border-radius: inherit; pointer-events: none;
+  }
+  #menu.hasImage #btnSettings > * { position: relative; z-index: 1; }
   #menu.hasImage #btnSettings .bTitle {
     font-family: 'Inter', sans-serif; font-weight: 700;
     font-size: min(1.75vh, 1.2vw); letter-spacing: 0.16em; color: #f2f0ea;
@@ -642,13 +660,14 @@
   }
   /* the solid UPGRADES plate brightens ITSELF — never lets the painting ghost through */
   #menu.hasImage #btnSettings.padFocus {
-    background: rgba(13, 11, 9, 0.96) !important;
-    backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important;
-    border: 1.5px solid rgba(255, 217, 138, 0.7) !important;
+    background: #100e0b !important;
+    box-shadow: inset 0 0 0 100px #100e0b !important;
+    backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
   }
   #menu.hasImage #btnSettings:hover {
-    background: rgba(13, 11, 9, 0.96) !important;
-    border: 1.5px solid rgba(232, 182, 76, 0.42) !important;
+    background: #100e0b !important;
+    border: 1px solid rgba(232, 182, 76, 0.3) !important;
+    box-shadow: inset 0 0 0 100px #100e0b !important;
     filter: none !important;
   }
   #menu.hasImage .chip {
@@ -973,6 +992,8 @@
     <span class="bChev">&#8250;</span>
   </button>
 
+  <div id="homePadLegend"><span class="dpadKey">D-PAD</span><span>MOVE</span><i class="xb a">A</i><span>SELECT</span><i class="xb b">B</i><span>BACK</span></div>
+
   <div id="menuToast"></div>
 
   <div class="menuFoot">
@@ -1042,6 +1063,7 @@
         <p>&#10022; Full royal interface refresh: clearer selected, locked, ready, rank, and action states across heroes, realms, upgrades, lobby, pause, gifts, HUD, and settings.</p>
         <p>&#10022; Eased scene reveals, responsive button sheen, smooth panel focus, and Xbox-colored A/B/X/Y prompts make every choice feel better on console.</p>
         <p>&#10022; TV typography pass: cleaner canvas scaling, kerning, heavier body copy, clearer Royal Gift descriptions, and more useful affordability messages.</p>
+        <p>&#10022; Battle command HUD rebuilt: grouped weapon/gift slot trays, numbered empty slots, clearer time/XP/objective hierarchy, and a labeled treasury. Home now includes an Xbox control ribbon without touching the painted art.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
         <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
@@ -7378,7 +7400,7 @@ function render(t) {
   let hy = 10;
   for (const p of joined) {
     const pcol = PLAYER_COLORS[Math.max(0, players.indexOf(p)) % 4];
-    const pw = Math.max(compact ? 170 : 212, (compact ? 76 : 94) + Math.min(p.maxHp, 12) * heartStep);
+    const pw = compact ? 178 : 242;
     ornate(10, hy, pw, ph2, 12);
     // player color bar
     ctx.fillStyle = pcol;
@@ -7410,7 +7432,7 @@ function render(t) {
     ctx.fillStyle = p.alive ? UI.goldPale : UI.dim;
     const nameX = pcx + portR + 11;
     ctx.fillText(p.name, nameX, hy + (compact ? 17 : 24));
-    if (p.maxHp <= 12) {
+    if (p.maxHp <= (compact ? 6 : 7)) {
       for (let i = 0; i < p.maxHp; i++) drawHeart(nameX + 6 + i * heartStep, hy + (compact ? 31 : 42), heartR, i < p.hp);
     } else {
       // big-hearted knights get a compact counter instead of a mile of hearts
@@ -7424,54 +7446,72 @@ function render(t) {
       .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon);
     const fIcons = (p.fx || []).map(k2 => (UPGRADES.find(u => u.key === k2) || {}).icon).filter(Boolean);
     const supIcons = SUPER_DEFS.filter(sd => (p.supers || {})[sd.key]).map(sd => sd.icon);
-    const mr = compact ? 9 : 12;
-    const drawSlot = (ai, ic, kindCol) => {
-      const ax2 = 10 + pw + 14 + ai * (mr * 2 + 7), ay2 = hy + ph2 / 2;
+    const mr = compact ? 7.5 : 9;
+    const trayX = 10 + pw + 8, trayW = compact ? 132 : 146;
+    plate(trayX, hy, trayW, ph2, 10);
+    ctx.textAlign = 'center';
+    ctx.font = '800 ' + (compact ? 8 : 9) + 'px Inter, sans-serif';
+    ctx.fillStyle = 'rgba(232, 182, 76, 0.72)';
+    ctx.fillText('⚔', trayX + 13, hy + (compact ? 14 : 18));
+    ctx.fillStyle = 'rgba(163, 217, 119, 0.8)';
+    ctx.fillText('✦', trayX + 13, hy + (compact ? 33 : 43));
+    const drawSlot = (row, si, ic, kindCol) => {
+      const step2 = compact ? 33 : 36;
+      const ax2 = trayX + 38 + si * step2;
+      const ay2 = hy + (row ? (compact ? 31 : 41) : (compact ? 12 : 17));
       if (ic) {
-        ctx.fillStyle = 'rgba(9, 7, 5, 0.75)';
+        ctx.fillStyle = 'rgba(5, 5, 6, 0.96)';
         ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = kindCol;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.8;
         ctx.stroke();
         drawUpgradeIcon(ic, ax2, ay2, mr / 32, t);
       } else {
-        // an empty slot is just a whisper of a ring
+        // empty positions remain visible so the build limit is understood
         ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2);
-        ctx.setLineDash([3, 3]);
-        ctx.strokeStyle = 'rgba(232, 182, 76, 0.2)';
+        ctx.setLineDash([2.5, 2.5]);
+        ctx.strokeStyle = row ? 'rgba(163, 217, 119, 0.38)' : 'rgba(232, 182, 76, 0.38)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
         ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(240, 226, 195, 0.28)';
+        ctx.font = '700 ' + (compact ? 7 : 8) + 'px Inter, sans-serif';
+        ctx.fillText(String(si + 1), ax2, ay2 + 3);
       }
     };
-    for (let si2 = 0; si2 < 3; si2++) drawSlot(si2, wIcons[si2], 'rgba(232, 182, 76, 0.75)');
-    for (let si2 = 0; si2 < 3; si2++) drawSlot(3 + si2, fIcons[si2], 'rgba(163, 217, 119, 0.75)');
-    supIcons.forEach((ic, si2) => drawSlot(6 + si2, ic, `rgba(125, 211, 252, ${0.6 + 0.3 * Math.sin(t * 4)})`));
+    for (let si2 = 0; si2 < 3; si2++) drawSlot(0, si2, supIcons[si2] || wIcons[si2], supIcons[si2]
+      ? `rgba(125, 211, 252, ${0.7 + 0.25 * Math.sin(t * 4)})` : 'rgba(232, 182, 76, 0.8)');
+    for (let si2 = 0; si2 < 3; si2++) drawSlot(1, si2, fIcons[si2], 'rgba(163, 217, 119, 0.82)');
     hy += pStep;
   }
 
   // center: timer + XP + level medallion
-  ornate(CX - 132, 8, 264, 66, 12);
+  ornate(CX - 142, 8, 284, 68, 12);
   drawCrest(CX, 8, 0.95);
   const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
   const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
   ctx.textAlign = 'center';
   ctx.font = '700 28px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldPale;
-  ctx.fillText(mm + ':' + ss, CX - 12, 40);
+  ctx.font = '800 9px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText('BATTLE TIME', CX - 12, 23);
+  ctx.font = '700 28px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldPale;
+  ctx.fillText(mm + ':' + ss, CX - 12, 48);
   ctx.fillStyle = 'rgba(10, 6, 16, 0.85)';
-  ctx.fillRect(CX - 112, 52, 196, 10);
-  const xg = ctx.createLinearGradient(CX - 112, 0, CX + 84, 0);
+  ctx.fillRect(CX - 122, 57, 206, 10);
+  const xg = ctx.createLinearGradient(CX - 122, 0, CX + 84, 0);
   xg.addColorStop(0, '#7c3aed');
   xg.addColorStop(1, '#c084fc');
   ctx.fillStyle = xg;
-  ctx.fillRect(CX - 112, 52, 196 * Math.min(1, game.xp / game.xpNext), 10);
+  ctx.fillRect(CX - 122, 57, 206 * Math.min(1, game.xp / game.xpNext), 10);
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
-  ctx.strokeRect(CX - 112, 52, 196, 10);
+  ctx.strokeRect(CX - 122, 57, 206, 10);
   // level medallion
   ctx.beginPath();
-  ctx.arc(CX + 112, 46, 19, 0, Math.PI * 2);
+  ctx.arc(CX + 114, 43, 21, 0, Math.PI * 2);
   ctx.fillStyle = '#1a1410';
   ctx.fill();
   ctx.strokeStyle = UI.gold;
@@ -7480,13 +7520,14 @@ function render(t) {
   ctx.textAlign = 'center';
   ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.level), CX + 112, 51);
+  ctx.fillText(String(game.level), CX + 114, 48);
   // objective countdown (or endless badge)
+  plate(CX - 118, 80, 236, 24, 12);
   if (game.endless) {
     ctx.font = '700 12px Inter, sans-serif';
     ctx.fillStyle = '#c9a8ff';
     ctx.textAlign = 'center';
-    ctx.fillText('∞ ENDLESS — THE CURSE NEVER STOPS', CX, 84);
+    ctx.fillText('∞ ENDLESS — THE CURSE NEVER STOPS', CX, 96);
   } else {
     const goalSec2 = MAPS[game.mapPick].goal * 60;
     const remain = Math.max(0, goalSec2 - game.time);
@@ -7495,11 +7536,11 @@ function render(t) {
     ctx.font = '600 11px Inter, sans-serif';
     ctx.fillStyle = 'rgba(240, 226, 195, 0.7)';
     ctx.textAlign = 'right';
-    ctx.fillText('OBJECTIVE — SURVIVE', CX + 18, 84);
+    ctx.fillText('OBJECTIVE — SURVIVE', CX + 18, 96);
     ctx.textAlign = 'left';
     ctx.font = '700 12px Inter, sans-serif';
     ctx.fillStyle = '#4ade80';
-    ctx.fillText(om + ':' + os, CX + 26, 84);
+    ctx.fillText(om + ':' + os, CX + 26, 96);
   }
 
   // right: banished counter with a little skull (pinned to the right edge)
@@ -7531,6 +7572,13 @@ function render(t) {
   ctx.fillText(String(game.kills), 824, 52);
   ornate(776, 66, 174, 40, 12);
   drawUpgradeIcon('coin', 802, 86, 0.5, t);
+  ctx.textAlign = 'left';
+  ctx.font = '800 9px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText('TREASURY', 824, 82);
+  ctx.font = '700 17px Cinzel, Georgia, serif';
+  ctx.fillStyle = UI.goldLight;
+  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 824, 101);
   ctx.restore();
   if ((game.forgeT || 0) > 0) {
     ctx.textAlign = 'center';
@@ -7570,10 +7618,6 @@ function render(t) {
   ctx.lineTo(ROOM_W, 630);
   ctx.stroke();
   drawCrest(CX, 628, 0.75);
-  ctx.textAlign = 'right';
-  ctx.font = '700 18px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), ROOM_W - 22, 93);
   if (NET.role === 'host' && NET.code) {
     ctx.textAlign = 'right';
     ctx.font = '700 11px Inter, sans-serif';
@@ -7583,7 +7627,7 @@ function render(t) {
 
   if (!game.netGuest && players.some((p, pi) => pi > 0 && !p.joined && !p.remote)) {
     ctx.font = '600 13px Inter, sans-serif';
-    const jtxt = 'Friends — press J or 🎮 A to join!';
+    const jtxt = 'Friends — press J or green Ⓐ to join!';
     const jw = ctx.measureText(jtxt).width + 38;
     ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 3);
     plate(12, 640 - 46, jw, 32, 16);
@@ -8920,7 +8964,7 @@ window.addEventListener('keydown', e => {
 // ---- update-card carousel ----
 const UC_SLIDES = [
   { head: '✦ LATEST UPDATE', title: 'v2.0 VISUAL POLISH',
-    body: 'A complete royal UI refresh with clearer choices, smoother motion, sharper TV text, Xbox-native prompts, richer black-glass panels, and a bolder battle HUD — built for the living-room screen.',
+    body: 'A complete royal UI refresh with grouped battle slots, clearer objectives, smoother motion, sharper TV text, Xbox-native prompts, and richer menus — built for the living-room screen.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
