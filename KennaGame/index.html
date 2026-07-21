@@ -956,8 +956,11 @@
     position: relative !important; inset: auto !important; width: 100% !important; height: auto !important;
     display: grid !important; grid-template-columns: 3.3vw 1fr 1.2vw; align-items: center; gap: .75vw;
     padding: .55vh .8vw !important; overflow: hidden;
-    background: #18130d !important; border: 0 !important; border-radius: 1.05vh !important;
-    box-shadow: inset 0 1px rgba(255,236,196,.055) !important;
+    background:
+      radial-gradient(circle at 14% 50%,rgba(232,182,76,.09),transparent 27%),
+      linear-gradient(105deg,#211a11 0%,#17120d 58%,#100d09 100%) !important;
+    border: 0 !important; border-radius: 1.05vh !important;
+    box-shadow: inset 0 1px rgba(255,236,196,.085), inset 0 -1px rgba(0,0,0,.55), inset 4px 0 rgba(232,182,76,.18) !important;
     filter: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
     transform: none !important; animation: none !important;
     transition: transform .18s cubic-bezier(.2,.8,.2,1), filter .18s ease, background .18s ease !important;
@@ -967,39 +970,52 @@
   #menu.hasImage #btnStack .menuBtn > * { visibility: visible !important; position: relative; z-index: 1; }
   #menu.hasImage #btnStack .bIcon {
     width: 3.05vw; height: 5.4vh; margin: 0 !important; display: grid; place-items: center;
-    color: #e8bd67; background: #292016; border-radius: .78vh;
+    color: #f0c96f;
+    background: radial-gradient(circle at 38% 32%,#5b4525 0%,#352616 46%,#1c150e 100%);
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 2px #17100a, inset 0 0 0 3px rgba(232,182,76,.34), 0 3px 8px rgba(0,0,0,.35);
     font: 700 min(2.5vh,1.7vw) Cinzel,serif;
   }
   #menu.hasImage #btnStack .bText { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
   #menu.hasImage #btnStack .bTitle {
-    color: #f6ead1; font: 800 min(2.05vh,1.4vw) Cinzel,serif;
-    letter-spacing: .09em; line-height: 1; text-transform: uppercase;
+    color: #f8ecd3; font: 800 min(2.15vh,1.46vw) Cinzel,serif;
+    letter-spacing: .105em; line-height: 1; text-transform: uppercase;
+    text-shadow: 0 2px 8px rgba(0,0,0,.65);
   }
   #menu.hasImage #btnStack .bSub {
     display: block; color: rgba(240,226,195,.58); font: 600 min(1.12vh,.77vw) Inter,sans-serif;
     letter-spacing: .015em; margin-top: .48vh; white-space: nowrap;
   }
   #menu.hasImage #btnStack .bChev {
-    display: block; color: rgba(244,230,198,.38); font: 300 min(3.2vh,2.1vw) Inter,sans-serif;
+    display: grid; place-items:center; width:1.4vw; height:3.4vh;
+    color: rgba(244,230,198,.6); font: 300 min(3.2vh,2.1vw) Inter,sans-serif;
+    background:#0c0a07; border-radius:2vh;
     transition: transform .18s ease, color .18s ease;
   }
   #menu.hasImage #btnStack .menuBtn:hover,
   #menu.hasImage #btnStack .menuBtn:focus-visible {
-    background: #18130d !important; box-shadow: inset 0 1px rgba(255,236,196,.055) !important;
+    background:radial-gradient(circle at 14% 50%,rgba(232,182,76,.09),transparent 27%),linear-gradient(105deg,#211a11 0%,#17120d 58%,#100d09 100%) !important;
+    box-shadow:inset 0 1px rgba(255,236,196,.085),inset 0 -1px rgba(0,0,0,.55),inset 4px 0 rgba(232,182,76,.18) !important;
     transform: none !important; filter: none !important;
   }
   @keyframes royalCommandSelect {
-    0%,100% { filter: brightness(1.08); transform: translateX(0) scale(1.015); }
+    0%,100% { filter: brightness(1.08); transform: translateX(0) scale(1.015); background-position: 120% 0; }
     50% { filter: brightness(1.34); transform: translateX(.28vw) scale(1.015); }
+    100% { background-position: -120% 0; }
   }
   #menu.hasImage #btnStack .menuBtn.padFocus {
-    background: #3a2a15 !important; border: 0 !important;
+    background: linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
+    background-size: 240% 100% !important; border: 0 !important;
     box-shadow: inset .32vw 0 #e8b64c, inset 0 1px rgba(255,244,215,.14), 0 8px 20px rgba(0,0,0,.34) !important;
     animation: royalCommandSelect .85s ease-in-out infinite !important;
   }
   #menu.hasImage #btnStack .menuBtn.padFocus .bIcon { background:#5a3e19; color:#ffe2a0; }
   #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; transform:translateX(.18vw); }
   #menu.hasImage #btnStack .menuBtn:active { transform: scale(.975) !important; filter: brightness(1.18) !important; }
+  #menu.hasImage #btnPlay { box-shadow:inset 0 1px rgba(255,236,196,.1),inset 0 -1px rgba(0,0,0,.55),inset 4px 0 #b98631 !important; }
+  #menu.hasImage #btnSettings { background:radial-gradient(circle at 14% 50%,rgba(190,145,68,.11),transparent 28%),linear-gradient(105deg,#241d14,#17130e 60%,#0f0d0a) !important; }
+  #menu.hasImage #btnCredits { background:radial-gradient(circle at 14% 50%,rgba(106,142,184,.11),transparent 28%),linear-gradient(105deg,#171d22,#121518 60%,#0b0d0f) !important; }
+  #menu.hasImage #btnExit { background:radial-gradient(circle at 14% 50%,rgba(176,89,76,.1),transparent 28%),linear-gradient(105deg,#211715,#16100f 60%,#0e0b0a) !important; }
 
   #menu.hasImage #chipKnights, #menu.hasImage #chipDate, #menu.hasImage #chipRemaster {
     top: 1.55% !important; height: 8.35% !important; background: #0d0b08 !important;
@@ -1178,6 +1194,7 @@
         <p>&#10022; Play, Upgrades, Credits, and Exit now share a fully rebuilt Royal Command stack with consistent sizing, larger TV type, opaque icon blocks, and smooth selection-only movement.</p>
         <p>&#10022; Choose the Battlefield now uses twelve cinematic storybook realm paintings, giving every destination a distinct atmosphere while retaining live weather, lock states, objectives, and Xbox navigation.</p>
         <p>&#10022; Live realms now use hand-painted terrain, premium enemy sprites, low defensive walls, and one shared weapon atlas across unlock cards, HUD slots, equipped art, and combat.</p>
+        <p>&#10022; Live terrain was rebalanced for visual cohesion, and selected commands now receive a restrained moving shine while unselected buttons stay settled and opaque.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
         <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
@@ -5960,6 +5977,13 @@ function drawStateChip(text, x, y, color = UI.gold, align = 'left') {
   ctx.fillText(text, bx + tw / 2, y + 12.5);
   ctx.restore();
 }
+function drawSelectedShine(x,y,w,h,t,alpha=.2) {
+  ctx.save(); roundedRect(x+2,y+2,w-4,h-4,8); ctx.clip();
+  const sx=x-70+((t*.42)%1)*(w+140);
+  const beam=ctx.createLinearGradient(sx-30,0,sx+30,0);
+  beam.addColorStop(0,'rgba(255,245,210,0)');beam.addColorStop(.5,`rgba(255,245,210,${alpha})`);beam.addColorStop(1,'rgba(255,245,210,0)');
+  ctx.fillStyle=beam;ctx.transform(1,0,-.28,1,0,0);ctx.fillRect(sx,y-20,64,h+40);ctx.restore();
+}
 function renderSelect(t, forP2) {
   drawScreenBg(t);
   // crown ornament + flourish above the headline, like the mockup
@@ -6006,6 +6030,7 @@ function renderSelect(t, forP2) {
       ctx.stroke();
       ctx.restore();
       drawStateChip('SELECTED', x + 7, y + 7, UI.goldLight);
+      drawSelectedShine(x,y,cw,chh,t,.2);
     }
     // knight art (full color even when locked, like the mockup)
     const bob2 = sel ? Math.sin(t * 4) * 2 : 0;
@@ -6263,6 +6288,7 @@ function renderArmory(t) {
       ctx.stroke();
       ctx.restore();
       drawStateChip('INSPECTING', x + 7, y + 7, UI.goldLight);
+      drawSelectedShine(x,y,cw,chh,t,.18);
     }
     // emblem
     if (it.pet) {
@@ -6645,6 +6671,9 @@ function renderLobby(t) {
 const COVER_CACHE = {};
 const REALM_ATLAS = new Image();
 REALM_ATLAS.src = 'realm-preview-atlas.png';
+// The generated paintings are retained as optional assets, but the live theme
+// uses the more cohesive illustrated canvas covers by default.
+const USE_PAINTED_REALM_ART = true;
 const TERRAIN_ATLAS = new Image();
 const TERRAIN_TILES = [];
 const TERRAIN_PATTERNS = [];
@@ -6882,7 +6911,7 @@ function buildMapCover(mi) {
   return { cv, wantImgs, mobCount: mobs.length };
 }
 function drawMapScene(m, x, y, w, h, t, i) {
-  const atlasReady = REALM_ATLAS.complete && REALM_ATLAS.naturalWidth > 0;
+  const atlasReady = USE_PAINTED_REALM_ART && REALM_ATLAS.complete && REALM_ATLAS.naturalWidth > 0;
   let cc = COVER_CACHE[i];
   if (!atlasReady && (!cc || (cc.wantImgs < cc.mobCount && Object.keys(ENEMY_IMG).length))) cc = COVER_CACHE[i] = buildMapCover(i);
   ctx.save();
@@ -6969,7 +6998,10 @@ function renderMapSelect(t) {
       ctx.fillStyle = '#4ade80';
       ctx.fillText('✓ CLEARED', rx0 + rowW - 14, y + 22);
     }
-    if (sel) drawStateChip(un ? 'SELECTED' : 'LOCKED', rx0 + 12, y + 10, un ? UI.goldLight : '#c9c2ce');
+    if (sel) {
+      drawStateChip(un ? 'SELECTED' : 'LOCKED', rx0 + 12, y + 10, un ? UI.goldLight : '#c9c2ce');
+      drawSelectedShine(rx0,y,rowW,rowH,t,un?.18:.08);
+    }
     if (!un) {
       ctx.textAlign = 'center';
       ctx.font = '22px Georgia, serif';
@@ -7126,7 +7158,7 @@ function render(t) {
   if (TERRAIN_TILES[game.mapPick]) {
     if (!TERRAIN_PATTERNS[game.mapPick]) TERRAIN_PATTERNS[game.mapPick] = ctx.createPattern(TERRAIN_TILES[game.mapPick], 'repeat');
     ctx.save();
-    ctx.globalAlpha = 0.34;
+    ctx.globalAlpha = 0.14;
     ctx.fillStyle = TERRAIN_PATTERNS[game.mapPick];
     ctx.fillRect(cam.x - 20, cam.y - 20, ROOM_W + 80, 680);
     ctx.restore();
