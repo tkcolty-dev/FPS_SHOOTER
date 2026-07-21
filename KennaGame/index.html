@@ -597,6 +597,17 @@
     border-radius: 1.8vh;
   }
   #menu.hasImage .menuBtn > * { visibility: hidden; }
+  /* UPGRADES is a real labeled button — glassy plate matching the painted ones */
+  #menu.hasImage #btnSettings {
+    background: rgba(15, 12, 9, 0.85);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1.5px solid rgba(232, 182, 76, 0.42);
+  }
+  #menu.hasImage #btnSettings > * { visibility: visible; }
+  #menu.hasImage #btnSettings .bTitle { font-size: min(2.1vh, 1.4vw); }
+  #menu.hasImage #btnSettings .bSub { font-size: min(1.3vh, 0.9vw); }
+  #menu.hasImage #btnSettings .bIcon { font-size: min(2.2vh, 1.5vw); }
+  #menu.hasImage #btnSettings .bChev { font-size: min(2vh, 1.4vw); }
   #menu.hasImage .menuBtn::before, #menu.hasImage #btnPlay::after { display: none; }
   #menu.hasImage .menuBtn:hover, #menu.hasImage .menuBtn:focus-visible,
   #menu.hasImage #btnPlay:hover {
@@ -612,11 +623,30 @@
     pointer-events: none;
   }
   #menu.hasImage .chip, #menu.hasImage .chip span { color: transparent; text-shadow: none; }
+  /* the top chips are REAL: live values on glassy plates that melt into the art */
+  #menu.hasImage #chipDate, #menu.hasImage #chipKnights, #menu.hasImage #chipRemaster {
+    color: #f0e2c3;
+    background: rgba(14, 12, 9, 0.68);
+    backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+    border: 1px solid rgba(232, 182, 76, 0.32);
+    border-radius: 1.1vh;
+    font-size: min(1.65vh, 1.1vw);
+    letter-spacing: 0.1em;
+    box-shadow: none;
+  }
+  #menu.hasImage #chipDate span, #menu.hasImage #chipKnights span, #menu.hasImage #chipRemaster span { color: #ffd98a; }
   #menu.hasImage #iconRow {
     background: none; border: none; box-shadow: none;
     backdrop-filter: none; -webkit-backdrop-filter: none;
   }
-  #menu.hasImage .iconBtn { color: transparent; border-radius: 1.2vh; }
+  #menu.hasImage .iconBtn {
+    color: #f0e2c3; border-radius: 1.1vh;
+    background: rgba(14, 12, 9, 0.68);
+    backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+    border: 1px solid rgba(232, 182, 76, 0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: min(1.9vh, 1.25vw); line-height: 1; padding: 0;
+  }
   #menu.hasImage .iconBtn .badge { visibility: hidden; }
   #menu.hasImage .iconBtn:hover {
     transform: none;
@@ -736,6 +766,19 @@
     box-shadow: 0 0 22px rgba(232, 182, 76, 0.5);
   }
   .panel .rowBtn.padFocus { background: rgba(201, 168, 106, 0.28); }
+  /* unmissable from the couch: focus pulses and a gold chevron points at it */
+  @keyframes padPulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(232, 182, 76, 0.45); }
+    50% { box-shadow: 0 0 42px rgba(255, 217, 138, 0.95); }
+  }
+  #menu .padFocus { animation: padPulse 0.85s ease-in-out infinite; }
+  @keyframes padNudge { from { margin-left: 0; } to { margin-left: 9px; } }
+  #padCursor {
+    position: fixed; z-index: 80; pointer-events: none; display: none;
+    color: #ffd98a; font-size: 26px; line-height: 1;
+    text-shadow: 0 0 14px rgba(232, 182, 76, 0.95), 0 2px 4px rgba(0, 0, 0, 0.8);
+    animation: padNudge 0.55s ease-in-out infinite alternate;
+  }
   .panel .padFocus {
     outline: 2px solid rgba(255, 217, 138, 0.85); outline-offset: 3px;
     box-shadow: 0 0 14px rgba(232, 182, 76, 0.45);
@@ -778,9 +821,9 @@
   <canvas id="menuFx"></canvas>
 
   <div id="menuTop">
-    <div class="chip" id="chipKnights">&#9876; KNIGHTS FREED <span id="statKnights">0 / 4</span></div>
+    <div class="chip" id="chipKnights">&#9876; KNIGHTS <span id="statKnights">5 / 24</span></div>
     <div class="chip" id="chipDate">&mdash;</div>
-    <div class="chip" id="chipRemaster">REMASTER v1.0</div>
+    <div class="chip" id="chipRemaster">REMASTER <span>v2.0</span></div>
   </div>
 
   <div class="titleBlock">
@@ -796,8 +839,8 @@
       <span class="bChev">&#8250;</span>
     </button>
     <button class="menuBtn" id="btnSettings">
-      <span class="bIcon">&#9881;</span>
-      <span class="bText"><span class="bTitle">Settings</span><span class="bSub">Customize your experience</span></span>
+      <span class="bIcon">&#9874;</span>
+      <span class="bText"><span class="bTitle">Upgrades</span><span class="bSub">The armory &amp; royal pets</span></span>
       <span class="bChev">&#8250;</span>
     </button>
     <button class="menuBtn" id="btnCredits">
@@ -813,10 +856,10 @@
   </div>
 
   <div id="iconRow">
-    <button class="iconBtn" id="icDiscord"></button>
-    <button class="iconBtn" id="icMail">&#9993;<span class="badge">1</span></button>
-    <button class="iconBtn" id="icBell">&#128276;<span class="badge">4</span></button>
-    <button class="iconBtn" id="icGear">&#9881;</button>
+    <button class="iconBtn" id="icDiscord" title="Achievements">&#127942;</button>
+    <button class="iconBtn" id="icMail" title="Leaderboard">&#128081;</button>
+    <button class="iconBtn" id="icBell" title="Royal Records">&#128220;</button>
+    <button class="iconBtn" id="icGear" title="Settings">&#9881;</button>
   </div>
 
   <div id="statCards">
@@ -828,8 +871,8 @@
   <div id="updateCard">
     <div class="ucHead"><span id="ucHeadLabel">&#10022; LATEST UPDATE</span><span class="ucNew">NEW</span></div>
     <img src="patch-thumb.png" alt="" class="ucThumb">
-    <div class="ucTitle" id="ucTitle">v1.0 REMASTER</div>
-    <div class="ucBody" id="ucBody">A complete visual overhaul of Kenna's original kingdom &mdash; new story, new castle, real knights.</div>
+    <div class="ucTitle" id="ucTitle">v2.0 THE WIDESCREEN WAR</div>
+    <div class="ucBody" id="ucBody">14 weapons, laser fusions, 4 bosses and Concur himself, 12 realms, your OWN build in co-op &mdash; and battles that fill the whole screen.</div>
     <button class="ucBtn" id="btnPatch">VIEW PATCH NOTES &#8599;</button>
     <div class="ucDots" id="ucDots"><i class="on"></i><i></i><i></i><i></i></div>
   </div>
@@ -904,7 +947,14 @@
       <button class="panelX" data-close>&times;</button>
       <h2>The Royal Chronicle</h2>
       <div class="patchList">
-        <p class="verHead">v1.6 &mdash; PETS &amp; CANDY <span class="verTag">LATEST</span></p>
+        <p class="verHead">v2.0 &mdash; THE WIDESCREEN WAR <span class="verTag">LATEST</span></p>
+        <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
+        <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
+        <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
+        <p>&#127918; Full controller kingdoms: d-pad everything, strict turn-taking in co-op, your own weapons and upgrades per knight</p>
+        <p>&#128220; The story: a cinematic beginning &mdash; and a birthday ending</p>
+        <p>&#128250; Widescreen battles, elites, 12 realms, rerolls, shrines and forges, prize-wheel chests</p>
+        <p class="verHead">v1.6 &mdash; PETS &amp; CANDY</p>
         <p>&#128062; Royal pets &mdash; adopt Sprinkle, Professor Tome &amp; Twinkle in the armory; they fight beside you</p>
         <p>&#127853; CANDY MOUNTAIN &mdash; a ninth realm of sugar fields and mint rock</p>
         <p>&#9874; The armory reforged &mdash; hover any blessing or pet for its details</p>
@@ -962,7 +1012,7 @@
         <p>&#9876; <b>KENNA</b> &middot; The Last Squire &mdash; a sweeping blade and the heart of the kingdom</p>
         <p>&#128737; <b>SIR BRAMBLE</b> &middot; Knight of the Shield &mdash; tough as oak, guarded by orbiting aegis</p>
         <p>&#128293; <b>DAME EMBER</b> &middot; Knight of the Flame &mdash; rings of fire burst from her blade</p>
-        <p>&#127769; <b>SIR WHISPER</b> &middot; Knight of Shadows &mdash; a storm of swift piercing daggers</p>
+        <p>&#127769; <b>DAME WHISPER</b> &middot; Knight of Shadows &mdash; a storm of swift piercing daggers</p>
         <p>&#127788; <b>DAME GALE</b> &middot; Knight of the Wind &mdash; gusts that hurl spirits from the field</p>
         <p style="margin-top:2.2vh; color:rgba(255,255,255,0.65)">&hellip;and <b>19 more knights</b> wait to be recruited with gold in CHOOSE CHARACTER &mdash; up to <b>Queen Kenna</b> herself.</p>
       </div>
@@ -1065,7 +1115,8 @@ ctx.imageSmoothingEnabled = false;
 
 // The canvas fills the whole window; the 960x640 room is scaled up and
 // centered inside it, with a dark stone surround instead of black bars.
-const ROOM_W = 960, ROOM_H = 640;
+const ROOM_W = 1136, ROOM_H = 640;   // true 16:9 — fills the TV
+const CX = ROOM_W / 2;
 const view = { scale: 1, ox: 0, oy: 0 };
 function fitCanvas() {
   canvas.width = window.innerWidth;
@@ -1323,27 +1374,27 @@ const ROSTER = [
   { key: 'kenna',    name: 'KENNA',         role: 'The Last Squire',      wtype: 'slash',   tabard: '#2f8f8f', price: 0,   mods: {} },
   { key: 'bramble',  name: 'SIR BRAMBLE',   role: 'Knight of the Shield', wtype: 'slash',   tabard: '#3f7d3a', price: 0,   mods: { hp: 2, orb: 2, atkM: 1.25 } },
   { key: 'ember',    name: 'DAME EMBER',    role: 'Knight of the Flame',  wtype: 'nova',    tabard: '#b7452e', price: 0,   mods: {} },
-  { key: 'whisper',  name: 'SIR WHISPER',   role: 'Knight of Shadows',    wtype: 'daggers', tabard: '#5b3d8f', price: 0,   mods: {} },
+  { key: 'whisper',  name: 'DAME WHISPER',   role: 'Knight of Shadows',    wtype: 'daggers', tabard: '#5b3d8f', price: 0,   mods: {} },
   { key: 'gale',     name: 'DAME GALE',     role: 'Knight of the Wind',   wtype: 'gust',    tabard: '#3f8fae', price: 0,   mods: {} },
   { key: 'oakheart', name: 'SIR OAKHEART',  role: 'Knight of the Grove',  wtype: 'axe',   tabard: '#2d5016', price: 200, mods: { hp: 2 } },
   { key: 'rose',     name: 'DAME ROSE',     role: 'Knight of Thorns',     wtype: 'boomer', tabard: '#e75480', price: 200, mods: { speedM: 1.1 } },
   { key: 'frost',    name: 'SIR FROST',     role: 'Knight of Winter',     wtype: 'icestaff',    tabard: '#7dd3fc', price: 250, mods: { atkM: 0.9 } },
   { key: 'sunfire',  name: 'DAME SUNFIRE',  role: 'Knight of the Dawn',   wtype: 'whip',    tabard: '#f59e0b', price: 250, mods: { dmg: 1 } },
   { key: 'storm',    name: 'SIR STORM',     role: 'Knight of Thunder',    wtype: 'trident',   tabard: '#64748b', price: 300, mods: { wave: 1 } },
-  { key: 'ivy',      name: 'DAME IVY',      role: 'Knight of Vines',      wtype: 'daggers', tabard: '#22c55e', price: 300, mods: { magnetM: 1.6 } },
+  { key: 'ivy',      name: 'DAME IVY',      role: 'Knight of Vines',      wtype: 'daggers', tabard: '#22c55e', price: 300, sig: 2, mods: { magnetM: 1.6 } },
   { key: 'coal',     name: 'SIR COAL',      role: 'Knight of the Forge',  wtype: 'blunder',    tabard: '#3f3f46', price: 350, mods: { hp: 1, dmg: 1 } },
   { key: 'star',     name: 'DAME STAR',     role: 'Knight of Midnight',   wtype: 'scepter',    tabard: '#fde047', price: 350, mods: { magnetM: 1.4, speedM: 1.06 } },
   { key: 'pebble',   name: 'SIR PEBBLE',    role: 'Knight of the Mountain', wtype: 'hammer', tabard: '#a8a29e', price: 400, mods: { hp: 4, speedM: 0.92 } },
-  { key: 'swift',    name: 'DAME SWIFT',    role: 'Knight of Rivers',     wtype: 'daggers', tabard: '#38bdf8', price: 450, mods: { speedM: 1.18, atkM: 0.92 } },
+  { key: 'swift',    name: 'DAME SWIFT',    role: 'Knight of Rivers',     wtype: 'daggers', tabard: '#38bdf8', price: 450, sig: 2, mods: { speedM: 1.18, atkM: 0.92 } },
   { key: 'grumble',  name: 'SIR GRUMBLE',   role: 'Knight of Mondays',    wtype: 'flail',   tabard: '#92400e', price: 450, mods: { dmg: 2, atkM: 1.3 } },
-  { key: 'lily',     name: 'DAME LILY',     role: 'Knight of the Lake',   wtype: 'nova',    tabard: '#f9a8d4', price: 500, mods: { hp: 3 } },
-  { key: 'tumble',   name: 'SIR TUMBLE',    role: 'Knight of Chaos',      wtype: 'gust',    tabard: '#fb7185', price: 500, mods: { speedM: 1.25, hp: -2 } },
-  { key: 'nova',     name: 'DAME NOVA',     role: 'Knight of the Void',   wtype: 'nova',    tabard: '#c084fc', price: 600, mods: { atkM: 0.85 } },
+  { key: 'lily',     name: 'DAME LILY',     role: 'Knight of the Lake',   wtype: 'nova',    tabard: '#f9a8d4', price: 500, sig: 2, mods: { hp: 3 } },
+  { key: 'tumble',   name: 'SIR TUMBLE',    role: 'Knight of Chaos',      wtype: 'gust',    tabard: '#fb7185', price: 500, sig: 2, mods: { speedM: 1.25, hp: -2 } },
+  { key: 'nova',     name: 'DAME NOVA',     role: 'Knight of the Void',   wtype: 'nova',    tabard: '#c084fc', price: 600, sig: 3, mods: { atkM: 0.85 } },
   { key: 'moss',     name: 'SIR MOSS',      role: 'Knight of Patience',   wtype: 'bow',   tabard: '#4d7c0f', price: 600, mods: { orb: 1 } },
-  { key: 'comet',    name: 'DAME COMET',    role: 'Knight of the Sky',    wtype: 'daggers', tabard: '#67e8f9', price: 700, mods: { wave: 1 } },
-  { key: 'biscuit',  name: 'SIR BISCUIT',   role: 'Knight of the Feast',  wtype: 'slash',   tabard: '#d4a373', price: 800, mods: { hp: 5 } },
-  { key: 'aurora',   name: 'DAME AURORA',   role: 'Knight of Lights',     wtype: 'gust',    tabard: '#a5b4fc', price: 900, mods: { orb: 2 } },
-  { key: 'queen',    name: 'QUEEN KENNA',   role: 'Ruler of the Kingdom', wtype: 'slash',   tabard: '#e8b64c', price: 1500, mods: { hp: 2, dmg: 1, speedM: 1.1, atkM: 0.85, wave: 1 } },
+  { key: 'comet',    name: 'DAME COMET',    role: 'Knight of the Sky',    wtype: 'daggers', tabard: '#67e8f9', price: 700, sig: 3, mods: { wave: 1 } },
+  { key: 'biscuit',  name: 'SIR BISCUIT',   role: 'Knight of the Feast',  wtype: 'slash',   tabard: '#d4a373', price: 800, sig: 2, mods: { hp: 5 } },
+  { key: 'aurora',   name: 'DAME AURORA',   role: 'Knight of Lights',     wtype: 'gust',    tabard: '#a5b4fc', price: 900, sig: 3, mods: { orb: 2 } },
+  { key: 'queen',    name: 'QUEEN KENNA',   role: 'Ruler of the Kingdom', wtype: 'slash',   tabard: '#e8b64c', price: 1500, sig: 3, mods: { hp: 2, dmg: 1, speedM: 1.1, atkM: 0.85, wave: 1 } },
 ];
 // forge sprites for every roster knight
 for (const rk of ROSTER) {
@@ -1420,6 +1471,7 @@ function applyHero(p, key) {
   const def = ROSTER.find(h => h.key === key);
   p.name = def.name;
   p.wtype = def.wtype;
+  p.sigTier = def.sig || 1;
   // weapon base cadence
   p.attackEvery = W_CADENCE[def.wtype];
   const m = def.mods;
@@ -1583,8 +1635,9 @@ window.addEventListener('keydown', e => {
     if (['Space', 'Enter'].includes(e.code)) startBattle();
     if (e.code === 'Backspace') { game.phase = 'map'; game.cursor = game.mapPick; }
     if (e.code === 'KeyT') { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; }
-    if (e.code === 'KeyJ' && players[1] && !players[1].joined) {
-      game.fromLobby = true; game.joinSlot = 1; game.joinVia = 'key'; game.phase = 'select2'; game.cursor = 0;
+    if (e.code === 'KeyJ' && players[1] && !players[1].joined && !game.joinAnim) {
+      game.joinAnim = { slot: 1, at: performance.now(), via: 'key' };
+      SFX.join();
     }
     return;
   }
@@ -1829,8 +1882,8 @@ const game = {
   xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [];
-const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [], strikes = [];
+const cam = { x: WORLD_W / 2 - CX, y: WORLD_H / 2 - 320 };
 
 function initRun() {
   game.time = 0; game.kills = 0; game.over = false; game.endless = false; game.paused = false; game.spawnTimer = 1.2;
@@ -1846,7 +1899,7 @@ function initRun() {
   game.chooser = 0;
   game.endingAt = 0;
   for (const p of players) { p.arsT = {}; p.superT = {}; p.arsenal = []; p.supers = {}; p.up = {}; }
-  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = [];
+  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = []; strikes = [];
   runPets = [];
   PETS.forEach((pd, i) => {
     if (petRank(pd.key) > 0) {
@@ -2173,9 +2226,9 @@ function spawnEnemy(forceX, forceY) {
     const side = Math.floor(Math.random() * 4);
     const m = 60;
     if (side === 0) { x = cam.x - m; y = cam.y + Math.random() * 640; }
-    else if (side === 1) { x = cam.x + 960 + m; y = cam.y + Math.random() * 640; }
-    else if (side === 2) { x = cam.x + Math.random() * 960; y = cam.y - m; }
-    else { x = cam.x + Math.random() * 960; y = cam.y + 640 + m; }
+    else if (side === 1) { x = cam.x + ROOM_W + m; y = cam.y + Math.random() * 640; }
+    else if (side === 2) { x = cam.x + Math.random() * ROOM_W; y = cam.y - m; }
+    else { x = cam.x + Math.random() * ROOM_W; y = cam.y + 640 + m; }
   }
   x = Math.max(20, Math.min(WORLD_W - 20, x));
   y = Math.max(20, Math.min(WORLD_H - 20, y));
@@ -2238,9 +2291,9 @@ function spawnBoss() {
   const m = 90;
   let x, y;
   if (side === 0) { x = cam.x - m; y = cam.y + Math.random() * 640; }
-  else if (side === 1) { x = cam.x + 960 + m; y = cam.y + Math.random() * 640; }
-  else if (side === 2) { x = cam.x + Math.random() * 960; y = cam.y - m; }
-  else { x = cam.x + Math.random() * 960; y = cam.y + 640 + m; }
+  else if (side === 1) { x = cam.x + ROOM_W + m; y = cam.y + Math.random() * 640; }
+  else if (side === 2) { x = cam.x + Math.random() * ROOM_W; y = cam.y - m; }
+  else { x = cam.x + Math.random() * ROOM_W; y = cam.y + 640 + m; }
   x = Math.max(60, Math.min(WORLD_W - 60, x));
   y = Math.max(60, Math.min(WORLD_H - 60, y));
   const mult = 1 + game.mapPick * 0.3 + (game.bossWave - 1) * 0.55;
@@ -2439,6 +2492,8 @@ function killEnemy(i) {
 function fireWeapon(p) { return fireWeaponType(p, p.wtype); }
 function fireWeaponType(p, wt) {
   if (wt === 'flail') return false;   // the morning star swings itself
+  // paid knights carry UPGRADED versions of the classic weapons (tier II / III)
+  const tier = wt === p.wtype ? (p.sigTier || 1) : 1;
   let target = null, bd = p.range * p.range;
   for (const e of enemies) {
     const d = (e.x - p.x) ** 2 + (e.y - p.y) ** 2;
@@ -2457,20 +2512,21 @@ function fireWeaponType(p, wt) {
       while (da > Math.PI) da -= 2 * Math.PI;
       while (da < -Math.PI) da += 2 * Math.PI;
       if (Math.abs(da) > p.arc) continue;
-      hurtEnemy(e, p.damage, ang, 230);
+      hurtEnemy(e, p.damage + (tier - 1), ang, 230 + 60 * (tier - 1));
     }
   } else if (wt === 'nova') {
     SFX.nova();
-    const rad = 95 + p.range * 0.25;
+    const rad = (95 + p.range * 0.25) * (1 + 0.12 * (tier - 1));
     novas.push({ x: p.x, y: p.y - 14, r: rad, age: 0 });
     for (const e of enemies) {
       const d = Math.hypot(e.x - p.x, e.y - (p.y - 14));
-      if (d < rad + e.r) hurtEnemy(e, p.damage + 1, Math.atan2(e.y - p.y, e.x - p.x), 260);
+      if (d < rad + e.r) hurtEnemy(e, p.damage + tier, Math.atan2(e.y - p.y, e.x - p.x), 260);
     }
   } else if (wt === 'daggers') {
     SFX.daggers();
-    for (let k = -1; k <= 1; k++) {
-      const a2 = ang + k * 0.22;
+    const nBlades = 2 + tier;
+    for (let k = 0; k < nBlades; k++) {
+      const a2 = ang + (k - (nBlades - 1) / 2) * 0.22;
       waves.push({
         x: p.x, y: p.y - 20, ang: a2,
         vx: Math.cos(a2) * 520, vy: Math.sin(a2) * 520,
@@ -2482,12 +2538,12 @@ function fireWeaponType(p, wt) {
     waves.push({
       x: p.x, y: p.y - 20, ang,
       vx: Math.cos(ang) * 380, vy: Math.sin(ang) * 380,
-      dmg: p.damage, life: 1.0, hit: new Set(), kind: 'gust', kb: 520,
+      dmg: p.damage + (tier - 1), life: 1.0, hit: new Set(), kind: 'gust', kb: 520 + 110 * (tier - 1),
     });
   } else if (wt === 'axe') {
     // slow, enormous, devastating sweep
     SFX.slash();
-    slashes.push({ x: p.x, y: p.y - 20, ang, age: 0, r: p.range * 0.8 });
+    slashes.push({ x: p.x, y: p.y - 20, ang, age: 0, r: p.range * 0.8, wpn: 'axe' });
     for (const e of enemies) {
       const d = Math.hypot(e.x - p.x, e.y - (p.y - 10));
       if (d > p.range * 0.92) continue;
@@ -2501,6 +2557,7 @@ function fireWeaponType(p, wt) {
     // slam the earth — a shockwave ring around the knight
     SFX.nova();
     const evo = game.evolved && game.evolved.hammer;
+    strikes.push({ x: p.x, y: p.y - 20, ang, age: 0, kind: 'hammer', gold: game.evolved && game.evolved.hammer });
     const rad = (80 + p.range * 0.22) * (evo ? 1.55 : 1);
     novas.push({ x: p.x, y: p.y - 6, r: rad, age: 0, slam: true, gold: evo });
     game.shake = Math.max(game.shake, evo ? 0.2 : 0.14);
@@ -2517,6 +2574,7 @@ function fireWeaponType(p, wt) {
     }
   } else if (wt === 'bow') {
     SFX.daggers();
+    strikes.push({ x: p.x, y: p.y - 24, ang, age: 0, kind: 'bow' });
     waves.push({
       x: p.x, y: p.y - 24, ang,
       vx: Math.cos(ang) * 700, vy: Math.sin(ang) * 700,
@@ -2524,6 +2582,7 @@ function fireWeaponType(p, wt) {
     });
   } else if (wt === 'trident') {
     SFX.bolt();
+    strikes.push({ x: p.x, y: p.y - 22, ang, age: 0, kind: 'thrust' });
     waves.push({
       x: p.x, y: p.y - 22, ang,
       vx: Math.cos(ang) * 560, vy: Math.sin(ang) * 560,
@@ -2531,6 +2590,7 @@ function fireWeaponType(p, wt) {
     });
   } else if (wt === 'icestaff') {
     SFX.daggers();
+    strikes.push({ x: p.x, y: p.y - 22, ang, age: 0, kind: 'staff', col: '#bae6fd' });
     for (const k of [-0.14, 0.14]) {
       const a2 = ang + k;
       waves.push({
@@ -2565,6 +2625,7 @@ function fireWeaponType(p, wt) {
     // a dragon-mouthed cannon coughs a cone of sparks
     SFX.nova();
     game.shake = Math.max(game.shake, 0.08);
+    strikes.push({ x: p.x, y: p.y - 20, ang, age: 0, kind: 'blunder' });
     for (let k = 0; k < 6; k++) {
       const a2 = ang + (Math.random() - 0.5) * 0.85;
       const sp = 560 + Math.random() * 160;
@@ -2576,6 +2637,7 @@ function fireWeaponType(p, wt) {
     }
   } else if (wt === 'scepter') {
     SFX.pet();
+    strikes.push({ x: p.x, y: p.y - 24, ang, age: 0, kind: 'staff', col: '#f0abfc' });
     for (const k of [-1, 1]) {
       const a2 = ang + k * 0.5;
       waves.push({
@@ -2887,6 +2949,10 @@ function update(dt) {
     beams[i].life -= dt;
     if (beams[i].life <= 0) beams.splice(i, 1);
   }
+  for (let i = strikes.length - 1; i >= 0; i--) {
+    strikes[i].age += dt;
+    if (strikes[i].age > 0.32) strikes.splice(i, 1);
+  }
 
   // enemies
   for (let i = enemies.length - 1; i >= 0; i--) {
@@ -3144,7 +3210,7 @@ function update(dt) {
     if (game.crownT <= 0) {
       game.crownT = Math.max(1.6, 5 - upLvl('crown'));
       let best = null, bd = 1e9;
-      const ccx = cam.x + 480, ccy = cam.y + 320;
+      const ccx = cam.x + CX, ccy = cam.y + 320;
       for (const e of enemies) {
         const d = (e.x - ccx) ** 2 + (e.y - ccy) ** 2;
         if (d < bd) { bd = d; best = e; }
@@ -3254,9 +3320,9 @@ function update(dt) {
   const alive = players.filter(p => p.joined && p.alive);
   const fx = alive.length ? alive.reduce((s, p) => s + p.x, 0) / alive.length : players[0].x;
   const fy = alive.length ? alive.reduce((s, p) => s + p.y, 0) / alive.length : players[0].y;
-  cam.x += ((fx - 480) - cam.x) * Math.min(1, dt * 5);
+  cam.x += ((fx - CX) - cam.x) * Math.min(1, dt * 5);
   cam.y += ((fy - 340) - cam.y) * Math.min(1, dt * 5);
-  cam.x = Math.max(0, Math.min(WORLD_W - 960, cam.x));
+  cam.x = Math.max(0, Math.min(WORLD_W - ROOM_W, cam.x));
   cam.y = Math.max(0, Math.min(WORLD_H - 640, cam.y));
 }
 
@@ -3500,6 +3566,34 @@ const GLOWS = {
   gemG: makeGlow('74, 222, 128', 40), gemP: makeGlow('240, 171, 252', 40),
 };
 const easeOutQ = f => 1 - (1 - f) * (1 - f);
+
+// a real battle axe, pointing +x, grip at origin
+function drawAxe(bl) {
+  ctx.fillStyle = '#5b4022';
+  ctx.fillRect(0, -3, bl + 8, 6);
+  ctx.fillStyle = '#3a2a16';
+  ctx.beginPath(); ctx.arc(4, 0, 4.5, 0, Math.PI * 2); ctx.fill();
+  const hx = bl - 4;
+  const g = ctx.createLinearGradient(hx, -22, hx, 22);
+  g.addColorStop(0, '#e8eef2');
+  g.addColorStop(0.5, '#b9c4cc');
+  g.addColorStop(1, '#8a959d');
+  ctx.fillStyle = g;
+  for (const sd of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(hx, sd * 4);
+    ctx.quadraticCurveTo(hx + 16, sd * 20, hx + 20, sd * 2);
+    ctx.quadraticCurveTo(hx + 10, sd * 7, hx, sd * 4);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx, sd * 4);
+    ctx.quadraticCurveTo(hx - 16, sd * 20, hx - 20, sd * 2);
+    ctx.quadraticCurveTo(hx - 10, sd * 7, hx, sd * 4);
+    ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = UI.gold;
+  ctx.fillRect(hx - 3, -6, 6, 12);
+}
 
 // a real sword, pointing +x, grip at origin
 function drawSword(bl) {
@@ -4723,7 +4817,7 @@ function renderCardScreen(t, title, items, drawItem) {
   const cw = Math.min(170, 820 / n), ch = 290, gap = 14;
   const total = n * cw + (n - 1) * gap;
   for (let i = 0; i < n; i++) {
-    const x = 480 - total / 2 + i * (cw + gap), y = 170;
+    const x = CX - total / 2 + i * (cw + gap), y = 170;
     cardRects.push({ x, y, w: cw, h: ch, idx: i });
     const sel = game.cursor === i;
     ctx.save();
@@ -4744,7 +4838,7 @@ function renderCardScreen(t, title, items, drawItem) {
   ctx.textAlign = 'center';
   ctx.fillStyle = `rgba(240, 226, 195, ${0.55 + 0.3 * Math.sin(t * 3)})`;
   ctx.font = '20px "VT323", monospace';
-  ctx.fillText('A / D or MOUSE to choose  •  SPACE or CLICK to confirm', 480, 530);
+  ctx.fillText('A / D or MOUSE to choose  •  SPACE or CLICK to confirm', CX, 530);
 }
 
 // toast pills shown on any screen
@@ -4755,10 +4849,10 @@ function drawToasts(t) {
     ctx.font = '600 14px Inter, sans-serif';
     const tw = ctx.measureText(tst.text).width + 42;
     ctx.globalAlpha = a;
-    plate(480 - tw / 2, ty - 19, tw, 30, 15);
+    plate(CX - tw / 2, ty - 19, tw, 30, 15);
     ctx.textAlign = 'center';
     ctx.fillStyle = UI.goldLight;
-    ctx.fillText(tst.text, 480, ty + 1);
+    ctx.fillText(tst.text, CX, ty + 1);
     ctx.globalAlpha = 1;
     ty += 38;
   }
@@ -4771,24 +4865,24 @@ function drawScreenBg(t) {
     // only the castle art — crop away the painted title/buttons/cards
     const sx = img.naturalWidth * 0.30, sy = img.naturalHeight * 0.10;
     const sw = img.naturalWidth * 0.475, sh = img.naturalHeight * 0.775;
-    const s = Math.max(960 / sw, 640 / sh);
+    const s = Math.max(ROOM_W / sw, 640 / sh);
     const dw = sw * s, dh = sh * s;
     ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(img, sx, sy, sw, sh, (960 - dw) / 2, (640 - dh) / 2, dw, dh);
+    ctx.drawImage(img, sx, sy, sw, sh, (ROOM_W - dw) / 2, (640 - dh) / 2, dw, dh);
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = 'rgba(10, 8, 6, 0.78)';
-    ctx.fillRect(0, 0, 960, 640);
-    const vg = ctx.createRadialGradient(480, 320, 220, 480, 320, 640);
+    ctx.fillRect(0, 0, ROOM_W, 640);
+    const vg = ctx.createRadialGradient(CX, 320, 220, CX, 320, 640);
     vg.addColorStop(0, 'rgba(8, 6, 4, 0)');
     vg.addColorStop(1, 'rgba(8, 6, 4, 0.5)');
     ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, 960, 640);
+    ctx.fillRect(0, 0, ROOM_W, 640);
   } else {
     ctx.fillStyle = '#12100d';
-    ctx.fillRect(0, 0, 960, 640);
+    ctx.fillRect(0, 0, ROOM_W, 640);
   }
   for (let i = 0; i < 30; i++) {
-    const sx = hash2(i, 3) * 960, sy = hash2(i, 5) * 640;
+    const sx = hash2(i, 3) * ROOM_W, sy = hash2(i, 5) * 640;
     ctx.fillStyle = `rgba(232, 182, 76, ${0.03 + 0.05 * Math.sin(t + i)})`;
     ctx.fillRect(sx, sy, 3, 3);
   }
@@ -4802,17 +4896,17 @@ function drawScreenTitle(text, y) {
   g.addColorStop(1, '#a97e3c');
   ctx.fillStyle = g;
   ctx.font = '800 34px Cinzel, Georgia, serif';
-  ctx.fillText(text, 480, y);
+  ctx.fillText(text, CX, y);
   const w = ctx.measureText(text).width;
   ctx.fillStyle = UI.gold;
   ctx.font = '15px Georgia, serif';
-  ctx.fillText('✦', 480 - w / 2 - 32, y - 10);
-  ctx.fillText('✦', 480 + w / 2 + 32, y - 10);
+  ctx.fillText('✦', CX - w / 2 - 32, y - 10);
+  ctx.fillText('✦', CX + w / 2 + 32, y - 10);
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(480 - w / 2 - 58, y + 16);
-  ctx.lineTo(480 + w / 2 + 58, y + 16);
+  ctx.moveTo(CX - w / 2 - 58, y + 16);
+  ctx.lineTo(CX + w / 2 + 58, y + 16);
   ctx.stroke();
 }
 
@@ -4824,13 +4918,13 @@ function drawHintsBar(segs) {
     return ctx.measureText(s).width + 14;
   });
   const total = widths.reduce((a, b) => a + b, 0);
-  roundedRect(480 - total / 2 - 18, hy2, total + 36, hh2, 15);
+  roundedRect(CX - total / 2 - 18, hy2, total + 36, hh2, 15);
   ctx.fillStyle = 'rgba(10, 9, 12, 0.82)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(201, 168, 106, 0.28)';
   ctx.lineWidth = 1;
   ctx.stroke();
-  let cx2 = 480 - total / 2;
+  let cx2 = CX - total / 2;
   segs.forEach(([s, b], si) => {
     ctx.font = b ? '700 11px Inter, sans-serif' : '11px Inter, sans-serif';
     ctx.fillStyle = b ? '#f0e2c3' : 'rgba(240, 226, 195, 0.5)';
@@ -4913,7 +5007,7 @@ function renderSelect(t, forP2) {
   ctx.textAlign = 'center';
   ctx.fillStyle = UI.gold;
   ctx.font = '17px Georgia, serif';
-  ctx.fillText('♛', 480, 30);
+  ctx.fillText('♛', CX, 30);
   ctx.strokeStyle = 'rgba(232, 182, 76, 0.45)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -5006,7 +5100,7 @@ function renderSelect(t, forP2) {
   // ---- sidebar: the selected knight ----
   const rk = ROSTER[game.cursor];
   const owned = kdMeta.unlocked.includes(rk.key);
-  const sx0 = 600, sw0 = 336, scx = sx0 + sw0 / 2;
+  const sx0 = ROOM_W - 360, sw0 = 336, scx = sx0 + sw0 / 2;
   plate(sx0, 92, sw0, 456, 16);
   // treasury row
   drawUpgradeIcon('coin', sx0 + 28, 122, 0.55, t);
@@ -5211,7 +5305,7 @@ function renderArmory(t) {
 
   // ---- sidebar: coins on top, details of the hovered item ----
   const it = armoryItem(game.cursor);
-  const sx0 = 600, sw0 = 336, scx = sx0 + sw0 / 2;
+  const sx0 = ROOM_W - 360, sw0 = 336, scx = sx0 + sw0 / 2;
   plate(sx0, 92, sw0, 456, 16);
   drawUpgradeIcon('coin', sx0 + 28, 122, 0.55, t);
   ctx.textAlign = 'left';
@@ -5353,7 +5447,7 @@ function storyFireworks(t, big) {
 function renderStory(t) {
   drawScreenBg(t);
   ctx.fillStyle = 'rgba(6, 5, 10, 0.55)';
-  ctx.fillRect(0, 0, 960, 640);
+  ctx.fillRect(0, 0, ROOM_W, 640);
   const sl = storySlides()[Math.min(game.introSlide || 0, storySlides().length - 1)];
   const age = (performance.now() - (game.introAt || 0)) / 1000;
   const aIn = f => Math.max(0, Math.min(1, (age - f) / 0.5));
@@ -5361,20 +5455,20 @@ function renderStory(t) {
   ctx.save();
   ctx.globalAlpha = aIn(0.1);
   if (sl.art === 'concur') {
-    drawEnemy({ kind: 'concur', x: 480, y: 330, r: 58, hp: 1, maxHp: 1, boss: true, spawnAge: 5, seed: 3,
+    drawEnemy({ kind: 'concur', x: CX, y: 330, r: 58, hp: 1, maxHp: 1, boss: true, spawnAge: 5, seed: 3,
       flash: 0, slowT: 0, kx: 0, ky: 0, chargeState: 'stalk', aimX: 0, aimY: 0, elite: false }, t);
   } else if (sl.art === 'kenna') {
-    drawHeroImg('kenna', 480, 396, 200);
+    drawHeroImg('kenna', CX, 396, 200);
   } else if (sl.art === 'queen') {
-    drawHeroImg('queen', 480, 400, 215);
+    drawHeroImg('queen', CX, 400, 215);
     storyFireworks(t, false);
   } else if (sl.art === 'knights') {
     const row = ['bramble', 'ember', 'whisper', 'gale', 'oakheart', 'rose'];
-    row.forEach((k, i2) => drawHeroImg(k, 480 + (i2 - (row.length - 1) / 2) * 105, 386, 128));
+    row.forEach((k, i2) => drawHeroImg(k, CX + (i2 - (row.length - 1) / 2) * 105, 386, 128));
   } else if (sl.art === 'party') {
     storyFireworks(t, true);
     const row = ['bramble', 'ember', 'queen', 'whisper', 'gale'];
-    row.forEach((k, i2) => drawHeroImg(k, 480 + (i2 - 2) * 118, 400, k === 'queen' ? 190 : 130));
+    row.forEach((k, i2) => drawHeroImg(k, CX + (i2 - 2) * 118, 400, k === 'queen' ? 190 : 130));
   } else if (sl.art === 'scroll') {
     // the royal parchment, straight off the back of her game case
     roundedRect(300, 220, 360, 210, 8);
@@ -5402,21 +5496,21 @@ function renderStory(t) {
   tg.addColorStop(0, '#ffe9b3');
   tg.addColorStop(1, '#e8b64c');
   ctx.fillStyle = tg;
-  ctx.fillText('✦  ' + sl.title + '  ✦', 480, 150);
+  ctx.fillText('✦  ' + sl.title + '  ✦', CX, 150);
   ctx.globalAlpha = 1;
   const baseY = sl.art === 'scroll' ? 268 : 470;
   sl.lines.forEach((ln, i2) => {
     ctx.globalAlpha = aIn(0.35 + i2 * 0.35);
     ctx.font = sl.art === 'scroll' ? '600 17px Georgia, serif' : '16px Inter, sans-serif';
     ctx.fillStyle = sl.art === 'scroll' ? '#4a3a1d' : '#f4f3ef';
-    ctx.fillText(ln, 480, baseY + i2 * (sl.art === 'scroll' ? 40 : 28));
+    ctx.fillText(ln, CX, baseY + i2 * (sl.art === 'scroll' ? 40 : 28));
     ctx.globalAlpha = 1;
   });
   // slide dots
   storySlides().forEach((s2, i2) => {
     ctx.fillStyle = i2 === game.introSlide ? UI.goldLight : 'rgba(255, 255, 255, 0.22)';
     ctx.beginPath();
-    ctx.arc(480 + (i2 - (storySlides().length - 1) / 2) * 22, 566, 4, 0, Math.PI * 2);
+    ctx.arc(CX + (i2 - (storySlides().length - 1) / 2) * 22, 566, 4, 0, Math.PI * 2);
     ctx.fill();
   });
   drawHintsBar([['A / SPACE / CLICK', true], ['CONTINUE', false], ['·', false], ['ESC / B', true], ['SKIP', false]]);
@@ -5429,11 +5523,11 @@ function renderLobby(t) {
   ctx.textAlign = 'center';
   ctx.font = '600 13px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText(MAPS[game.mapPick].name + '  ·  survive ' + MAPS[game.mapPick].goal + ' minutes', 480, 114);
+  ctx.fillText(MAPS[game.mapPick].name + '  ·  survive ' + MAPS[game.mapPick].goal + ' minutes', CX, 114);
   cardRects = [];
   for (let i = 0; i < 4; i++) {
     const w = 190, h = 250;
-    const x = 480 - (4 * w + 3 * 14) / 2 + i * (w + 14), y = 146;
+    const x = CX - (4 * w + 3 * 14) / 2 + i * (w + 14), y = 146;
     const p = players[i];
     const inParty = p && p.joined;
     roundedRect(x, y, w, h, 12);
@@ -5461,6 +5555,41 @@ function renderLobby(t) {
       ctx.font = '11px Inter, sans-serif';
       ctx.fillStyle = '#8fd460';
       ctx.fillText('READY', x + w / 2, y + 230);
+    } else if (game.joinAnim && game.joinAnim.slot === i) {
+      // a gray knight pops up — welcome, new challenger!
+      const ja = (performance.now() - game.joinAnim.at) / 1000;
+      const sc = ja < 0.35 ? (1 + 2.7 * Math.pow(ja / 0.35 - 1, 3) + 1.7 * Math.pow(ja / 0.35 - 1, 2)) : 1;
+      ctx.save();
+      ctx.translate(x + w / 2, y + 170);
+      ctx.scale(Math.max(0.01, sc), Math.max(0.01, sc));
+      ctx.filter = 'grayscale(1) brightness(0.65)';
+      if (!drawHeroImg('kenna', 0, 0, 110)) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(heroSprites.kenna.down[1], -40, -110, 80, 80);
+      }
+      ctx.filter = 'none';
+      ctx.restore();
+      ctx.strokeStyle = PLAYER_COLORS[i];
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(t * 10);
+      ctx.strokeRect(x - 3, y - 3, w + 6, h + 6);
+      ctx.globalAlpha = 1;
+      ctx.font = '700 13px Cinzel, Georgia, serif';
+      ctx.fillStyle = PLAYER_COLORS[i];
+      ctx.fillText('P' + (i + 1) + ' JOINS!', x + w / 2, y + 210);
+      if (ja > 0.55) {
+        ctx.font = '600 11px Inter, sans-serif';
+        ctx.fillStyle = UI.dim;
+        ctx.fillText('choose your knight…', x + w / 2, y + 228);
+      }
+      if (ja > 0.95) {
+        game.fromLobby = true;
+        game.joinSlot = game.joinAnim.slot;
+        game.joinVia = game.joinAnim.via;
+        game.phase = 'select2';
+        game.cursor = 0;
+        game.joinAnim = null;
+      }
     } else {
       ctx.font = '46px Georgia, serif';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
@@ -5478,9 +5607,9 @@ function renderLobby(t) {
     ctx.textAlign = 'center';
     ctx.fillText(remotes
       ? '🌐 ' + remotes + ' online friend' + (remotes > 1 ? 's' : '') + ' will ride with you'
-      : '🌐 Room ' + NET.code + ' open — online friends can still join mid-battle', 480, 428);
+      : '🌐 Room ' + NET.code + ' open — online friends can still join mid-battle', CX, 428);
   }
-  drawActionBtn(384, 448, 192, 46, '⚔ START BATTLE', 'green', -5);
+  drawActionBtn(CX - 96, 448, 192, 46, '⚔ START BATTLE', 'green', -5);
   drawHintsBar([['A / SPACE', true], ['START THE BATTLE', false], ['·', false], ['EXTRA PADS PRESS A', true], ['JOIN', false], ['·', false], ['Y / T', true], ['UPGRADES', false], ['·', false], ['B', true], ['BACK', false]]);
   drawToasts(t);
 }
@@ -5496,7 +5625,7 @@ function renderMapSelect(t) {
   for (let i = 0; i < MAPS.length; i++) {
     const m = MAPS[i];
     const col = i % cols, row = Math.floor(i / cols);
-    const x = 480 - (cols * cw + (cols - 1) * gap) / 2 + col * (cw + gap);
+    const x = CX - (cols * cw + (cols - 1) * gap) / 2 + col * (cw + gap);
     const y = 100 + row * (chh + gap);
     cardRects.push({ x, y, w: cw, h: chh, idx: i });
     const sel = game.cursor === i;
@@ -5585,7 +5714,7 @@ function render(t) {
   ctx.save();
   ctx.translate(view.ox, view.oy);
   ctx.scale(view.scale, view.scale);
-  ctx.beginPath(); ctx.rect(0, 0, 960, 640); ctx.clip();
+  ctx.beginPath(); ctx.rect(0, 0, ROOM_W, 640); ctx.clip();
 
   if (game.phase === 'select') { renderSelect(t); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'select2') { renderSelect(t, true); ctx.restore(); frameShadow(); return; }
@@ -5599,7 +5728,7 @@ function render(t) {
     ctx.textAlign = 'center';
     ctx.font = '15px Inter, sans-serif';
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.25 * Math.sin(t * 3)})`;
-    ctx.fillText('Waiting for the host to ride into battle…', 480, 330);
+    ctx.fillText('Waiting for the host to ride into battle…', CX, 330);
     drawToasts(t);
     ctx.restore();
     frameShadow();
@@ -5614,7 +5743,7 @@ function render(t) {
   ctx.translate(-Math.round(cam.x + shx), -Math.round(cam.y + shy));
 
   ctx.fillStyle = M.base;
-  ctx.fillRect(cam.x - 20, cam.y - 20, 1000, 680);
+  ctx.fillRect(cam.x - 20, cam.y - 20, ROOM_W + 80, 680);
   // organic tone patches (clustered blobs, not perfect ellipses)
   const m0x = Math.floor(cam.x / 150), m0y = Math.floor(cam.y / 150);
   for (let my = m0y; my <= m0y + 5; my++) {
@@ -5637,7 +5766,7 @@ function render(t) {
   }
   const c0x = Math.floor(cam.x / 64), c0y = Math.floor(cam.y / 64);
   for (let cy = c0y; cy <= c0y + 10; cy++) {
-    for (let cx = c0x; cx <= c0x + 15; cx++) {
+    for (let cx = c0x; cx <= c0x + Math.ceil(ROOM_W / 64) + 1; cx++) {
       const h = hash2(cx, cy);
       const px = cx * 64 + hash2(cx, cy, 3) * 44 + 8;
       const py = cy * 64 + hash2(cx, cy, 4) * 44 + 8;
@@ -5732,7 +5861,7 @@ function render(t) {
   ctx.fillStyle = M.edge;
   if (cam.x < 24) ctx.fillRect(cam.x - 200, cam.y - 200, 224 - cam.x + 200, 1040);
   if (cam.y < 24) ctx.fillRect(cam.x - 200, cam.y - 200, 1360, 224 - cam.y + 200);
-  if (cam.x + 960 > WORLD_W - 24) ctx.fillRect(WORLD_W - 24, cam.y - 200, 500, 1040);
+  if (cam.x + ROOM_W > WORLD_W - 24) ctx.fillRect(WORLD_W - 24, cam.y - 200, 500, 1040);
   if (cam.y + 640 > WORLD_H - 24) ctx.fillRect(cam.x - 200, WORLD_H - 24, 1360, 500);
 
   // novas (under entities)
@@ -5762,6 +5891,70 @@ function render(t) {
     ctx.globalAlpha = 1;
     ctx.restore();
   }
+  // weapon strike poses: the weapon itself, swinging at the knight's side
+  for (const st of strikes) {
+    const f = Math.min(1, st.age / 0.3);
+    ctx.save();
+    ctx.translate(st.x, st.y);
+    ctx.rotate(st.ang);
+    ctx.globalAlpha = 1 - f * f;
+    if (st.kind === 'hammer') {
+      // raise… and SLAM
+      const sw = f < 0.4 ? -1.9 + f / 0.4 * 0.6 : -1.3 + easeOutQ((f - 0.4) / 0.6) * 1.55;
+      ctx.rotate(sw);
+      ctx.fillStyle = '#6b4a2a';
+      ctx.fillRect(6, -3, 40, 6);
+      ctx.fillStyle = st.gold ? UI.gold : '#9aa7b4';
+      ctx.fillRect(40, -14, 18, 28);
+      ctx.fillStyle = st.gold ? '#ffe9b3' : '#c9d3dc';
+      ctx.fillRect(40, -14, 18, 8);
+    } else if (st.kind === 'bow') {
+      ctx.strokeStyle = '#8a5a2c';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(6, 0, 20, -1.15, 1.15); ctx.stroke();
+      const pull = f < 0.25 ? (1 - f / 0.25) * 10 : 0;
+      ctx.strokeStyle = '#e8ddc8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(6 + Math.cos(-1.15) * 20, Math.sin(-1.15) * 20);
+      ctx.lineTo(6 - pull, 0);
+      ctx.lineTo(6 + Math.cos(1.15) * 20, Math.sin(1.15) * 20);
+      ctx.stroke();
+    } else if (st.kind === 'thrust') {
+      const push = 12 + easeOutQ(Math.min(1, f / 0.45)) * 18 - f * 8;
+      ctx.translate(push, 0);
+      ctx.fillStyle = '#3f6f8a';
+      ctx.fillRect(-18, -2.5, 34, 5);
+      ctx.fillStyle = '#9fd8f0';
+      for (const sd of [-1, 0, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(16, sd * 7 - 2); ctx.lineTo(28, sd * 7); ctx.lineTo(16, sd * 7 + 2);
+        ctx.closePath(); ctx.fill();
+      }
+    } else if (st.kind === 'staff') {
+      ctx.fillStyle = '#6b4a2a';
+      ctx.fillRect(-6, -2.5, 32, 5);
+      ctx.fillStyle = st.col || '#bae6fd';
+      ctx.beginPath(); ctx.arc(30, 0, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = (1 - f) * 0.55;
+      ctx.beginPath(); ctx.arc(30, 0, 6 + f * 22, 0, Math.PI * 2); ctx.fill();
+    } else if (st.kind === 'blunder') {
+      ctx.fillStyle = '#6b4a2a';
+      ctx.fillRect(-4, -4, 22, 8);
+      ctx.fillStyle = '#4b5563';
+      ctx.beginPath();
+      ctx.moveTo(18, -6); ctx.lineTo(32, -9); ctx.lineTo(32, 9); ctx.lineTo(18, 6);
+      ctx.closePath(); ctx.fill();
+      if (f < 0.4) {
+        ctx.fillStyle = `rgba(253, 224, 71, ${(1 - f / 0.4) * 0.9})`;
+        ctx.beginPath();
+        ctx.moveTo(33, -8); ctx.lineTo(33 + 22 * (1 - f), 0); ctx.lineTo(33, 8);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
   for (const nv of novas) {
     const f = nv.age / 0.35;
     if (nv.slam) {
@@ -6050,13 +6243,13 @@ function render(t) {
     ctx.translate(s.x, s.y);
     ctx.rotate(a1 - 0.22);
     ctx.globalAlpha = 0.3 * (1 - f);
-    drawSword(s.r - 14);
+    (s.wpn === 'axe' ? drawAxe : drawSword)(s.r - 14);
     ctx.restore();
     ctx.save();
     ctx.translate(s.x, s.y);
     ctx.rotate(a1);
     ctx.globalAlpha = Math.min(1, (1 - f) * 3);
-    drawSword(s.r - 14);
+    (s.wpn === 'axe' ? drawAxe : drawSword)(s.r - 14);
     ctx.restore();
     ctx.globalAlpha = 1;
   }
@@ -6089,22 +6282,22 @@ function render(t) {
   ctx.restore(); // end camera
 
   // ---- atmosphere: vignette, map ambience, hurt flash ----
-  const vg2 = ctx.createRadialGradient(480, 320, 300, 480, 320, 620);
+  const vg2 = ctx.createRadialGradient(CX, 320, 300, CX, 320, 620);
   vg2.addColorStop(0, 'rgba(0, 0, 0, 0)');
   vg2.addColorStop(1, 'rgba(8, 5, 14, 0.34)');
   ctx.fillStyle = vg2;
-  ctx.fillRect(0, 0, 960, 640);
+  ctx.fillRect(0, 0, ROOM_W, 640);
   if (MAPS[game.mapPick].key === 'crypt') {
     ctx.fillStyle = 'rgba(34, 24, 66, 0.16)';
-    ctx.fillRect(0, 0, 960, 640);
+    ctx.fillRect(0, 0, ROOM_W, 640);
   }
   if (settings.flash !== false && game.hurtFlash > 0) {
     const hf = game.hurtFlash / 0.4;
-    const rg = ctx.createRadialGradient(480, 320, 260, 480, 320, 600);
+    const rg = ctx.createRadialGradient(CX, 320, 260, CX, 320, 600);
     rg.addColorStop(0, 'rgba(220, 40, 50, 0)');
     rg.addColorStop(1, `rgba(220, 40, 50, ${0.38 * hf})`);
     ctx.fillStyle = rg;
-    ctx.fillRect(0, 0, 960, 640);
+    ctx.fillRect(0, 0, ROOM_W, 640);
   }
 
   // ---- HUD: royal command bar (shrinks so 4 knights fit) ----
@@ -6176,27 +6369,27 @@ function render(t) {
   }
 
   // center: timer + XP + level medallion
-  ornate(348, 8, 264, 66, 12);
-  drawCrest(480, 8, 0.95);
+  ornate(CX - 132, 8, 264, 66, 12);
+  drawCrest(CX, 8, 0.95);
   const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
   const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
   ctx.textAlign = 'center';
   ctx.font = '700 28px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldPale;
-  ctx.fillText(mm + ':' + ss, 468, 40);
+  ctx.fillText(mm + ':' + ss, CX - 12, 40);
   ctx.fillStyle = 'rgba(10, 6, 16, 0.85)';
-  ctx.fillRect(368, 52, 196, 10);
-  const xg = ctx.createLinearGradient(368, 0, 564, 0);
+  ctx.fillRect(CX - 112, 52, 196, 10);
+  const xg = ctx.createLinearGradient(CX - 112, 0, CX + 84, 0);
   xg.addColorStop(0, '#7c3aed');
   xg.addColorStop(1, '#c084fc');
   ctx.fillStyle = xg;
-  ctx.fillRect(368, 52, 196 * Math.min(1, game.xp / game.xpNext), 10);
+  ctx.fillRect(CX - 112, 52, 196 * Math.min(1, game.xp / game.xpNext), 10);
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
-  ctx.strokeRect(368, 52, 196, 10);
+  ctx.strokeRect(CX - 112, 52, 196, 10);
   // level medallion
   ctx.beginPath();
-  ctx.arc(592, 46, 19, 0, Math.PI * 2);
+  ctx.arc(CX + 112, 46, 19, 0, Math.PI * 2);
   ctx.fillStyle = '#1a1410';
   ctx.fill();
   ctx.strokeStyle = UI.gold;
@@ -6205,13 +6398,13 @@ function render(t) {
   ctx.textAlign = 'center';
   ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.level), 592, 51);
+  ctx.fillText(String(game.level), CX + 112, 51);
   // objective countdown (or endless badge)
   if (game.endless) {
     ctx.font = '700 12px Inter, sans-serif';
     ctx.fillStyle = '#c9a8ff';
     ctx.textAlign = 'center';
-    ctx.fillText('∞ ENDLESS — THE CURSE NEVER STOPS', 480, 84);
+    ctx.fillText('∞ ENDLESS — THE CURSE NEVER STOPS', CX, 84);
   } else {
     const goalSec2 = MAPS[game.mapPick].goal * 60;
     const remain = Math.max(0, goalSec2 - game.time);
@@ -6220,14 +6413,16 @@ function render(t) {
     ctx.font = '600 11px Inter, sans-serif';
     ctx.fillStyle = 'rgba(240, 226, 195, 0.7)';
     ctx.textAlign = 'right';
-    ctx.fillText('OBJECTIVE — SURVIVE', 498, 84);
+    ctx.fillText('OBJECTIVE — SURVIVE', CX + 18, 84);
     ctx.textAlign = 'left';
     ctx.font = '700 12px Inter, sans-serif';
     ctx.fillStyle = '#4ade80';
-    ctx.fillText(om + ':' + os, 506, 84);
+    ctx.fillText(om + ':' + os, CX + 26, 84);
   }
 
-  // right: banished counter with a little skull
+  // right: banished counter with a little skull (pinned to the right edge)
+  ctx.save();
+  ctx.translate(ROOM_W - 960, 0);
   ornate(776, 8, 174, 52, 12);
   ctx.fillStyle = '#e8e3d8';
   ctx.beginPath(); ctx.arc(802, 30, 11, 0, Math.PI * 2); ctx.fill();
@@ -6254,20 +6449,21 @@ function render(t) {
   ctx.fillText(String(game.kills), 824, 52);
   ornate(776, 66, 174, 40, 12);
   drawUpgradeIcon('coin', 802, 86, 0.5, t);
+  ctx.restore();
   if ((game.forgeT || 0) > 0) {
     ctx.textAlign = 'center';
     ctx.font = '700 13px Cinzel, Georgia, serif';
     ctx.fillStyle = '#fb923c';
-    ctx.fillText('🔥 FORGE-BLESSED · ' + Math.ceil(game.forgeT) + 's', 480, 126);
+    ctx.fillText('🔥 FORGE-BLESSED · ' + Math.ceil(game.forgeT) + 's', CX, 126);
   }
   // the champion's health looms over the battle
   const bossE = enemies.find(e2 => BOSS_DEFS[e2.kind]);
   if (bossE) {
-    const bw = 380, bx = 480 - bw / 2, by = 96;
+    const bw = 380, bx = CX - bw / 2, by = 96;
     ctx.textAlign = 'center';
     ctx.font = '700 13px Cinzel, Georgia, serif';
     ctx.fillStyle = '#ffb3b6';
-    ctx.fillText('☠ ' + BOSS_DEFS[bossE.kind].name, 480, by - 5);
+    ctx.fillText('☠ ' + BOSS_DEFS[bossE.kind].name, CX, by - 5);
     ctx.fillStyle = 'rgba(9, 7, 5, 0.8)';
     ctx.fillRect(bx - 2, by, bw + 4, 13);
     ctx.strokeStyle = 'rgba(232, 182, 76, 0.6)';
@@ -6284,18 +6480,18 @@ function render(t) {
   }
   // bottom crest band
   ctx.fillStyle = 'rgba(9, 7, 5, 0.85)';
-  ctx.fillRect(0, 630, 960, 10);
+  ctx.fillRect(0, 630, ROOM_W, 10);
   ctx.strokeStyle = '#6b5222';
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, 630);
-  ctx.lineTo(960, 630);
+  ctx.lineTo(ROOM_W, 630);
   ctx.stroke();
-  drawCrest(480, 628, 0.75);
+  drawCrest(CX, 628, 0.75);
   ctx.textAlign = 'right';
   ctx.font = '700 18px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 938, 93);
+  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), ROOM_W - 22, 93);
   if (NET.role === 'host' && NET.code) {
     ctx.textAlign = 'right';
     ctx.font = '700 11px Inter, sans-serif';
@@ -6321,10 +6517,10 @@ function render(t) {
     ctx.font = '600 14px Inter, sans-serif';
     const tw = ctx.measureText(tst.text).width + 42;
     ctx.globalAlpha = a;
-    plate(480 - tw / 2, ty - 19, tw, 30, 15);
+    plate(CX - tw / 2, ty - 19, tw, 30, 15);
     ctx.textAlign = 'center';
     ctx.fillStyle = UI.goldLight;
-    ctx.fillText(tst.text, 480, ty + 1);
+    ctx.fillText(tst.text, CX, ty + 1);
     ctx.globalAlpha = 1;
     ty += 38;
   }
@@ -6333,21 +6529,29 @@ function render(t) {
   cardRects = [];
   if (game.choices) {
     ctx.fillStyle = 'rgba(10, 5, 16, 0.72)';
-    ctx.fillRect(0, 0, 960, 640);
+    ctx.fillRect(0, 0, ROOM_W, 640);
     drawScreenTitle('LEVEL ' + game.level + ' — ROYAL GIFT', 122);
     const gMulti = players.filter(p2 => p2.joined).length > 1;
     const gCh = chooserP();
     const gTint = gMulti ? PLAYER_COLORS[Math.max(0, players.indexOf(gCh)) % 4] : null;
     if (gMulti) {
-      // whose turn it is — banner and everything below glow in their color
+      // whose turn it is — the whole screen wears their color
+      ctx.strokeStyle = gTint;
+      ctx.globalAlpha = 0.45 + 0.3 * Math.sin(t * 5);
+      ctx.lineWidth = 7;
+      ctx.strokeRect(5, 5, ROOM_W - 10, 630);
+      ctx.globalAlpha = 1;
       ctx.textAlign = 'center';
-      ctx.font = '700 17px Cinzel, Georgia, serif';
+      ctx.font = '700 19px Cinzel, Georgia, serif';
       ctx.fillStyle = gTint;
-      ctx.fillText('▼  P' + (players.indexOf(gCh) + 1) + ' — ' + gCh.name + ' CHOOSES  ▼', 480, 158);
+      ctx.fillText('▼  P' + (players.indexOf(gCh) + 1) + ' — ' + gCh.name + ' CHOOSES  ▼', CX, 160);
+      // their knight stands beside the words
+      drawHeroImg(gCh.heroKey, CX - 250, 178, 62);
+      drawHeroImg(gCh.heroKey, CX + 250, 178, 62, true);
     }
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
-      const cx2 = 480 + (i - 1) * 270;
+      const cx2 = CX + (i - 1) * 270;
       const hov = (mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > 195 && mouse.y < 460) || game.padPick === i;
       const top = 205 - (hov ? 10 : 0);
       cardRects.push({ x: cx2 - 115, y: 195, w: 230, h: 265, idx: i });
@@ -6430,20 +6634,20 @@ function render(t) {
     }
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
     ctx.font = '700 14px Cinzel, Georgia, serif';
-    ctx.fillText('CLICK A CARD', 480, 520);
+    ctx.fillText('CLICK A CARD', CX, 520);
     const rrPrice = 25 * ((game.rerolls || 0) + 1);
-    drawActionBtn(388, 542, 184, 34, '🎲 REROLL · ' + rrPrice + 'g', 'dark', -6);
+    drawActionBtn(CX - 92, 542, 184, 34, '🎲 REROLL · ' + rrPrice + 'g', 'dark', -6);
     ctx.textAlign = 'center';
     ctx.fillStyle = 'rgba(240, 226, 195, 0.4)';
     ctx.font = '10px Inter, sans-serif';
-    ctx.fillText('R key · 🎮 X', 480, 592);
+    ctx.fillText('R key · 🎮 X', CX, 592);
   }
 
   if (game.victory) {
     ctx.fillStyle = 'rgba(6, 10, 5, 0.78)';
-    ctx.fillRect(0, 0, 960, 640);
-    plate(230, 140, 500, 350, 18);
-    for (const [dx, dy] of [[230, 140], [730, 140], [230, 490], [730, 490]]) {
+    ctx.fillRect(0, 0, ROOM_W, 640);
+    plate(CX - 250, 140, 500, 350, 18);
+    for (const [dx, dy] of [[CX - 250, 140], [CX + 250, 140], [CX - 250, 490], [CX + 250, 490]]) {
       ctx.save();
       ctx.translate(dx, dy);
       ctx.rotate(Math.PI / 4);
@@ -6455,7 +6659,7 @@ function render(t) {
     ctx.textAlign = 'center';
     ctx.font = '700 17px Cinzel, Georgia, serif';
     ctx.fillStyle = UI.goldPale;
-    ctx.fillText(MAPS[game.mapPick].name + ' IS SAFE!', 480, 238);
+    ctx.fillText(MAPS[game.mapPick].name + ' IS SAFE!', CX, 238);
     const vmm = String(Math.floor(game.time / 60)).padStart(2, '0');
     const vss = String(Math.floor(game.time % 60)).padStart(2, '0');
     const vrows = [
@@ -6480,29 +6684,29 @@ function render(t) {
       ctx.textAlign = 'center';
       ctx.font = '700 15px Cinzel, Georgia, serif';
       ctx.fillStyle = '#4ade80';
-      ctx.fillText('🔓 ' + MAPS[game.mapPick + 1].name + ' UNLOCKED!', 480, vy + 8);
+      ctx.fillText('🔓 ' + MAPS[game.mapPick + 1].name + ' UNLOCKED!', CX, vy + 8);
     }
     if (game.netGuest) {
       ctx.textAlign = 'center';
       ctx.fillStyle = UI.dim;
       ctx.font = '600 13px Inter, sans-serif';
-      ctx.fillText('The host decides what happens next…', 480, 452);
+      ctx.fillText('The host decides what happens next…', CX, 452);
     } else {
-      drawActionBtn(245, 428, 150, 40, '∞ ENDLESS', 'green', -20);
-      drawActionBtn(405, 428, 150, 40, 'PLAY AGAIN', 'gold', -21);
-      drawActionBtn(565, 428, 150, 40, 'MENU', 'dark', -22);
+      drawActionBtn(CX - 235, 428, 150, 40, '∞ ENDLESS', 'green', -20);
+      drawActionBtn(CX - 75, 428, 150, 40, 'PLAY AGAIN', 'gold', -21);
+      drawActionBtn(CX + 85, 428, 150, 40, 'MENU', 'dark', -22);
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(240, 226, 195, 0.45)';
       ctx.font = '11px Inter, sans-serif';
-      ctx.fillText('SPACE — endless   ·   R — again   ·   ESC — menu', 480, 482);
+      ctx.fillText('SPACE — endless   ·   R — again   ·   ESC — menu', CX, 482);
     }
   }
 
   if (game.over) {
     ctx.fillStyle = 'rgba(10, 5, 16, 0.78)';
-    ctx.fillRect(0, 0, 960, 640);
-    plate(230, 150, 500, 330, 18);
-    for (const [dx, dy] of [[230, 150], [730, 150], [230, 480], [730, 480]]) {
+    ctx.fillRect(0, 0, ROOM_W, 640);
+    plate(CX - 250, 150, 500, 330, 18);
+    for (const [dx, dy] of [[CX - 250, 150], [CX + 250, 150], [CX - 250, 480], [CX + 250, 480]]) {
       ctx.save();
       ctx.translate(dx, dy);
       ctx.rotate(Math.PI / 4);
@@ -6513,7 +6717,7 @@ function render(t) {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#e5484d';
     ctx.font = '800 32px Cinzel, Georgia, serif';
-    ctx.fillText('THE KINGDOM HAS FALLEN', 480, 206);
+    ctx.fillText('THE KINGDOM HAS FALLEN', CX, 206);
     ctx.strokeStyle = UI.plateBorder;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(300, 228); ctx.lineTo(660, 228); ctx.stroke();
@@ -6540,21 +6744,21 @@ function render(t) {
       ctx.textAlign = 'center';
       ctx.fillStyle = UI.dim;
       ctx.font = '600 13px Inter, sans-serif';
-      ctx.fillText('The host decides what happens next…', 480, 448);
+      ctx.fillText('The host decides what happens next…', CX, 448);
     } else {
-      drawActionBtn(305, 424, 165, 40, 'PLAY AGAIN', 'gold', -21);
-      drawActionBtn(490, 424, 165, 40, 'MENU', 'dark', -22);
+      drawActionBtn(CX - 175, 424, 165, 40, 'PLAY AGAIN', 'gold', -21);
+      drawActionBtn(CX + 10, 424, 165, 40, 'MENU', 'dark', -22);
     }
   }
 
   if (game.paused) {
     cardRects = [];
     ctx.fillStyle = 'rgba(6, 5, 10, 0.9)';
-    ctx.fillRect(0, 0, 960, 640);
+    ctx.fillRect(0, 0, ROOM_W, 640);
     drawScreenTitle('PAUSED', 130);
     // ---- the war map: whole realm, chests, knights ----
     const mw = 330, mh = Math.round(mw * WORLD_H / WORLD_W);
-    const mx = 480 - mw / 2, my = 168;
+    const mx = CX - mw / 2, my = 168;
     ctx.fillStyle = '#0b0a0e';
     ctx.fillRect(mx, my, mw, mh);
     ctx.fillStyle = MAPS[game.mapPick].base;
@@ -6591,29 +6795,40 @@ function render(t) {
     }
     players.forEach((p2, pi2) => {
       if (!p2.joined) return;
+      const px2 = mx + p2.x * sxm, py2 = my + p2.y * sym;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 5 + pi2);
+      ctx.strokeStyle = PLAYER_COLORS[pi2 % 4];
+      ctx.globalAlpha = 0.7 * (1 - pulse * 0.6);
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px2, py2, 7 + pulse * 7, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
       ctx.fillStyle = PLAYER_COLORS[pi2 % 4];
-      ctx.beginPath(); ctx.arc(mx + p2.x * sxm, my + p2.y * sym, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(px2, py2, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.7)';
+      ctx.lineWidth = 1.5;
       ctx.stroke();
+      ctx.font = '700 10px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = PLAYER_COLORS[pi2 % 4];
+      ctx.fillText('P' + (pi2 + 1), px2, py2 - 11);
     });
     ctx.font = '600 10px Inter, sans-serif';
     ctx.fillStyle = UI.dim;
     ctx.textAlign = 'center';
-    ctx.fillText('◆ chests   ● knights   ● golden wisps   ■ healing shrine   ■ battle forge', 480, my + mh + 16);
+    ctx.fillText('◆ chests   ● knights   ● golden wisps   ■ healing shrine   ■ battle forge', CX, my + mh + 16);
     if (game.netGuest) {
       ctx.fillStyle = UI.dim;
       ctx.font = '600 14px Inter, sans-serif';
-      ctx.fillText('The host paused the battle…', 480, my + mh + 46);
+      ctx.fillText('The host paused the battle…', CX, my + mh + 46);
     } else {
       const by2 = my + mh + 34;
-      drawActionBtn(240, by2, 150, 42, 'RESUME', 'green', -30);
-      drawActionBtn(405, by2, 150, 42, 'HOME MENU', 'gold', -31);
-      drawActionBtn(570, by2, 150, 42, '🏳 QUIT', 'dark', -32);
+      drawActionBtn(CX - 240, by2, 150, 42, 'RESUME', 'green', -30);
+      drawActionBtn(CX - 75, by2, 150, 42, 'HOME MENU', 'gold', -31);
+      drawActionBtn(CX + 90, by2, 150, 42, '🏳 QUIT', 'dark', -32);
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(240, 226, 195, 0.5)';
       ctx.font = '11px Inter, sans-serif';
-      ctx.fillText('ESC or START — resume', 480, by2 + 64);
+      ctx.fillText('ESC or START — resume', CX, by2 + 64);
     }
   }
 
@@ -6707,13 +6922,8 @@ function updateHomeStats() {
     '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / ' + ROSTER.length + '</b>&nbsp;knights</div>' +
     '<div class="hsCard">⏳ <b>' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm</b></div>' +
     '<button class="hsCard" id="hsOnline">🌐 ONLINE</button>' +
-    '<button class="hsCard" id="hsUpgrades">✦ UPGRADES</button>';
-  homeStats.querySelector('#hsUpgrades').addEventListener('click', () => {
-    hideMenu();
-    game.phase = 'armory';
-    game.armoryFrom = 'home';
-    game.cursor = 0;
-  });
+    '<button class="hsCard" id="hsSettings2">⚙ SETTINGS</button>';
+  homeStats.querySelector('#hsSettings2').addEventListener('click', () => openPanel('settings'));
   homeStats.querySelector('#hsOnline').addEventListener('click', () => openPanel('online'));
   homeStats.querySelector('#hsGold').addEventListener('click', () => {
     hideMenu();
@@ -7310,8 +7520,13 @@ function openPanel(name) {
 function closePanels() { panelShade.classList.add('hidden'); setPadFocus(null); }
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
 panelShade.addEventListener('click', e => { if (e.target === panelShade) closePanels(); });
-// the painted button says SETTINGS, so it opens Settings (armory lives on the gold card)
-document.getElementById('btnSettings').addEventListener('click', () => openPanel('settings'));
+// the second plate is UPGRADES now — straight to the armory
+document.getElementById('btnSettings').addEventListener('click', () => {
+  hideMenu();
+  game.phase = 'armory';
+  game.armoryFrom = 'home';
+  game.cursor = 0;
+});
 document.getElementById('btnCredits').addEventListener('click', () => openPanel('credits'));
 document.getElementById('btnPatch').addEventListener('click', e => {
   e.stopPropagation();
@@ -7335,11 +7550,10 @@ function menuToastShow(text, secs = 3.5) {
   clearTimeout(menuToastTimer);
   menuToastTimer = setTimeout(() => menuToastEl.classList.remove('show'), secs * 1000);
 }
-document.getElementById('icDiscord').addEventListener('click', () =>
-  menuToastShow('\u{1F3F0} There is no royal Discord \u2014 the knights prefer carrier pigeons!'));
+document.getElementById('icDiscord').addEventListener('click', () => { fillAchPanel(); openPanel('ach'); });
 document.getElementById('updateCard').addEventListener('click', () => openPanel('patch'));
-document.getElementById('icMail').addEventListener('click', () => { fillMailPanel(); openPanel('mail'); });
-document.getElementById('icBell').addEventListener('click', () => { fillBellPanel(); openPanel('bell'); });
+document.getElementById('icMail').addEventListener('click', () => { fillLbPanel(); openPanel('lb'); });
+document.getElementById('icBell').addEventListener('click', () => { fillStatsPanel(); openPanel('stats'); });
 // the painted bottom-right card says JOIN OUR DISCORD — honor the label
 document.getElementById('questCard').addEventListener('click', () =>
   menuToastShow('\u{1F3F0} There is no royal Discord — the knights prefer carrier pigeons!'));
@@ -7384,6 +7598,7 @@ function showMenu() {
   menuEl.classList.remove('hidden');
 }
 function hideMenu() {
+  setPadFocus(null);
   closePanels();
   menuOpen = false;
   gameStarted = true;
@@ -7438,8 +7653,8 @@ window.addEventListener('keydown', e => {
 
 // ---- update-card carousel ----
 const UC_SLIDES = [
-  { head: '✦ LATEST UPDATE', title: 'v1.6 PETS & CANDY',
-    body: 'Adopt royal pets that fight beside you, brave six new spirits, and climb the brand-new Candy Mountain — with real music all the way.',
+  { head: '✦ LATEST UPDATE', title: 'v2.0 THE WIDESCREEN WAR',
+    body: '14 weapons, laser fusions, 4 bosses and Concur himself, 12 realms, your OWN build in co-op, the full story — and the battle now fills the whole screen.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
@@ -7474,7 +7689,7 @@ const KNIGHT_LORE = [
   { x: 33.4, w: 7, name: 'Sir Bramble', role: 'Knight of the Shield', lore: '\u{1F6E1} His shield has never once broken. He was frozen mid-oath.' },
   { x: 43.7, w: 7, name: 'Dame Ember', role: 'Knight of the Flame', lore: '\u{1F525} Her blade still smolders beneath the stone.' },
   { x: 52.9, w: 7.5, name: 'Kenna', role: 'The Last Squire', lore: '⚔ This is you. The kingdom’s only hope.' },
-  { x: 62.5, w: 5.5, name: 'Sir Whisper', role: 'Knight of Shadows', lore: '\u{1F311} Even turned to stone, he is hard to notice.' },
+  { x: 62.5, w: 5.5, name: 'Dame Whisper', role: 'Knight of Shadows', lore: '\u{1F311} Even turned to stone, he is hard to notice.' },
   { x: 68.6, w: 5.5, name: 'Dame Gale', role: 'Knight of the Wind', lore: '\u{1F32C} The wind still follows her banner, waiting.' },
 ];
 const hotspotsEl = document.getElementById('hotspots');
@@ -7648,6 +7863,8 @@ function fillQuestPanel() {
 
 // ---- live badges + stat card values ----
 function refreshMenuLive() {
+  const kEl = document.getElementById('statKnights');
+  if (kEl) kEl.textContent = (kdMeta.unlocked || []).length + ' / ' + ROSTER.length;
   const achEl = document.getElementById('scAch');
   if (achEl) achEl.textContent = achEarnedCount() + ' / ' + ACH_DEFS.length;
   const best = (kdStats.best || [])[0];
@@ -7888,9 +8105,9 @@ function guestTick(dt) {
   const alive = players.filter(p => p.joined && p.alive);
   const fx = alive.length ? alive.reduce((q, p) => q + p.x, 0) / alive.length : s.x;
   const fy = alive.length ? alive.reduce((q, p) => q + p.y, 0) / alive.length : s.y;
-  cam.x += ((fx - 480) - cam.x) * Math.min(1, dt * 5);
+  cam.x += ((fx - CX) - cam.x) * Math.min(1, dt * 5);
   cam.y += ((fy - 340) - cam.y) * Math.min(1, dt * 5);
-  cam.x = Math.max(0, Math.min(WORLD_W - 960, cam.x));
+  cam.x = Math.max(0, Math.min(WORLD_W - ROOM_W, cam.x));
   cam.y = Math.max(0, Math.min(WORLD_H - 640, cam.y));
 }
 document.getElementById('netHostBtn').addEventListener('click', () => {
@@ -7958,6 +8175,21 @@ function setPadFocus(el) {
   if (padFocusEl && padFocusEl !== el) padFocusEl.classList.remove('padFocus');
   padFocusEl = el || null;
   if (padFocusEl) padFocusEl.classList.add('padFocus');
+  let pc = document.getElementById('padCursor');
+  if (!pc) {
+    pc = document.createElement('div');
+    pc.id = 'padCursor';
+    pc.textContent = '▶';
+    document.body.appendChild(pc);
+  }
+  if (padFocusEl) {
+    const r = padFocusEl.getBoundingClientRect();
+    pc.style.left = (r.left - 32) + 'px';
+    pc.style.top = (r.top + r.height / 2 - 13) + 'px';
+    pc.style.display = 'block';
+  } else {
+    pc.style.display = 'none';
+  }
 }
 function navCandidates(root, sel) {
   return [...root.querySelectorAll(sel)].filter(el => el.offsetParent !== null);
@@ -8062,8 +8294,9 @@ function pollPads() {
         if (tap('a') || tap('start')) startBattle();
         else if (tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; }
         else if (tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; }
-      } else if (players[i] && !players[i].joined && !players[i].remote && tap('a')) {
-        game.fromLobby = true; game.joinSlot = i; game.joinVia = 'pad'; game.phase = 'select2'; game.cursor = 0;
+      } else if (players[i] && !players[i].joined && !players[i].remote && tap('a') && !game.joinAnim) {
+        game.joinAnim = { slot: i, at: performance.now(), via: 'pad' };
+        SFX.join();
       }
       continue;
     }
@@ -8359,7 +8592,11 @@ const SFX = {
   daggers() { if (audioCtx && sfxGate('dg', 90))  nz(sfxBus, audioCtx.currentTime, 0.08, 0.12, { freq: 4200 }); },
   gust()    { if (audioCtx && sfxGate('gu', 120)) nz(sfxBus, audioCtx.currentTime, 0.4, 0.13, { type: 'bandpass', freq: 800, att: 0.09 }); },
   hit()     { if (audioCtx && sfxGate('ht', 50))  tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.06, 0.08, { hz: 200 + Math.random() * 60, slideTo: 120 }); },
-  kill()    { if (audioCtx && sfxGate('kl', 60))  tone(sfxBus, 'triangle', 0, audioCtx.currentTime, 0.16, 0.16, { hz: 330, slideTo: 90 }); },
+  kill()    { if (audioCtx && sfxGate('kl', 60)) {
+    const t0 = audioCtx.currentTime;
+    tone(sfxBus, 'triangle', 0, t0, 0.16, 0.16, { hz: 330, slideTo: 90 });
+    tone(sfxBus, 'sine', 0, t0 + 0.02, 0.12, 0.05, { hz: 1200, slideTo: 1900 });
+  } },
   gem()     { if (audioCtx && sfxGate('gm', 45)) {
     // a warm celesta bell climbing a pentatonic ladder as you chain gems
     const nw = performance.now();
@@ -8376,15 +8613,43 @@ const SFX = {
     // topping the ladder rings a tiny triumphant twinkle
     if (sfxLast.gmN === ladder.length) tone(sfxBus, 'sine', 0, t0 + 0.06, 0.4, 0.06, { hz: hz * 2, slideTo: hz * 2.5 });
   } },
-  coin()    { if (audioCtx && sfxGate('cn', 70))  { tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.07, 0.09, { hz: 1050 }); tone(sfxBus, 'square', 0, audioCtx.currentTime + 0.07, 0.16, 0.09, { hz: 1400 }); } },
+  coin()    { if (audioCtx && sfxGate('cn', 70))  {
+    const t0 = audioCtx.currentTime;
+    tone(sfxBus, 'square', 0, t0, 0.07, 0.08, { hz: 1050 });
+    tone(sfxBus, 'square', 0, t0 + 0.07, 0.16, 0.08, { hz: 1400 });
+    tone(sfxBus, 'sine', 0, t0 + 0.07, 0.2, 0.04, { hz: 2800 });
+  } },
   heart()   { if (audioCtx) { tone(sfxBus, 'sine', 69, audioCtx.currentTime, 0.2, 0.14); tone(sfxBus, 'sine', 76, audioCtx.currentTime + 0.1, 0.3, 0.12); } },
-  hurt()    { if (audioCtx && sfxGate('hu', 200)) { tone(sfxBus, 'sawtooth', 0, audioCtx.currentTime, 0.22, 0.2, { hz: 160, slideTo: 60 }); nz(sfxBus, audioCtx.currentTime, 0.12, 0.12, { type: 'lowpass', freq: 700 }); } },
+  hurt()    { if (audioCtx && sfxGate('hu', 200)) {
+    const t0 = audioCtx.currentTime;
+    tone(sfxBus, 'sawtooth', 0, t0, 0.22, 0.2, { hz: 160, slideTo: 60 });
+    tone(sfxBus, 'sine', 0, t0, 0.24, 0.22, { hz: 90, slideTo: 34 });
+    nz(sfxBus, t0, 0.12, 0.12, { type: 'lowpass', freq: 700 });
+  } },
   bolt()    { if (audioCtx && sfxGate('bo', 150)) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.14, 0.07, { hz: 420, slideTo: 240 }); },
   pet()     { if (audioCtx && sfxGate('pt', 180)) tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.09, 0.07, { hz: 880, slideTo: 1200 }); },
-  levelup() { if (audioCtx) [69, 73, 76, 81].forEach((m, i) => tone(sfxBus, 'triangle', m, audioCtx.currentTime + i * 0.09, 0.35, 0.15)); },
+  levelup() { if (audioCtx) {
+    const t0 = audioCtx.currentTime;
+    [69, 73, 76, 81].forEach((m, i) => {
+      tone(sfxBus, 'triangle', m, t0 + i * 0.09, 0.35, 0.14);
+      tone(sfxBus, 'sine', m + 12, t0 + i * 0.09 + 0.02, 0.3, 0.04);
+    });
+    tone(sfxBus, 'sine', 93, t0 + 0.4, 0.5, 0.05, { att: 0.03 });
+  } },
   pick()    { if (audioCtx) tone(sfxBus, 'triangle', 81, audioCtx.currentTime, 0.14, 0.13); },
-  unlock()  { if (audioCtx) [64, 69, 73, 76].forEach((m, i) => tone(sfxBus, 'triangle', m, audioCtx.currentTime + i * 0.08, 0.3, 0.14)); },
+  unlock()  { if (audioCtx) {
+    const t0 = audioCtx.currentTime;
+    [64, 69, 73, 76].forEach((m, i) => tone(sfxBus, 'triangle', m, t0 + i * 0.08, 0.3, 0.14));
+    tone(sfxBus, 'sine', 88, t0 + 0.32, 0.5, 0.06, { att: 0.01 });
+  } },
   denied()  { if (audioCtx) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.25, 0.1, { hz: 110 }); },
+  join()    { if (audioCtx) {
+    const t0 = audioCtx.currentTime;
+    tone(sfxBus, 'sine', 0, t0, 0.16, 0.13, { hz: 1046 });
+    tone(sfxBus, 'sine', 0, t0 + 0.09, 0.34, 0.15, { hz: 1568 });
+    tone(sfxBus, 'triangle', 0, t0 + 0.09, 0.3, 0.06, { hz: 784 });
+    tone(sfxBus, 'sine', 0, t0 + 0.2, 0.3, 0.05, { hz: 2093 });
+  } },
   laser()   { if (audioCtx && sfxGate('lz', 160)) {
     const t0 = audioCtx.currentTime;
     tone(sfxBus, 'sawtooth', 0, t0, 0.28, 0.1, { hz: 1400, slideTo: 220, att: 0.005 });
