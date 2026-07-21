@@ -4044,13 +4044,9 @@ function drawEnemy(e, t) {
     drawEnemyOverlays(e, t, bob);
     return;
   }
-  // body with top-light shading
-  const bg = ctx.createRadialGradient(-e.r * 0.35, -e.r * 0.45, e.r * 0.15, 0, 0, e.r * 1.15);
-  bg.addColorStop(0, e.flash > 0 ? '#ffffff' : cols.hi);
-  bg.addColorStop(0.65, e.flash > 0 ? '#ffffff' : cols.body);
-  bg.addColorStop(1, e.flash > 0 ? '#f0f0f0' : cols.rim);
-  // every kind has its own silhouette
-  ctx.fillStyle = bg;
+  // Bold two-tone paint matches the composited blob sprites and avoids making
+  // a radial gradient for every hand-drawn monster on every frame.
+  ctx.fillStyle = e.flash > 0 ? '#ffffff' : cols.body;
   ctx.beginPath();
   if (e.kind === 'brute' || e.kind === 'shellback' || e.kind === 'yeti') {
     ctx.moveTo(-e.r, e.r * 0.55);
