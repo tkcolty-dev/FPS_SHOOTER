@@ -500,6 +500,40 @@
   }
   #menu.hasImage .panel .rowBtn { color: #f4f3ef; }
   #menu.hasImage .panel .rowBtn.danger { color: #ffb3b6; }
+  /* ornate frame treatment from Kenna's panel mockup: inner border line,
+     corner studs, emblem + flourish under every panel title */
+  #menu.hasImage .panel::before {
+    content: ''; position: absolute; inset: 0.9vh; pointer-events: none;
+    border: 1px solid rgba(232, 182, 76, 0.28); border-radius: 1.1vh;
+  }
+  #menu.hasImage .panel::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+    background:
+      radial-gradient(circle at 1.6vh 1.6vh, rgba(232, 182, 76, 0.8) 2px, transparent 3.5px),
+      radial-gradient(circle at calc(100% - 1.6vh) 1.6vh, rgba(232, 182, 76, 0.8) 2px, transparent 3.5px),
+      radial-gradient(circle at 1.6vh calc(100% - 1.6vh), rgba(232, 182, 76, 0.8) 2px, transparent 3.5px),
+      radial-gradient(circle at calc(100% - 1.6vh) calc(100% - 1.6vh), rgba(232, 182, 76, 0.8) 2px, transparent 3.5px);
+  }
+  #menu.hasImage .panel h2::before {
+    content: '❖'; display: block;
+    font-size: 2.1vh; color: rgba(232, 182, 76, 0.85);
+    margin-bottom: 0.7vh; letter-spacing: 0;
+  }
+  #menu.hasImage .panel h2::after {
+    content: ''; display: block; margin: 1.2vh auto 0;
+    width: 62%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(232, 182, 76, 0.55), transparent);
+  }
+  #menu.hasImage .panel .rowBtn {
+    font-family: 'Cinzel', Georgia, serif; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em; font-size: 1.7vh;
+  }
+  #menu.hasImage .panelX {
+    border: 1px solid rgba(232, 182, 76, 0.4); border-radius: 0.9vh;
+    width: 3.4vh; height: 3.4vh; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #menu.hasImage .panelX:hover { background: rgba(232, 182, 76, 0.15); }
   .setSection {
     font-family: 'Cinzel', Georgia, serif; font-weight: 800; letter-spacing: 0.18em;
     color: #ffd98a; font-size: 1.9vh; margin: 2.4vh 0 0.2vh;
@@ -747,7 +781,7 @@
     <div class="panel" id="settingsPanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
       <h2>Settings</h2>
-      <div class="setSection">&#127925; Sound</div>
+      <div class="setSection">&#127925; Audio</div>
       <div class="row"><span>Music volume</span><input type="range" id="setMusic" min="0" max="100"></div>
       <div class="row"><span>Sound effects</span><input type="range" id="setSfx" min="0" max="100"></div>
       <div class="setSection">&#9876; Battle</div>
@@ -756,7 +790,7 @@
       <div class="row"><span>Red hit flash</span><input type="checkbox" class="setTog" id="togFlash"></div>
       <div class="row"><span>Particle effects</span><input type="checkbox" class="setTog" id="togParticles"></div>
       <div class="row"><span>FPS counter</span><input type="checkbox" class="setTog" id="togFps"></div>
-      <div class="setSection">&#128421; Screen</div>
+      <div class="setSection">&#128421; Display</div>
       <div class="row"><span>Fullscreen</span><button class="rowBtn" id="setFullscreen">Toggle fullscreen</button></div>
       <div class="setSection">&#127984; Kingdom</div>
       <div class="row"><span>Erase all progress</span><button class="rowBtn danger" id="setReset">Reset the kingdom&hellip;</button></div>
@@ -875,7 +909,7 @@
     </div>
     <div class="panel" id="bellPanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
-      <h2>Royal Decrees</h2>
+      <h2>Royal Decree</h2>
       <div class="patchList" id="bellList"></div>
       <div class="row" style="justify-content:center; margin-top:2vh">
         <button class="rowBtn" data-close>Back</button>
