@@ -620,20 +620,25 @@
   #menu.hasImage #btnSettings .bIcon { font-size: min(2vh, 1.35vw); }
   #menu.hasImage #btnSettings .bChev { font-size: min(1.9vh, 1.3vw); display: inline; color: rgba(255, 255, 255, 0.5); }
   #menu.hasImage .menuBtn::before, #menu.hasImage #btnPlay::after { display: none; }
+  /* hover is silent on the painted stack — ONLY the selected button lights up
+     (Xbox's virtual cursor leaves sticky :hover states behind) */
   #menu.hasImage .menuBtn:hover, #menu.hasImage .menuBtn:focus-visible,
   #menu.hasImage #btnPlay:hover {
     transform: none;
     background: none;
     border: none;
     box-shadow: none;
-    backdrop-filter: brightness(1.28); -webkit-backdrop-filter: brightness(1.28);
   }
   /* the solid UPGRADES plate brightens ITSELF — never lets the painting ghost through */
-  #menu.hasImage #btnSettings:hover, #menu.hasImage #btnSettings.padFocus {
+  #menu.hasImage #btnSettings.padFocus {
     background: rgba(13, 11, 9, 0.96) !important;
     backdrop-filter: blur(8px) !important; -webkit-backdrop-filter: blur(8px) !important;
-    filter: brightness(1.28);
     border: 1.5px solid rgba(255, 217, 138, 0.7) !important;
+  }
+  #menu.hasImage #btnSettings:hover {
+    background: rgba(13, 11, 9, 0.96) !important;
+    border: 1.5px solid rgba(232, 182, 76, 0.42) !important;
+    filter: none !important;
   }
   #menu.hasImage .chip {
     background: none; border: none; box-shadow: none;
