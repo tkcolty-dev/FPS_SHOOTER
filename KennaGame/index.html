@@ -651,8 +651,12 @@
   /* painted bottom cards are live buttons — bar is a soft cinematic fade only */
   #menu.hasImage #bushL, #menu.hasImage #bushR { display: none; }
   #menu.hasImage #bottomBar {
-    height: 16%;
-    background: linear-gradient(180deg, rgba(8, 8, 12, 0) 0%, rgba(8, 8, 12, 0.45) 45%, rgba(8, 8, 12, 0.92) 100%);
+    height: 13%;
+    background: linear-gradient(180deg, rgba(8, 8, 12, 0) 0%, rgba(8, 8, 12, 0.55) 40%, rgba(6, 6, 10, 0.97) 100%);
+    backdrop-filter: blur(7px);
+    -webkit-backdrop-filter: blur(7px);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
+    mask-image: linear-gradient(180deg, transparent 0%, #000 45%);
     box-shadow: none;
     pointer-events: none;
   }
@@ -702,6 +706,38 @@
   #hsSettings:hover {
     transform: translateY(-2px);
     box-shadow: 0 0 24px rgba(232, 182, 76, 0.55);
+  }
+  /* ── gamepad focus ring: d-pad lights painted plates up just like hover ── */
+  #menu.hasImage .menuBtn.padFocus {
+    transform: none;
+    background: rgba(255, 217, 138, 0.07);
+    border: 2px solid rgba(255, 217, 138, 0.8);
+    box-shadow: 0 0 24px rgba(232, 182, 76, 0.4), inset 0 0 18px rgba(232, 182, 76, 0.12);
+    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+  }
+  #menu.hasImage .iconBtn.padFocus {
+    transform: none;
+    background: rgba(255, 217, 138, 0.1);
+    border: 2px solid rgba(255, 217, 138, 0.7);
+    box-shadow: 0 0 16px rgba(232, 182, 76, 0.4);
+  }
+  #menu.hasImage .statCard.padFocus, #menu.hasImage #updateCard.padFocus, #menu.hasImage #questCard.padFocus,
+  #menu.hasImage #chipKnights.padFocus, #menu.hasImage #chipRemaster.padFocus {
+    border: 2px solid rgba(255, 217, 138, 0.7);
+    background: rgba(255, 217, 138, 0.06);
+    box-shadow: 0 0 22px rgba(232, 182, 76, 0.35);
+    backdrop-filter: brightness(1.16); -webkit-backdrop-filter: brightness(1.16);
+  }
+  button.hsCard.padFocus {
+    transform: translateY(-2px);
+    border-color: #e8b64c;
+    box-shadow: 0 0 22px rgba(232, 182, 76, 0.5);
+  }
+  .panel .rowBtn.padFocus { background: rgba(201, 168, 106, 0.28); }
+  .panel .padFocus {
+    outline: 2px solid rgba(255, 217, 138, 0.85); outline-offset: 3px;
+    box-shadow: 0 0 14px rgba(232, 182, 76, 0.45);
+    border-radius: 4px;
   }
   /* foreground foliage silhouettes hiding the last painted bits at the corners */
   #bushL, #bushR {
@@ -1183,7 +1219,7 @@ const heroSprites = {
 // ============================================================
 // THE LAST KNIGHT — co-op survivors mode
 // ============================================================
-const WORLD_W = 3200, WORLD_H = 2400;
+const WORLD_W = 4200, WORLD_H = 3150;
 
 // royal UI palette (matches the home page)
 const UI = {
@@ -1362,8 +1398,13 @@ function armoryExit() {
     game.phase = 'run';
     return;
   }
+  if (game.armoryFrom === 'lobby') {
+    game.phase = 'lobby';
+    game.cursor = 0;
+    return;
+  }
   game.phase = 'select';
-  game.cursor = 0;
+  game.cursor = game.selCursor || 0;   // back to the knight you were eyeing
   if (game.armoryFrom === 'home') showMenu();
 }
 
@@ -1424,18 +1465,36 @@ const STRUCT_TYPES = {
   wall: { w: 150, h: 34 }, pillar: { w: 34, h: 30 }, ruin: { w: 110, h: 78 },
   fence: { w: 120, h: 14 }, well: { w: 52, h: 42 }, tomb: { w: 54, h: 34 },
   tree: { w: 42, h: 26 }, rock: { w: 72, h: 48 }, brazier: { w: 38, h: 30 },
+  shrine: { w: 96, h: 62 }, forge: { w: 108, h: 66 },
 };
 let structures = [];
 function genStructures(mi) {
   structures = [];
   const M = MAPS[mi];
-  for (let i = 0; i < 56; i++) {
+  for (let i = 0; i < 90; i++) {
     const x = 160 + hash2(i * 13 + mi * 7, 1) * (WORLD_W - 320);
     const y = 200 + hash2(i * 13 + mi * 7, 2) * (WORLD_H - 380);
     if (Math.hypot(x - WORLD_W / 2, y - WORLD_H / 2) < 280) continue;
     const type = M.structs[Math.floor(hash2(i * 13 + mi * 7, 3) * M.structs.length)];
     const st = STRUCT_TYPES[type];
     structures.push({ x, y, w: st.w, h: st.h, type, seed: i });
+  }
+  // real buildings with a real point: one healing shrine + one battle forge per realm
+  for (const [si, type] of [[0, 'shrine'], [1, 'forge']]) {
+    let a = hash2(mi * 31 + si * 17 + 3, 5) * Math.PI * 2;
+    const d = 720 + hash2(mi * 31 + si * 17 + 3, 6) * 620;
+    // the two buildings must never crowd each other
+    const prior = structures.find(s => s.type === 'shrine');
+    let x, y, tries = 0;
+    do {
+      x = Math.max(220, Math.min(WORLD_W - 220, WORLD_W / 2 + Math.cos(a) * d));
+      y = Math.max(260, Math.min(WORLD_H - 160, WORLD_H / 2 + Math.sin(a) * d * 0.75));
+      a += 1.7;
+    } while (prior && Math.hypot(prior.x - x, prior.y - y) < 500 && ++tries < 5);
+    const st = STRUCT_TYPES[type];
+    // clear squatters so the building isn't buried in props (but never another special)
+    structures = structures.filter(s => s.type === 'shrine' || s.type === 'forge' || Math.hypot(s.x - x, s.y - y) > 150);
+    structures.push({ x, y, w: st.w, h: st.h, type, seed: 200 + si, cd: 0 });
   }
 }
 function pushOut(px, py, r) {
@@ -1483,7 +1542,7 @@ window.addEventListener('keydown', e => {
       else confirmSelection();
     }
     if (game.phase === 'select2' && e.code === 'Backspace') { game.phase = game.fromLobby ? 'lobby' : 'run'; game.fromLobby = false; return; }
-    if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.armoryFrom = 'select'; game.cursor = 0; }
+    if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.armoryFrom = 'select'; game.selCursor = game.cursor; game.cursor = 0; }
     return;
   }
   if (game.phase === 'armory') {
@@ -1499,6 +1558,7 @@ window.addEventListener('keydown', e => {
   if (game.phase === 'lobby') {
     if (['Space', 'Enter'].includes(e.code)) startBattle();
     if (e.code === 'Backspace') { game.phase = 'map'; game.cursor = game.mapPick; }
+    if (e.code === 'KeyT') { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; }
     if (e.code === 'KeyJ' && players[1] && !players[1].joined) {
       game.fromLobby = true; game.joinSlot = 1; game.phase = 'select2'; game.cursor = 0;
     }
@@ -1618,8 +1678,13 @@ function confirmSelection() {
       return;
     }
     game.mapPick = game.cursor;
-    game.phase = 'lobby';       // gather the party first
+    game.phase = 'lobby';       // gather the party first — everyone re-joins fresh
     game.cursor = 0;
+    // P1's card must show the knight just chosen, not last battle's
+    applyHero(players[0], game.heroPick);
+    for (let pi = 1; pi < players.length; pi++) {
+      if (!players[pi].remote) { players[pi].joined = false; players[pi].alive = false; }
+    }
   }
 }
 function startBattle() {
@@ -1732,6 +1797,7 @@ function initRun() {
   game.xp = 0; game.level = 1; game.xpNext = 10; game.choices = null;
   game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
+  game.stompT = 0; game.crownT = 0; game.mendK = 0;
   enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = [];
   runPets = [];
   PETS.forEach((pd, i) => {
@@ -1747,6 +1813,7 @@ function initRun() {
     p.hp = 6; p.maxHp = 6; p.alive = true; p.invuln = 0;
     p.speed = 235; p.attackEvery = 0.6; p.range = 175; p.damage = 1; p.arc = 1.2;
     p.magnet = 95; p.orbCount = 0; p.wave = 0;
+    p.barrier = 0; p.barrierCd = 0;
     p.attackTimer = Math.random() * 0.5; p.reviveProgress = 0;
     const slot = players.indexOf(p);
     p.x = WORLD_W / 2 - 40 + slot * 34;
@@ -1774,20 +1841,56 @@ function initRun() {
   game.paidOut = false;
   game.victory = false;
   genStructures(game.mapPick);
-  // treasure chests, scattered far from the spawn
+  // treasure chests — far from the spawn AND far from each other
   chests = [];
-  for (let ci = 0; ci < 9; ci++) {
+  let ctries = 0;
+  while (chests.length < 13 && ctries++ < 300) {
     const cx3 = 260 + Math.random() * (WORLD_W - 520);
     const cy3 = 260 + Math.random() * (WORLD_H - 520);
-    if (Math.hypot(cx3 - WORLD_W / 2, cy3 - WORLD_H / 2) < 420) continue;
+    if (Math.hypot(cx3 - WORLD_W / 2, cy3 - WORLD_H / 2) < 620) continue;
+    if (chests.some(c => Math.hypot(c.x - cx3, c.y - cy3) < 520)) continue;
     const cp = pushOut(cx3, cy3, 26);
     chests.push({ x: cp.x, y: cp.y, open: false, seed: Math.random() * 10 });
   }
+  game.forgeT = 0;
 }
 
 function gameToast(text) {
   toasts.push({ text, age: 0 });
   if (NET.role === 'host') netSend({ t: 'toast', m: text });
+}
+
+// what's inside is decided the moment the lid opens — the wheel just builds the drama
+function rollChestReward() {
+  const luck = Math.random();
+  if (luck < 0.5) return { kind: 'gold', icon: 'coin', label: 'ROYAL GOLD' };
+  if (luck < 0.82) {
+    const pool = UPGRADES.filter(u => upLvl(u.key) < u.max && u.key !== 'shuffle');
+    if (pool.length) {
+      const gift = pool[Math.floor(Math.random() * pool.length)];
+      return { kind: 'gift', gift, icon: gift.icon, label: gift.name.toUpperCase() };
+    }
+    return { kind: 'gold', icon: 'coin', label: 'ROYAL GOLD' };
+  }
+  return { kind: 'hearts', icon: 'heart', label: 'HEALING HEARTS' };
+}
+function applyChestReward(ch) {
+  const rw = ch.reward;
+  SFX.levelup();
+  if (rw.kind === 'gold') {
+    for (let k = 0; k < 4 + Math.floor(Math.random() * 3); k++) {
+      drops.push({ x: ch.x + (Math.random() - 0.5) * 60, y: ch.y + 10 + (Math.random() - 0.5) * 36, kind: 'coin', v: 3 + Math.floor(Math.random() * 4) });
+    }
+    gameToast('🪙 The chest spills royal gold!');
+  } else if (rw.kind === 'gift') {
+    rw.gift.apply();
+    game.up[rw.gift.key] = upLvl(rw.gift.key) + 1;
+    gameToast('🎁 Chest gift: ' + rw.gift.name + '  Lv ' + game.up[rw.gift.key] + '!');
+  } else {
+    drops.push({ x: ch.x - 22, y: ch.y + 8, kind: 'heart' });
+    drops.push({ x: ch.x + 22, y: ch.y + 8, kind: 'heart' });
+    gameToast('❤ The chest holds healing hearts!');
+  }
 }
 
 // ---------- upgrades ----------
@@ -1820,6 +1923,26 @@ const UPGRADES = [
     apply: () => { game.phoenix = (game.phoenix || 0) + 1; } },
   { key: 'rush', name: 'Gold Rush', icon: 'goldrush', max: 3, desc: '+20% gold for this battle',
     apply: () => {} },
+  { key: 'crit', name: "Knight's Edge", icon: 'crit', max: 3, desc: '10% chance to strike DOUBLE',
+    apply: () => {} },
+  { key: 'echo', name: 'Echo Strike', icon: 'echo', max: 3, desc: 'Attacks may instantly strike again',
+    apply: () => {} },
+  { key: 'stomp', name: 'Battle Stomp', icon: 'stomp', max: 3, desc: 'Knights stomp — nearby foes go flying',
+    apply: () => {} },
+  { key: 'crown', name: 'Storm Crown', icon: 'crown', max: 3, desc: 'Lightning smites a nearby fiend',
+    apply: () => {} },
+  { key: 'barrier', name: 'Royal Barrier', icon: 'barrier', max: 3, desc: 'A bubble blocks one hit, then recharges',
+    apply: () => {} },
+  { key: 'plate', name: 'Steel Plate', icon: 'plate', max: 3, desc: 'Stay protected longer after a hit',
+    apply: () => {} },
+  { key: 'mend', name: 'Soothing Light', icon: 'mend', max: 3, desc: 'Banishing spirits mends your hearts',
+    apply: () => {} },
+  { key: 'wisdom', name: 'Ancient Wisdom', icon: 'wisdom', max: 3, desc: 'Every gem teaches +15% more',
+    apply: () => {} },
+  { key: 'slayer', name: 'Giant Slayer', icon: 'slayer', max: 3, desc: '+25% damage to the big brutes',
+    apply: () => {} },
+  { key: 'fury', name: 'Wounded Fury', icon: 'fury', max: 3, desc: 'Wounded knights hit +1 harder',
+    apply: () => {} },
 ];
 function upLvl(k) { return game.up[k] || 0; }
 function rotateHeroes() {
@@ -1840,7 +1963,8 @@ function levelUp() {
   SFX.levelup();
   if (upLvl('shuffle') > 0) rotateHeroes();
   game.choicesAt = performance.now();
-  game.xpNext = 8 + game.level * 5;
+  // each crown is harder to earn than the last — Vampire-Survivors-style ramp
+  game.xpNext = Math.round(6 + game.level * 6 + Math.pow(game.level, 1.55));
   const pool = UPGRADES.filter(u => upLvl(u.key) < u.max);
   const picks = [];
   while (picks.length < 3 && pool.length) {
@@ -1912,6 +2036,10 @@ function nearestAlivePlayer(x, y) {
 }
 
 function hurtEnemy(e, dmg, ang, kb) {
+  if ((game.forgeT || 0) > 0) dmg *= 1.4;               // forge-blessed blades
+  if (upLvl('slayer') > 0 && e.r >= 17) dmg *= 1 + 0.25 * upLvl('slayer');
+  if (upLvl('fury') > 0 && players.some(p => p.joined && p.alive && p.hp <= p.maxHp / 2)) dmg += upLvl('fury');
+  if (upLvl('crit') > 0 && Math.random() < 0.1 * upLvl('crit')) dmg *= 2;
   if (e.kind === 'shellback') dmg = Math.min(dmg, 1);   // armored — chip damage only
   e.hp -= dmg;
   e.flash = 0.12;
@@ -1926,8 +2054,17 @@ function hurtEnemy(e, dmg, ang, kb) {
 }
 
 function hitPlayer(t, e) {
+  if ((t.barrier || 0) > 0) {
+    // the royal barrier pops instead of the knight
+    t.barrier = 0;
+    t.barrierCd = [45, 45, 34, 24][upLvl('barrier')] || 45;
+    t.invuln = 1;
+    SFX.bolt();
+    particles.push({ x: t.x, y: t.y - 18, vx: 0, vy: 0, ring: true, life: 0.3, color: '#7dd3fc', size: 30 });
+    return;
+  }
   t.hp -= 1;
-  t.invuln = 1.2;
+  t.invuln = 1.2 + 0.25 * upLvl('plate');
   game.shake = 0.25;
   game.hurtFlash = 0.4;
   SFX.hurt();
@@ -1975,8 +2112,22 @@ function killEnemy(i) {
   const e = enemies[i];
   game.kills++;
   SFX.kill();
-  const colors = { wisp: '#a855f7', imp: '#fb923c', brute: '#c084fc', golem: '#94a3b8',
-                   shade: '#7dd3fc', spitter: '#a3e635', splitter: '#e879f9', mite: '#e879f9',
+  if (upLvl('mend') > 0) {
+    game.mendK = (game.mendK || 0) + 1;
+    const need = [99, 22, 15, 9][upLvl('mend')] || 99;
+    if (game.mendK >= need) {
+      game.mendK = 0;
+      const wounded = players.filter(p => p.joined && p.alive && p.hp < p.maxHp)
+        .sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+      if (wounded) {
+        wounded.hp += 1;
+        SFX.heart();
+        particles.push({ x: wounded.x, y: wounded.y - 22, vx: 0, vy: 0, ring: true, life: 0.28, color: '#8fd460', size: 22 });
+      }
+    }
+  }
+  const colors = { wisp: '#5eead4', imp: '#fb923c', brute: '#c08a3e', golem: '#94a3b8',
+                   shade: '#7dd3fc', spitter: '#a3e635', splitter: '#f472b6', mite: '#f472b6',
                    charger: '#f87171', gilded: '#fde047', shellback: '#d4a05a',
                    warlock: '#2dd4a0', reaper: '#f43f5e' };
   for (let k = 0; k < (e.kind === 'golem' ? 16 : 8); k++) {
@@ -2174,7 +2325,11 @@ function update(dt) {
     }
 
     p.attackTimer -= dt;
-    if (p.attackTimer <= 0 && fireWeapon(p)) p.attackTimer = p.attackEvery;
+    if (p.attackTimer <= 0 && fireWeapon(p)) {
+      // Echo Strike: sometimes the next blow follows almost instantly
+      p.attackTimer = (upLvl('echo') > 0 && Math.random() < 0.2 * upLvl('echo'))
+        ? p.attackEvery * 0.25 : p.attackEvery;
+    }
 
     if (p.orbCount > 0) {
       p.orbAngle += dt * 2.6;
@@ -2383,41 +2538,115 @@ function update(dt) {
       if (d < 22) {
         gems.splice(i, 1);
         SFX.gem();
-        game.xp += g2.v;
+        game.xp += g2.v * (1 + 0.15 * upLvl('wisdom'));
         if (game.xp >= game.xpNext) { game.xp -= game.xpNext; levelUp(); }
         continue;
       }
     }
   }
-  // treasure chests spring open when a knight reaches them
+  // treasure chests spring open when a knight reaches them — with a prize-wheel reveal
   for (const ch3 of chests) {
+    if (ch3.openT !== undefined) {
+      ch3.openT += dt;
+      // sparkles pour out while the lid is up
+      if (ch3.openT < 2.6 && Math.random() < 0.5) {
+        const a = Math.random() * Math.PI * 2, sp2 = 30 + Math.random() * 90;
+        particles.push({ x: ch3.x, y: ch3.y - 12, vx: Math.cos(a) * sp2, vy: -70 - Math.random() * 90, life: 0.6, color: Math.random() < 0.5 ? '#ffd98a' : '#fff6dd', size: 2.5 });
+      }
+      // the wheel slows... lands... and the prize is real
+      if (!ch3.applied && ch3.openT >= 1.7) {
+        ch3.applied = true;
+        applyChestReward(ch3);
+      }
+      continue;
+    }
     if (ch3.open) continue;
     const near = players.find(p => p.joined && p.alive && Math.hypot(p.x - ch3.x, p.y - ch3.y) < 34);
     if (!near) continue;
     ch3.open = true;
+    ch3.openT = 0;
+    ch3.reward = rollChestReward();
     SFX.unlock();
-    for (let k = 0; k < 10; k++) {
-      const a = Math.random() * Math.PI * 2, sp2 = 60 + Math.random() * 120;
-      particles.push({ x: ch3.x, y: ch3.y - 10, vx: Math.cos(a) * sp2, vy: Math.sin(a) * sp2 - 60, life: 0.5, color: '#ffd98a', size: 3 });
+    game.shake = Math.max(game.shake, 0.12);
+    for (let k = 0; k < 14; k++) {
+      const a = Math.random() * Math.PI * 2, sp2 = 60 + Math.random() * 130;
+      particles.push({ x: ch3.x, y: ch3.y - 10, vx: Math.cos(a) * sp2, vy: Math.sin(a) * sp2 - 70, life: 0.55, color: '#ffd98a', size: 3 });
     }
-    const luck = Math.random();
-    if (luck < 0.5) {
-      for (let k = 0; k < 3 + Math.floor(Math.random() * 3); k++) {
-        drops.push({ x: ch3.x + (Math.random() - 0.5) * 44, y: ch3.y + (Math.random() - 0.5) * 30, kind: 'coin', v: 3 + Math.floor(Math.random() * 4) });
+  }
+  // upgrade-powered wonders
+  if (upLvl('barrier') > 0) {
+    for (const p of players) {
+      if (!p.joined || !p.alive || (p.barrier || 0) > 0) continue;
+      p.barrierCd = (p.barrierCd === undefined ? 0 : p.barrierCd) - dt;
+      if (p.barrierCd <= 0) {
+        p.barrier = 1;
+        particles.push({ x: p.x, y: p.y - 18, vx: 0, vy: 0, ring: true, life: 0.3, color: '#7dd3fc', size: 26 });
       }
-      gameToast('🪙 The chest spills royal gold!');
-    } else if (luck < 0.82) {
-      const pool = UPGRADES.filter(u => upLvl(u.key) < u.max && u.key !== 'shuffle');
-      if (pool.length) {
-        const gift = pool[Math.floor(Math.random() * pool.length)];
-        gift.apply();
-        game.up[gift.key] = upLvl(gift.key) + 1;
-        gameToast('🎁 Chest gift: ' + gift.name + '  Lv ' + game.up[gift.key] + '!');
+    }
+  }
+  if (upLvl('stomp') > 0) {
+    game.stompT = (game.stompT || 0) - dt;
+    if (game.stompT <= 0) {
+      game.stompT = Math.max(3.5, 8.5 - upLvl('stomp') * 1.5);
+      let hitAny = false;
+      for (const p of players) {
+        if (!p.joined || !p.alive) continue;
+        particles.push({ x: p.x, y: p.y, vx: 0, vy: 0, ring: true, life: 0.35, color: '#e8b64c', size: 95 });
+        for (const e of enemies) {
+          if (Math.hypot(e.x - p.x, e.y - p.y) < 160) {
+            hurtEnemy(e, upLvl('stomp'), Math.atan2(e.y - p.y, e.x - p.x), 420);
+            hitAny = true;
+          }
+        }
+      }
+      if (hitAny) { SFX.gust(); game.shake = Math.max(game.shake, 0.12); }
+    }
+  }
+  if (upLvl('crown') > 0) {
+    game.crownT = (game.crownT || 0) - dt;
+    if (game.crownT <= 0) {
+      game.crownT = Math.max(1.6, 5 - upLvl('crown'));
+      let best = null, bd = 1e9;
+      const ccx = cam.x + 480, ccy = cam.y + 320;
+      for (const e of enemies) {
+        const d = (e.x - ccx) ** 2 + (e.y - ccy) ** 2;
+        if (d < bd) { bd = d; best = e; }
+      }
+      if (best && bd < 520 * 520) {
+        hurtEnemy(best, 3 * upLvl('crown'), Math.random() * Math.PI * 2, 80);
+        SFX.bolt();
+        for (let k = 0; k < 9; k++) {
+          particles.push({ x: best.x + (Math.random() - 0.5) * 8, y: best.y - k * 16, vx: (Math.random() - 0.5) * 50, vy: 30, life: 0.22, color: '#fde047', size: 3.5 });
+        }
+        particles.push({ x: best.x, y: best.y, vx: 0, vy: 0, ring: true, life: 0.26, color: '#fde047', size: 30 });
+      }
+    }
+  }
+  // sacred buildings lend their aid to knights who visit
+  game.forgeT = Math.max(0, (game.forgeT || 0) - dt);
+  for (const s of structures) {
+    if (s.type !== 'shrine' && s.type !== 'forge') continue;
+    s.cd = Math.max(0, (s.cd || 0) - dt);
+    const doorY = s.y + 26;
+    if (s.type === 'shrine') {
+      if (s.cd > 0) continue;
+      const pat = players.find(p => p.joined && p.alive && p.hp < p.maxHp && Math.hypot(p.x - s.x, p.y - doorY) < 84);
+      if (pat) {
+        pat.hp = Math.min(pat.maxHp, pat.hp + 1);
+        s.cd = 4;
+        SFX.heart();
+        particles.push({ x: pat.x, y: pat.y - 24, vx: 0, vy: 0, ring: true, life: 0.3, color: '#8fd460', size: 26 });
       }
     } else {
-      drops.push({ x: ch3.x - 16, y: ch3.y, kind: 'heart' });
-      drops.push({ x: ch3.x + 16, y: ch3.y, kind: 'heart' });
-      gameToast('❤ The chest holds healing hearts!');
+      if (s.cd > 0) continue;
+      const smith = players.find(p => p.joined && p.alive && Math.hypot(p.x - s.x, p.y - doorY) < 84);
+      if (smith) {
+        s.cd = 45;
+        game.forgeT = 15;
+        SFX.unlock();
+        gameToast('🔥 The forge blesses your blades — +40% damage for 15s!');
+        particles.push({ x: s.x, y: s.y - 30, vx: 0, vy: 0, ring: true, life: 0.32, color: '#fb923c', size: 40 });
+      }
     }
   }
 
@@ -2626,6 +2855,81 @@ function drawStructure(s, M, t) {
     ctx.beginPath();
     ctx.moveTo(x - 5, y - 42); ctx.lineTo(x, y - 52 - 5 * fl); ctx.lineTo(x + 5, y - 42);
     ctx.closePath(); ctx.fill();
+  } else if (s.type === 'shrine') {
+    // the healing shrine — a little stone chapel with a kind green light
+    const ready = (s.cd || 0) <= 0;
+    ctx.fillStyle = M.stone;
+    ctx.fillRect(x - w / 2, y - 64, w, 64);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+    for (let by = y - 54; by < y; by += 13) ctx.fillRect(x - w / 2, by, w, 2);
+    ctx.fillStyle = '#5a3a52';
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2 - 8, y - 62); ctx.lineTo(x, y - 100); ctx.lineTo(x + w / 2 + 8, y - 62);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#71486a';
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2 - 8, y - 62); ctx.lineTo(x, y - 100); ctx.lineTo(x + 6, y - 62);
+    ctx.closePath(); ctx.fill();
+    // the spire and its blessed gem
+    ctx.fillStyle = M.stoneHi;
+    ctx.fillRect(x - 4, y - 116, 8, 18);
+    ctx.drawImage(GLOWS.gemG, x - 16, y - 136, 32, 32);
+    ctx.fillStyle = ready ? '#8fd460' : '#57713f';
+    ctx.beginPath();
+    ctx.moveTo(x, y - 130); ctx.lineTo(x + 7, y - 120); ctx.lineTo(x, y - 110); ctx.lineTo(x - 7, y - 120);
+    ctx.closePath(); ctx.fill();
+    // arched doorway, glowing when the shrine is ready to heal
+    ctx.fillStyle = ready ? 'rgba(143, 212, 96, 0.85)' : 'rgba(20, 26, 16, 0.9)';
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y); ctx.lineTo(x - 12, y - 26);
+    ctx.arc(x, y - 26, 12, Math.PI, 0);
+    ctx.lineTo(x + 12, y); ctx.closePath(); ctx.fill();
+    if (ready) {
+      const pulse = 0.5 + 0.5 * Math.sin(t * 2.5);
+      ctx.strokeStyle = `rgba(143, 212, 96, ${0.25 + 0.2 * pulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y + 8, 60 + pulse * 10, 0, Math.PI * 2); ctx.stroke();
+    }
+  } else if (s.type === 'forge') {
+    // the battle forge — soot-dark smithy, chimney embers, anvil light
+    const ready = (s.cd || 0) <= 0;
+    ctx.fillStyle = '#3a3129';
+    ctx.fillRect(x - w / 2, y - 58, w, 58);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    for (let by = y - 48; by < y; by += 12) ctx.fillRect(x - w / 2, by, w, 2);
+    ctx.fillStyle = '#241d16';
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2 - 10, y - 56); ctx.lineTo(x - w / 6, y - 86); ctx.lineTo(x + w / 2 + 10, y - 56);
+    ctx.closePath(); ctx.fill();
+    // stone chimney with rising embers
+    ctx.fillStyle = M.stone;
+    ctx.fillRect(x + w / 4 - 8, y - 104, 20, 50);
+    ctx.fillStyle = M.stoneHi;
+    ctx.fillRect(x + w / 4 - 10, y - 108, 24, 7);
+    if (ready) {
+      for (let k = 0; k < 3; k++) {
+        const ep = (t * 0.6 + k * 0.33 + (s.seed || 0)) % 1;
+        ctx.fillStyle = `rgba(251, 146, 60, ${0.7 * (1 - ep)})`;
+        ctx.fillRect(x + w / 4 + Math.sin((t + k * 9) * 2.2) * 6, y - 108 - ep * 34, 3, 3);
+      }
+    }
+    // wide furnace mouth, roaring when ready
+    ctx.drawImage(GLOWS.imp, x - 30, y - 52, 60, 60);
+    ctx.fillStyle = ready ? '#fb923c' : 'rgba(60, 30, 14, 0.95)';
+    ctx.beginPath();
+    ctx.moveTo(x - 16, y); ctx.lineTo(x - 16, y - 20);
+    ctx.arc(x, y - 20, 16, Math.PI, 0);
+    ctx.lineTo(x + 16, y); ctx.closePath(); ctx.fill();
+    if (ready) {
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y); ctx.lineTo(x, y - 12 - 4 * Math.sin(t * 8)); ctx.lineTo(x + 8, y);
+      ctx.closePath(); ctx.fill();
+    }
+    // the anvil out front
+    ctx.fillStyle = '#494f57';
+    ctx.fillRect(x - w / 2 + 8, y - 12, 22, 8);
+    ctx.fillRect(x - w / 2 + 13, y - 6, 12, 6);
   }
 }
 
@@ -2642,10 +2946,10 @@ function makeGlow(rgb, size) {
   return c;
 }
 const GLOWS = {
-  wisp: makeGlow('168, 85, 247', 64), imp: makeGlow('251, 146, 60', 64),
-  brute: makeGlow('192, 132, 252', 64), golem: makeGlow('148, 163, 184', 64),
+  wisp: makeGlow('64, 200, 168', 64), imp: makeGlow('251, 146, 60', 64),
+  brute: makeGlow('196, 138, 62', 64), golem: makeGlow('148, 163, 184', 64),
   shade: makeGlow('125, 211, 252', 64), spitter: makeGlow('163, 230, 53', 64),
-  splitter: makeGlow('232, 121, 249', 64), mite: makeGlow('232, 121, 249', 48),
+  splitter: makeGlow('244, 114, 182', 64), mite: makeGlow('244, 114, 182', 48),
   charger: makeGlow('248, 113, 113', 64), gilded: makeGlow('250, 204, 21', 64),
   shellback: makeGlow('212, 160, 90', 64), warlock: makeGlow('45, 212, 160', 64),
   reaper: makeGlow('244, 63, 94', 72),
@@ -2682,15 +2986,16 @@ function drawEnemy(e, t) {
   const pop = Math.min(1, e.spawnAge * 3.5);
   const bob = Math.sin(t * 5 + e.seed) * 3;
   const squash = 1 + 0.07 * Math.sin(t * 6 + e.seed);
+  // no purple legion — every class wears its own colors now
   const cols = {
-    wisp:     { body: '#3b1e63', hi: '#6d3fae', rim: '#241140', eye: '#e9d5ff' },
+    wisp:     { body: '#14453d', hi: '#2c8c74', rim: '#0a2622', eye: '#a7f3d0' },
     imp:      { body: '#7c2d12', hi: '#c2410c', rim: '#4c1a08', eye: '#fed7aa' },
-    brute:    { body: '#4c1d80', hi: '#7e3ff2', rim: '#2e0f52', eye: '#f3e8ff' },
-    golem:    { body: '#334155', hi: '#64748b', rim: '#1e293b', eye: '#c084fc' },
+    brute:    { body: '#4a2e14', hi: '#906226', rim: '#2a1a0a', eye: '#ffe4a3' },
+    golem:    { body: '#334155', hi: '#64748b', rim: '#1e293b', eye: '#fbbf24' },
     shade:    { body: '#1e2a4a', hi: '#3e5f8a', rim: '#111a30', eye: '#7dd3fc' },
     spitter:  { body: '#2f4d16', hi: '#5f8a28', rim: '#1c3010', eye: '#d9f99d' },
-    splitter: { body: '#701a75', hi: '#c026d3', rim: '#4a044e', eye: '#fae8ff' },
-    mite:     { body: '#701a75', hi: '#c026d3', rim: '#4a044e', eye: '#fae8ff' },
+    splitter: { body: '#7a1f4d', hi: '#d1487f', rim: '#47122d', eye: '#ffd3e5' },
+    mite:     { body: '#7a1f4d', hi: '#d1487f', rim: '#47122d', eye: '#ffd3e5' },
     charger:  { body: '#7f1d1d', hi: '#dc2626', rim: '#450a0a', eye: '#fecaca' },
     gilded:   { body: '#a16207', hi: '#facc15', rim: '#713f12', eye: '#fef9c3' },
     shellback:{ body: '#6b4a20', hi: '#a97b3c', rim: '#3d2a10', eye: '#f5deb3' },
@@ -2798,6 +3103,24 @@ function drawEnemy(e, t) {
     ctx.fill();
   }
 
+  if (e.kind === 'wisp' || e.kind === 'mite') {
+    // a bright ember of curse-light burning in its heart
+    ctx.fillStyle = e.kind === 'wisp' ? 'rgba(167, 243, 208, 0.4)' : 'rgba(255, 211, 229, 0.4)';
+    ctx.beginPath();
+    ctx.arc(0, e.r * 0.08, e.r * 0.32 + Math.sin(t * 6 + e.seed) * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (e.kind === 'brute') {
+    // an ogre needs tusks
+    ctx.fillStyle = '#f5ead6';
+    for (const s2 of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(s2 * e.r * 0.52, e.r * 0.38);
+      ctx.lineTo(s2 * e.r * 0.66, -e.r * 0.08);
+      ctx.lineTo(s2 * e.r * 0.28, e.r * 0.24);
+      ctx.closePath(); ctx.fill();
+    }
+  }
   if (e.kind === 'imp') {
     ctx.fillStyle = '#fdba74';
     ctx.beginPath();
@@ -2817,6 +3140,16 @@ function drawEnemy(e, t) {
     ctx.fillRect(e.r * 0.2, -e.r * 0.8, e.r * 0.45, e.r * 0.45);
     ctx.fillStyle = '#556275';
     ctx.fillRect(-e.r * 0.1, e.r * 0.1, e.r * 0.4, e.r * 0.35);
+    // ancient cracks, amber light leaking through
+    ctx.strokeStyle = 'rgba(251, 191, 36, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-e.r * 0.2, -e.r * 0.9);
+    ctx.lineTo(-e.r * 0.05, -e.r * 0.4);
+    ctx.lineTo(-e.r * 0.35, e.r * 0.05);
+    ctx.moveTo(e.r * 0.5, -e.r * 0.2);
+    ctx.lineTo(e.r * 0.25, e.r * 0.25);
+    ctx.stroke();
   }
   if (e.kind === 'charger') {
     // forward-swept horns
@@ -2843,7 +3176,7 @@ function drawEnemy(e, t) {
   }
   if (e.kind === 'splitter') {
     // gooey bubbles riding the blob
-    ctx.fillStyle = 'rgba(232, 121, 249, 0.5)';
+    ctx.fillStyle = 'rgba(244, 114, 182, 0.5)';
     for (const [bx2, by2, br2] of [[-0.45, -0.35, 0.2], [0.4, -0.15, 0.16], [0.05, -0.6, 0.13]]) {
       ctx.beginPath();
       ctx.arc(bx2 * e.r, by2 * e.r + Math.sin(t * 5 + e.seed + bx2 * 6) * 1.5, e.r * br2, 0, Math.PI * 2);
@@ -2900,7 +3233,7 @@ function drawEnemy(e, t) {
   if (['brute', 'golem', 'splitter', 'charger', 'shellback', 'warlock', 'reaper'].includes(e.kind) && e.hp < e.maxHp) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(e.x - 18, e.y + bob - e.r - 13, 36, 6);
-    ctx.fillStyle = '#c084fc';
+    ctx.fillStyle = '#facc15';
     ctx.fillRect(e.x - 17, e.y + bob - e.r - 12, 34 * (e.hp / e.maxHp), 4);
   }
   if (e.kind === 'charger' && e.chargeState === 'aim') {
@@ -2913,6 +3246,7 @@ function drawEnemy(e, t) {
 
 function drawChest(c, t) {
   const glowP = c.open ? 0 : 0.5 + 0.5 * Math.sin(t * 3 + c.seed);
+  const ot = c.openT === undefined ? -1 : c.openT;
   ctx.save();
   ctx.translate(c.x, c.y);
   if (glowP) {
@@ -2920,6 +3254,11 @@ function drawChest(c, t) {
   }
   ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
   ctx.beginPath(); ctx.ellipse(0, 4, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // a happy little jump the instant it springs open
+  if (ot >= 0 && ot < 0.4) {
+    const k = 1 + Math.sin(Math.min(1, ot / 0.4) * Math.PI) * 0.14;
+    ctx.scale(k, k);
+  }
   // body
   ctx.fillStyle = '#5e3a18';
   ctx.fillRect(-16, -12, 32, 16);
@@ -2928,8 +3267,22 @@ function drawChest(c, t) {
   if (c.open) {
     ctx.fillStyle = '#241505';
     ctx.fillRect(-13, -10, 26, 8);
+    // treasure glimmering inside while the prize is revealed
+    if (ot >= 0 && ot < 3.3) {
+      ctx.fillStyle = `rgba(255, 217, 138, ${0.5 + 0.3 * Math.sin(t * 9 + c.seed)})`;
+      ctx.fillRect(-11, -9, 22, 5);
+    }
+    // the lid swings back over the first third-second
+    const lidP = ot < 0 ? 1 : easeOutQ(Math.min(1, ot / 0.35));
+    ctx.save();
+    ctx.translate(0, -12);
+    ctx.rotate(-lidP * 2.4);
     ctx.fillStyle = '#7c4a24';
-    ctx.fillRect(-17, -24, 34, 7);   // lid thrown back
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.quadraticCurveTo(0, -12, 16, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
   } else {
     ctx.fillStyle = '#7c4a24';
     ctx.beginPath();
@@ -2939,6 +3292,49 @@ function drawChest(c, t) {
     ctx.fillStyle = UI.gold;
     ctx.fillRect(-2.5, -14, 5, 8);
     ctx.fillRect(-16, -8, 32, 3);
+  }
+  // ---- the prize wheel: icons whirl, slow, and land on what you really got ----
+  if (ot >= 0.15 && ot < 3.3) {
+    const rise = easeOutQ(Math.min(1, (ot - 0.15) / 0.4));
+    const wy = -46 - rise * 22;
+    const fade = ot > 2.9 ? Math.max(0, (3.3 - ot) / 0.4) : 1;
+    ctx.globalAlpha = fade;
+    // beam of golden light climbing out of the chest
+    const bgd = ctx.createLinearGradient(0, -6, 0, -95);
+    bgd.addColorStop(0, 'rgba(255, 217, 138, 0.32)');
+    bgd.addColorStop(1, 'rgba(255, 217, 138, 0)');
+    ctx.fillStyle = bgd;
+    ctx.beginPath();
+    ctx.moveTo(-12, -6); ctx.lineTo(-26, -95); ctx.lineTo(26, -95); ctx.lineTo(12, -6);
+    ctx.closePath(); ctx.fill();
+    // gold medallion holding the whirling icons
+    const landed = ot >= 1.7;
+    ctx.beginPath(); ctx.arc(0, wy, 21, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(14, 11, 8, 0.92)'; ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = landed ? '#ffd98a' : 'rgba(232, 182, 76, 0.7)';
+    ctx.stroke();
+    const pool = ['coin', 'sword', 'heart', 'swift', 'boots', 'magnet', 'reach', 'aegis'];
+    let icon;
+    if (!landed) {
+      const eased = 1 - Math.pow(1 - ot / 1.7, 3);   // spins fast, then eases to a stop
+      icon = pool[Math.floor(eased * 21) % pool.length];
+    } else {
+      icon = c.reward ? c.reward.icon : 'coin';
+    }
+    drawUpgradeIcon(icon, 0, wy, 0.55, t);
+    if (landed) {
+      if (ot < 2.05) {
+        ctx.strokeStyle = `rgba(255, 240, 200, ${Math.max(0, (2.05 - ot) * 2.4)})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, wy, 21 + (ot - 1.7) * 70, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.font = '700 11px Cinzel, Georgia, serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffd98a';
+      ctx.fillText(c.reward ? c.reward.label : '', 0, wy + 38);
+    }
+    ctx.globalAlpha = 1;
   }
   ctx.restore();
 }
@@ -3054,6 +3450,16 @@ function drawPlayerSprite(p, t) {
       ctx.stroke();
     }
     return;
+  }
+  if ((p.barrier || 0) > 0) {
+    // the royal barrier shimmers around the knight
+    ctx.strokeStyle = `rgba(125, 211, 252, ${0.5 + 0.25 * Math.sin(t * 5)})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - 26, 26, 32, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(125, 211, 252, 0.07)';
+    ctx.fill();
   }
   if (p.invuln > 0 && Math.floor(t * 14) % 2) ctx.globalAlpha = 0.45;
   if (im) {
@@ -3306,6 +3712,124 @@ function drawUpgradeIcon(kind, x, y, s, t) {
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(ox3, oy3, 6, 0, Math.PI * 2); ctx.stroke();
     }
+  } else if (kind === 'crit') {
+    // two crossed blades
+    for (const rot of [-Math.PI / 4, Math.PI / 4]) {
+      ctx.save(); ctx.rotate(rot);
+      ctx.fillStyle = '#dfe5ea'; ctx.fillRect(-3, -20, 6, 26);
+      ctx.fillStyle = UI.gold; ctx.fillRect(-8, 6, 16, 4);
+      ctx.fillStyle = '#4a3018'; ctx.fillRect(-2, 10, 4, 8);
+      ctx.restore();
+    }
+    ctx.fillStyle = '#fde047';
+    ctx.font = '10px Georgia'; ctx.textAlign = 'center';
+    ctx.fillText('✦', 0, -16);
+  } else if (kind === 'echo') {
+    ctx.strokeStyle = '#dfe5ea';
+    for (const [rr, al] of [[7, 1], [12, 0.6], [17, 0.3]]) {
+      ctx.globalAlpha = al;
+      ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.arc(-4, 0, rr, -1.1, 1.1); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath(); ctx.arc(-8, 0, 4.5, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'stomp') {
+    ctx.fillStyle = '#8a5a2c';
+    ctx.beginPath();
+    ctx.moveTo(-8, -16); ctx.lineTo(4, -16); ctx.lineTo(4, -2); ctx.lineTo(12, 2);
+    ctx.lineTo(12, 8); ctx.lineTo(-8, 8); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5e3a18';
+    ctx.fillRect(-8, 4, 20, 4);
+    ctx.strokeStyle = UI.gold;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(2, 12, 12, 0.3, Math.PI - 0.3); ctx.stroke();
+    ctx.beginPath(); ctx.arc(2, 12, 17, 0.5, Math.PI - 0.5); ctx.stroke();
+  } else if (kind === 'crown') {
+    ctx.fillStyle = UI.gold;
+    ctx.beginPath();
+    ctx.moveTo(-13, 2); ctx.lineTo(-13, -10); ctx.lineTo(-6, -3); ctx.lineTo(0, -12);
+    ctx.lineTo(6, -3); ctx.lineTo(13, -10); ctx.lineTo(13, 2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.moveTo(2, 2); ctx.lineTo(-4, 10); ctx.lineTo(0, 10); ctx.lineTo(-3, 18);
+    ctx.lineTo(6, 8); ctx.lineTo(2, 8); ctx.lineTo(5, 2);
+    ctx.closePath(); ctx.fill();
+  } else if (kind === 'barrier') {
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = 'rgba(125, 211, 252, 0.18)';
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath(); ctx.arc(-5, -6, 3, 0, Math.PI * 2); ctx.fill();
+  } else if (kind === 'plate') {
+    ctx.fillStyle = '#9aa7b4';
+    ctx.beginPath();
+    ctx.moveTo(-12, -12); ctx.lineTo(12, -12); ctx.lineTo(12, 2);
+    ctx.quadraticCurveTo(12, 12, 0, 16);
+    ctx.quadraticCurveTo(-12, 12, -12, 2);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c9d3dc';
+    ctx.beginPath();
+    ctx.moveTo(-12, -12); ctx.lineTo(0, -12); ctx.lineTo(0, 15);
+    ctx.quadraticCurveTo(-12, 12, -12, 2);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#5b6774';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-12, -4); ctx.lineTo(12, -4);
+    ctx.stroke();
+  } else if (kind === 'mend') {
+    ctx.fillStyle = '#f43f5e';
+    ctx.beginPath();
+    ctx.moveTo(0, 12);
+    ctx.bezierCurveTo(-16, 0, -10, -14, 0, -6);
+    ctx.bezierCurveTo(10, -14, 16, 0, 0, 12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#8fd460';
+    ctx.fillRect(-2, -18, 4, 10); ctx.fillRect(-5, -15, 10, 4);
+  } else if (kind === 'wisdom') {
+    ctx.fillStyle = '#6b4a2a';
+    ctx.fillRect(-14, -10, 28, 20);
+    ctx.fillStyle = '#f4ead2';
+    ctx.fillRect(-11, -7, 11, 14); ctx.fillRect(0, -7, 11, 14);
+    ctx.strokeStyle = '#b9a888';
+    ctx.lineWidth = 1.2;
+    for (const yy of [-3, 0, 3]) {
+      ctx.beginPath(); ctx.moveTo(-9, yy); ctx.lineTo(-3, yy);
+      ctx.moveTo(3, yy); ctx.lineTo(9, yy); ctx.stroke();
+    }
+    ctx.fillStyle = '#fde047';
+    ctx.font = '10px Georgia'; ctx.textAlign = 'center';
+    ctx.fillText('✦', 0, -12);
+  } else if (kind === 'slayer') {
+    // a big fiend's eye split by a blade
+    ctx.fillStyle = '#4a2e14';
+    ctx.beginPath(); ctx.arc(0, 0, 14, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffe4a3';
+    ctx.beginPath(); ctx.arc(-5, -3, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5, -3, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.rotate(0.5);
+    ctx.fillStyle = '#dfe5ea'; ctx.fillRect(-2.5, -22, 5, 34);
+    ctx.fillStyle = UI.gold; ctx.fillRect(-7, 10, 14, 4);
+    ctx.restore();
+  } else if (kind === 'fury') {
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.moveTo(0, 16);
+    ctx.quadraticCurveTo(-15, 4, -6, -10);
+    ctx.quadraticCurveTo(-2, -16, 2, -10);
+    ctx.quadraticCurveTo(4, -6, 7, -12);
+    ctx.quadraticCurveTo(14, 0, 0, 16);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.moveTo(0, 12);
+    ctx.quadraticCurveTo(-6, 3, 0, -5);
+    ctx.quadraticCurveTo(6, 3, 0, 12);
+    ctx.closePath(); ctx.fill();
   } else if (kind === 'coin') {
     ctx.fillStyle = '#a9722c';
     ctx.beginPath(); ctx.arc(2, 2, 14, 0, Math.PI * 2); ctx.fill();
@@ -3952,7 +4476,7 @@ function renderLobby(t) {
       : '🌐 Room ' + NET.code + ' open — online friends can still join mid-battle', 480, 428);
   }
   drawActionBtn(384, 448, 192, 46, '⚔ START BATTLE', 'green', -5);
-  drawHintsBar([['A / SPACE', true], ['START THE BATTLE', false], ['·', false], ['EXTRA PADS PRESS A', true], ['JOIN', false], ['·', false], ['B', true], ['BACK', false]]);
+  drawHintsBar([['A / SPACE', true], ['START THE BATTLE', false], ['·', false], ['EXTRA PADS PRESS A', true], ['JOIN', false], ['·', false], ['Y / T', true], ['UPGRADES', false], ['·', false], ['B', true], ['BACK', false]]);
   drawToasts(t);
 }
 
@@ -4524,21 +5048,39 @@ function render(t) {
     ctx.fillText(om + ':' + os, 506, 84);
   }
 
-  // right: banished counter with a wisp emblem
+  // right: banished counter with a little skull
   ornate(776, 8, 174, 52, 12);
-  ctx.fillStyle = '#3b1e63';
-  ctx.beginPath(); ctx.arc(802, 34, 12, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#e9d5ff';
-  ctx.fillRect(796, 29, 4, 6); ctx.fillRect(805, 29, 4, 6);
+  ctx.fillStyle = '#e8e3d8';
+  ctx.beginPath(); ctx.arc(802, 30, 11, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(796, 34, 12, 9);
+  ctx.fillStyle = '#16120e';
+  ctx.beginPath(); ctx.arc(797.5, 29, 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(806.5, 29, 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(802, 32.5); ctx.lineTo(800, 36); ctx.lineTo(804, 36);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#16120e';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(798.5, 39); ctx.lineTo(798.5, 43);
+  ctx.moveTo(802, 39); ctx.lineTo(802, 43);
+  ctx.moveTo(805.5, 39); ctx.lineTo(805.5, 43);
+  ctx.stroke();
   ctx.textAlign = 'left';
   ctx.font = '600 11px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
   ctx.fillText('BANISHED', 824, 27);
   ctx.font = '700 23px Cinzel, Georgia, serif';
-  ctx.fillStyle = '#c9a8ff';
+  ctx.fillStyle = '#e8e3d8';
   ctx.fillText(String(game.kills), 824, 52);
   ornate(776, 66, 174, 40, 12);
   drawUpgradeIcon('coin', 802, 86, 0.5, t);
+  if ((game.forgeT || 0) > 0) {
+    ctx.textAlign = 'center';
+    ctx.font = '700 13px Cinzel, Georgia, serif';
+    ctx.fillStyle = '#fb923c';
+    ctx.fillText('🔥 FORGE-BLESSED · ' + Math.ceil(game.forgeT) + 's', 480, 126);
+  }
   // bottom crest band
   ctx.fillStyle = 'rgba(9, 7, 5, 0.85)';
   ctx.fillRect(0, 630, 960, 10);
@@ -4776,20 +5318,20 @@ function render(t) {
 
   if (game.paused) {
     cardRects = [];
-    ctx.fillStyle = 'rgba(8, 6, 12, 0.72)';
+    ctx.fillStyle = 'rgba(6, 5, 10, 0.9)';
     ctx.fillRect(0, 0, 960, 640);
     drawScreenTitle('PAUSED', 130);
     // ---- the war map: whole realm, chests, knights ----
     const mw = 330, mh = Math.round(mw * WORLD_H / WORLD_W);
     const mx = 480 - mw / 2, my = 168;
-    ctx.fillStyle = 'rgba(10, 9, 12, 0.92)';
+    ctx.fillStyle = '#0b0a0e';
     ctx.fillRect(mx, my, mw, mh);
     ctx.fillStyle = MAPS[game.mapPick].base;
-    ctx.globalAlpha = 0.22;
+    ctx.globalAlpha = 0.3;
     ctx.fillRect(mx, my, mw, mh);
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = 'rgba(232, 182, 76, 0.6)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(232, 182, 76, 0.7)';
+    ctx.lineWidth = 2.5;
     ctx.strokeRect(mx, my, mw, mh);
     const sxm = mw / WORLD_W, sym = mh / WORLD_H;
     ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
@@ -4808,6 +5350,14 @@ function render(t) {
       ctx.fillStyle = '#fde047';
       ctx.beginPath(); ctx.arc(mx + e2.x * sxm, my + e2.y * sym, 3, 0, Math.PI * 2); ctx.fill();
     }
+    for (const s2 of structures) {
+      if (s2.type !== 'shrine' && s2.type !== 'forge') continue;
+      ctx.fillStyle = s2.type === 'shrine' ? '#8fd460' : '#fb923c';
+      ctx.fillRect(mx + s2.x * sxm - 3, my + s2.y * sym - 3, 6, 6);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(mx + s2.x * sxm - 3, my + s2.y * sym - 3, 6, 6);
+    }
     players.forEach((p2, pi2) => {
       if (!p2.joined) return;
       ctx.fillStyle = PLAYER_COLORS[pi2 % 4];
@@ -4819,7 +5369,7 @@ function render(t) {
     ctx.font = '600 10px Inter, sans-serif';
     ctx.fillStyle = UI.dim;
     ctx.textAlign = 'center';
-    ctx.fillText('◆ unopened chests   ● you and your friends   ● golden wisps', 480, my + mh + 16);
+    ctx.fillText('◆ chests   ● knights   ● golden wisps   ■ healing shrine   ■ battle forge', 480, my + mh + 16);
     if (game.netGuest) {
       ctx.fillStyle = UI.dim;
       ctx.font = '600 14px Inter, sans-serif';
@@ -4926,8 +5476,13 @@ function updateHomeStats() {
     '<div class="hsCard">⚔ <b>' + (meta.unlocked || []).length + ' / ' + ROSTER.length + '</b>&nbsp;knights</div>' +
     '<div class="hsCard">⏳ <b>' + Math.floor(mins / 60) + 'h ' + (mins % 60) + 'm</b></div>' +
     '<button class="hsCard" id="hsOnline">🌐 ONLINE</button>' +
-    '<button class="hsCard" id="hsSettings">⚙ SETTINGS</button>';
-  homeStats.querySelector('#hsSettings').addEventListener('click', () => openPanel('settings'));
+    '<button class="hsCard" id="hsUpgrades">✦ UPGRADES</button>';
+  homeStats.querySelector('#hsUpgrades').addEventListener('click', () => {
+    hideMenu();
+    game.phase = 'armory';
+    game.armoryFrom = 'home';
+    game.cursor = 0;
+  });
   homeStats.querySelector('#hsOnline').addEventListener('click', () => openPanel('online'));
   homeStats.querySelector('#hsGold').addEventListener('click', () => {
     hideMenu();
@@ -5519,8 +6074,9 @@ const panels = {
 function openPanel(name) {
   for (const k in panels) panels[k].style.display = k === name ? 'block' : 'none';
   panelShade.classList.remove('hidden');
+  setPadFocus(null);
 }
-function closePanels() { panelShade.classList.add('hidden'); }
+function closePanels() { panelShade.classList.add('hidden'); setPadFocus(null); }
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
 panelShade.addEventListener('click', e => { if (e.target === panelShade) closePanels(); });
 // the painted button says SETTINGS, so it opens Settings (armory lives on the gold card)
@@ -5944,6 +6500,7 @@ function netBroadcast() {
   netSend({
     t: 'snap', ph: 'run',
     time: Math.round(game.time * 10) / 10, level: game.level, xp: game.xp, xpNext: game.xpNext,
+    fg: Math.round((game.forgeT || 0) * 10) / 10,
     kills: game.kills, gold: kdMeta.gold, map: game.mapPick,
     vic: game.victory ? 1 : 0, over: game.over ? 1 : 0, endless: game.endless ? 1 : 0,
     pz: game.paused ? 1 : 0,
@@ -5971,6 +6528,7 @@ function applySnap(m) {
   game.netWait = false;
   if (game.mapPick !== m.map) { game.mapPick = m.map; genStructures(m.map); }
   game.time = m.time; game.level = m.level; game.xp = m.xp; game.xpNext = m.xpNext;
+  game.forgeT = m.fg || 0;
   game.kills = m.kills; game.netGold = m.gold;
   game.victory = !!m.vic; game.over = !!m.over; game.endless = !!m.endless;
   game.paused = !!m.pz;
@@ -6125,6 +6683,63 @@ function synthKey(code) {
   window.dispatchEvent(new KeyboardEvent('keydown', { code }));
   keys.delete(code);   // controller taps never leave a key held down
 }
+// ---- d-pad navigation of the home page + panels ----
+const HOME_NAV_SEL = '#btnPlay, #btnSettings, #btnCredits, #btnExit, #chipKnights, #chipRemaster, ' +
+  '.iconBtn, .statCard, #updateCard, #questCard, button.hsCard';
+const PANEL_NAV_SEL = 'button, input[type=range], input[type=checkbox]';
+let padFocusEl = null;
+function setPadFocus(el) {
+  if (padFocusEl && padFocusEl !== el) padFocusEl.classList.remove('padFocus');
+  padFocusEl = el || null;
+  if (padFocusEl) padFocusEl.classList.add('padFocus');
+}
+function navCandidates(root, sel) {
+  return [...root.querySelectorAll(sel)].filter(el => el.offsetParent !== null);
+}
+// spatial hop: from the focused element's center, best candidate in direction (dx,dy)
+function movePadFocus(dx, dy) {
+  const items = navCandidates(document.getElementById('menu'), HOME_NAV_SEL);
+  if (!items.length) return;
+  if (!padFocusEl || !items.includes(padFocusEl)) { setPadFocus(document.getElementById('btnPlay')); return; }
+  const cr = padFocusEl.getBoundingClientRect();
+  const cx = cr.left + cr.width / 2, cy = cr.top + cr.height / 2;
+  let best = null, bestScore = Infinity;
+  for (const el of items) {
+    if (el === padFocusEl) continue;
+    const r = el.getBoundingClientRect();
+    const ax = r.left + r.width / 2 - cx, ay = r.top + r.height / 2 - cy;
+    const fwd = ax * dx + ay * dy;                       // progress the pressed way
+    if (fwd < 8) continue;
+    const side = Math.abs(ax * dy) + Math.abs(ay * dx);  // perpendicular drift
+    const score = fwd + side * 2.2;
+    if (score < bestScore) { bestScore = score; best = el; }
+  }
+  if (best) setPadFocus(best);
+}
+function openPanelEl() {
+  if (panelShade.classList.contains('hidden')) return null;
+  return [...document.querySelectorAll('.panel')].find(p => p.style.display !== 'none') || null;
+}
+function panelFocusMove(step) {
+  const panel = openPanelEl();
+  if (!panel) return;
+  const items = navCandidates(panel, PANEL_NAV_SEL);
+  if (!items.length) return;
+  let idx = items.indexOf(padFocusEl);
+  if (idx === -1) {
+    // first press lands on the first real row, not the ✕ in the corner
+    idx = Math.max(0, items.findIndex(el => !el.classList.contains('panelX')));
+  } else {
+    idx = (idx + step + items.length) % items.length;
+  }
+  setPadFocus(items[idx]);
+  items[idx].scrollIntoView({ block: 'nearest' });
+}
+function nudgeRange(el, d) {
+  el.value = Math.max(+el.min || 0, Math.min(+el.max || 100, (+el.value) + d));
+  el.dispatchEvent(new Event('input', { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+}
 function pollPads() {
   for (let i = 0; i < 4; i++) {
     const s = readPad(i);
@@ -6135,15 +6750,36 @@ function pollPads() {
     const inRun = game.phase === 'run' && !menuOpen && !game.choices && !game.victory && !game.over;
 
     if (menuOpen) {
-      if (tap('a') || tap('start')) btnPlay.click();      // "press A or Start"
+      const panel = openPanelEl();
+      if (panel) {
+        // a panel is open — d-pad walks the rows, left/right turns sliders
+        if (dir('up')) panelFocusMove(-1);
+        if (dir('down')) panelFocusMove(1);
+        const isRange = padFocusEl && padFocusEl.type === 'range' && panel.contains(padFocusEl);
+        if (dir('left')) { if (isRange) nudgeRange(padFocusEl, -10); else panelFocusMove(-1); }
+        if (dir('right')) { if (isRange) nudgeRange(padFocusEl, 10); else panelFocusMove(1); }
+        if (tap('a')) {
+          if (padFocusEl && panel.contains(padFocusEl)) padFocusEl.click();
+          else panelFocusMove(1);
+        }
+        else if (tap('bBtn')) { closePanels(); setPadFocus(null); }
+        continue;
+      }
+      if (dir('left')) movePadFocus(-1, 0);
+      if (dir('right')) movePadFocus(1, 0);
+      if (dir('up')) movePadFocus(0, -1);
+      if (dir('down')) movePadFocus(0, 1);
+      if (tap('a')) (padFocusEl && padFocusEl.offsetParent ? padFocusEl : btnPlay).click();
+      else if (tap('start')) btnPlay.click();              // Start always launches
       else if (tap('y')) openPanel('settings');
-      else if (tap('bBtn')) closePanels();
+      else if (tap('bBtn')) setPadFocus(null);
       continue;
     }
     if (game.phase === 'lobby') {
       if (i === 0) {
         if (tap('a') || tap('start')) startBattle();
         else if (tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; }
+        else if (tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; }
       } else if (players[i] && !players[i].joined && !players[i].remote && tap('a')) {
         game.fromLobby = true; game.joinSlot = i; game.phase = 'select2'; game.cursor = 0;
       }
@@ -6192,7 +6828,7 @@ function pollPads() {
       if (tap('a')) synthKey('Space');
       if (tap('lb')) synthKey('KeyQ');
       if (tap('rb')) synthKey('KeyE');
-      if (tap('y') && game.phase === 'select') synthKey('KeyT');   // Y = armory
+      if (tap('y') && (game.phase === 'select' || game.phase === 'lobby')) synthKey('KeyT');   // Y = upgrades
       if (tap('bBtn')) {
         if (game.phase === 'armory' || game.phase === 'select2') synthKey('Backspace');
         else if (game.phase === 'map') { game.phase = 'select'; game.cursor = 0; }
@@ -6209,6 +6845,16 @@ function pollPads() {
 window.addEventListener('gamepadconnected', e => {
   gameToast('🎮 Controller ' + (e.gamepad.index + 1) + ' connected!');
   if (menuOpen) menuToastShow('🎮 Controller connected — press A to play!');
+});
+window.addEventListener('gamepaddisconnected', e => {
+  const i = e.gamepad.index;
+  gameToast('🎮 Controller ' + (i + 1) + ' disconnected');
+  PADS['p' + i] = null;
+  // in the lobby, an unplugged controller gives up its seat
+  if (game.phase === 'lobby' && i >= 1 && players[i] && players[i].joined && !players[i].remote) {
+    players[i].joined = false;
+    players[i].alive = false;
+  }
 });
 // on an actual Xbox (Edge browser) the game goes fullscreen at the first tap
 const IS_XBOX = /Xbox/i.test(navigator.userAgent);
@@ -6333,6 +6979,9 @@ function musicTick() {
   sfxBus.gain.value = (settings.sfx / 100) * 0.5;
   const now = audioCtx.currentTime;
   if (now < stingUntil) { nextBarT = 0; return; }
+  // paused mid-battle: hold the march exactly where it is — no track swap, no restart.
+  // (switching tracks on every pause made the music start over and over)
+  if (game.paused && !menuOpen && game.phase === 'run') return;
   // after tab-backgrounding the clock races ahead — never schedule a burst of stale bars
   if (nextBarT && nextBarT < now) nextBarT = now + 0.05;
   const want = (!menuOpen && game.phase === 'run' && !game.over && !game.victory && !game.choices && !game.paused)
@@ -6397,7 +7046,8 @@ document.querySelectorAll('#menu button').forEach(b =>
   b.addEventListener('click', () => b.blur()));
 
 // debug handle for automated testing
-window.__game = { players, enemies: () => enemies, game, keys, get menuOpen() { return menuOpen; }, hideMenu, showMenu };
+window.__game = { players, enemies: () => enemies, game, keys, get menuOpen() { return menuOpen; }, hideMenu, showMenu,
+  chests: () => chests, structures: () => structures, world: () => [WORLD_W, WORLD_H] };
 </script>
 </body>
 </html>
