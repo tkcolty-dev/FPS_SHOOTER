@@ -1183,7 +1183,7 @@ const heroSprites = {
 // ============================================================
 // THE LAST KNIGHT — co-op survivors mode
 // ============================================================
-const WORLD_W = 2400, WORLD_H = 1800;
+const WORLD_W = 3200, WORLD_H = 2400;
 
 // royal UI palette (matches the home page)
 const UI = {
@@ -1429,7 +1429,7 @@ let structures = [];
 function genStructures(mi) {
   structures = [];
   const M = MAPS[mi];
-  for (let i = 0; i < 34; i++) {
+  for (let i = 0; i < 56; i++) {
     const x = 160 + hash2(i * 13 + mi * 7, 1) * (WORLD_W - 320);
     const y = 200 + hash2(i * 13 + mi * 7, 2) * (WORLD_H - 380);
     if (Math.hypot(x - WORLD_W / 2, y - WORLD_H / 2) < 280) continue;
@@ -1482,7 +1482,7 @@ window.addEventListener('keydown', e => {
       if (game.phase === 'select2') confirmSelection2();
       else confirmSelection();
     }
-    if (game.phase === 'select2' && e.code === 'Backspace') { game.phase = 'run'; return; }
+    if (game.phase === 'select2' && e.code === 'Backspace') { game.phase = game.fromLobby ? 'lobby' : 'run'; game.fromLobby = false; return; }
     if (e.code === 'KeyT' && game.phase === 'select') { game.phase = 'armory'; game.armoryFrom = 'select'; game.cursor = 0; }
     return;
   }
@@ -1494,6 +1494,14 @@ window.addEventListener('keydown', e => {
     if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + 3) % n;
     if (['Space', 'Enter'].includes(e.code)) armoryBuy(game.cursor);
     if (e.code === 'KeyT' || e.code === 'Backspace') armoryExit();
+    return;
+  }
+  if (game.phase === 'lobby') {
+    if (['Space', 'Enter'].includes(e.code)) startBattle();
+    if (e.code === 'Backspace') { game.phase = 'map'; game.cursor = game.mapPick; }
+    if (e.code === 'KeyJ' && players[1] && !players[1].joined) {
+      game.fromLobby = true; game.joinSlot = 1; game.phase = 'select2'; game.cursor = 0;
+    }
     return;
   }
   if (game.phase === 'map') {
@@ -1550,7 +1558,10 @@ canvas.addEventListener('click', () => {
   if (menuOpen) return;
   for (const c of cardRects) {
     if (mouse.x >= c.x && mouse.x <= c.x + c.w && mouse.y >= c.y && mouse.y <= c.y + c.h) {
-      if (game.phase === 'armory') {
+      if (game.phase === 'lobby') {
+        if (c.idx === -5) startBattle();
+      }
+      else if (game.phase === 'armory') {
         if (c.idx >= 0) armoryBuy(c.idx);
         else if (c.idx === -5) armoryBuy(game.cursor);
         else armoryExit();
@@ -1564,6 +1575,7 @@ canvas.addEventListener('click', () => {
       else if (game.phase === 'select' || game.phase === 'map') { game.cursor = Math.max(0, c.idx); confirmSelection(); }
       else if (c.idx === -30 && game.paused) { togglePause(); }
       else if (c.idx === -31 && game.paused) { showMenu(); }
+      else if (c.idx === -32 && game.paused) { quitRun(); }
       else if (c.idx === -20 && game.victory) { game.victory = false; game.endless = true; gameToast('∞ ENDLESS — the curse never stops. How long can you stand?'); }
       else if (c.idx === -21 && (game.victory || game.over)) { game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false; }
       else if (c.idx === -22 && (game.victory || game.over)) { showMenu(); }
@@ -1606,9 +1618,26 @@ function confirmSelection() {
       return;
     }
     game.mapPick = game.cursor;
-    initRun();
-    game.phase = 'run';
+    game.phase = 'lobby';       // gather the party first
+    game.cursor = 0;
   }
+}
+function startBattle() {
+  const party = players.map(p => (p.joined && !p.remote ? p.heroKey : null));
+  initRun();
+  party.forEach((hk, i2) => {
+    if (i2 === 0 || !hk) return;
+    const p = players[i2];
+    p.joined = true;
+    applyHero(p, hk);
+    applyRunUpgradesTo(p);
+    p.alive = true;
+    p.hp = p.maxHp;
+    p.x = WORLD_W / 2 - 40 + i2 * 34;
+    p.y = WORLD_H / 2 + (i2 % 2 ? 26 : 0);
+    if (players.filter(q => q.joined).length > 1) kdStats.coop = true;
+  });
+  game.phase = 'run';
 }
 function applyRunUpgradesTo(p) {
   p.damage += upLvl('sharp');
@@ -1637,7 +1666,8 @@ function confirmSelection2() {
   p2.invuln = 2;
   p2.x = players[0].x + 40 + slot * 24;
   p2.y = players[0].y + (slot % 2 ? 24 : -24);
-  game.phase = 'run';
+  game.phase = game.fromLobby ? 'lobby' : 'run';
+  game.fromLobby = false;
   gameToast('P' + (slot + 1) + ' — ' + p2.name + ' joins the fight!');
   kdStats.coop = true;
   checkAchievements();
@@ -1680,6 +1710,7 @@ function makePlayer(keymap, joined) {
     reviveProgress: 0,
   };
 }
+const PLAYER_COLORS = ['#4ade80', '#60a5fa', '#f472b6', '#fbbf24'];
 const players = [
   makePlayer({ up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' }, true),
   makePlayer({ up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' }, false),
@@ -1693,7 +1724,7 @@ const game = {
   xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [];
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [];
 const cam = { x: WORLD_W / 2 - 480, y: WORLD_H / 2 - 320 };
 
 function initRun() {
@@ -1743,6 +1774,15 @@ function initRun() {
   game.paidOut = false;
   game.victory = false;
   genStructures(game.mapPick);
+  // treasure chests, scattered far from the spawn
+  chests = [];
+  for (let ci = 0; ci < 9; ci++) {
+    const cx3 = 260 + Math.random() * (WORLD_W - 520);
+    const cy3 = 260 + Math.random() * (WORLD_H - 520);
+    if (Math.hypot(cx3 - WORLD_W / 2, cy3 - WORLD_H / 2) < 420) continue;
+    const cp = pushOut(cx3, cy3, 26);
+    chests.push({ x: cp.x, y: cp.y, open: false, seed: Math.random() * 10 });
+  }
 }
 
 function gameToast(text) {
@@ -1752,6 +1792,8 @@ function gameToast(text) {
 
 // ---------- upgrades ----------
 const UPGRADES = [
+  { key: 'shuffle', name: 'Royal Shuffle', icon: 'shuffle', max: 1, desc: 'Every level-up, knights trade players!',
+    apply: () => {} },
   { key: 'sharp', name: 'Sharper Blades', icon: 'sword', max: 5, desc: '+1 damage for all heroes',
     apply: () => players.forEach(p => p.damage += 1) },
   { key: 'swift', name: 'Swift Strikes', icon: 'swift', max: 5, desc: 'Everyone attacks 15% faster',
@@ -1780,9 +1822,23 @@ const UPGRADES = [
     apply: () => {} },
 ];
 function upLvl(k) { return game.up[k] || 0; }
+function rotateHeroes() {
+  const joined = players.filter(p => p.joined && p.alive);
+  if (joined.length < 2) return;
+  const heroKeys = joined.map(p => p.heroKey);
+  heroKeys.unshift(heroKeys.pop());
+  joined.forEach((p, i) => {
+    const ratio = p.hp / p.maxHp;
+    applyHero(p, heroKeys[i]);
+    applyRunUpgradesTo(p);
+    p.hp = Math.max(1, Math.round(p.maxHp * ratio));
+  });
+  gameToast('🔀 ROYAL SHUFFLE — the knights trade places!');
+}
 function levelUp() {
   game.level += 1;
   SFX.levelup();
+  if (upLvl('shuffle') > 0) rotateHeroes();
   game.choicesAt = performance.now();
   game.xpNext = 8 + game.level * 5;
   const pool = UPGRADES.filter(u => upLvl(u.key) < u.max);
@@ -1808,24 +1864,30 @@ function spawnEnemy(forceX, forceY) {
   y = Math.max(20, Math.min(WORLD_H - 20, y));
   const t = game.time, roll = Math.random();
   let kind = 'wisp';
-  if (t > 200 && roll < 0.06) kind = 'charger';
-  else if (t > 180 && roll < 0.13) kind = 'golem';
-  else if (t > 140 && roll < 0.21) kind = 'splitter';
-  else if (t > 110 && roll < 0.29) kind = 'spitter';
-  else if (t > 75 && roll < 0.42) kind = 'brute';
-  else if (t > 50 && roll < 0.54) kind = 'shade';
-  else if (t > 35 && roll < 0.74) kind = 'imp';
+  if (t > 320 && roll < 0.04) kind = 'reaper';
+  else if (t > 240 && roll < 0.1) kind = 'warlock';
+  else if (t > 200 && roll < 0.16) kind = 'charger';
+  else if (t > 180 && roll < 0.23) kind = 'golem';
+  else if (t > 160 && roll < 0.29) kind = 'shellback';
+  else if (t > 140 && roll < 0.36) kind = 'splitter';
+  else if (t > 110 && roll < 0.43) kind = 'spitter';
+  else if (t > 75 && roll < 0.54) kind = 'brute';
+  else if (t > 50 && roll < 0.64) kind = 'shade';
+  else if (t > 35 && roll < 0.8) kind = 'imp';
   if (t > 60 && Math.random() < 0.015) kind = 'gilded';  // rare golden treasure wisp
   const spec = {
-    wisp:     { r: 14, hp: 2,  speed: 58 + Math.random() * 22, xp: 1 },
-    imp:      { r: 10, hp: 1,  speed: 100 + Math.random() * 25, xp: 1 },
-    shade:    { r: 13, hp: 3,  speed: 64 + Math.random() * 18, xp: 2 },
-    brute:    { r: 20, hp: 9,  speed: 44, xp: 4 },
-    spitter:  { r: 15, hp: 4,  speed: 52, xp: 3 },
-    splitter: { r: 22, hp: 8,  speed: 40, xp: 4 },
-    golem:    { r: 27, hp: 24, speed: 30, xp: 10 },
-    charger:  { r: 17, hp: 6,  speed: 46, xp: 5 },
-    gilded:   { r: 12, hp: 2,  speed: 112, xp: 2 },
+    wisp:      { r: 14, hp: 2,  speed: 58 + Math.random() * 22, xp: 1 },
+    imp:       { r: 10, hp: 1,  speed: 100 + Math.random() * 25, xp: 1 },
+    shade:     { r: 13, hp: 3,  speed: 64 + Math.random() * 18, xp: 2 },
+    brute:     { r: 20, hp: 9,  speed: 44, xp: 4 },
+    spitter:   { r: 15, hp: 4,  speed: 52, xp: 3 },
+    splitter:  { r: 22, hp: 8,  speed: 40, xp: 4 },
+    shellback: { r: 19, hp: 14, speed: 33, xp: 6 },
+    golem:     { r: 27, hp: 24, speed: 30, xp: 10 },
+    charger:   { r: 17, hp: 6,  speed: 46, xp: 5 },
+    warlock:   { r: 15, hp: 8,  speed: 48, xp: 7 },
+    reaper:    { r: 24, hp: 40, speed: 64, xp: 16 },
+    gilded:    { r: 12, hp: 2,  speed: 112, xp: 2 },
   }[kind];
   // the curse hardens as the battle drags on, and later realms hit harder
   const hpBonus = Math.floor(t / 120) + Math.floor(game.mapPick / 3);
@@ -1850,6 +1912,7 @@ function nearestAlivePlayer(x, y) {
 }
 
 function hurtEnemy(e, dmg, ang, kb) {
+  if (e.kind === 'shellback') dmg = Math.min(dmg, 1);   // armored — chip damage only
   e.hp -= dmg;
   e.flash = 0.12;
   SFX.hit();
@@ -1914,7 +1977,8 @@ function killEnemy(i) {
   SFX.kill();
   const colors = { wisp: '#a855f7', imp: '#fb923c', brute: '#c084fc', golem: '#94a3b8',
                    shade: '#7dd3fc', spitter: '#a3e635', splitter: '#e879f9', mite: '#e879f9',
-                   charger: '#f87171', gilded: '#fde047' };
+                   charger: '#f87171', gilded: '#fde047', shellback: '#d4a05a',
+                   warlock: '#2dd4a0', reaper: '#f43f5e' };
   for (let k = 0; k < (e.kind === 'golem' ? 16 : 8); k++) {
     const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 120;
     particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5, color: colors[e.kind], size: e.kind === 'golem' ? 5 : 3 });
@@ -1939,7 +2003,14 @@ function killEnemy(i) {
     }
     gameToast('✨ A gilded wisp bursts into gold!');
   }
-  const n = e.kind === 'golem' ? 3 : 1;
+  if (e.kind === 'reaper') {
+    for (let k = 0; k < 2; k++) {
+      const rp = pushOut(e.x + (Math.random() - 0.5) * 26, e.y + (Math.random() - 0.5) * 26, 16);
+      drops.push({ x: rp.x, y: rp.y, kind: 'coin', v: 6 + Math.floor(Math.random() * 5) });
+    }
+    gameToast('💀 The reaper is reaped!');
+  }
+  const n = (e.kind === 'golem' || e.kind === 'reaper') ? 3 : 1;
   for (let k = 0; k < n; k++) {
     let gv = Math.ceil(e.xp / n);
     if (Math.random() < 0.15 * upLvl('clover')) gv *= 2;
@@ -2230,6 +2301,25 @@ function update(dt) {
           SFX.bolt();
           bolts.push({ x: e.x, y: e.y - 6, vx: dx * 168, vy: dy * 168, life: 3.2 });
         }
+      } else if (e.kind === 'warlock') {
+        // blinks across the field and hurls a ring of curse bolts
+        e.stateT -= dt;
+        if (e.stateT <= 0 && e.spawnAge > 1.5) {
+          const wa = Math.random() * Math.PI * 2;
+          const wd = 210 + Math.random() * 90;
+          particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.25, color: '#2dd4a0', size: e.r });
+          e.x = Math.max(20, Math.min(WORLD_W - 20, t.x + Math.cos(wa) * wd));
+          e.y = Math.max(20, Math.min(WORLD_H - 20, t.y + Math.sin(wa) * wd));
+          particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.25, color: '#2dd4a0', size: e.r });
+          for (let k = 0; k < 4; k++) {
+            const ba = (k / 4) * Math.PI * 2 + Math.random() * 0.6;
+            bolts.push({ x: e.x, y: e.y - 8, vx: Math.cos(ba) * 150, vy: Math.sin(ba) * 150, life: 2.6 });
+          }
+          SFX.bolt();
+          e.stateT = 4.5 + Math.random() * 2;
+        }
+        e.x += dx * e.speed * 0.5 * sl * dt;
+        e.y += dy * e.speed * 0.5 * sl * dt;
       } else if (e.kind === 'charger') {
         // stalk -> wind up -> dash
         e.stateT -= dt;
@@ -2299,6 +2389,38 @@ function update(dt) {
       }
     }
   }
+  // treasure chests spring open when a knight reaches them
+  for (const ch3 of chests) {
+    if (ch3.open) continue;
+    const near = players.find(p => p.joined && p.alive && Math.hypot(p.x - ch3.x, p.y - ch3.y) < 34);
+    if (!near) continue;
+    ch3.open = true;
+    SFX.unlock();
+    for (let k = 0; k < 10; k++) {
+      const a = Math.random() * Math.PI * 2, sp2 = 60 + Math.random() * 120;
+      particles.push({ x: ch3.x, y: ch3.y - 10, vx: Math.cos(a) * sp2, vy: Math.sin(a) * sp2 - 60, life: 0.5, color: '#ffd98a', size: 3 });
+    }
+    const luck = Math.random();
+    if (luck < 0.5) {
+      for (let k = 0; k < 3 + Math.floor(Math.random() * 3); k++) {
+        drops.push({ x: ch3.x + (Math.random() - 0.5) * 44, y: ch3.y + (Math.random() - 0.5) * 30, kind: 'coin', v: 3 + Math.floor(Math.random() * 4) });
+      }
+      gameToast('🪙 The chest spills royal gold!');
+    } else if (luck < 0.82) {
+      const pool = UPGRADES.filter(u => upLvl(u.key) < u.max && u.key !== 'shuffle');
+      if (pool.length) {
+        const gift = pool[Math.floor(Math.random() * pool.length)];
+        gift.apply();
+        game.up[gift.key] = upLvl(gift.key) + 1;
+        gameToast('🎁 Chest gift: ' + gift.name + '  Lv ' + game.up[gift.key] + '!');
+      }
+    } else {
+      drops.push({ x: ch3.x - 16, y: ch3.y, kind: 'heart' });
+      drops.push({ x: ch3.x + 16, y: ch3.y, kind: 'heart' });
+      gameToast('❤ The chest holds healing hearts!');
+    }
+  }
+
   for (let i = drops.length - 1; i >= 0; i--) {
     const dr = drops[i];
     const t = nearestAlivePlayer(dr.x, dr.y);
@@ -2525,6 +2647,8 @@ const GLOWS = {
   shade: makeGlow('125, 211, 252', 64), spitter: makeGlow('163, 230, 53', 64),
   splitter: makeGlow('232, 121, 249', 64), mite: makeGlow('232, 121, 249', 48),
   charger: makeGlow('248, 113, 113', 64), gilded: makeGlow('250, 204, 21', 64),
+  shellback: makeGlow('212, 160, 90', 64), warlock: makeGlow('45, 212, 160', 64),
+  reaper: makeGlow('244, 63, 94', 72),
   gemG: makeGlow('74, 222, 128', 40), gemP: makeGlow('240, 171, 252', 40),
 };
 const easeOutQ = f => 1 - (1 - f) * (1 - f);
@@ -2569,6 +2693,9 @@ function drawEnemy(e, t) {
     mite:     { body: '#701a75', hi: '#c026d3', rim: '#4a044e', eye: '#fae8ff' },
     charger:  { body: '#7f1d1d', hi: '#dc2626', rim: '#450a0a', eye: '#fecaca' },
     gilded:   { body: '#a16207', hi: '#facc15', rim: '#713f12', eye: '#fef9c3' },
+    shellback:{ body: '#6b4a20', hi: '#a97b3c', rim: '#3d2a10', eye: '#f5deb3' },
+    warlock:  { body: '#0f3d33', hi: '#1d7a63', rim: '#082420', eye: '#5eead4' },
+    reaper:   { body: '#1c1017', hi: '#3f1d2b', rim: '#0d070b', eye: '#fb7185' },
   }[e.kind];
 
   ctx.save();
@@ -2591,10 +2718,77 @@ function drawEnemy(e, t) {
   bg.addColorStop(0, e.flash > 0 ? '#ffffff' : cols.hi);
   bg.addColorStop(0.65, e.flash > 0 ? '#ffffff' : cols.body);
   bg.addColorStop(1, e.flash > 0 ? '#f0f0f0' : cols.rim);
+  // every kind has its own silhouette
   ctx.fillStyle = bg;
   ctx.beginPath();
-  ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+  if (e.kind === 'brute' || e.kind === 'shellback') {
+    ctx.moveTo(-e.r, e.r * 0.55);
+    ctx.quadraticCurveTo(-e.r * 1.1, -e.r * 0.9, 0, -e.r);
+    ctx.quadraticCurveTo(e.r * 1.1, -e.r * 0.9, e.r, e.r * 0.55);
+    ctx.closePath();
+  } else if (e.kind === 'golem') {
+    for (let k = 0; k < 6; k++) {
+      const a = -Math.PI / 2 + k * Math.PI / 3;
+      const rr = e.r * (k % 2 ? 0.92 : 1.06);
+      ctx[k ? 'lineTo' : 'moveTo'](Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    ctx.closePath();
+  } else if (e.kind === 'charger') {
+    ctx.moveTo(0, -e.r);
+    ctx.lineTo(e.r * 1.05, e.r * 0.35);
+    ctx.lineTo(0, e.r * 0.75);
+    ctx.lineTo(-e.r * 1.05, e.r * 0.35);
+    ctx.closePath();
+  } else if (e.kind === 'spitter') {
+    ctx.moveTo(0, -e.r * 1.15);
+    ctx.quadraticCurveTo(e.r * 1.15, -e.r * 0.2, e.r * 0.8, e.r * 0.55);
+    ctx.quadraticCurveTo(0, e.r * 1.1, -e.r * 0.8, e.r * 0.55);
+    ctx.quadraticCurveTo(-e.r * 1.15, -e.r * 0.2, 0, -e.r * 1.15);
+  } else if (e.kind === 'shade') {
+    ctx.ellipse(0, 0, e.r * 0.8, e.r * 1.15, 0, 0, Math.PI * 2);
+  } else if (e.kind === 'splitter') {
+    ctx.arc(-e.r * 0.45, 0, e.r * 0.72, 0, Math.PI * 2);
+    ctx.arc(e.r * 0.45, 0, e.r * 0.72, 0, Math.PI * 2);
+  } else if (e.kind === 'warlock') {
+    ctx.moveTo(0, -e.r * 1.2);
+    ctx.quadraticCurveTo(e.r * 0.9, -e.r * 0.1, e.r * 0.75, e.r * 0.8);
+    ctx.lineTo(-e.r * 0.75, e.r * 0.8);
+    ctx.quadraticCurveTo(-e.r * 0.9, -e.r * 0.1, 0, -e.r * 1.2);
+  } else if (e.kind === 'reaper') {
+    ctx.moveTo(0, -e.r * 1.35);
+    ctx.quadraticCurveTo(e.r, -e.r * 0.6, e.r * 0.7, e.r * 0.8);
+    ctx.lineTo(-e.r * 0.7, e.r * 0.8);
+    ctx.quadraticCurveTo(-e.r, -e.r * 0.6, 0, -e.r * 1.35);
+  } else {
+    ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+  }
   ctx.fill();
+  if (e.kind === 'shellback') {
+    // armored shell plates
+    ctx.strokeStyle = '#3d2a10';
+    ctx.lineWidth = 2;
+    for (const rr of [0.45, 0.75]) {
+      ctx.beginPath();
+      ctx.arc(0, e.r * 0.1, e.r * rr, Math.PI + 0.3, -0.3);
+      ctx.stroke();
+    }
+  }
+  if (e.kind === 'reaper') {
+    // the scythe
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(e.r * 0.8, e.r * 0.6);
+    ctx.lineTo(e.r * 0.9, -e.r * 1.2);
+    ctx.stroke();
+    ctx.fillStyle = '#cbd5e1';
+    ctx.beginPath();
+    ctx.moveTo(e.r * 0.9, -e.r * 1.2);
+    ctx.quadraticCurveTo(e.r * 0.1, -e.r * 1.55, -e.r * 0.5, -e.r * 1.3);
+    ctx.quadraticCurveTo(e.r * 0.2, -e.r * 1.28, e.r * 0.82, -e.r * 1.02);
+    ctx.closePath();
+    ctx.fill();
+  }
 
   // wispy skirt
   ctx.fillStyle = e.flash > 0 ? '#ffffff' : cols.rim;
@@ -2703,7 +2897,7 @@ function drawEnemy(e, t) {
 
   ctx.restore();
 
-  if ((e.kind === 'brute' || e.kind === 'golem' || e.kind === 'splitter' || e.kind === 'charger') && e.hp < e.maxHp) {
+  if (['brute', 'golem', 'splitter', 'charger', 'shellback', 'warlock', 'reaper'].includes(e.kind) && e.hp < e.maxHp) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(e.x - 18, e.y + bob - e.r - 13, 36, 6);
     ctx.fillStyle = '#c084fc';
@@ -2715,6 +2909,38 @@ function drawEnemy(e, t) {
     ctx.fillStyle = `rgba(255, 220, 120, ${0.6 + 0.4 * Math.sin(t * 18)})`;
     ctx.fillText('!', e.x, e.y + bob - e.r - 18);
   }
+}
+
+function drawChest(c, t) {
+  const glowP = c.open ? 0 : 0.5 + 0.5 * Math.sin(t * 3 + c.seed);
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  if (glowP) {
+    ctx.drawImage(GLOWS.gilded, -30, -34, 60, 60);
+  }
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.beginPath(); ctx.ellipse(0, 4, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+  // body
+  ctx.fillStyle = '#5e3a18';
+  ctx.fillRect(-16, -12, 32, 16);
+  ctx.fillStyle = '#7c4a24';
+  ctx.fillRect(-16, -12, 32, 5);
+  if (c.open) {
+    ctx.fillStyle = '#241505';
+    ctx.fillRect(-13, -10, 26, 8);
+    ctx.fillStyle = '#7c4a24';
+    ctx.fillRect(-17, -24, 34, 7);   // lid thrown back
+  } else {
+    ctx.fillStyle = '#7c4a24';
+    ctx.beginPath();
+    ctx.moveTo(-16, -12);
+    ctx.quadraticCurveTo(0, -24, 16, -12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = UI.gold;
+    ctx.fillRect(-2.5, -14, 5, 8);
+    ctx.fillRect(-16, -8, 32, 3);
+  }
+  ctx.restore();
 }
 
 function drawPet(pe, t) {
@@ -2791,6 +3017,20 @@ function drawPlayerSprite(p, t) {
   ctx.beginPath();
   ctx.ellipse(p.x, p.y - 2, 18, 7, 0, 0, Math.PI * 2);
   ctx.fill();
+  // with friends in the fight, every knight wears their player's color
+  const slot = players.indexOf(p);
+  if (slot >= 0 && players.filter(q => q.joined).length > 1) {
+    const col = PLAYER_COLORS[slot % 4];
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - 2, 21, 9, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = col;
+    ctx.font = '700 10px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('P' + (slot + 1), p.x, p.y - 64);
+  }
   const im = SPRITE_IMG[p.heroKey];
   const H = 56, W = im ? H * (im.width / im.height) : 0;
   if (!p.alive) {
@@ -3040,6 +3280,22 @@ function drawUpgradeIcon(kind, x, y, s, t) {
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#ef4444';
     ctx.fillRect(-1, -17, 2, 5);
+  } else if (kind === 'shuffle') {
+    ctx.strokeStyle = UI.gold;
+    ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.arc(0, 0, 11, -0.4, Math.PI - 0.7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 11, Math.PI - 0.4, 2 * Math.PI - 0.7); ctx.stroke();
+    ctx.fillStyle = UI.gold;
+    for (const a of [Math.PI - 0.7, 2 * Math.PI - 0.7]) {
+      const hx = Math.cos(a) * 11, hyy = Math.sin(a) * 11;
+      ctx.save();
+      ctx.translate(hx, hyy);
+      ctx.rotate(a + Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, -6); ctx.lineTo(4.5, 2); ctx.lineTo(-4.5, 2);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
   } else if (kind === 'goldrush') {
     for (const [ox3, oy3] of [[-8, 4], [8, 4], [0, -5]]) {
       ctx.fillStyle = '#a9722c';
@@ -3209,7 +3465,7 @@ function drawActionBtn(x, y, w, h, label, style, idx) {
   ctx.fill();
   const padSel = ((game.victory || game.over) && game.panelPick != null &&
     (game.victory ? [-20, -21, -22] : [-21, -22])[game.panelPick] === idx) ||
-    (game.paused && [-30, -31][game.pausePick || 0] === idx);
+    (game.paused && [-30, -31, -32][game.pausePick || 0] === idx);
   const hov = padSel || (mouse.x > x && mouse.x < x + w && mouse.y > y && mouse.y < y + h);
   ctx.strokeStyle = hov ? '#ffd98a' : 'rgba(232, 182, 76, 0.55)';
   ctx.lineWidth = hov ? 2.2 : 1.5;
@@ -3638,6 +3894,68 @@ function renderArmory(t) {
   drawToasts(t);
 }
 
+function renderLobby(t) {
+  drawScreenBg(t);
+  drawScreenTitle('THE WAR COUNCIL', 84);
+  ctx.textAlign = 'center';
+  ctx.font = '600 13px Inter, sans-serif';
+  ctx.fillStyle = UI.dim;
+  ctx.fillText(MAPS[game.mapPick].name + '  ·  survive ' + MAPS[game.mapPick].goal + ' minutes', 480, 114);
+  cardRects = [];
+  for (let i = 0; i < 4; i++) {
+    const w = 190, h = 250;
+    const x = 480 - (4 * w + 3 * 14) / 2 + i * (w + 14), y = 146;
+    const p = players[i];
+    const inParty = p && p.joined;
+    roundedRect(x, y, w, h, 12);
+    const lg = ctx.createLinearGradient(0, y, 0, y + h);
+    lg.addColorStop(0, 'rgba(24, 23, 27, 0.94)');
+    lg.addColorStop(1, 'rgba(12, 11, 14, 0.96)');
+    ctx.fillStyle = lg;
+    ctx.fill();
+    ctx.strokeStyle = inParty ? PLAYER_COLORS[i] : 'rgba(70, 68, 78, 0.9)';
+    ctx.lineWidth = inParty ? 2.5 : 1.5;
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.font = '700 13px Inter, sans-serif';
+    ctx.fillStyle = PLAYER_COLORS[i];
+    ctx.fillText('P' + (i + 1), x + w / 2, y + 26);
+    if (inParty) {
+      const bob = Math.sin(t * 3 + i) * 3;
+      if (!drawHeroImg(p.heroKey, x + w / 2, y + 170 + bob, 110)) {
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(heroSprites[p.heroKey].down[1], x + w / 2 - 40, y + 60 + bob, 80, 80);
+      }
+      ctx.font = '700 13px Cinzel, Georgia, serif';
+      ctx.fillStyle = '#f3ead8';
+      ctx.fillText(p.name, x + w / 2, y + 210);
+      ctx.font = '11px Inter, sans-serif';
+      ctx.fillStyle = '#8fd460';
+      ctx.fillText('READY', x + w / 2, y + 230);
+    } else {
+      ctx.font = '46px Georgia, serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.fillText('?', x + w / 2, y + 140);
+      ctx.font = '600 11px Inter, sans-serif';
+      ctx.fillStyle = UI.dim;
+      ctx.fillText(i === 1 ? 'PRESS J OR 🎮 A' : 'PRESS 🎮 A', x + w / 2, y + 208);
+      ctx.fillText('TO JOIN', x + w / 2, y + 224);
+    }
+  }
+  const remotes = players.filter(p => p.remote && p.joined).length;
+  if (remotes || NET.role === 'host') {
+    ctx.font = '600 12px Inter, sans-serif';
+    ctx.fillStyle = '#8fd460';
+    ctx.textAlign = 'center';
+    ctx.fillText(remotes
+      ? '🌐 ' + remotes + ' online friend' + (remotes > 1 ? 's' : '') + ' will ride with you'
+      : '🌐 Room ' + NET.code + ' open — online friends can still join mid-battle', 480, 428);
+  }
+  drawActionBtn(384, 448, 192, 46, '⚔ START BATTLE', 'green', -5);
+  drawHintsBar([['A / SPACE', true], ['START THE BATTLE', false], ['·', false], ['EXTRA PADS PRESS A', true], ['JOIN', false], ['·', false], ['B', true], ['BACK', false]]);
+  drawToasts(t);
+}
+
 function renderMapSelect(t) {
   drawScreenBg(t);
   drawScreenTitle('CHOOSE THE BATTLEFIELD', 64);
@@ -3741,6 +4059,7 @@ function render(t) {
   if (game.phase === 'select2') { renderSelect(t, true); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'armory') { renderArmory(t); ctx.restore(); frameShadow(); return; }
   if (game.phase === 'map') { renderMapSelect(t); ctx.restore(); frameShadow(); return; }
+  if (game.phase === 'lobby') { renderLobby(t); ctx.restore(); frameShadow(); return; }
   if (game.netGuest && (game.netWait || !NET.snap)) {
     drawScreenBg(t);
     drawScreenTitle('THE KINGDOM GATHERS', 280);
@@ -3933,6 +4252,11 @@ function render(t) {
   for (const e of enemies) drawList.push({ y: e.y, kind: 'enemy', e });
   for (const p of players) if (p.joined) drawList.push({ y: p.y, kind: 'player', p });
   for (const pe of runPets) drawList.push({ y: pe.y + 30, kind: 'pet', pe });
+  for (const c2 of chests) {
+    if (c2.x > cam.x - 60 && c2.x < cam.x + 1020 && c2.y > cam.y - 60 && c2.y < cam.y + 700) {
+      drawList.push({ y: c2.y, kind: 'chest', c: c2 });
+    }
+  }
   for (const s of structures) {
     if (s.x > cam.x - 160 && s.x < cam.x + 1120 && s.y > cam.y - 160 && s.y < cam.y + 860) {
       drawList.push({ y: s.y, kind: 'struct', s });
@@ -3943,6 +4267,7 @@ function render(t) {
     if (d.kind === 'enemy') drawEnemy(d.e, t);
     else if (d.kind === 'struct') drawStructure(d.s, MAPS[game.mapPick], t);
     else if (d.kind === 'pet') drawPet(d.pe, t);
+    else if (d.kind === 'chest') drawChest(d.c, t);
     else drawPlayerSprite(d.p, t);
   }
 
@@ -4103,78 +4428,81 @@ function render(t) {
 
   // ---- HUD: royal command bar ----
   const joined = players.filter(p => p.joined);
-  let hy = 12;
+  let hy = 10;
   for (const p of joined) {
-    const pw = Math.max(180, 76 + Math.min(p.maxHp, 12) * 21);
-    ornate(10, hy, pw, 46, 12);
+    const pw = Math.max(212, 94 + Math.min(p.maxHp, 12) * 24);
+    ornate(10, hy, pw, 56, 12);
+    // player color bar
+    ctx.fillStyle = PLAYER_COLORS[Math.max(0, players.indexOf(p)) % 4];
+    ctx.fillRect(16, hy + 10, 5, 36);
     ctx.save();
     ctx.beginPath();
-    ctx.arc(35, hy + 23, 15, 0, Math.PI * 2);
+    ctx.arc(42, hy + 28, 19, 0, Math.PI * 2);
     ctx.clip();
     ctx.fillStyle = 'rgba(232, 182, 76, 0.14)';
-    ctx.fillRect(20, hy + 8, 30, 30);
+    ctx.fillRect(23, hy + 9, 38, 38);
     ctx.imageSmoothingEnabled = false;
     const hudIm = SPRITE_IMG[p.heroKey];
     if (hudIm) {
       // frame the helmet inside the circle
-      const hh = 52, hw = hh * (hudIm.width / hudIm.height);
-      ctx.drawImage(hudIm, 35 - hw / 2, hy + 10, hw, hh);
+      const hh = 64, hw = hh * (hudIm.width / hudIm.height);
+      ctx.drawImage(hudIm, 42 - hw / 2, hy + 13, hw, hh);
     } else {
-      ctx.drawImage(heroSprites[p.heroKey].down[1], 19, hy + 5, 32, 32);
+      ctx.drawImage(heroSprites[p.heroKey].down[1], 23, hy + 9, 38, 38);
     }
     ctx.restore();
     ctx.strokeStyle = p.alive ? UI.plateBorder : 'rgba(140, 140, 140, 0.5)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(35, hy + 23, 15, 0, Math.PI * 2);
+    ctx.arc(42, hy + 28, 19, 0, Math.PI * 2);
     ctx.stroke();
     ctx.textAlign = 'left';
-    ctx.font = '700 12px Cinzel, Georgia, serif';
+    ctx.font = '700 15px Cinzel, Georgia, serif';
     ctx.fillStyle = p.alive ? UI.goldPale : UI.dim;
-    ctx.fillText(p.name, 60, hy + 19);
+    ctx.fillText(p.name, 72, hy + 24);
     if (p.maxHp <= 12) {
-      for (let i = 0; i < p.maxHp; i++) drawHeart(66 + i * 21, hy + 33, 9, i < p.hp);
+      for (let i = 0; i < p.maxHp; i++) drawHeart(78 + i * 24, hy + 42, 11, i < p.hp);
     } else {
       // big-hearted knights get a compact counter instead of a mile of hearts
-      drawHeart(66, hy + 33, 9, p.hp > 0);
-      ctx.font = '700 13px Inter, sans-serif';
+      drawHeart(78, hy + 42, 11, p.hp > 0);
+      ctx.font = '700 16px Inter, sans-serif';
       ctx.fillStyle = p.alive ? '#f0e2c3' : UI.dim;
-      ctx.fillText(p.hp + ' / ' + p.maxHp, 82, hy + 37);
+      ctx.fillText(p.hp + ' / ' + p.maxHp, 96, hy + 48);
     }
-    hy += 54;
+    hy += 66;
   }
 
   // center: timer + XP + level medallion
-  ornate(360, 10, 240, 58, 12);
-  drawCrest(480, 10, 0.85);
+  ornate(348, 8, 264, 66, 12);
+  drawCrest(480, 8, 0.95);
   const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
   const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
   ctx.textAlign = 'center';
-  ctx.font = '700 24px Cinzel, Georgia, serif';
+  ctx.font = '700 28px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldPale;
-  ctx.fillText(mm + ':' + ss, 470, 36);
+  ctx.fillText(mm + ':' + ss, 468, 40);
   ctx.fillStyle = 'rgba(10, 6, 16, 0.85)';
-  ctx.fillRect(380, 46, 180, 9);
-  const xg = ctx.createLinearGradient(380, 0, 560, 0);
+  ctx.fillRect(368, 52, 196, 10);
+  const xg = ctx.createLinearGradient(368, 0, 564, 0);
   xg.addColorStop(0, '#7c3aed');
   xg.addColorStop(1, '#c084fc');
   ctx.fillStyle = xg;
-  ctx.fillRect(380, 46, 180 * Math.min(1, game.xp / game.xpNext), 9);
+  ctx.fillRect(368, 52, 196 * Math.min(1, game.xp / game.xpNext), 10);
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
-  ctx.strokeRect(380, 46, 180, 9);
+  ctx.strokeRect(368, 52, 196, 10);
   // level medallion
   ctx.beginPath();
-  ctx.arc(586, 44, 17, 0, Math.PI * 2);
+  ctx.arc(592, 46, 19, 0, Math.PI * 2);
   ctx.fillStyle = '#1a1410';
   ctx.fill();
   ctx.strokeStyle = UI.gold;
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.textAlign = 'center';
-  ctx.font = '700 13px Cinzel, Georgia, serif';
+  ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.level), 586, 49);
+  ctx.fillText(String(game.level), 592, 51);
   // objective countdown (or endless badge)
   if (game.endless) {
     ctx.font = '700 12px Inter, sans-serif';
@@ -4197,20 +4525,20 @@ function render(t) {
   }
 
   // right: banished counter with a wisp emblem
-  ornate(788, 10, 162, 44, 12);
+  ornate(776, 8, 174, 52, 12);
   ctx.fillStyle = '#3b1e63';
-  ctx.beginPath(); ctx.arc(812, 32, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(802, 34, 12, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#e9d5ff';
-  ctx.fillRect(807, 28, 3, 5); ctx.fillRect(814, 28, 3, 5);
+  ctx.fillRect(796, 29, 4, 6); ctx.fillRect(805, 29, 4, 6);
   ctx.textAlign = 'left';
-  ctx.font = '600 9px Inter, sans-serif';
+  ctx.font = '600 11px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText('BANISHED', 832, 25);
-  ctx.font = '700 19px Cinzel, Georgia, serif';
+  ctx.fillText('BANISHED', 824, 27);
+  ctx.font = '700 23px Cinzel, Georgia, serif';
   ctx.fillStyle = '#c9a8ff';
-  ctx.fillText(String(game.kills), 832, 46);
-  ornate(788, 60, 162, 34, 12);
-  drawUpgradeIcon('coin', 812, 77, 0.42, t);
+  ctx.fillText(String(game.kills), 824, 52);
+  ornate(776, 66, 174, 40, 12);
+  drawUpgradeIcon('coin', 802, 86, 0.5, t);
   // bottom crest band
   ctx.fillStyle = 'rgba(9, 7, 5, 0.85)';
   ctx.fillRect(0, 630, 960, 10);
@@ -4222,14 +4550,14 @@ function render(t) {
   ctx.stroke();
   drawCrest(480, 628, 0.75);
   ctx.textAlign = 'right';
-  ctx.font = '700 15px Cinzel, Georgia, serif';
+  ctx.font = '700 18px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 938, 83);
+  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 938, 93);
   if (NET.role === 'host' && NET.code) {
     ctx.textAlign = 'right';
-    ctx.font = '700 10px Inter, sans-serif';
+    ctx.font = '700 11px Inter, sans-serif';
     ctx.fillStyle = 'rgba(143, 212, 96, 0.85)';
-    ctx.fillText('🌐 ROOM ' + NET.code, 946, 106);
+    ctx.fillText('🌐 ROOM ' + NET.code, 946, 120);
   }
 
   if (!game.netGuest && players.some((p, pi) => pi > 0 && !p.joined && !p.remote)) {
@@ -4450,19 +4778,61 @@ function render(t) {
     cardRects = [];
     ctx.fillStyle = 'rgba(8, 6, 12, 0.72)';
     ctx.fillRect(0, 0, 960, 640);
-    drawScreenTitle('PAUSED', 272);
+    drawScreenTitle('PAUSED', 130);
+    // ---- the war map: whole realm, chests, knights ----
+    const mw = 330, mh = Math.round(mw * WORLD_H / WORLD_W);
+    const mx = 480 - mw / 2, my = 168;
+    ctx.fillStyle = 'rgba(10, 9, 12, 0.92)';
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.fillStyle = MAPS[game.mapPick].base;
+    ctx.globalAlpha = 0.22;
+    ctx.fillRect(mx, my, mw, mh);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(232, 182, 76, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(mx, my, mw, mh);
+    const sxm = mw / WORLD_W, sym = mh / WORLD_H;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+    for (const s of structures) ctx.fillRect(mx + s.x * sxm - 1, my + s.y * sym - 1, 2, 2);
+    for (const c3 of chests) {
+      if (c3.open) continue;
+      ctx.save();
+      ctx.translate(mx + c3.x * sxm, my + c3.y * sym);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillStyle = '#ffd98a';
+      ctx.fillRect(-3, -3, 6, 6);
+      ctx.restore();
+    }
+    for (const e2 of enemies) {
+      if (e2.kind !== 'gilded') continue;
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(mx + e2.x * sxm, my + e2.y * sym, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    players.forEach((p2, pi2) => {
+      if (!p2.joined) return;
+      ctx.fillStyle = PLAYER_COLORS[pi2 % 4];
+      ctx.beginPath(); ctx.arc(mx + p2.x * sxm, my + p2.y * sym, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+    ctx.font = '600 10px Inter, sans-serif';
+    ctx.fillStyle = UI.dim;
+    ctx.textAlign = 'center';
+    ctx.fillText('◆ unopened chests   ● you and your friends   ● golden wisps', 480, my + mh + 16);
     if (game.netGuest) {
-      ctx.textAlign = 'center';
       ctx.fillStyle = UI.dim;
       ctx.font = '600 14px Inter, sans-serif';
-      ctx.fillText('The host paused the battle…', 480, 330);
+      ctx.fillText('The host paused the battle…', 480, my + mh + 46);
     } else {
-      drawActionBtn(305, 322, 165, 44, 'RESUME', 'green', -30);
-      drawActionBtn(490, 322, 165, 44, 'HOME MENU', 'dark', -31);
+      const by2 = my + mh + 34;
+      drawActionBtn(240, by2, 150, 42, 'RESUME', 'green', -30);
+      drawActionBtn(405, by2, 150, 42, 'HOME MENU', 'gold', -31);
+      drawActionBtn(570, by2, 150, 42, '🏳 QUIT', 'dark', -32);
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(240, 226, 195, 0.5)';
       ctx.font = '11px Inter, sans-serif';
-      ctx.fillText('ESC or START — resume', 480, 398);
+      ctx.fillText('ESC or START — resume', 480, by2 + 64);
     }
   }
 
@@ -5226,9 +5596,12 @@ function hideMenu() {
   menuEl.classList.add('hidden');
 }
 btnPlay.addEventListener('click', () => {
-  // PLAY must never land you on the upgrade page
+  // PLAY must never land you on the upgrade page or a dead battle
   if (game.netGuest) { game.phase = 'run'; hideMenu(); return; }
   if (game.phase === 'armory') { game.phase = 'select'; game.cursor = 0; }
+  if (game.over || game.victory) {
+    game.phase = 'select'; game.cursor = 0; game.over = false; game.victory = false;
+  }
   hideMenu();
 });
 function togglePause() {
@@ -5237,6 +5610,23 @@ function togglePause() {
   game.paused = !game.paused;
   game.pausePick = 0;
   return true;
+}
+function quitRun() {
+  // retreat with honor: salvage a defeat payout and ride home
+  if (!game.paidOut) {
+    game.paidOut = true;
+    game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
+    kdMeta.gold += game.payout;
+    saveMeta();
+    recordRun(false);
+    gameToast('🏳 Retreat! +' + game.payout + 'g salvaged · ✦ kingdom saved');
+  }
+  game.paused = false;
+  game.over = false;
+  game.victory = false;
+  game.phase = 'select';
+  game.cursor = 0;
+  showMenu();
 }
 window.addEventListener('keydown', e => {
   if (e.code !== 'Escape') return;
@@ -5376,6 +5766,7 @@ function recordRun(win) {
   kdStats.best.sort((a, b) => b.t - a.t);
   kdStats.best = kdStats.best.slice(0, 8);
   saveStats();
+  gameToast('✦ Kingdom saved');
   checkAchievements();
 }
 
@@ -5571,6 +5962,7 @@ function netBroadcast() {
     sl: slashes.map(s => [Math.round(s.x), Math.round(s.y), Math.round(s.ang * 100) / 100, Math.round(s.age * 100) / 100, s.r]),
     bo: bolts.map(b => [Math.round(b.x), Math.round(b.y)]),
     pe: runPets.map(pe => [pe.def.proj, Math.round(pe.x), Math.round(pe.y), Math.round(pe.seed)]),
+    cs: chests.map(c => [Math.round(c.x), Math.round(c.y), c.open ? 1 : 0]),
   });
 }
 function applySnap(m) {
@@ -5620,6 +6012,7 @@ function applySnap(m) {
   slashes = m.sl.map(a => ({ x: a[0], y: a[1], ang: a[2], age: a[3], r: a[4] }));
   bolts = m.bo.map(a => ({ x: a[0], y: a[1], vx: 0, vy: 0, life: 1 }));
   runPets = m.pe.map(a => ({ def: PETS.find(p => p.proj === a[0]) || PETS[0], rank: 1, x: a[1], y: a[2], seed: a[3], cd: 9 }));
+  chests = (m.cs || []).map(a => ({ x: a[0], y: a[1], open: !!a[2], seed: a[0] % 10 }));
 }
 function startGuestRun(heroKey) {
   NET.self = makePlayer({ left: '', right: '', up: '', down: '' }, true);
@@ -5747,14 +6140,23 @@ function pollPads() {
       else if (tap('bBtn')) closePanels();
       continue;
     }
+    if (game.phase === 'lobby') {
+      if (i === 0) {
+        if (tap('a') || tap('start')) startBattle();
+        else if (tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; }
+      } else if (players[i] && !players[i].joined && !players[i].remote && tap('a')) {
+        game.fromLobby = true; game.joinSlot = i; game.phase = 'select2'; game.cursor = 0;
+      }
+      continue;
+    }
     if (tap('start')) { synthKey('Escape'); continue; }
 
     if (game.paused) {
       if (game.netGuest) continue;
       if (dir('left')) game.pausePick = Math.max(0, (game.pausePick || 0) - 1);
-      if (dir('right')) game.pausePick = Math.min(1, (game.pausePick || 0) + 1);
+      if (dir('right')) game.pausePick = Math.min(2, (game.pausePick || 0) + 1);
       if (tap('bBtn')) togglePause();
-      else if (tap('a')) { if ((game.pausePick || 0) === 0) togglePause(); else showMenu(); }
+      else if (tap('a')) [togglePause, showMenu, quitRun][(game.pausePick || 0)]();
       continue;
     }
 
