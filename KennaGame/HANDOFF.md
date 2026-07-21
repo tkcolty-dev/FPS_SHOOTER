@@ -42,6 +42,12 @@ v2.0 "THE WIDESCREEN WAR"+: 1136×640 16:9 render (`ROOM_W`, `CX`); 24 knights (
 4. Unreproduced owner reports (suspect stale builds, retest on request): "second map does not work", "mouse upgrades broken", "moving bugs".
 5. Wishlist: more pets, Royal Quests (in-run challenges), per-realm music variants, more evolutions (pattern: `evolutionReady()`-style check + chest reward kind).
 
+## Git / publishing
+
+Standalone **private repo: https://github.com/tkcolty-dev/KennaGame** (full 85-commit history, default `main`). The working copy is STILL the `KennaGame/` subdirectory of the big `/Users/colton/claude` repo (branch `blockforge`) — to publish new work to the private repo, commit in the parent repo as usual, then:
+`cd /Users/colton/claude && git subtree split --prefix=KennaGame -b tmp && git push kennagame tmp:main && git branch -D tmp`
+(the `kennagame` remote is already configured in the parent repo).
+
 ## Owner working style
 
 Fast iteration, many mid-turn voice-dictated messages (parse generously). Wants patch notes (UC_SLIDES + chronicle panel) updated every version. Tests on real Xbox and reports UX issues in bursts — fix ALL of them, verify with mock-pad tests, screenshot before/after. Full detailed history lives in the Claude memory file `kenna-game.md` (memory dir), which is the deep-dive companion to this doc.
