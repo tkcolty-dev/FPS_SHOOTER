@@ -677,11 +677,12 @@
     opacity: 1; transform: translateX(-50%) translateY(0);
   }
   #menu.hasImage .iconBtn .badge { visibility: hidden; }
-  #menu.hasImage .iconBtn:hover {
+  #menu.hasImage .iconBtn:hover, #menu.hasImage .iconBtn:active, #menu.hasImage .iconBtn.padFocus {
     transform: none;
-    background: rgba(255, 217, 138, 0.1);
-    border: 2px solid rgba(255, 217, 138, 0.7);
-    box-shadow: 0 0 16px rgba(232, 182, 76, 0.4);
+    background: rgba(13, 11, 9, 0.96);
+    border: 2px solid rgba(255, 242, 207, 0.85);
+    box-shadow: 0 0 16px rgba(232, 182, 76, 0.5);
+    color: #ffd98a;
   }
   #menu.hasImage .statCard, #menu.hasImage #updateCard, #menu.hasImage #questCard {
     background: none; border: none; box-shadow: none;
@@ -782,11 +783,18 @@
     border: 2px solid rgba(255, 217, 138, 0.7);
     box-shadow: 0 0 16px rgba(232, 182, 76, 0.4);
   }
-  #menu.hasImage .statCard.padFocus, #menu.hasImage #updateCard.padFocus, #menu.hasImage #questCard.padFocus,
+  #menu.hasImage .statCard.padFocus, #menu.hasImage #questCard.padFocus,
   #menu.hasImage #chipKnights.padFocus {
     border: 1px solid rgba(255, 217, 138, 0.85);
     background: rgba(20, 17, 12, 0.97);
     box-shadow: 0 0 22px rgba(232, 182, 76, 0.4);
+  }
+  /* the news card just wears a bright frame — never dims the painted preview */
+  #menu.hasImage #updateCard.padFocus {
+    border: 2px solid rgba(255, 242, 207, 0.95);
+    background: none;
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+    box-shadow: 0 0 26px rgba(232, 182, 76, 0.55);
   }
   button.hsCard.padFocus {
     transform: translateY(-2px);
@@ -804,6 +812,16 @@
     transition: transform 0.14s ease;
   }
   #menu.hasImage .menuBtn.padFocus, #menu.hasImage button.hsCard.padFocus { transform: scale(1.05) !important; }
+  /* the picked plate FLASHES — brightness breathing, no chunky outline */
+  @keyframes padFlash {
+    0%, 100% { backdrop-filter: brightness(1.05); -webkit-backdrop-filter: brightness(1.05); box-shadow: 0 0 10px rgba(255, 226, 150, 0.25); }
+    50% { backdrop-filter: brightness(1.55); -webkit-backdrop-filter: brightness(1.55); box-shadow: 0 0 34px rgba(255, 226, 150, 0.8); }
+  }
+  #menu.hasImage .menuBtn.padFocus {
+    border: 1.5px solid rgba(255, 217, 138, 0.55) !important;
+    background: rgba(255, 227, 160, 0.05) !important;
+    animation: padFlash 0.75s ease-in-out infinite !important;
+  }
   #menu.hasImage .iconBtn.padFocus { transform: scale(1.14) !important; }
   #menu.hasImage #updateCard.padFocus { transform: scale(1.03) !important; }
   @keyframes padNudge { from { margin-left: 0; } to { margin-left: 9px; } }
@@ -1136,6 +1154,7 @@
       <div class="credit-role">Remaster</div>
       <div class="credit-name" style="font-size:2.6vh">The Royal Remaster Guild</div>
       <div class="credit-small">Step 1: Concur. Step 2: Rule the kingdom. Step 3: Rule the world.</div>
+      <div class="credit-small" style="opacity:0.7">Music: Juhani Junkala &middot; Sounds &amp; monster parts: Kenney.nl &middot; both CC0</div>
       <div class="row" style="justify-content:center; margin-top:2vh">
         <button class="rowBtn" data-close>Back</button>
       </div>
@@ -1328,6 +1347,33 @@ if (document.fonts) {
   document.fonts.load('700 30px Cinzel');
   document.fonts.load('800 40px Cinzel');
 }
+// wraps text to a pixel width, shrinking once and capping lines — text NEVER leaves its box
+function wrapText(text, cx, y, maxW, font, smallFont, lineH, maxLines, color) {
+  ctx.font = font;
+  const fits = f => { ctx.font = f; return null; };
+  let words = String(text).split(' ');
+  const build = () => {
+    const lines = [];
+    let line = '';
+    for (const wd of words) {
+      const test = line ? line + ' ' + wd : wd;
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = wd; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  };
+  let lines = build();
+  if (lines.length > maxLines && smallFont) { ctx.font = smallFont; lineH -= 3; lines = build(); }
+  if (lines.length > maxLines) {
+    lines = lines.slice(0, maxLines);
+    lines[maxLines - 1] = lines[maxLines - 1].replace(/\s*\S*$/, '') + '…';
+  }
+  if (color) ctx.fillStyle = color;
+  lines.forEach((ln, i) => ctx.fillText(ln, cx, y + i * lineH));
+  return y + lines.length * lineH;
+}
+
 function plate(x, y, w, h, r = 10) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -1922,6 +1968,7 @@ function confirmSelection2() {
   const slot = game.joinSlot || 1;
   const p2 = players[slot];
   p2.joined = true;
+  p2.joinedVia = game.joinVia || 'key';
   if (slot === 0) game.heroPick = rk.key;   // P1 changed their mind — the battle honors it
   applyHero(p2, rk.key);
   applyRunUpgradesTo(p2);
@@ -1961,6 +2008,8 @@ function pickUpgrade(idx) {
     lvNow = ch.up[c.key] = pUpLvl(ch, c.key) + 1;
   } else {
     lvNow = game.up[c.key] = upLvl(c.key) + 1;
+    ch.fx = ch.fx || [];
+    if (!c.weapon && !ch.fx.includes(c.key) && ch.fx.length < 3) ch.fx.push(c.key);
   }
   const multi = players.filter(p2 => p2.joined).length > 1;
   gameToast('✨ ' + (multi ? ch.name + ' — ' : '') + c.name + '  Lv ' + lvNow + '!');
@@ -2015,7 +2064,7 @@ function initRun() {
   game.chooserRot = 0;
   game.chooser = 0;
   game.endingAt = 0;
-  for (const p of players) { p.arsT = {}; p.superT = {}; p.arsenal = []; p.supers = {}; p.up = {}; }
+  for (const p of players) { p.arsT = {}; p.superT = {}; p.arsenal = []; p.supers = {}; p.up = {}; p.fx = []; }
   enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = []; strikes = [];
   runPets = [];
   PETS.forEach((pd, i) => {
@@ -2140,8 +2189,13 @@ function rollChestReward(opener) {
   if (luck < 0.5) return { kind: 'gold', icon: 'coin', label: 'ROYAL GOLD' };
   if (luck < 0.82) {
     const op = opener || players[0];
-    const pool = UPGRADES.filter(u =>
-      (STAT_KEYS.has(u.key) ? pUpLvl(op, u.key) : upLvl(u.key)) < u.max && u.key !== 'shuffle');
+    op.fx = op.fx || [];
+    const pool = UPGRADES.filter(u => {
+      if (u.key === 'shuffle') return false;
+      if (STAT_KEYS.has(u.key)) return pUpLvl(op, u.key) < u.max;
+      if (upLvl(u.key) >= u.max) return false;
+      return op.fx.includes(u.key) || op.fx.length < 3;
+    });
     if (pool.length) {
       const gift = pool[Math.floor(Math.random() * pool.length)];
       return { kind: 'gift', gift, icon: gift.icon, label: gift.name.toUpperCase() };
@@ -2194,6 +2248,8 @@ function applyChestReward(ch) {
       lv2 = op.up[rw.gift.key] = pUpLvl(op, rw.gift.key) + 1;
     } else {
       lv2 = game.up[rw.gift.key] = upLvl(rw.gift.key) + 1;
+      op.fx = op.fx || [];
+      if (!op.fx.includes(rw.gift.key) && op.fx.length < 3) op.fx.push(rw.gift.key);
     }
     const multi2 = players.filter(p2 => p2.joined).length > 1;
     gameToast('🎁 Chest gift' + (multi2 ? ' for ' + op.name : '') + ': ' + rw.gift.name + '  Lv ' + lv2 + '!');
@@ -2306,8 +2362,13 @@ function buildChoices() {
   game.choicesAt = performance.now();
   game.padPick = null;
   const ch = chooserP();
-  const pool = UPGRADES.filter(u =>
-    (STAT_KEYS.has(u.key) ? pUpLvl(ch, u.key) : upLvl(u.key)) < u.max);
+  ch.fx = ch.fx || [];
+  const pool = UPGRADES.filter(u => {
+    if (STAT_KEYS.has(u.key)) return pUpLvl(ch, u.key) < u.max;   // training is slotless
+    if (upLvl(u.key) >= u.max) return false;
+    // effect gifts live in 3 slots: level what you own, or claim a free slot
+    return ch.fx.includes(u.key) || ch.fx.length < 3;
+  });
   // Vampire-Survivors style: each knight builds their OWN arsenal of up to 3 extra weapons
   if ((ch.arsenal || []).length < 3) {
     const owned = new Set([ch.wtype, ...(ch.arsenal || [])]);
@@ -3920,10 +3981,14 @@ function drawEnemy(e, t) {
   if (eim) {
     // the painted monster itself
     const ih = e.r * 2.7, iw = ih * (eim.width / eim.height);
-    if (e.flash > 0) ctx.filter = 'brightness(2.4) saturate(0.4)';
-    else if (e.slowT > 0) ctx.filter = 'saturate(0.55) brightness(1.15) hue-rotate(160deg)';
-    ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
-    ctx.filter = 'none';
+    const needsFilter = e.flash > 0 || e.slowT > 0;
+    if (needsFilter) {
+      ctx.filter = e.flash > 0 ? 'brightness(2.4) saturate(0.4)' : 'saturate(0.55) brightness(1.15) hue-rotate(160deg)';
+      ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
+      ctx.filter = 'none';
+    } else {
+      ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
+    }
     // crown + staff extras still ride on bosses
     if (e.boss || BOSS_DEFS[e.kind]) drawBossCrown(e, t);
     ctx.restore();
@@ -5627,6 +5692,14 @@ function renderSelect(t, forP2) {
   ctx.font = '700 18px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
   ctx.fillText(kdMeta.gold + ' GOLD', sx0 + 48, 129);
+  // the knight's rank, right beside the treasury
+  if (owned) {
+    ctx.textAlign = 'right';
+    ctx.font = '700 14px Cinzel, Georgia, serif';
+    ctx.fillStyle = kRank(rk.key) >= K_RANK_MAX ? '#ffd98a' : '#c8afff';
+    ctx.fillText(kRank(rk.key) >= K_RANK_MAX ? '★ MAX' : '⭐ RANK ' + kRank(rk.key), sx0 + sw0 - 22, 129);
+    ctx.textAlign = 'left';
+  }
   ctx.strokeStyle = UI.plateBorder;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(sx0 + 18, 144); ctx.lineTo(sx0 + sw0 - 18, 144); ctx.stroke();
@@ -5687,9 +5760,8 @@ function renderSelect(t, forP2) {
   ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = '#a3d977';
   ctx.fillText(wi.name.toUpperCase(), sx0 + 76, 398);
-  ctx.font = '12px Inter, sans-serif';
-  ctx.fillStyle = UI.dim;
-  ctx.fillText(wi.desc, sx0 + 76, 415);
+  ctx.textAlign = 'left';
+  wrapText(wi.desc, sx0 + 76, 413, sw0 - 100, '12px Inter, sans-serif', '10.5px Inter, sans-serif', 14, 2, UI.dim);
   // trait bullets with green diamonds
   const m = rk.mods, traits = [];
   if (m.hp > 0) traits.push('+' + m.hp + ' hearts');
@@ -5718,9 +5790,8 @@ function renderSelect(t, forP2) {
     if (krr < K_RANK_MAX) {
       const cost = kRankCost(rk);
       const canUp = kdMeta.gold >= cost;
-      ctx.font = '11px Inter, sans-serif';
-      ctx.fillStyle = '#ffd98a';
-      ctx.fillText('NEXT — RANK ' + (krr + 1) + ': ' + K_RANK_DESC[krr], sx0 + 30, ty2 + 4);
+      ctx.textAlign = 'left';
+      wrapText('NEXT — RANK ' + (krr + 1) + ': ' + K_RANK_DESC[krr], sx0 + 30, ty2 + 4, sw0 - 60, '11px Inter, sans-serif', '10px Inter, sans-serif', 13, 1, '#ffd98a');
       const uy = ty2 + 12, uh = 30;
       cardRects.push({ x: sx0 + 20, y: uy, w: sw0 - 40, h: uh, idx: -7 });
       roundedRect(sx0 + 20, uy, sw0 - 40, uh, 8);
@@ -5905,9 +5976,7 @@ function renderArmory(t) {
   ctx.font = '700 22px Cinzel, Georgia, serif';
   ctx.fillStyle = '#f3ead8';
   ctx.fillText(it.name.toUpperCase(), scx, 306);
-  ctx.font = '13px Inter, sans-serif';
-  ctx.fillStyle = UI.dim;
-  ctx.fillText(it.desc, scx, 328);
+  wrapText(it.desc, scx, 322, sw0 - 56, '13px Inter, sans-serif', '11.5px Inter, sans-serif', 17, 2, UI.dim);
   // rank pips, big
   const bp = it.max * 26 - 6;
   for (let r2 = 0; r2 < it.max; r2++) {
@@ -6918,21 +6987,34 @@ function render(t) {
       ctx.fillStyle = p.alive ? '#f0e2c3' : UI.dim;
       ctx.fillText(p.hp + ' / ' + p.maxHp, nameX + 24, hy + (compact ? 36 : 48));
     }
-    // this knight's own weapons + fusions, right beside their plate
-    const pIcons = (p.arsenal || [])
-      .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon)
-      .concat(SUPER_DEFS.filter(sd => (p.supers || {})[sd.key]).map(sd => sd.icon));
-    pIcons.forEach((ic, ai) => {
-      const mr = compact ? 10 : 13;
-      const ax2 = 10 + pw + 14 + ai * (mr * 2 + 6), ay2 = hy + ph2 / 2;
-      const isSuper = ['prism', 'stormray', 'dragonray'].includes(ic);
-      ctx.fillStyle = 'rgba(9, 7, 5, 0.75)';
-      ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = isSuper ? `rgba(125, 211, 252, ${0.6 + 0.3 * Math.sin(t * 4)})` : 'rgba(232, 182, 76, 0.55)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      drawUpgradeIcon(ic, ax2, ay2, mr / 32, t);
-    });
+    // this knight's slots: 3 weapons + 3 effects, claimed logos inside, empty rings waiting
+    const wIcons = (p.arsenal || [])
+      .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon);
+    const fIcons = (p.fx || []).map(k2 => (UPGRADES.find(u => u.key === k2) || {}).icon).filter(Boolean);
+    const supIcons = SUPER_DEFS.filter(sd => (p.supers || {})[sd.key]).map(sd => sd.icon);
+    const mr = compact ? 9 : 12;
+    const drawSlot = (ai, ic, kindCol) => {
+      const ax2 = 10 + pw + 14 + ai * (mr * 2 + 7), ay2 = hy + ph2 / 2;
+      if (ic) {
+        ctx.fillStyle = 'rgba(9, 7, 5, 0.75)';
+        ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = kindCol;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        drawUpgradeIcon(ic, ax2, ay2, mr / 32, t);
+      } else {
+        // an empty slot is just a whisper of a ring
+        ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2);
+        ctx.setLineDash([3, 3]);
+        ctx.strokeStyle = 'rgba(232, 182, 76, 0.2)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    };
+    for (let si2 = 0; si2 < 3; si2++) drawSlot(si2, wIcons[si2], 'rgba(232, 182, 76, 0.75)');
+    for (let si2 = 0; si2 < 3; si2++) drawSlot(3 + si2, fIcons[si2], 'rgba(163, 217, 119, 0.75)');
+    supIcons.forEach((ic, si2) => drawSlot(6 + si2, ic, `rgba(125, 211, 252, ${0.6 + 0.3 * Math.sin(t * 4)})`));
     hy += pStep;
   }
 
@@ -7189,15 +7271,7 @@ function render(t) {
       ctx.fillStyle = hov ? UI.goldLight : UI.text;
       ctx.font = '700 17px Cinzel, Georgia, serif';
       ctx.fillText(c.name, cx2, top + 162);
-      ctx.fillStyle = UI.dim;
-      ctx.font = '15px Inter, sans-serif';
-      const words = c.desc.split(' ');
-      let line = '', ly = top + 190;
-      for (const wd of words) {
-        if ((line + wd).length > 22) { ctx.fillText(line, cx2, ly); ly += 21; line = ''; }
-        line += (line ? ' ' : '') + wd;
-      }
-      ctx.fillText(line, cx2, ly);
+      wrapText(c.desc, cx2, top + 188, 206, '14px Inter, sans-serif', '12px Inter, sans-serif', 20, 3, UI.dim);
       ctx.restore();
     }
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
@@ -8066,6 +8140,9 @@ const SONGBOOK = [
   { name: 'March of the Last Knight',  style: 'march',     tp: 0,  rot: 0 },
   { name: 'Onslaught of the Curse',    style: 'onslaught', tp: 0,  rot: 0 },
   { name: 'Warm Kitten Lullaby',       style: 'lullaby',   tp: 0,  rot: 0 },
+  { name: 'Hero of the Realm 🎧',      style: 'file', file: 'level1' },
+  { name: 'Shadows Below 🎧',          style: 'file', file: 'level2' },
+  { name: 'The Last Stand 🎧',         style: 'file', file: 'level3' },
   { name: 'Banners at Dawn',           style: 'march',     tp: 2,  rot: 0 },
   { name: 'The Gray Vanguard',         style: 'march',     tp: -3, rot: 4, lite: true },
   { name: 'Trumpets of the Meadow',    style: 'march',     tp: 5,  rot: 0 },
@@ -8114,13 +8191,13 @@ for (const [id, key] of [['togShake', 'shake'], ['togDmg', 'dmgnums'], ['togFlas
   const el = document.getElementById(id);
   el.checked = settings[key] !== false;
   if (key === 'fps') el.checked = settings.fps === true;
-  el.addEventListener('change', () => { settings[key] = el.checked; saveSettings(); });
+  el.addEventListener('change', () => { settings[key] = el.checked; saveSettings(); playSample('ui-toggle', 0.6); });
 }
 const setAnthemBtn = document.getElementById('setAnthem');
 if (settings.song === undefined) settings.song = { march: 0, onslaught: 1, lullaby: 2 }[settings.anthem] || 0;
 function anthemLabel() {
   const song = SONGBOOK[settings.song % SONGBOOK.length];
-  const em = song.style === 'onslaught' ? '\u{1F525}' : song.style === 'lullaby' ? '\u{1F431}' : '\u2694';
+  const em = song.style === 'onslaught' ? '\u{1F525}' : song.style === 'lullaby' ? '\u{1F431}' : song.style === 'file' ? '\u{1F3A7}' : '\u2694';
   setAnthemBtn.innerHTML = em + ' ' + song.name + ' <span style="opacity:0.55">' + (settings.song % SONGBOOK.length + 1) + '/' + SONGBOOK.length + '</span>';
 }
 anthemLabel();
@@ -8129,7 +8206,8 @@ function songStep(d) {
   saveSettings();
   anthemLabel();
   SFX.pick();
-  // swap songs IMMEDIATELY — the old notes are silenced, the new song takes the stage
+  // swap songs IMMEDIATELY — old notes silenced, file tracks paused, new song takes the stage
+  stopMusicFiles();
   if (musicTrack === 'battle') flushMusic();
 }
 setAnthemBtn.addEventListener('click', () => songStep(1));
@@ -8174,8 +8252,13 @@ function openPanel(name) {
   for (const k in panels) panels[k].style.display = k === name ? 'block' : 'none';
   panelShade.classList.remove('hidden');
   setPadFocus(null);
+  if (typeof playSample === 'function') playSample('ui-open', 0.5);
 }
-function closePanels() { panelShade.classList.add('hidden'); setPadFocus(null); }
+function closePanels() {
+  if (!panelShade.classList.contains('hidden') && typeof playSample === 'function') playSample('ui-close', 0.5);
+  panelShade.classList.add('hidden');
+  setPadFocus(null);
+}
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
 panelShade.addEventListener('click', e => { if (e.target === panelShade) closePanels(); });
 // the second plate is UPGRADES now — straight to the armory
@@ -8945,8 +9028,8 @@ function pollPads() {
         if (!players[i].joined && i !== 0) {
           game.joinAnim = { slot: i, at: performance.now(), via: 'pad' };
           SFX.join();
-        } else {
-          // already in the party (or P1) — A re-opens YOUR picker to change knights
+        } else if (i === 0 || players[i].joinedVia !== 'key') {
+          // A re-opens YOUR OWN picker — a keyboard knight belongs to the keyboard
           game.fromLobby = true;
           game.joinSlot = i;
           game.joinVia = 'pad';
@@ -9076,8 +9159,51 @@ function initAudio() {
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   musicTimer = setInterval(musicTick, 300);
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  loadSamples();
   musicTick();
 }
+// ---- real audio files: Kenney UI sounds + Juhani Junkala music (both CC0) ----
+const SAMPLES = {};
+const SAMPLE_NAMES = ['ui-tick', 'ui-click', 'ui-confirm', 'ui-back', 'ui-denied', 'ui-toggle',
+                      'ui-open', 'ui-close', 'ui-bong', 'ui-glass', 'ui-pluck', 'ui-drop'];
+function loadSamples() {
+  for (const n of SAMPLE_NAMES) {
+    fetch('sounds/' + n + '.m4a')
+      .then(r => r.ok ? r.arrayBuffer() : Promise.reject())
+      .then(b => audioCtx.decodeAudioData(b))
+      .then(buf => { SAMPLES[n] = buf; })
+      .catch(() => {});
+  }
+}
+function playSample(name, vol = 1, rate = 1) {
+  const buf = SAMPLES[name];
+  if (!audioCtx || !buf) return false;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = rate;
+  const g = audioCtx.createGain();
+  g.gain.value = vol;
+  src.connect(g);
+  g.connect(sfxBus);
+  src.start();
+  return true;
+}
+// looping music tracks as plain audio elements (volume follows the slider)
+const MUSIC_EL = {};
+function musicFile(key) {
+  let el = MUSIC_EL[key];
+  if (!el) {
+    el = new Audio('sounds/music-' + key + '.m4a');
+    el.loop = true;
+    el.preload = 'auto';
+    MUSIC_EL[key] = el;
+  }
+  return el;
+}
+function stopMusicFiles(except) {
+  for (const k in MUSIC_EL) if (k !== except && !MUSIC_EL[k].paused) MUSIC_EL[k].pause();
+}
+
 // NOT once: any tap or key revives audio if the browser ever suspends it
 window.addEventListener('pointerdown', initAudio);
 window.addEventListener('keydown', initAudio);
@@ -9324,7 +9450,7 @@ function musicTick() {
   musicBus.gain.linearRampToValueAtTime((settings.music / 100) * 0.42, audioCtx.currentTime + 0.4);
   sfxBus.gain.value = (settings.sfx / 100) * 0.5;
   const now = audioCtx.currentTime;
-  if (now < stingUntil) { nextBarT = 0; return; }
+  if (now < stingUntil) { nextBarT = 0; stopMusicFiles(); return; }
   // paused mid-battle: hold the march exactly where it is — no track swap, no restart.
   // (switching tracks on every pause made the music start over and over)
   if (game.paused && !menuOpen && game.phase === 'run') return;
@@ -9337,12 +9463,22 @@ function musicTick() {
   while (nextBarT < now + 1.3) {
     if (musicTrack === 'battle') {
       const song = SONGBOOK[(settings.song || 0) % SONGBOOK.length];
+      if (song.style === 'file') {
+        // a real recording leads the battle — the synth stands down
+        const el = musicFile(song.file);
+        el.volume = Math.min(1, (settings.music / 100) * 0.95);
+        stopMusicFiles(song.file);
+        if (el.paused) el.play().catch(() => {});
+        nextBarT = now + 0.3;
+        break;
+      }
+      stopMusicFiles();
       SONG_CFG = song;
       if (song.style === 'onslaught') { scheduleOnslaughtBar(barIdx, nextBarT); nextBarT += O_BAR; }
       else if (song.style === 'lullaby') { scheduleLullabyBar(barIdx, nextBarT); nextBarT += L_BAR; }
       else { scheduleBattleBar(barIdx, nextBarT); nextBarT += B_BAR; }
     }
-    else { scheduleMenuBar(barIdx, nextBarT); nextBarT += M_BAR; }
+    else { stopMusicFiles(); scheduleMenuBar(barIdx, nextBarT); nextBarT += M_BAR; }
     barIdx++;
   }
 }
@@ -9420,7 +9556,7 @@ const SFX = {
     tone(sfxBus, 'square', 0, t0 + 0.07, 0.16, 0.08, { hz: 1400 });
     tone(sfxBus, 'sine', 0, t0 + 0.07, 0.2, 0.04, { hz: 2800 });
   } },
-  heart()   { if (audioCtx) { tone(sfxBus, 'sine', 69, audioCtx.currentTime, 0.2, 0.14); tone(sfxBus, 'sine', 76, audioCtx.currentTime + 0.1, 0.3, 0.12); } },
+  heart()   { if (audioCtx) { if (!playSample('ui-pluck', 0.8)) { tone(sfxBus, 'sine', 69, audioCtx.currentTime, 0.2, 0.14); tone(sfxBus, 'sine', 76, audioCtx.currentTime + 0.1, 0.3, 0.12); } } },
   hurt()    { if (audioCtx && sfxGate('hu', 200)) {
     const t0 = audioCtx.currentTime;
     tone(sfxBus, 'sawtooth', 0, t0, 0.22, 0.2, { hz: 160, slideTo: 60 });
@@ -9430,6 +9566,7 @@ const SFX = {
   bolt()    { if (audioCtx && sfxGate('bo', 150)) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.14, 0.07, { hz: 420, slideTo: 240 }); },
   pet()     { if (audioCtx && sfxGate('pt', 180)) tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.09, 0.07, { hz: 880, slideTo: 1200 }); },
   levelup() { if (audioCtx) {
+    playSample('ui-bong', 0.5);
     const t0 = audioCtx.currentTime;
     [69, 73, 76, 81].forEach((m, i) => {
       tone(sfxBus, 'triangle', m, t0 + i * 0.09, 0.35, 0.14);
@@ -9437,21 +9574,24 @@ const SFX = {
     });
     tone(sfxBus, 'sine', 93, t0 + 0.4, 0.5, 0.05, { att: 0.03 });
   } },
-  pick()    { if (audioCtx) tone(sfxBus, 'triangle', 81, audioCtx.currentTime, 0.14, 0.13); },
+  pick()    { if (audioCtx) { if (!playSample('ui-click', 0.7)) tone(sfxBus, 'triangle', 81, audioCtx.currentTime, 0.14, 0.13); } },
   unlock()  { if (audioCtx) {
+    playSample('ui-confirm', 0.8);
     const t0 = audioCtx.currentTime;
-    [64, 69, 73, 76].forEach((m, i) => tone(sfxBus, 'triangle', m, t0 + i * 0.08, 0.3, 0.14));
-    tone(sfxBus, 'sine', 88, t0 + 0.32, 0.5, 0.06, { att: 0.01 });
+    [64, 69, 73, 76].forEach((m, i) => tone(sfxBus, 'triangle', m, t0 + i * 0.08, 0.3, 0.12));
+    tone(sfxBus, 'sine', 88, t0 + 0.32, 0.5, 0.05, { att: 0.01 });
   } },
-  denied()  { if (audioCtx) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.25, 0.1, { hz: 110 }); },
+  denied()  { if (audioCtx) { if (!playSample('ui-denied', 0.6)) tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.25, 0.1, { hz: 110 }); } },
   tick()    { if (audioCtx && sfxGate('tk', 70)) {
-    tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.035, 0.022, { hz: 1500, att: 0.002 });
+    if (!playSample('ui-tick', 0.4)) tone(sfxBus, 'sine', 0, audioCtx.currentTime, 0.035, 0.022, { hz: 1500, att: 0.002 });
   } },
   chest()   { if (audioCtx) {
-    const t0 = audioCtx.currentTime;
-    tone(sfxBus, 'square', 0, t0, 0.16, 0.05, { hz: 90, slideTo: 160 });
-    nz(sfxBus, t0 + 0.03, 0.09, 0.06, { type: 'bandpass', freq: 500 });
-    tone(sfxBus, 'sine', 0, t0 + 0.14, 0.22, 0.08, { hz: 620, slideTo: 940 });
+    if (!playSample('ui-open', 0.85)) {
+      const t0 = audioCtx.currentTime;
+      tone(sfxBus, 'square', 0, t0, 0.16, 0.05, { hz: 90, slideTo: 160 });
+      nz(sfxBus, t0 + 0.03, 0.09, 0.06, { type: 'bandpass', freq: 500 });
+    }
+    tone(sfxBus, 'sine', 0, audioCtx.currentTime + 0.14, 0.22, 0.06, { hz: 620, slideTo: 940 });
   } },
   join()    { if (audioCtx) {
     const t0 = audioCtx.currentTime;
