@@ -1195,6 +1195,7 @@
         <p>&#10022; Choose the Battlefield now uses twelve cinematic storybook realm paintings, giving every destination a distinct atmosphere while retaining live weather, lock states, objectives, and Xbox navigation.</p>
         <p>&#10022; Live realms now use hand-painted terrain, premium enemy sprites, low defensive walls, and one shared weapon atlas across unlock cards, HUD slots, equipped art, and combat.</p>
         <p>&#10022; Live terrain was rebalanced for visual cohesion, and selected commands now receive a restrained moving shine while unselected buttons stay settled and opaque.</p>
+        <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
         <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
@@ -6315,12 +6316,12 @@ function renderArmory(t) {
     ctx.textAlign = 'center';
     ctx.font = '700 12px Cinzel, Georgia, serif';
     ctx.fillStyle = sel ? UI.goldLight : '#d9d2c0';
-    ctx.fillText(it.name.toUpperCase(), x + cw / 2, y + 82);
+    ctx.fillText(it.name.toUpperCase(), x + cw / 2, y + 75);
     // rank pips
     const pipsW = it.max * 15 - 4;
     for (let r2 = 0; r2 < it.max; r2++) {
       ctx.fillStyle = r2 < it.rank ? UI.gold : 'rgba(255, 255, 255, 0.16)';
-      roundedRect(x + cw / 2 - pipsW / 2 + r2 * 15, y + 92, 11, 6, 3); ctx.fill();
+      roundedRect(x + cw / 2 - pipsW / 2 + r2 * 15, y + 84, 11, 5, 2.5); ctx.fill();
     }
   }
   // section hint under the pets row
@@ -6330,9 +6331,9 @@ function renderArmory(t) {
   ctx.fillText('Top: forged blessings   ·   Bottom row: royal pets who fight beside you', gx0 + (cols * cw + 2 * gap) / 2, gy0 + aRows * (chh + gap) + 6);
 
   // BACK — big, obvious, clickable
-  const bkY = gy0 + aRows * (chh + gap) + 18;
-  cardRects.push({ x: gx0 + 130, y: bkY, w: 260, h: 42, idx: -1 });
-  roundedRect(gx0 + 130, bkY, 260, 42, 9);
+  const bkY = gy0 + aRows * (chh + gap) + 17;
+  cardRects.push({ x: gx0 + 130, y: bkY, w: 260, h: 36, idx: -1 });
+  roundedRect(gx0 + 130, bkY, 260, 36, 9);
   ctx.fillStyle = 'rgba(14, 13, 16, 0.92)';
   ctx.fill();
   ctx.strokeStyle = 'rgba(201, 168, 106, 0.7)';
@@ -6340,7 +6341,7 @@ function renderArmory(t) {
   ctx.stroke();
   ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText('◀  BACK', gx0 + 260, bkY + 27);
+  ctx.fillText('◀  BACK', gx0 + 260, bkY + 24);
 
   // ---- sidebar: coins on top, details of the hovered item ----
   const it = armoryItem(game.cursor);
