@@ -1246,7 +1246,7 @@
         <p>&#10022; Quick recovery notices clear sooner, Royal Magnet pulls gems and coins but leaves hearts, and the generated painted enemy atlas remains authoritative in live battles.</p>
         <p>&#10022; Battlefield hedges now use connected leafy silhouettes instead of bead-like circles, and the Banished counter has a sharper inked skull built for TV readability.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
-        <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
+        <p>&#9876; 10 new weapons with real painted art &mdash; 3 weapon slots per knight: the signature you start with, plus up to 2 more won at level-ups</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
         <p>&#128128; Four champions of the curse guard the realms &mdash; and CONCUR himself waits in the Throne Room</p>
         <p>&#127918; Full controller kingdoms: d-pad everything, strict turn-taking in co-op, your own weapons and upgrades per knight</p>
@@ -2637,8 +2637,9 @@ function buildChoices() {
     // effect gifts live in 3 slots: level what you own, or claim a free slot
     return ch.fx.includes(u.key) || ch.fx.length < 3;
   });
-  // Vampire-Survivors style: each knight builds their OWN arsenal of up to 3 extra weapons
-  if ((ch.arsenal || []).length < 3) {
+  // Vampire-Survivors style: 3 weapon slots total — the signature you start with
+  // plus up to 2 won weapons. Once both extra slots are filled, only upgrades appear.
+  if ((ch.arsenal || []).length < 2) {
     const owned = new Set([ch.wtype, ...(ch.arsenal || [])]);
     const wkeys = Object.keys(WEAPON_INFO)
       .filter(k => !owned.has(k))
@@ -2653,7 +2654,7 @@ function buildChoices() {
           ch.arsenal = ch.arsenal || [];
           ch.arsenal.push(wk);
           gameToast('⚔ ' + ch.name + ' takes up the ' + WEAPON_INFO[wk].name + '!');
-          if (ch.arsenal.length >= 3) {
+          if (ch.arsenal.length >= 2) {
             kdStats.fullArsenal = true;
             saveStats();
             checkAchievements();
@@ -7919,9 +7920,11 @@ function render(t) {
     drawHeart(nameX + 5,hy + ph2 - 10,heartR,p.hp>0);
     ctx.font='700 '+(compact?10:12)+'px Inter, sans-serif';ctx.fillStyle=p.alive?'#f0e2c3':UI.dim;
     ctx.fillText(p.hp+' / '+p.maxHp,nameX+20,hy+ph2-6);
-    // this knight's slots: 3 weapons + 3 effects, claimed logos inside, empty rings waiting
-    const wIcons = (p.arsenal || [])
-      .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon);
+    // this knight's slots: 3 weapons + 3 effects, claimed logos inside, empty rings waiting.
+    // Slot 1 is ALWAYS the signature weapon you start with; won weapons fill 2 & 3.
+    const wIconOf = wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2'
+      : (WEAPON_INFO[wt2] ? WEAPON_INFO[wt2].icon : 'sword');
+    const wIcons = [wIconOf(p.wtype), ...(p.arsenal || []).map(wIconOf)];
     const fIcons = (p.fx || []).map(k2 => (UPGRADES.find(u => u.key === k2) || {}).icon).filter(Boolean);
     const supIcons = SUPER_DEFS.filter(sd => (p.supers || {})[sd.key]).map(sd => sd.icon);
     const mr = compact ? 4.5 : 6.5;
@@ -8460,8 +8463,8 @@ function render(t) {
           (p2.wtype === 'hammer' && game.evolved && game.evolved.hammer) ? 'MAX — THE SUNBREAKER, evolved!' :
           p2.wtype === 'hammer' ? 'Path: max Sharper Blades, then open a chest → THE SUNBREAKER' :
           'Signature weapon — stronger tiers ride on pricier knights');
-        // arsenal slots
-        for (let sl2 = 0; sl2 < 3; sl2++) {
+        // arsenal slots (2 won-weapon slots beside the signature line above = 3 total)
+        for (let sl2 = 0; sl2 < 2; sl2++) {
           const wt3 = (p2.arsenal || [])[sl2];
           if (wt3) {
             const sd2 = SUPER_DEFS.find(d2 => d2.needs.includes(wt3) && d2.needs.every(w3 => w3 === wt3 || w3 === p2.wtype || (p2.arsenal || []).includes(w3)));
@@ -10243,8 +10246,10 @@ window.addEventListener('gamepaddisconnected', e => {
 // (browsers only allow fullscreen from a real user gesture, and a reload always
 // drops out of fullscreen — so re-arm it every load, on Xbox AND Mac/desktop).
 const IS_XBOX = /Xbox/i.test(navigator.userAgent);
-window.addEventListener('pointerdown', enterFS, { once: true });
-window.addEventListener('keydown', enterFS, { once: true });
+// Capture-phase + once, across pointer/key/click, so the very first real gesture
+// requests fullscreen no matter which element handles it (enterFS is idempotent).
+['pointerdown', 'keydown', 'click'].forEach(ev =>
+  window.addEventListener(ev, enterFS, { once: true, capture: true }));
 if (IS_XBOX) {
   setTimeout(() => { if (menuOpen) menuToastShow('🎮 Welcome, Xbox knight! Press A to play.'); }, 1500);
 }
