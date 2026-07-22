@@ -51,3 +51,62 @@ Standalone **private repo: https://github.com/tkcolty-dev/KennaGame** (full 85-c
 ## Owner working style
 
 Fast iteration, many mid-turn voice-dictated messages (parse generously). Wants patch notes (UC_SLIDES + chronicle panel) updated every version. Tests on real Xbox and reports UX issues in bursts — fix ALL of them, verify with mock-pad tests, screenshot before/after. Full detailed history lives in the Claude memory file `kenna-game.md` (memory dir), which is the deep-dive companion to this doc.
+
+## July 21, 2026 Codex visual-pass continuation state
+
+This section is the authoritative continuation note for the latest Codex UI/art work.
+
+### Latest product decisions from the owner
+
+- Preserve `title-bg.png` exactly. Build the home UI around it; never regenerate, crop, replace, or edit it.
+- Home has four commands: Play, Upgrades, Credits, Exit Game. They remain separate and generously spaced. The complete button brightens and grows slightly only when selected; avoid partial/off-center shine.
+- The visible home label remains **PLAY**, even after returning from Upgrades or an existing run. Its subtitle may explain that it returns to the adventure.
+- Xbox-first interaction language is required. Use recognizable A/B/X/Y/Menu symbols and make controller focus unmistakable at TV distance.
+- X remains the Royal Gift reroll command. In the permanent Upgrades/Armory screen, Y opens and closes a large explanation for the selected item.
+- Upgrade level/rank information must remain visible while an item is selected. Selection must never hide the current level.
+- Pause uses a Vampire-Survivors-like hierarchy: large realm map in the center, primary actions on the left, reference/system actions on the right. Settings must be directly accessible and closing Settings must return to pause, not home.
+- Defeat is a full-screen royal results scene using a darkened crop of the protected home artwork, not a small dialog floating over the battlefield.
+- The generated enemies in `enemy-atlas.png` are the approved live monsters. `monsters/*.png` are only temporary loading fallbacks. The atlas must overwrite them when ready.
+- Weapons must appear through live swings, thrusts, shots, slams, lashes, projectiles, etc. Do not show idle weapon badges beside/orbiting heroes.
+- Battlefield barriers visually render as low storybook hedges/bushes. Their collision footprints stay unchanged. Bushes should be connected foliage silhouettes, not gray walls, buildings, or rows of circular dots.
+- Royal Magnet pulls XP gems and coins but does not pull healing hearts. Routine recovery messages should clear quickly so they do not cover combat.
+- Four-player HUD plates must compact vertically and clip all weapon/effect circles inside their boxes.
+
+### Latest implemented state
+
+- Home Royal Command stack uses opaque real UI over the protected background. Settled controls remain calm; selected buttons receive the whole-surface brightness/scale treatment.
+- Battle HUD uses a thin near-full-width XP strip, compact hero/build plates at left, small Time/Level center information, and a combined Banished/Treasury plate at right.
+- XP fill and treasury totals ease toward collected values instead of snapping.
+- Banished uses a compact inked skull with a clear cranium, sockets, cheek/jaw shape, and teeth.
+- Pause has six working actions: Resume and Arsenal on the left; Field Guide, Settings, Home Menu, and Retreat on the right. D-pad navigation understands the two-column layout. The selected action receives a full border and subtle whole-button lift; the broken diagonal sheen was removed.
+- Pause Settings uses `game.settingsFromPause`; `closePanels()` hides the DOM menu and restores `game.paused = true` with Settings selected.
+- Armory cards always show `LEVEL current / max`. `game.armoryInspect` drives the Y-button expanded explanation.
+- Defeat fills most of the canvas with a large royal results plate over `drawScreenBg(t)`.
+- Generated enemy atlas loading alpha-scans, trims, centers, and pads all 18 cells into 320×320 canvases; its images overwrite individual fallbacks.
+- Static equipped/orbiting weapon badges were removed. Existing live weapon renderers remain authoritative and received shared shadow/impact-glint polish.
+- Hedges now draw one continuous irregular silhouette plus connected highlight patches, leaf strokes, small flowers, and a contact shadow.
+- `gameToast(text, ttl)` supports shorter messages; heart recovery uses a 0.9-second lifetime.
+- Royal Magnet drop attraction checks `dr.kind === 'coin'`; gem attraction remains in the gem loop. Hearts remain stationary except during the separate global vacuum effect.
+- `title-bg.png` last verified SHA-1: `814b544a38062af192b7338b8fcf8accb8cf5d4c`.
+
+### Verification and useful captures
+
+- Required syntax command currently passes.
+- `git diff --check` currently passes.
+- Pause visual: `.playwright-mcp/pause-menu-final.png` (local test artifact, intentionally untracked).
+- Generated enemies/bushes/skull visual: `.playwright-mcp/generated-enemies-bushes-skull.png` (local test artifact, intentionally untracked).
+- Latest parent-repo commits before this handoff: `7797dd1` (painted enemies/battle props), `c7c53be` (pause/upgrades/battle feedback), `a017735` (bushes/active weapons).
+- KennaGame subtree was pushed to private remote `kennagame`, branch `main`, at subtree commit `002d5a7` before this handoff update.
+- Do not commit `.playwright-mcp/`, `*-chroma.png`, or other intermediate chroma-key/reference exports unless the owner explicitly asks to ship them.
+
+### Remaining audit watch-outs
+
+- Test all 18 generated enemies in a longer run or controlled preview, especially atlas cell assignment and boss scale.
+- Exercise pause by mouse and mock Xbox pad: all six buttons, Settings open/close return, Arsenal/Guide overlays, Resume, Home, and Retreat.
+- Exercise Armory Y details and confirm X still rerolls only on Royal Gift choices.
+- Recheck four-player HUD at 1136×640 and at browser-scaled TV sizes; ensure names, hearts, and all six slot rings remain inside each plate.
+- Continue visual-only discipline unless the owner explicitly requests behavior changes. Do not alter spawn, damage, balance, controls, networking, or saves.
+
+## Ready-to-paste kickoff prompt for the next agent
+
+> Work in `/Users/colton/claude/KennaGame`. Read `HANDOFF.md` completely, then read `CODEX-VISUAL-BRIEF.md` completely before acting. Continue from the “July 21, 2026 Codex visual-pass continuation state” section; do not restart or undo the approved direction. Preserve `title-bg.png` byte-for-byte. First verify the generated `enemy-atlas.png` monsters are the live in-game art, then test the rebuilt pause menu (including Settings returning to pause), Armory level persistence/Y details, four-player HUD clipping, connected bushes, active weapon animations, Royal Magnet behavior, and full-screen defeat UI. Use the established syntax check, browser screenshots, mouse hit-area tests, and mock Xbox-pad tests. Fix only demonstrated issues, update both in-game patch notes and `VISUAL-CHANGES.md`, make local commits by concern, and do not push unless I explicitly ask.
