@@ -9272,9 +9272,26 @@ function songStep(d) {
 setAnthemBtn.addEventListener('click', () => songStep(1));
 document.getElementById('songPrev').addEventListener('click', () => songStep(-1));
 document.getElementById('songNext').addEventListener('click', () => songStep(1));
+// Cross-browser fullscreen — Safari on Mac only exposes the webkit-prefixed
+// variants, so plain requestFullscreen() silently does nothing there.
+function fsElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || document.webkitCurrentFullScreenElement || null;
+}
+function enterFS() {
+  if (fsElement()) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.webkitRequestFullScreen;
+  if (!req) return;
+  try { const r = req.call(el); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+}
+function exitFS() {
+  if (!fsElement()) return;
+  const ex = document.exitFullscreen || document.webkitExitFullscreen;
+  if (!ex) return;
+  try { const r = ex.call(document); if (r && r.catch) r.catch(() => {}); } catch (e) {}
+}
 document.getElementById('setFullscreen').addEventListener('click', () => {
-  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-  else document.documentElement.requestFullscreen().catch(() => {});
+  if (fsElement()) exitFS(); else enterFS();
 });
 // Entering/leaving fullscreen doesn't reliably fire 'resize' (and when it does,
 // window.innerWidth/Height can still be the OLD size for a frame or two). Re-fit
@@ -9285,11 +9302,13 @@ function refitAll() {
   sizeMenuCanvases();
   sizeImgAnchor();
 }
-document.addEventListener('fullscreenchange', () => {
+function onFSChange() {
   refitAll();
   requestAnimationFrame(refitAll);
   requestAnimationFrame(() => requestAnimationFrame(refitAll));
-});
+}
+document.addEventListener('fullscreenchange', onFSChange);
+document.addEventListener('webkitfullscreenchange', onFSChange);
 document.getElementById('setReset').addEventListener('click', () => {
   if (!confirm('Erase ALL progress — gold, knights, upgrades, achievements and records?')) return;
   if (!confirm('The royal scribe asks one last time: really erase the whole kingdom?')) return;
@@ -10220,14 +10239,13 @@ window.addEventListener('gamepaddisconnected', e => {
     players[i].alive = false;
   }
 });
-// on an actual Xbox (Edge browser) the game goes fullscreen at the first tap
+// The game goes fullscreen at the first tap / key so it fills the whole display
+// (browsers only allow fullscreen from a real user gesture, and a reload always
+// drops out of fullscreen — so re-arm it every load, on Xbox AND Mac/desktop).
 const IS_XBOX = /Xbox/i.test(navigator.userAgent);
+window.addEventListener('pointerdown', enterFS, { once: true });
+window.addEventListener('keydown', enterFS, { once: true });
 if (IS_XBOX) {
-  window.addEventListener('pointerdown', () => {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    }
-  }, { once: true });
   setTimeout(() => { if (menuOpen) menuToastShow('🎮 Welcome, Xbox knight! Press A to play.'); }, 1500);
 }
 
