@@ -1236,6 +1236,7 @@
         <p>&#10022; Treasure chests now use a stronger inked-oak silhouette, gold bands, iron feet, a dimensional lock, and a tiny royal crown stamp.</p>
         <p>&#10022; Every remaining rough Royal Gift emblem has matching painted art that carries into live HUD slots, while level-up cards use smoother corners and cleaner spacing.</p>
         <p>&#10022; The battle HUD now uses a survivor-style layout: a razor-thin full-width XP strip with compact hero/build, time/level, and score islands beneath it.</p>
+        <p>&#10022; Survivor HUD labels were resized to fit their cards, and gray battlefield barriers now render as light low storybook outbuildings over the unchanged collision footprints.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
@@ -4071,32 +4072,25 @@ function drawStructure(s, M, t) {
   }
 }
 
-// Live battle structures are low defensive walls: their visible footprint still
-// matches the unchanged collision shape, without blocky house silhouettes.
+// Light storybook outbuildings retain the exact existing collision footprint.
 function drawBattleWall(s, M, t) {
-  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(18,Math.min(30,s.h*.3));
+  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(20,Math.min(29,s.h*.28));
   ctx.save();
-  ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(x,y+5,w*.52,8,0,0,Math.PI*2);ctx.fill();
-  // front face
-  const face=ctx.createLinearGradient(0,y-h,0,y+2);face.addColorStop(0,M.stoneHi);face.addColorStop(1,coverTone(M.stone,-.25));
-  roundedRect(x-w/2,y-h,w,h,5);ctx.fillStyle=face;ctx.fill();
-  // bright top course gives the wall a clear top-down footprint
-  ctx.beginPath();ctx.moveTo(x-w/2+5,y-h);ctx.lineTo(x-w/2+12,y-h-8);ctx.lineTo(x+w/2-7,y-h-8);ctx.lineTo(x+w/2-1,y-h);ctx.closePath();
-  ctx.fillStyle=M.stoneHi;ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,.13)';ctx.lineWidth=1;ctx.stroke();
-  // staggered masonry and occasional broken cap
-  ctx.strokeStyle='rgba(20,18,16,.22)';ctx.lineWidth=1;
-  for(let bx=x-w/2+18;bx<x+w/2;bx+=28){ctx.beginPath();ctx.moveTo(bx,y-h+2);ctx.lineTo(bx,y-2);ctx.stroke();}
-  ctx.beginPath();ctx.moveTo(x-w/2+2,y-h/2);ctx.lineTo(x+w/2-2,y-h/2);ctx.stroke();
-  const chip=hash2(s.seed,71)*w*.55;
-  ctx.fillStyle=M.base;ctx.beginPath();ctx.moveTo(x-w*.18+chip,y-h-9);ctx.lineTo(x-w*.12+chip,y-h+1);ctx.lineTo(x-w*.05+chip,y-h-9);ctx.closePath();ctx.fill();
-  // realm dressing keeps walls from feeling copy-pasted
+  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+5,w*.5,8,0,0,Math.PI*2);ctx.fill();
+  // pale plaster body stays visually light and low on the battlefield
+  const plaster=M.key==='snow'?'#e8f0ef':M.key==='volcano'?'#d7c3aa':'#e7ddc6';
+  roundedRect(x-w/2+3,y-h,w-6,h,4);ctx.fillStyle=plaster;ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.28)';ctx.fillRect(x-w/2+7,y-h+3,w-14,3);
+  // shallow storybook roof; its footprint stays inside the old barrier width
+  const roof=M.key==='forest'||M.key==='garden'?'#637b4b':M.key==='snow'?'#7892a0':M.key==='forge'||M.key==='volcano'?'#7d4b38':'#9b6548';
+  ctx.beginPath();ctx.moveTo(x-w/2,y-h+1);ctx.lineTo(x-w*.32,y-h-12);ctx.lineTo(x+w*.32,y-h-12);ctx.lineTo(x+w/2,y-h+1);ctx.closePath();ctx.fillStyle=roof;ctx.fill();
+  ctx.strokeStyle='rgba(35,25,18,.4)';ctx.lineWidth=1.5;ctx.stroke();
+  // door, warm window, and one timber line make it read as a building at TV scale
+  ctx.fillStyle='#59402c';roundedRect(x-6,y-14,12,14,3);ctx.fill();
+  ctx.fillStyle='#ffd878';roundedRect(x+w*.22-4,y-h+7,8,7,2);ctx.fill();
+  ctx.strokeStyle='rgba(85,58,38,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-w/2+5,y-2);ctx.lineTo(x+w/2-5,y-2);ctx.stroke();
   if(M.key==='forest'||M.key==='meadow'||M.key==='garden'){
-    ctx.fillStyle=M.tuftA;for(let k=0;k<4;k++){const vx=x-w/2+12+hash2(s.seed,k)*Math.max(10,w-24);ctx.fillRect(vx,y-h-10,7,4);}
-  } else if(M.key==='forge'||M.key==='volcano'){
-    ctx.strokeStyle='rgba(251,146,60,.65)';ctx.beginPath();ctx.moveTo(x-w*.28,y-h+5);ctx.lineTo(x-w*.1,y-4);ctx.lineTo(x+w*.1,y-h+7);ctx.stroke();
-  } else if(M.key==='crypt'||M.key==='throne'){
-    ctx.fillStyle='rgba(192,132,252,.55)';ctx.font='12px Georgia,serif';ctx.textAlign='center';ctx.fillText('◇',x,y-h+14);
+    ctx.fillStyle=M.tuftA;ctx.fillRect(x-w/2+8,y-h-2,10,3);
   }
   ctx.restore();
 }
@@ -7975,20 +7969,20 @@ function render(t) {
   ctx.moveTo(805.5, 39); ctx.lineTo(805.5, 43);
   ctx.stroke();
   ctx.textAlign = 'left';
-  ctx.font = '600 11px Inter, sans-serif';
+  ctx.font = '700 8px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
   ctx.fillText('BANISHED', 824, 33);
-  ctx.font = '700 23px Cinzel, Georgia, serif';
+  ctx.font = '700 17px Cinzel, Georgia, serif';
   ctx.fillStyle = '#e8e3d8';
   ctx.fillText(String(game.kills), 824, 55);
   ctx.strokeStyle='rgba(232,182,76,.24)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(872,25);ctx.lineTo(872,59);ctx.stroke();
   drawUpgradeIcon('coin', 892, 42, 0.36, t);
   ctx.textAlign = 'left';
-  ctx.font = '800 9px Inter, sans-serif';
+  ctx.font = '800 7px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
   ctx.fillText('TREASURY', 910, 33);
-  ctx.font = '700 15px Cinzel, Georgia, serif';
+  ctx.font = '700 13px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
   ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 910, 55);
   ctx.restore();
