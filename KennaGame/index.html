@@ -1236,7 +1236,8 @@
         <p>&#10022; Treasure chests now use a stronger inked-oak silhouette, gold bands, iron feet, a dimensional lock, and a tiny royal crown stamp.</p>
         <p>&#10022; Every remaining rough Royal Gift emblem has matching painted art that carries into live HUD slots, while level-up cards use smoother corners and cleaner spacing.</p>
         <p>&#10022; The battle HUD now uses a survivor-style layout: a razor-thin full-width XP strip with compact hero/build, time/level, and score islands beneath it.</p>
-        <p>&#10022; Survivor HUD labels were resized to fit their cards, and gray battlefield barriers now render as light low storybook outbuildings over the unchanged collision footprints.</p>
+        <p>&#10022; Survivor HUD labels were resized to fit their cards, and gray battlefield barriers now render as low flowering hedgerows over the unchanged collision footprints.</p>
+        <p>&#10022; Static weapon badges beside and around heroes were removed; weapons now appear through their actual swings, thrusts, shots, slams, lashes, and projectiles.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
@@ -4072,26 +4073,28 @@ function drawStructure(s, M, t) {
   }
 }
 
-// Light storybook outbuildings retain the exact existing collision footprint.
+// Low storybook hedgerows retain the exact existing collision footprint.
 function drawBattleWall(s, M, t) {
-  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(20,Math.min(29,s.h*.28));
+  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(18,Math.min(27,s.h*.27));
   ctx.save();
-  ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(x,y+5,w*.5,8,0,0,Math.PI*2);ctx.fill();
-  // pale plaster body stays visually light and low on the battlefield
-  const plaster=M.key==='snow'?'#e8f0ef':M.key==='volcano'?'#d7c3aa':'#e7ddc6';
-  roundedRect(x-w/2+3,y-h,w-6,h,4);ctx.fillStyle=plaster;ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,.28)';ctx.fillRect(x-w/2+7,y-h+3,w-14,3);
-  // shallow storybook roof; its footprint stays inside the old barrier width
-  const roof=M.key==='forest'||M.key==='garden'?'#637b4b':M.key==='snow'?'#7892a0':M.key==='forge'||M.key==='volcano'?'#7d4b38':'#9b6548';
-  ctx.beginPath();ctx.moveTo(x-w/2,y-h+1);ctx.lineTo(x-w*.32,y-h-12);ctx.lineTo(x+w*.32,y-h-12);ctx.lineTo(x+w/2,y-h+1);ctx.closePath();ctx.fillStyle=roof;ctx.fill();
-  ctx.strokeStyle='rgba(35,25,18,.4)';ctx.lineWidth=1.5;ctx.stroke();
-  // door, warm window, and one timber line make it read as a building at TV scale
-  ctx.fillStyle='#59402c';roundedRect(x-6,y-14,12,14,3);ctx.fill();
-  ctx.fillStyle='#ffd878';roundedRect(x+w*.22-4,y-h+7,8,7,2);ctx.fill();
-  ctx.strokeStyle='rgba(85,58,38,.55)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x-w/2+5,y-2);ctx.lineTo(x+w/2-5,y-2);ctx.stroke();
-  if(M.key==='forest'||M.key==='meadow'||M.key==='garden'){
-    ctx.fillStyle=M.tuftA;ctx.fillRect(x-w/2+8,y-h-2,10,3);
+  ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(x,y+5,w*.5,8,0,0,Math.PI*2);ctx.fill();
+  const deep=M.key==='snow'?'#355747':M.key==='volcano'?'#4f3b2b':M.tuftB;
+  const leaf=M.key==='snow'?'#557969':M.key==='volcano'?'#726044':M.tuftA;
+  ctx.fillStyle=deep;
+  for(let k=0;k<Math.ceil(w/20);k++){
+    const bx=x-w/2+10+k*20,br=13+hash2(s.seed,k+81)*5;
+    ctx.beginPath();ctx.arc(bx,y-h*.55-hash2(s.seed,k+91)*7,br,0,Math.PI*2);ctx.fill();
   }
+  ctx.fillStyle=leaf;
+  for(let k=0;k<Math.ceil(w/24);k++){
+    const bx=x-w/2+14+k*24,br=8+hash2(s.seed,k+101)*4;
+    ctx.beginPath();ctx.arc(bx,y-h*.8-hash2(s.seed,k+111)*5,br,0,Math.PI*2);ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,255,210,.18)';
+  for(let k=0;k<Math.ceil(w/34);k++){const bx=x-w/2+16+k*34;ctx.beginPath();ctx.arc(bx,y-h-3,3,0,Math.PI*2);ctx.fill();}
+  const flower=M.key==='snow'?'#d9f3ff':M.key==='volcano'?'#fb923c':M.flowerA;
+  ctx.fillStyle=flower;
+  for(let k=0;k<3;k++)if(hash2(s.seed,k+121)>.38){const fx=x-w/2+12+hash2(s.seed,k+131)*(w-24);ctx.beginPath();ctx.arc(fx,y-h-1,2.2,0,Math.PI*2);ctx.fill();}
   ctx.restore();
 }
 
@@ -5024,23 +5027,8 @@ function drawPlayerSprite(p, t) {
     }
   }
   ctx.globalAlpha = 1;
-  // What players unlock in the menu is what they see in the fight: the same
-  // weapon atlas art rides at the knight's hand, with secondary weapons orbiting.
-  const liveWeapon = WEAPON_INFO[p.wtype];
-  if (liveWeapon) {
-    const handX = p.x + (p.faceLeft ? -27 : 27), handY = p.y - 31;
-    ctx.save();
-    ctx.globalAlpha = .94;
-    const wg=ctx.createRadialGradient(handX,handY,2,handX,handY,18); wg.addColorStop(0,'rgba(255,217,138,.24)'); wg.addColorStop(1,'rgba(255,217,138,0)');
-    ctx.fillStyle=wg;ctx.beginPath();ctx.arc(handX,handY,18,0,Math.PI*2);ctx.fill();
-    drawUpgradeIcon(liveWeapon.icon,handX,handY,.62,t);
-    ctx.restore();
-  }
-  (p.arsenal || []).slice(0,3).forEach((wt,wi) => {
-    const info = WEAPON_INFO[wt]; if (!info) return;
-    const a = t*.7 + wi*(Math.PI*2/3), ox=p.x+Math.cos(a)*33, oy=p.y-29+Math.sin(a)*17;
-    ctx.save(); ctx.globalAlpha=.78; drawUpgradeIcon(info.icon,ox,oy,.27,t); ctx.restore();
-  });
+  // Equipped art belongs to attack poses and projectiles. Static atlas badges
+  // beside/orbiting the hero duplicated the real swing and made weapons look idle.
   for (let o = 0; o < p.orbCount; o++) {
     const oa = p.orbAngle + (o / p.orbCount) * Math.PI * 2;
     const ox = p.x + Math.cos(oa) * 72;
@@ -7225,7 +7213,7 @@ function render(t) {
   // One world-sized painted layer: no repeated or mirrored joins can appear.
   if (TERRAIN_TILES[game.mapPick]) {
     ctx.save();
-    ctx.globalAlpha = 0.035;
+    ctx.globalAlpha = 0.055;
     const terrainTile = TERRAIN_TILES[game.mapPick];
     ctx.drawImage(terrainTile, 0, 0, WORLD_W, WORLD_H);
     ctx.restore();
