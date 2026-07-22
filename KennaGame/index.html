@@ -10242,15 +10242,15 @@ window.addEventListener('gamepaddisconnected', e => {
     players[i].alive = false;
   }
 });
-// The game goes fullscreen at the first tap / key so it fills the whole display
-// (browsers only allow fullscreen from a real user gesture, and a reload always
-// drops out of fullscreen — so re-arm it every load, on Xbox AND Mac/desktop).
+// On Xbox (a full-screen TV app already) the first tap requests fullscreen.
+// We deliberately DON'T auto-fullscreen desktop browsers: on Safari the request
+// fires mid-transition and its fullscreen animation + the cover-fit re-fit make
+// the home visibly slide and magnify, then bail. Desktop players get a full-bleed
+// window from the cover-fit art and can go true-fullscreen via Settings, the
+// green traffic-light button, or ⌃⌘F — all clean, no jank.
 const IS_XBOX = /Xbox/i.test(navigator.userAgent);
-// Capture-phase + once, across pointer/key/click, so the very first real gesture
-// requests fullscreen no matter which element handles it (enterFS is idempotent).
-['pointerdown', 'keydown', 'click'].forEach(ev =>
-  window.addEventListener(ev, enterFS, { once: true, capture: true }));
 if (IS_XBOX) {
+  window.addEventListener('pointerdown', enterFS, { once: true });
   setTimeout(() => { if (menuOpen) menuToastShow('🎮 Welcome, Xbox knight! Press A to play.'); }, 1500);
 }
 
