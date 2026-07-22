@@ -1233,6 +1233,8 @@
         <p>&#10022; Upgrade cards no longer use an INSPECTING badge; the selected frame and detail ledger communicate focus without extra interface jargon.</p>
         <p>&#10022; Home header covers now fully mask the painted legacy UI while keeping their smaller labels and icons centered; main commands enlarge, brighten, and glow clearly while hovered or selected.</p>
         <p>&#10022; Battle information is consolidated into three professional command zones, live terrain seams are removed, and mid-battle recruits retain their faded slide-in introduction.</p>
+        <p>&#10022; Treasure chests now use a stronger inked-oak silhouette, gold bands, iron feet, a dimensional lock, and a tiny royal crown stamp.</p>
+        <p>&#10022; Every remaining rough Royal Gift emblem has matching painted art that carries into live HUD slots, while level-up cards use smoother corners and cleaner spacing.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
@@ -4749,21 +4751,28 @@ function drawChest(c, t) {
   if (glowP) {
     ctx.drawImage(GLOWS.gilded, -30, -34, 60, 60);
   }
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-  ctx.beginPath(); ctx.ellipse(0, 4, 18, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
+  ctx.beginPath(); ctx.ellipse(0, 6, 21, 7, 0, 0, Math.PI * 2); ctx.fill();
   // a happy little jump the instant it springs open
   if (ot >= 0 && ot < 0.4) {
     const k = 1 + Math.sin(Math.min(1, ot / 0.4) * Math.PI) * 0.14;
     ctx.scale(k, k);
   }
-  // body
-  ctx.fillStyle = '#5e3a18';
-  ctx.fillRect(-16, -12, 32, 16);
-  ctx.fillStyle = '#7c4a24';
-  ctx.fillRect(-16, -12, 32, 5);
+  // stout storybook coffer: inked oak, iron feet, and readable gold bands
+  ctx.fillStyle='#21150b';
+  roundedRect(-19,-13,38,19,4);ctx.fill();
+  ctx.fillStyle='#68401f';
+  roundedRect(-17,-11,34,15,3);ctx.fill();
+  ctx.fillStyle='#8d5830';ctx.fillRect(-15,-10,30,4);
+  ctx.fillStyle='#34200f';ctx.fillRect(-14,1,6,6);ctx.fillRect(8,1,6,6);
+  ctx.fillStyle='#d19b3f';ctx.fillRect(-17,-8,34,3);
+  ctx.fillStyle='#f0c76b';ctx.fillRect(-15,-8,30,1);
+  ctx.fillStyle='#b77d28';ctx.fillRect(-14,-11,3,15);ctx.fillRect(11,-11,3,15);
+  ctx.strokeStyle='#21150b';ctx.lineWidth=1.5;
+  roundedRect(-17,-11,34,15,3);ctx.stroke();
   if (c.open) {
     ctx.fillStyle = '#241505';
-    ctx.fillRect(-13, -10, 26, 8);
+    roundedRect(-14,-10,28,8,2);ctx.fill();
     // treasure glimmering inside while the prize is revealed
     if (ot >= 0 && ot < 3.3) {
       ctx.fillStyle = `rgba(255, 217, 138, ${0.5 + 0.3 * Math.sin(t * 9 + c.seed)})`;
@@ -4774,21 +4783,32 @@ function drawChest(c, t) {
     ctx.save();
     ctx.translate(0, -12);
     ctx.rotate(-lidP * 2.4);
-    ctx.fillStyle = '#7c4a24';
-    ctx.beginPath();
-    ctx.moveTo(-16, 0);
-    ctx.quadraticCurveTo(0, -12, 16, 0);
-    ctx.closePath(); ctx.fill();
-    ctx.restore();
+      ctx.fillStyle = '#21150b';
+      ctx.beginPath();
+      ctx.moveTo(-19, 1);
+      ctx.quadraticCurveTo(0, -15, 19, 1);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle='#7b4a25';
+      ctx.beginPath();ctx.moveTo(-16,-1);ctx.quadraticCurveTo(0,-12,16,-1);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#d19b3f';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-16,-1);ctx.quadraticCurveTo(0,-12,16,-1);ctx.stroke();
+      ctx.restore();
   } else {
-    ctx.fillStyle = '#7c4a24';
+    ctx.fillStyle = '#21150b';
     ctx.beginPath();
-    ctx.moveTo(-16, -12);
-    ctx.quadraticCurveTo(0, -24, 16, -12);
+    ctx.moveTo(-19, -11);
+    ctx.quadraticCurveTo(0, -28, 19, -11);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = UI.gold;
-    ctx.fillRect(-2.5, -14, 5, 8);
-    ctx.fillRect(-16, -8, 32, 3);
+    ctx.fillStyle='#7b4a25';
+    ctx.beginPath();ctx.moveTo(-16,-12);ctx.quadraticCurveTo(0,-24,16,-12);ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#d19b3f';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(-16,-12);ctx.quadraticCurveTo(0,-24,16,-12);ctx.stroke();
+    ctx.fillStyle='#f0c76b';ctx.fillRect(-16,-13,32,3);
+    ctx.fillStyle='#d19b3f';roundedRect(-4,-15,8,11,2);ctx.fill();
+    ctx.strokeStyle='#493015';ctx.lineWidth=1;roundedRect(-4,-15,8,11,2);ctx.stroke();
+    ctx.fillStyle='#3a2713';ctx.beginPath();ctx.arc(0,-10.5,1.5,0,Math.PI*2);ctx.fill();
+    // tiny crown stamp makes the reward readable as royal at battle scale
+    ctx.strokeStyle='#ffe09a';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(-2,-17);ctx.lineTo(-1,-19);ctx.lineTo(0,-17);ctx.lineTo(1,-19);ctx.lineTo(2,-17);ctx.stroke();
   }
   // ---- the prize wheel: icons whirl, slow, and land on what you really got ----
   if (ot >= 0.15 && ot < 3.3) {
@@ -5168,6 +5188,24 @@ BLESSING_ATLAS.onload=()=>{
   });
 };
 BLESSING_ATLAS.src='blessing-atlas.png';
+const UPGRADE_ICON_KEYS=['thorn','frost','clover','phoenix','goldrush','crit','echo','stomp','crown','barrier','plate','mend','tailwind','giantup','charter','orbfire','ward','rally','bounty','pierce'];
+const UPGRADE_ICON_ATLAS=new Image();
+UPGRADE_ICON_ATLAS.onload=()=>{
+  const cw=UPGRADE_ICON_ATLAS.naturalWidth/5,ch=UPGRADE_ICON_ATLAS.naturalHeight/4;
+  UPGRADE_ICON_KEYS.forEach((key,i)=>{
+    if(key==='giantup')return; // preserve the cleaner code-drawn purple draught
+    const scan=document.createElement('canvas');scan.width=Math.ceil(cw);scan.height=Math.ceil(ch);
+    const sg=scan.getContext('2d',{willReadFrequently:true});
+    sg.drawImage(UPGRADE_ICON_ATLAS,(i%5)*cw,Math.floor(i/5)*ch,cw,ch,0,0,scan.width,scan.height);
+    const px=sg.getImageData(0,0,scan.width,scan.height).data;
+    let x0=scan.width,y0=scan.height,x1=0,y1=0;
+    for(let y=0;y<scan.height;y++)for(let x=0;x<scan.width;x++)if(px[(y*scan.width+x)*4+3]>18){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
+    const out=document.createElement('canvas');out.width=out.height=256;const og=out.getContext('2d');og.imageSmoothingEnabled=true;
+    const bw=Math.max(1,x1-x0+1),bh=Math.max(1,y1-y0+1),scale=Math.min(224/bw,224/bh),dw=bw*scale,dh=bh*scale;
+    og.drawImage(scan,x0,y0,bw,bh,(256-dw)/2,(256-dh)/2,dw,dh);ICON_IMG[key]=out;
+  });
+};
+UPGRADE_ICON_ATLAS.src='upgrade-icon-atlas.png';
 
 // upgrade icons, drawn as crisp little emblems
 function drawUpgradeIcon(kind, x, y, s, t) {
@@ -8072,10 +8110,10 @@ function render(t) {
     for (let i = 0; i < game.choices.length; i++) {
       const c = game.choices[i];
       const gLvl = STAT_KEYS.has(c.key) ? pUpLvl(gCh, c.key) : upLvl(c.key);
-      const cx2 = CX + (i - 1) * 270;
-      const hov = (mouse.x > cx2 - 115 && mouse.x < cx2 + 115 && mouse.y > 195 && mouse.y < 460) || game.padPick === i;
-      const top = 205 - (hov ? 10 : 0);
-      cardRects.push({ x: cx2 - 115, y: 195, w: 230, h: 265, idx: i });
+      const cx2 = CX + (i - 1) * 258;
+      const hov = (mouse.x > cx2 - 119 && mouse.x < cx2 + 119 && mouse.y > 186 && mouse.y < 466) || game.padPick === i;
+      const top = 194 - (hov ? 9 : 0);
+      cardRects.push({ x: cx2 - 119, y: 186, w: 238, h: 280, idx: i });
       // cards pop in one after another
       const bt = (performance.now() - (game.choicesAt || 0)) / 1000;
       const pop = easeOutQ(Math.min(1, Math.max(0.001, (bt - i * 0.08) / 0.26)));
@@ -8083,68 +8121,68 @@ function render(t) {
       ctx.translate(cx2, top + 125);
       ctx.scale(pop, pop);
       ctx.translate(-cx2, -(top + 125));
-      plate(cx2 - 115, top, 230, 250, 14);
-      drawStateChip(hov ? 'YOUR PICK' : gLvl === 0 ? 'NEW' : 'UPGRADE', cx2 + 103, top + 13,
+      plate(cx2 - 119, top, 238, 266, 20);
+      drawStateChip(hov ? 'YOUR PICK' : gLvl === 0 ? 'NEW' : 'UPGRADE', cx2 + 107, top + 14,
         hov ? UI.goldLight : gLvl === 0 ? UI.green : '#c9b7ff', 'right');
       if (gTint) {
         // the chooser's color frames every card
         ctx.strokeStyle = gTint;
         ctx.globalAlpha = hov ? 1 : 0.35;
         ctx.lineWidth = hov ? 2.5 : 1.5;
-        ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+        roundedRect(cx2 - 115,top + 4,230,258,16);ctx.stroke();
         ctx.globalAlpha = 1;
         if (hov) {
           ctx.save();
           ctx.shadowColor = gTint;
           ctx.shadowBlur = 26;
-          ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+          roundedRect(cx2 - 115,top + 4,230,258,16);ctx.stroke();
           ctx.restore();
         }
       } else if (hov) {
         ctx.strokeStyle = UI.goldLight;
         ctx.lineWidth = 2.5;
-        ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+        roundedRect(cx2 - 115,top + 4,230,258,16);ctx.stroke();
         ctx.save();
         ctx.shadowColor = 'rgba(232, 182, 76, 0.55)';
         ctx.shadowBlur = 26;
-        ctx.strokeRect(cx2 - 111, top + 4, 222, 242);
+        roundedRect(cx2 - 115,top + 4,230,258,16);ctx.stroke();
         ctx.restore();
       }
       // number chip
-      plate(cx2 - 103, top + 12, 28, 24, 8);
+      plate(cx2 - 106, top + 13, 30, 25, 10);
       ctx.textAlign = 'center';
       ctx.font = '700 14px Cinzel, Georgia, serif';
       ctx.fillStyle = UI.gold;
-      ctx.fillText(String(i + 1), cx2 - 89, top + 29);
+      ctx.fillText(String(i + 1), cx2 - 91, top + 30);
       // icon medallion
       ctx.beginPath();
-      ctx.arc(cx2, top + 72, 37, 0, Math.PI * 2);
+      ctx.arc(cx2, top + 76, 39, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(232, 182, 76, 0.1)';
       ctx.fill();
       ctx.strokeStyle = UI.plateBorder;
       ctx.lineWidth = 1.5;
       ctx.stroke();
-      drawUpgradeIcon(c.icon, cx2, top + 72, 1.05, t);
+      drawUpgradeIcon(c.icon, cx2, top + 76, 1.12, t);
       ctx.textAlign = 'center';
       const lvl = gLvl;
       if (lvl === 0) {
         ctx.fillStyle = '#4ade80';
         ctx.font = '700 13px Inter, sans-serif';
-        ctx.fillText('NEW!', cx2, top + 126);
+        ctx.fillText('NEW!', cx2, top + 132);
       } else {
         const pw2 = c.max * 15;
         for (let r2 = 0; r2 < c.max; r2++) {
           ctx.fillStyle = r2 < lvl ? UI.gold : (r2 === lvl ? '#4ade80' : 'rgba(255, 255, 255, 0.15)');
-          ctx.fillRect(cx2 - pw2 / 2 + r2 * 15, top + 116, 11, 6);
+          roundedRect(cx2 - pw2 / 2 + r2 * 15,top + 121,11,6,3);ctx.fill();
         }
         ctx.fillStyle = '#4ade80';
         ctx.font = '600 11px Inter, sans-serif';
-        ctx.fillText('Lv ' + lvl + '  →  Lv ' + (lvl + 1), cx2, top + 138);
+        ctx.fillText('Lv ' + lvl + '  →  Lv ' + (lvl + 1), cx2, top + 144);
       }
       ctx.fillStyle = hov ? UI.goldLight : UI.text;
       ctx.font = '700 17px Cinzel, Georgia, serif';
-      ctx.fillText(c.name, cx2, top + 162);
-      wrapText(c.desc, cx2, top + 188, 206, '600 14px Inter, sans-serif', '600 12px Inter, sans-serif', 20, 3, UI.dim);
+      ctx.fillText(c.name, cx2, top + 171);
+      wrapText(c.desc, cx2, top + 198, 210, '600 14px Inter, sans-serif', '600 12px Inter, sans-serif', 19, 3, UI.dim);
       ctx.restore();
     }
     ctx.fillStyle = `rgba(240, 226, 195, ${0.6 + 0.3 * Math.sin(t * 3)})`;
