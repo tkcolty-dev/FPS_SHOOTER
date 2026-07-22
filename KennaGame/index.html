@@ -2350,12 +2350,12 @@ const game = {
   xp: 0, level: 1, xpNext: 10, choices: null, up: {}, phoenix: 0,
   burstTimer: 40, shake: 0,
 };
-let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [], strikes = [], dying = [];
+let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [], strikes = [], dying = [], lightnings = [];
 let hudXpShown = 0, hudGoldShown = 0;
 const cam = { x: WORLD_W / 2 - CX, y: WORLD_H / 2 - 320 };
 
 function initRun() {
-  game.time = 0; game.kills = 0; game.over = false; game.endless = false; game.paused = false; game.spawnTimer = 1.2;
+  game.time = 0; game.kills = 0; game.over = false; game.endless = false; game.paused = false; game.spawnTimer = 2.4;   // a ~2s calm before the horde builds
   game.nextBossT = MAPS[game.mapPick].goal * 30;   // the champion arrives at the halfway mark
   game.bossWave = 0;
   game.xp = 0; game.level = 1; game.xpNext = 10; game.choices = null;
@@ -2368,7 +2368,7 @@ function initRun() {
   game.chooser = 0;
   game.endingAt = 0;
   for (const p of players) { p.arsT = {}; p.superT = {}; p.arsenal = []; p.supers = {}; p.up = {}; p.fx = []; }
-  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = []; strikes = []; dying = [];
+  enemies = []; slashes = []; particles = []; toasts = []; gems = []; drops = []; waves = []; dmgTexts = []; novas = []; bolts = []; beams = []; strikes = []; dying = []; lightnings = [];
   runPets = [];
   PETS.forEach((pd, i) => {
     if (petRank(pd.key) > 0) {
@@ -3506,6 +3506,10 @@ function update(dt) {
     novas[i].age += dt;
     if (novas[i].age > 0.35) novas.splice(i, 1);
   }
+  for (let i = lightnings.length - 1; i >= 0; i--) {
+    lightnings[i].life -= dt;
+    if (lightnings[i].life <= 0) lightnings.splice(i, 1);
+  }
   for (let i = beams.length - 1; i >= 0; i--) {
     beams[i].life -= dt;
     if (beams[i].life <= 0) beams.splice(i, 1);
@@ -3800,10 +3804,12 @@ function update(dt) {
       if (best && bd < 520 * 520) {
         hurtEnemy(best, 3 * upLvl('crown'), Math.random() * Math.PI * 2, 80);
         SFX.bolt();
-        for (let k = 0; k < 9; k++) {
-          particles.push({ x: best.x + (Math.random() - 0.5) * 8, y: best.y - k * 16, vx: (Math.random() - 0.5) * 50, vy: 30, life: 0.22, color: '#fde047', size: 3.5 });
+        // a real forked bolt cracks down from the sky onto the fiend
+        lightnings.push({ x: best.x, y: best.y, seed: Math.random() * 1000, life: 0.24 });
+        game.shake = Math.max(game.shake, 0.08);
+        for (let k = 0; k < 7; k++) {
+          particles.push({ x: best.x + (Math.random() - 0.5) * 14, y: best.y - 6, vx: (Math.random() - 0.5) * 120, vy: -30 - Math.random() * 60, life: 0.3, color: '#fff7cf', size: 3 });
         }
-        particles.push({ x: best.x, y: best.y, vx: 0, vy: 0, ring: true, life: 0.26, color: '#fde047', size: 30 });
       }
     }
   }
@@ -7656,6 +7662,37 @@ function render(t) {
     ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#d9f99d';
     ctx.beginPath(); ctx.arc(b.x - 1.5, b.y - 1.5, 2.4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Storm Crown lightning — forked bolts crack down from the sky onto a fiend
+  for (const lb of lightnings) {
+    const f = Math.max(0, lb.life / 0.24);
+    const topY = lb.y - 380, segs = 9;
+    const hash = n => { const s = Math.sin((lb.seed + n) * 12.9898) * 43758.5453; return s - Math.floor(s); };
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const yy = topY + (lb.y - topY) * (i / segs);
+      const jit = (i === 0 || i === segs) ? 0 : (hash(i) - 0.5) * 46;
+      pts.push([lb.x + jit, yy]);
+    }
+    const stroke = () => { ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts) ctx.lineTo(p[0], p[1]); ctx.stroke(); };
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.globalAlpha = Math.min(1, f * 1.4);
+    ctx.strokeStyle = 'rgba(253, 224, 71, 0.5)'; ctx.lineWidth = 9; stroke();     // outer glow
+    ctx.strokeStyle = '#fffdf0'; ctx.lineWidth = 3; stroke();                     // bright core
+    for (let k = 1; k <= 2; k++) {                                               // a fork or two
+      const bi = 3 + k * 2;
+      if (bi < pts.length - 1) {
+        ctx.strokeStyle = 'rgba(255,247,207,0.85)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(pts[bi][0], pts[bi][1]);
+        ctx.lineTo(pts[bi][0] + (hash(bi * 3) - 0.5) * 60, pts[bi][1] + 26 + hash(bi) * 30); ctx.stroke();
+      }
+    }
+    ctx.globalAlpha = f;
+    ctx.drawImage(GLOWS.gilded, lb.x - 30, lb.y - 30, 60, 60);                    // impact flash
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   // projectiles
