@@ -1209,7 +1209,15 @@
       <button class="panelX" data-close>&times;</button>
       <h2>The Royal Chronicle</h2>
       <div class="patchList">
-        <p class="verHead">v2.0 &mdash; THE WIDESCREEN WAR &middot; VISUAL POLISH <span class="verTag">LATEST</span></p>
+        <p class="verHead">v2.1 &mdash; THE POLISHED HORDE <span class="verTag">LATEST</span></p>
+        <p>&#10022; Fixed the painted monster atlas losing a load race to the old placeholder sprites &mdash; the polished horde now appears in every realm, every time, on cache-warm loads and every map.</p>
+        <p>&#10022; Battlefield pebbles are now soft rounded field stones instead of boxy grey tiles.</p>
+        <p>&#10022; Fullscreen now re-fits the whole game (and the home screen) when you enter or leave it &mdash; no more off-center or letterboxed picture after toggling on Xbox.</p>
+        <p>&#10022; Level-up gifts can no longer vanish: banking several levels in one instant (a Royal Summons gem rush, a horde-clearing nova) now offers each gift card one at a time instead of silently dropping picks.</p>
+        <p>&#10022; Enemies that strike from directly above or below now recoil properly and stop sticking to you.</p>
+        <p>&#10022; Controller fixes: Y opens the Armory from character select again; Start pauses a live battle instead of yanking you Home during a level-up; and the pause d-pad no longer drifts under the Arsenal / Field Guide overlay.</p>
+        <p>&#10022; Guests once again see charger wind-ups and dashes aimed correctly in online co-op; a stray drop can no longer get stranded during a Royal Magnet vacuum.</p>
+        <p class="verHead">v2.0 &mdash; THE WIDESCREEN WAR &middot; VISUAL POLISH</p>
         <p>&#10022; Battle-readability pass: stronger shared monster grounding, always-readable player markers, outlined damage numbers, and clearer hostile curse bolts.</p>
         <p>&#10022; Hand-drawn monsters now share the blob sprites&rsquo; bold two-tone paint language while using less per-frame rendering work.</p>
         <p>&#10022; Full royal interface refresh: clearer selected, locked, ready, rank, and action states across heroes, realms, upgrades, lobby, pause, gifts, HUD, and settings.</p>
@@ -2831,7 +2839,9 @@ function hitPlayer(t, e) {
     if (upLvl('thorn') > 0) {
       hurtEnemy(e, 3 * upLvl('thorn'), Math.atan2(e.y - t.y, e.x - t.x), 280);
     }
-    e.kx -= Math.cos(Math.atan2(t.y - e.y, t.x - e.x)) * 150;
+    const rang = Math.atan2(t.y - e.y, t.x - e.x);
+    e.kx -= Math.cos(rang) * 150;
+    e.ky -= Math.sin(rang) * 150;   // was missing — enemies directly above/below got no recoil and stuck to the player
   }
   if (t.hp <= 0 && (game.phoenix || 0) > 0) {
     game.phoenix--;
@@ -3187,6 +3197,12 @@ function update(dt) {
     if (toasts[i].age > (toasts[i].ttl || 3)) toasts.splice(i, 1);
   }
   if (game.phase !== 'run' || game.over || game.victory || game.choices) return;
+  // Drain banked levels ONE at a time. Collecting many gems in a single frame
+  // (Royal Summons vacuum, a nova clearing a horde) can cross several XP
+  // thresholds at once; without this, each levelUp() would overwrite the last
+  // still-unshown choice and the player would silently lose those gift picks.
+  while (!game.choices && game.xp >= game.xpNext) { game.xp -= game.xpNext; levelUp(); }
+  if (game.choices) return;
   game.time += dt;
   // Royal Fortune: the first gift is on the house
   if (game.freeGift && game.time > 1.5 && !game.choices) {
@@ -3650,7 +3666,8 @@ function update(dt) {
         gems.splice(i, 1);
         SFX.gem();
         game.xp += g2.v * (1 + 0.2 * upLvl('wisdom')) * (1 + 0.08 * powerRank('scholar'));
-        if (game.xp >= game.xpNext) { game.xp -= game.xpNext; levelUp(); }
+        // level-ups are drained (one card at a time) at the top of the next frame
+        if (game.xp >= game.xpNext && !game.choices) { game.xp -= game.xpNext; levelUp(); }
         continue;
       }
     }
@@ -3781,7 +3798,7 @@ function update(dt) {
     const t = nearestAlivePlayer(dr.x, dr.y);
     if (t) {
       // Royal Magnet claims gems (above) and coins; healing hearts stay where they fell.
-      const dd = Math.hypot(t.x - dr.x, t.y - 14 - dr.y);
+      const dd = Math.max(0.001, Math.hypot(t.x - dr.x, t.y - 14 - dr.y));   // floor avoids 0/0 NaN when a drop sits exactly on the knight during a vacuum
       const magR = t.magnet * 0.8;
       if ((dr.kind === 'coin' && dd < magR && dd > 4) || game.vacuumT > 0) {
         const pull2 = game.vacuumT > 0 ? 2600 : 300 * (1 - dd / magR) + 90;
@@ -3798,7 +3815,7 @@ function update(dt) {
         kdStats.goldEarned = (kdStats.goldEarned || 0) + g3;
         if (upLvl('charter') > 0) {
           game.xp += upLvl('charter');
-          if (game.xp >= game.xpNext) { game.xp -= game.xpNext; levelUp(); }
+          if (game.xp >= game.xpNext && !game.choices) { game.xp -= game.xpNext; levelUp(); }
         }
         SFX.coin();
         saveMeta();
@@ -5079,10 +5096,14 @@ const DRAWN_KINDS = new Set();
 const ENEMY_KEYS = ['wisp', 'imp', 'shade', 'brute', 'spitter', 'splitter', 'shellback', 'golem',
                     'charger', 'warlock', 'reaper', 'gilded', 'yeti', 'magmite',
                     'titan', 'wraith', 'gummy', 'concur'];
+// Once the premium atlas has finalized a cell, that kind is LOCKED — a late
+// monsters/<kind>.png onload must never overwrite the polished art (that race
+// is what sent the horde "back to the old ones" on cache-warm loads).
+const ATLAS_DONE = new Set();
 for (const ek of ENEMY_KEYS) {
   const im = new Image();
   im.src = 'monsters/' + ek + '.png';
-  im.onload = () => { ENEMY_IMG[ek] = im; };
+  im.onload = () => { if (!ATLAS_DONE.has(ek)) ENEMY_IMG[ek] = im; };
 }
 // Premium atlas overrides the individual fallbacks. Every cell is alpha-scanned,
 // tightly cropped, re-centered, and padded so horns, staffs, and flames stay intact.
@@ -5106,6 +5127,7 @@ ENEMY_ATLAS.onload = () => {
     // The generated painted atlas is the approved live art. Individual PNGs
     // only cover the brief loading window before this atlas is ready.
     ENEMY_IMG[key] = out;
+    ATLAS_DONE.add(key);
   });
 };
 ENEMY_ATLAS.src = 'enemy-atlas.png';
@@ -7343,16 +7365,20 @@ function render(t) {
           ctx.fillRect(px - 4, py + 3, 3, 4);
         }
       } else if (h < 0.028) {
-        // pebbles with dark outline
+        // rounded field stones — soft pebbles, never boxy placeholder tiles
         ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-        ctx.beginPath(); ctx.ellipse(px + 5, py + 6, 9, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px + 5, py + 7, 9, 3.5, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = M.edge;
-        ctx.fillRect(px - 1, py - 1, 12, 9);
+        ctx.beginPath(); ctx.ellipse(px + 5, py + 3, 7.4, 5.2, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = M.stone;
-        ctx.fillRect(px, py, 10, 7);
-        ctx.fillRect(px + 11, py + 3, 5, 4);
+        ctx.beginPath(); ctx.ellipse(px + 5, py + 3, 6.1, 4.1, 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = M.stoneHi;
-        ctx.fillRect(px + 1, py + 1, 8, 3);
+        ctx.beginPath(); ctx.ellipse(px + 3.4, py + 1.7, 3, 1.6, -0.3, 0, Math.PI * 2); ctx.fill();
+        // a small companion stone nestled beside it
+        ctx.fillStyle = M.edge;
+        ctx.beginPath(); ctx.ellipse(px + 13, py + 5, 3.6, 2.8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = M.stone;
+        ctx.beginPath(); ctx.ellipse(px + 13, py + 5, 2.6, 1.9, 0, 0, Math.PI * 2); ctx.fill();
       }
     }
   }
@@ -9245,8 +9271,22 @@ setAnthemBtn.addEventListener('click', () => songStep(1));
 document.getElementById('songPrev').addEventListener('click', () => songStep(-1));
 document.getElementById('songNext').addEventListener('click', () => songStep(1));
 document.getElementById('setFullscreen').addEventListener('click', () => {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else document.documentElement.requestFullscreen();
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  else document.documentElement.requestFullscreen().catch(() => {});
+});
+// Entering/leaving fullscreen doesn't reliably fire 'resize' (and when it does,
+// window.innerWidth/Height can still be the OLD size for a frame or two). Re-fit
+// the game canvas AND both DOM overlays across the next few frames so nothing is
+// left letterboxed, off-center, or mis-scaled after the transition.
+function refitAll() {
+  fitCanvas();
+  sizeMenuCanvases();
+  sizeImgAnchor();
+}
+document.addEventListener('fullscreenchange', () => {
+  refitAll();
+  requestAnimationFrame(refitAll);
+  requestAnimationFrame(() => requestAnimationFrame(refitAll));
 });
 document.getElementById('setReset').addEventListener('click', () => {
   if (!confirm('Erase ALL progress — gold, knights, upgrades, achievements and records?')) return;
@@ -9443,8 +9483,8 @@ window.addEventListener('keydown', e => {
 
 // ---- update-card carousel ----
 const UC_SLIDES = [
-  { head: '✦ LATEST UPDATE', title: 'v2.0 VISUAL POLISH',
-    body: 'A complete royal UI refresh with cinematic realm previews, grouped battle slots, clearer objectives, a rebuilt home command dock, smoother motion, sharper TV text, Xbox-native prompts, and richer menus — built for the living-room screen.',
+  { head: '✦ LATEST UPDATE', title: 'v2.1 THE POLISHED HORDE',
+    body: 'The painted monster horde now rides into EVERY realm — no old placeholder blobs slip through. Plus rounded field stones, true fullscreen fit on Xbox, level-up gifts that never vanish in a gem rush, and a sweep of battle, pause and controller fixes.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
@@ -9832,7 +9872,7 @@ function applySnap(m) {
     kind: a[0], x: a[1], y: a[2], r: a[3], hp: a[4], maxHp: a[5], seed: a[6],
     chargeState: a[7] === 2 ? 'dash' : a[7] === 1 ? 'aim' : 'stalk',
     aimX: a[8] || 0, aimY: a[9] || 0, elite: !!a[10], spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
-    shootCd: 9, stateT: 1, aimX: 0, aimY: 0, life: 9,
+    shootCd: 9, stateT: 1, life: 9,
   }));
   gems = m.gm.map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
   drops = m.dr.map(a => ({ x: a[0], y: a[1], kind: a[2] ? 'coin' : 'heart', v: 2 }));
@@ -10087,15 +10127,20 @@ function pollPads() {
       }
       continue;
     }
-    if (tap('start')) { synthKey('Escape'); continue; }
+    // Start pauses/unpauses a live run only. During a level-up choice (or on
+    // select/select2/map/armory) togglePause() refuses and the synth-Escape
+    // used to fall through to showMenu(), yanking the player Home mid-pick.
+    if (tap('start')) { if (game.phase === 'run' && !game.choices) synthKey('Escape'); continue; }
 
     if (game.paused) {
       if (game.netGuest) continue;
-      if (dir('left')) game.pausePick = (game.pausePick || 0) >= 2 ? Math.min(1, (game.pausePick || 0) - 2) : (game.pausePick || 0);
       if (game.helpOpen || game.treeOpen) {
+        // Arsenal / Field Guide overlay: swallow input here so d-pad can't
+        // silently move the hidden pause selection underneath the overlay.
         if (tap('a') || tap('bBtn') || tap('start')) { game.helpOpen = false; game.treeOpen = false; SFX.pick(); }
         continue;
       }
+      if (dir('left')) game.pausePick = (game.pausePick || 0) >= 2 ? Math.min(1, (game.pausePick || 0) - 2) : (game.pausePick || 0);
       if (dir('right')) game.pausePick = (game.pausePick || 0) < 2 ? (game.pausePick || 0) + 2 : (game.pausePick || 0);
       if (dir('up')) game.pausePick = (game.pausePick || 0) < 2 ? Math.max(0,(game.pausePick||0)-1) : Math.max(2,(game.pausePick||0)-1);
       if (dir('down')) game.pausePick = (game.pausePick || 0) < 2 ? Math.min(1,(game.pausePick||0)+1) : Math.min(5,(game.pausePick||0)+1);
@@ -10141,9 +10186,12 @@ function pollPads() {
       if (tap('a')) synthKey('Space');
       if (tap('lb')) synthKey('KeyQ');
       if (tap('rb')) synthKey('KeyE');
-      if (tap('y') && game.phase === 'armory') synthKey('KeyY');
-      else if (tap('x') && (game.phase === 'select' || game.phase === 'select2')) synthKey('KeyU');
-      if (tap('y') && (game.phase === 'select' || game.phase === 'lobby')) synthKey('KeyT');   // Y = upgrades
+      // sample each edge ONCE — padTap() consumes the press, so calling tap('y')
+      // twice made the second read always-false (Y did nothing on character select)
+      const yTap = tap('y'), xTap = tap('x');
+      if (yTap && game.phase === 'armory') synthKey('KeyY');
+      else if (xTap && (game.phase === 'select' || game.phase === 'select2')) synthKey('KeyU');
+      if (yTap && (game.phase === 'select' || game.phase === 'lobby')) synthKey('KeyT');   // Y = upgrades
       if (tap('bBtn')) {
         if (game.phase === 'armory' || game.phase === 'select2') synthKey('Backspace');
         else if (game.phase === 'map') { game.phase = 'select'; game.cursor = 0; }

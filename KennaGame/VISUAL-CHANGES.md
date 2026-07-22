@@ -1,5 +1,21 @@
 # Visual audit — warm royal storybook pass
 
+## v2.1 — The Polished Horde (bug-fix pass, 2026-07-21)
+
+Owner reported the enemies looked like the "old ones" and asked for a full debug pass. Root causes found and fixed:
+
+- **Enemy atlas load race (the headline bug):** `monsters/<kind>.png` fallbacks were loaded with `im.onload = () => ENEMY_IMG[ek] = im`, racing the polished `enemy-atlas.png`. On cache-warm loads the small PNGs finished *after* the atlas and overwrote the painted cells with the old flat blob sprites — so the horde reverted to placeholder art. Added an `ATLAS_DONE` set: once the atlas finalizes a cell that kind is locked, and a late PNG onload can never overwrite it. Verified live — all 18 kinds now render the painted atlas art on a fresh cache-warm reload, on every map (the atlas is global).
+- **Battlefield pebbles:** the "grey box" decorations scattered on the meadow were `fillRect`-drawn stones with a hard right-side nub (`M.stone` grey). Redrawn as soft rounded field stones (ellipse body, highlight, small companion stone) so they read as pebbles, not placeholder tiles.
+- **Fullscreen transfer:** entering/leaving fullscreen didn't reliably fire `resize` (or fired with stale dimensions), leaving the canvas and DOM home overlay mis-scaled. Added a `fullscreenchange` handler that re-fits the game canvas, both menu canvases, and the image anchor across the next few frames; also `.catch()`-guarded the request/exit promises.
+- **Level-up gifts lost in a gem rush (gameplay):** collecting enough XP to cross several level thresholds in one frame (Royal Summons vacuum, a horde-clearing nova) called `levelUp()` repeatedly, each overwriting the last still-unshown choice cards. Now banked levels drain one card at a time. Verified: dumping 100k XP opens exactly one choice and banks the rest instead of skipping ~29 picks.
+- **Enemy contact recoil:** only the horizontal knockback component was applied, so enemies striking from directly above/below got ~zero recoil and stuck to the player. Added the vertical term.
+- **Controller/pause fixes:** `Y` on character select re-samples its edge once (was double-`tap`'d, so it did nothing — couldn't open the Armory); `Start` now pauses a live run instead of synth-Escaping to Home during a level-up choice or on select/map/armory; the pause `LEFT` d-pad no longer drifts the hidden selection under the Arsenal/Field Guide overlay.
+- **Online co-op / vacuum:** removed duplicate `aimX/aimY` object keys in `applySnap` that zeroed the decoded charger dash aim on guests (guests now see charger wind-ups/dashes correctly); floored the drop-vacuum distance so a drop sitting exactly on the knight can't produce a `0/0` NaN and get stranded.
+
+Left intentionally unfixed (documented for the owner): the online co-op **level-up turn** protocol (a guest can't pick on their own turn / picks can misapply on the host) needs a snap-protocol change and a two-device test to fix safely, so it was not changed blind.
+
+`title-bg.png` untouched (SHA `814b544a…` verified). No balance, spawn, or save-key changes.
+
 ## Changed
 
 - **Full interface system:** rebuilt the shared canvas plates, ornate HUD frames, titles, action buttons, hint bar keycaps, state chips, and DOM black-glass panels around one heavier, warmer royal style. Choice screens now distinguish selected, inspecting, locked, owned/ranked, ready, available, and primary-action states at a glance.
