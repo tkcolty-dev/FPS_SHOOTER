@@ -2039,15 +2039,17 @@ window.addEventListener('keydown', e => {
   }
   if (game.phase === 'armory') {
     const n = POWERUPS.length + PETS.length;
+    const BACK = n;                 // the Back button is a real, focusable target after the grid
+    const total = n + 1;
     const ac = n > 9 ? 4 : 3;
-    if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + n - 1) % n;
-    if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
-    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - ac + n) % n;
-    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + ac) % n;
     if (game.armoryInspect && ['KeyY', 'Escape', 'Backspace'].includes(e.code)) { game.armoryInspect = false; SFX.pick(); return; }
-    if (e.code === 'KeyY') { game.armoryInspect = true; SFX.pick(); return; }
+    if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + total - 1) % total;
+    if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % total;
+    if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = game.cursor === BACK ? Math.max(0, n - 1) : (game.cursor - ac + n) % n;
+    if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = game.cursor === BACK ? 0 : (game.cursor + ac >= n ? BACK : game.cursor + ac);
+    if (e.code === 'KeyY' && game.cursor !== BACK) { game.armoryInspect = true; SFX.pick(); return; }
     if (game.armoryInspect) return;
-    if (['Space', 'Enter'].includes(e.code)) armoryBuy(game.cursor);
+    if (['Space', 'Enter'].includes(e.code)) { if (game.cursor === BACK) armoryExit(); else armoryBuy(game.cursor); }
     if (e.code === 'KeyT' || e.code === 'Backspace') armoryExit();
     return;
   }
@@ -4338,13 +4340,21 @@ function drawEnemy(e, t) {
   if (eim) {
     // the painted monster itself
     const ih = e.r * 2.1, iw = ih * (eim.width / eim.height);
-    const needsFilter = e.flash > 0 || e.slowT > 0;
-    if (needsFilter) {
-      ctx.filter = e.flash > 0 ? 'brightness(2.4) saturate(0.4)' : 'saturate(0.55) brightness(1.15) hue-rotate(160deg)';
+    if (e.slowT > 0 && !(e.flash > 0)) {
+      ctx.filter = 'saturate(0.55) brightness(1.15) hue-rotate(160deg)';   // chilled/slowed tint
       ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
       ctx.filter = 'none';
     } else {
       ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
+    }
+    // WHITE hit-flash: blaze the monster's own pixels white the instant it's struck
+    if (e.flash > 0) {
+      ctx.globalAlpha = Math.min(1, e.flash * 1.7);
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-iw / 2, -ih * 0.58, iw, ih);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
     }
     // crown + staff extras still ride on bosses
     if (e.boss || BOSS_DEFS[e.kind]) drawBossCrown(e, t);
@@ -6448,21 +6458,23 @@ function renderArmory(t) {
   ctx.fillStyle = UI.dim;
   ctx.fillText('Top: forged blessings   ·   Bottom row: royal pets who fight beside you', gx0 + (cols * cw + 2 * gap) / 2, gy0 + aRows * (chh + gap) + 6);
 
-  // BACK — big, obvious, clickable
+  // BACK — big, obvious, clickable AND d-pad focusable (cursor lands here after the grid)
   const bkY = gy0 + aRows * (chh + gap) + 17;
+  const bkSel = game.cursor === nItems;
   cardRects.push({ x: gx0 + 130, y: bkY, w: 260, h: 36, idx: -1 });
   roundedRect(gx0 + 130, bkY, 260, 36, 9);
-  ctx.fillStyle = 'rgba(14, 13, 16, 0.92)';
+  ctx.fillStyle = bkSel ? 'rgba(58, 42, 20, 0.96)' : 'rgba(14, 13, 16, 0.92)';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(201, 168, 106, 0.7)';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = bkSel ? '#ffd98a' : 'rgba(201, 168, 106, 0.7)';
+  ctx.lineWidth = bkSel ? 2.5 : 1.5;
   ctx.stroke();
   ctx.font = '700 15px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
+  ctx.fillStyle = bkSel ? '#fff3d6' : UI.goldLight;
   ctx.fillText('◀  BACK', gx0 + 260, bkY + 24);
 
   // ---- sidebar: coins on top, details of the hovered item ----
-  const it = armoryItem(game.cursor);
+  // (when the cursor is on Back, keep showing the last item's detail — no OOB read)
+  const it = armoryItem(Math.min(game.cursor, nItems - 1));
   const sx0 = ROOM_W - 360, sw0 = 336, scx = sx0 + sw0 / 2;
   plate(sx0, 92, sw0, 456, 16);
   drawUpgradeIcon('coin', sx0 + 28, 122, 0.55, t);
