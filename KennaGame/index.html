@@ -36,11 +36,20 @@
   }
   #menuBgImg {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: contain; display: none;
+    object-fit: contain; display: none; z-index: 1;
     image-rendering: auto;
+  }
+  /* Blurred cover-fit copy fills the letterbox bars so the home reads full-bleed
+     at ANY window/TV aspect ratio — the sharp painted UI above is never cropped. */
+  #menuBgFill {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; display: none; z-index: 0;
+    filter: blur(28px) brightness(0.5) saturate(1.1);
+    transform: scale(1.12);
   }
   #menu.hasImage #menuBg { display: none; }
   #menu.hasImage #menuBgImg { display: block; }
+  #menu.hasImage #menuBgFill { display: block; }
 
   .titleBlock {
     position: absolute; left: 7vw; top: 10vh;
@@ -1068,6 +1077,7 @@
 
 <div id="menu">
   <canvas id="menuBg"></canvas>
+  <img id="menuBgFill" src="title-bg.png" alt="" aria-hidden="true">
   <img id="menuBgImg" src="title-bg.png" alt="">
   <canvas id="menuFx"></canvas>
 
