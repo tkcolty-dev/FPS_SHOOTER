@@ -1235,7 +1235,8 @@
         <p>&#10022; Pause now centers the war map between two clear action columns, adds direct Settings access, and returns to the paused battle when Settings closes.</p>
         <p>&#10022; Upgrade levels remain visible while selected, with Y opening a large explanation; X remains reserved for Royal Gift rerolls.</p>
         <p>&#10022; Defeat now fills the screen over the royal home artwork; hedges, active weapon impacts, the XP strip, collection feedback, and four-player HUD fit received another polish pass.</p>
-        <p>&#10022; Quick recovery notices clear sooner, Royal Magnet pulls gems and coins but leaves hearts, and current individual monster artwork can no longer be overwritten by the older fallback atlas.</p>
+        <p>&#10022; Quick recovery notices clear sooner, Royal Magnet pulls gems and coins but leaves hearts, and the generated painted enemy atlas remains authoritative in live battles.</p>
+        <p>&#10022; Battlefield hedges now use connected leafy silhouettes instead of bead-like circles, and the Banished counter has a sharper inked skull built for TV readability.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
@@ -4080,28 +4081,23 @@ function drawStructure(s, M, t) {
 
 // Low storybook hedgerows retain the exact existing collision footprint.
 function drawBattleWall(s, M, t) {
-  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(22,Math.min(34,s.h*.32));
+  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(25,Math.min(38,(s.h||72)*.34));
   ctx.save();
-  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y+6,w*.52,10,0,0,Math.PI*2);ctx.fill();
-  const deep=M.key==='snow'?'#355747':M.key==='volcano'?'#4f3b2b':M.tuftB;
-  const leaf=M.key==='snow'?'#557969':M.key==='volcano'?'#726044':M.tuftA;
-  // A continuous dark hedge body prevents the old row-of-dots silhouette.
-  ctx.fillStyle=deep;roundedRect(x-w/2,y-h*.72,w,h*.72,Math.min(16,h*.35));ctx.fill();
-  ctx.fillStyle=deep;
-  for(let k=0;k<Math.ceil(w/25)+1;k++){
-    const bx=x-w/2+k*25,br=16+hash2(s.seed,k+81)*7;
-    ctx.beginPath();ctx.ellipse(bx,y-h*.58-hash2(s.seed,k+91)*9,br,br*.78,0,0,Math.PI*2);ctx.fill();
-  }
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(x,y+7,w*.52,11,0,0,Math.PI*2);ctx.fill();
+  const deep=M.key==='snow'?'#294b3d':M.key==='volcano'?'#493523':M.tuftB;
+  const leaf=M.key==='snow'?'#4f7967':M.key==='volcano'?'#76613e':M.tuftA;
+  const left=x-w/2,right=x+w/2,step=22;
+  // One continuous hand-cut silhouette: no bead-like circles or gaps.
+  ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(left,y-h*.48);
+  for(let bx=left;bx<right;bx+=step){const nx=Math.min(right,bx+step),peak=y-h*(.72+.22*hash2(s.seed,80+Math.round(bx-left)));ctx.quadraticCurveTo(bx+step*.45,peak,nx,y-h*(.5+.12*hash2(s.seed,120+Math.round(bx-left))));}
+  ctx.lineTo(right,y);ctx.closePath();ctx.fillStyle=deep;ctx.fill();
+  // Broad connected top-light patches read as clustered leaves, not dots.
   ctx.fillStyle=leaf;
-  for(let k=0;k<Math.ceil(w/31)+1;k++){
-    const bx=x-w/2+8+k*31,br=10+hash2(s.seed,k+101)*5;
-    ctx.beginPath();ctx.ellipse(bx,y-h*.88-hash2(s.seed,k+111)*7,br,br*.72,-.15,0,Math.PI*2);ctx.fill();
-  }
-  ctx.strokeStyle='rgba(255,255,210,.22)';ctx.lineWidth=2;ctx.lineCap='round';
-  for(let k=0;k<Math.ceil(w/40);k++){const bx=x-w/2+18+k*40,ly=y-h-3-hash2(s.seed,k+141)*5;ctx.beginPath();ctx.moveTo(bx-5,ly+3);ctx.quadraticCurveTo(bx,ly-3,bx+6,ly);ctx.stroke();}
+  for(let k=0;k<Math.ceil(w/42);k++){const bx=left+18+k*42,by=y-h*(.64+.13*hash2(s.seed,k+31));ctx.beginPath();ctx.moveTo(bx-18,by+7);ctx.quadraticCurveTo(bx-8,by-11,bx,by-3);ctx.quadraticCurveTo(bx+10,by-15,bx+20,by+5);ctx.quadraticCurveTo(bx,by+12,bx-18,by+7);ctx.fill();}
+  ctx.strokeStyle='rgba(228,245,185,.25)';ctx.lineWidth=2;ctx.lineCap='round';
+  for(let k=0;k<Math.ceil(w/48);k++){const bx=left+20+k*48,by=y-h*.72;ctx.beginPath();ctx.moveTo(bx-7,by+5);ctx.quadraticCurveTo(bx,by-5,bx+8,by+1);ctx.stroke();}
   const flower=M.key==='snow'?'#d9f3ff':M.key==='volcano'?'#fb923c':M.flowerA;
-  ctx.fillStyle=flower;
-  for(let k=0;k<4;k++)if(hash2(s.seed,k+121)>.4){const fx=x-w/2+12+hash2(s.seed,k+131)*(w-24),fy=y-h*.9-hash2(s.seed,k+151)*10;for(let p=0;p<4;p++){ctx.beginPath();ctx.arc(fx+Math.cos(p*Math.PI/2)*2.2,fy+Math.sin(p*Math.PI/2)*2.2,1.7,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#ffe7a3';ctx.beginPath();ctx.arc(fx,fy,1.2,0,Math.PI*2);ctx.fill();ctx.fillStyle=flower;}
+  for(let k=0;k<3;k++)if(hash2(s.seed,k+121)>.42){const fx=left+15+hash2(s.seed,k+131)*(w-30),fy=y-h*(.68+.15*hash2(s.seed,k+151));ctx.fillStyle=flower;for(let p=0;p<4;p++){ctx.beginPath();ctx.arc(fx+Math.cos(p*Math.PI/2)*2.2,fy+Math.sin(p*Math.PI/2)*2.2,1.6,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#ffe7a3';ctx.beginPath();ctx.arc(fx,fy,1.1,0,Math.PI*2);ctx.fill();}
   ctx.restore();
 }
 
@@ -5107,9 +5103,9 @@ ENEMY_ATLAS.onload = () => {
     const bw = Math.max(1,x1-x0+1), bh = Math.max(1,y1-y0+1), scale = Math.min(286/bw,286/bh);
     const dw = bw*scale, dh = bh*scale;
     og.drawImage(scan,x0,y0,bw,bh,(320-dw)/2,(320-dh)/2,dw,dh);
-    // Individual monster files are the current approved art. The atlas is only
-    // a loading fallback and must never replace those newer creatures.
-    if (!ENEMY_IMG[key]) ENEMY_IMG[key] = out;
+    // The generated painted atlas is the approved live art. Individual PNGs
+    // only cover the brief loading window before this atlas is ready.
+    ENEMY_IMG[key] = out;
   });
 };
 ENEMY_ATLAS.src = 'enemy-atlas.png';
@@ -7984,17 +7980,17 @@ function render(t) {
   ctx.save();
   ctx.translate(ROOM_W - 960, 0);
   plate(790,20,160,44,8);
-  ctx.fillStyle = '#e8e3d8';
-  ctx.beginPath(); ctx.arc(802, 30, 11, 0, Math.PI * 2); ctx.fill();
-  ctx.fillRect(796, 34, 12, 9);
+  // Compact inked skull: broad cranium, cheekbones, jaw and readable teeth.
+  ctx.fillStyle = '#f1eadb'; ctx.strokeStyle='#17120e'; ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(791,31);ctx.quadraticCurveTo(791,19,802,19);ctx.quadraticCurveTo(813,19,813,31);ctx.quadraticCurveTo(813,37,808,39);ctx.lineTo(808,45);ctx.lineTo(796,45);ctx.lineTo(796,39);ctx.quadraticCurveTo(791,37,791,31);ctx.closePath();ctx.fill();ctx.stroke();
   ctx.fillStyle = '#16120e';
-  ctx.beginPath(); ctx.arc(797.5, 29, 3.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(806.5, 29, 3.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath();ctx.ellipse(797.5,30,3.5,4.2,-.2,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(806.5,30,3.5,4.2,.2,0,Math.PI*2);ctx.fill();
   ctx.beginPath();
-  ctx.moveTo(802, 32.5); ctx.lineTo(800, 36); ctx.lineTo(804, 36);
+  ctx.moveTo(802, 34); ctx.lineTo(799.5, 38); ctx.lineTo(804.5, 38);
   ctx.closePath(); ctx.fill();
   ctx.strokeStyle = '#16120e';
-  ctx.lineWidth = 1.2;
+  ctx.lineWidth = 1.4;
   ctx.beginPath();
   ctx.moveTo(798.5, 39); ctx.lineTo(798.5, 43);
   ctx.moveTo(802, 39); ctx.lineTo(802, 43);
