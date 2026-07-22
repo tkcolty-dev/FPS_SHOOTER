@@ -1004,8 +1004,8 @@
     transform: none !important; filter: none !important;
   }
   @keyframes royalCommandSelect {
-    0%,100% { filter: brightness(1.18); transform: scale(1.025); }
-    50% { filter: brightness(1.28); transform: scale(1.035); }
+    0%,100% { filter: brightness(1.28); transform: scale(1.04); }
+    50% { filter: brightness(1.55); transform: scale(1.062); }
   }
   #menu.hasImage #btnStack .menuBtn.padFocus {
     background: linear-gradient(105deg,#49351b 0%,#342613 55%,#21180e 100%) !important;
@@ -1025,8 +1025,11 @@
   #menu.hasImage #btnStack #btnSettings.padFocus,
   #menu.hasImage #btnStack #btnCredits.padFocus,
   #menu.hasImage #btnStack #btnExit.padFocus {
-    background:linear-gradient(105deg,#49351b 0%,#342613 55%,#21180e 100%) !important;
-    box-shadow:inset .32vw 0 #ffd878,inset 0 1px rgba(255,250,228,.28),0 0 30px rgba(255,205,96,.66),0 12px 26px rgba(0,0,0,.46) !important;
+    background:linear-gradient(105deg,#6a4d24 0%,#48351a 55%,#2b2011 100%) !important;
+    box-shadow:inset .46vw 0 #ffe89a,inset 0 1px rgba(255,251,232,.4),0 0 60px rgba(255,207,99,1),0 0 26px rgba(255,228,146,.82),0 14px 34px rgba(0,0,0,.52) !important;
+    /* 3-ID + .padFocus beats the base rule's `animation: none !important`, so the
+       selected command button actually PULSES now (it never did before). */
+    animation: royalCommandSelect 1s ease-in-out infinite !important;
   }
   #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; background:#24190d; }
   #menu.hasImage #btnStack .menuBtn:hover {
