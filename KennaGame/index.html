@@ -1235,6 +1235,7 @@
         <p>&#10022; Battle information is consolidated into three professional command zones, live terrain seams are removed, and mid-battle recruits retain their faded slide-in introduction.</p>
         <p>&#10022; Treasure chests now use a stronger inked-oak silhouette, gold bands, iron feet, a dimensional lock, and a tiny royal crown stamp.</p>
         <p>&#10022; Every remaining rough Royal Gift emblem has matching painted art that carries into live HUD slots, while level-up cards use smoother corners and cleaner spacing.</p>
+        <p>&#10022; The battle HUD now uses a survivor-style layout: a razor-thin full-width XP strip with compact hero/build, time/level, and score islands beneath it.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
@@ -5146,7 +5147,7 @@ function drawHeroImg(key, cx, feetY, hgt, flip, alpha) {
 const ICON_IMG = {};
 for (const k of ['sword', 'swift', 'reach', 'boots', 'heart', 'magnet', 'aegis', 'wave', 'coin', 'nova', 'dagger', 'gust', 'thorn', 'frost', 'clover', 'phoenix', 'goldrush',
                  'axe', 'hammer', 'bow', 'flail', 'trident', 'icestaff', 'whip', 'boomer', 'blunder', 'scepter', 'hammer2',
-                 'wisdom', 'slayer', 'fury', 'prism', 'stormray', 'dragonray', 'petcandy', 'petbook', 'petmagic']) {
+                 'wisdom', 'slayer', 'fury', 'giantup', 'prism', 'stormray', 'dragonray', 'petcandy', 'petbook', 'petmagic']) {
   const im = new Image();
   im.src = 'icons/' + k + '.png';
   im.onload = () => { ICON_IMG[k] = im; };
@@ -7821,20 +7822,27 @@ function render(t) {
   // ---- HUD: royal command bar (shrinks so 4 knights fit) ----
   const joined = players.filter(p => p.joined);
   const compact = joined.length >= 3;
-  const ph2 = compact ? 42 : 56, pStep = compact ? 48 : 66;
-  const heartR = compact ? 8 : 11, heartStep = compact ? 18 : 24;
-  const portR = compact ? 14 : 19;
-  let hy = 10;
+  const ph2 = compact ? 34 : joined.length > 1 ? 38 : 46, pStep = ph2 + 4;
+  const heartR = compact ? 6 : 8, heartStep = compact ? 14 : 18;
+  const portR = compact ? 11 : 14;
+  const commandH = Math.max(74,12 + joined.length * pStep);
+  // Vampire-survivor hierarchy: one razor-thin XP horizon, then three
+  // lightweight information islands instead of a full opaque command bar.
+  ctx.fillStyle='rgba(8,7,9,.88)';roundedRect(10,5,ROOM_W-20,9,5);ctx.fill();
+  const topXp=ctx.createLinearGradient(10,0,ROOM_W-10,0);topXp.addColorStop(0,'#7c3aed');topXp.addColorStop(1,'#c084fc');
+  ctx.fillStyle=topXp;roundedRect(10,5,(ROOM_W-20)*Math.min(1,game.xp/game.xpNext),9,5);ctx.fill();
+  ctx.strokeStyle='rgba(232,182,76,.58)';ctx.lineWidth=1;roundedRect(10,5,ROOM_W-20,9,5);ctx.stroke();
+  let hy = 20;
   for (const p of joined) {
     const pcol = PLAYER_COLORS[Math.max(0, players.indexOf(p)) % 4];
-    const pw = compact ? 164 : 202;
-    const trayW = compact ? 126 : 136;
+    const pw = compact ? 142 : 172;
+    const trayW = compact ? 112 : 120;
     const trayX = 10 + pw;
-    ornate(10, hy, pw + trayW, ph2, 12);
+    plate(10,hy,pw+trayW,ph2,8);
     // player color bar
     ctx.fillStyle = pcol;
-    ctx.fillRect(16, hy + 8, 5, ph2 - 16);
-    const pcx = compact ? 36 : 42, pcy = hy + ph2 / 2;
+    ctx.fillRect(16, hy + 6, 4, ph2 - 12);
+    const pcx = compact ? 34 : 36, pcy = hy + ph2 / 2;
     ctx.save();
     ctx.beginPath();
     ctx.arc(pcx, pcy, portR, 0, Math.PI * 2);
@@ -7857,38 +7865,32 @@ function render(t) {
     ctx.arc(pcx, pcy, portR, 0, Math.PI * 2);
     ctx.stroke();
     ctx.textAlign = 'left';
-    ctx.font = '700 ' + (compact ? 12 : 15) + 'px Cinzel, Georgia, serif';
+    ctx.font = '700 ' + (compact ? 10 : 12) + 'px Cinzel, Georgia, serif';
     ctx.fillStyle = p.alive ? UI.goldPale : UI.dim;
     const nameX = pcx + portR + 11;
-    ctx.fillText(p.name, nameX, hy + (compact ? 17 : 24));
-    if (p.maxHp <= (compact ? 6 : 7)) {
-      for (let i = 0; i < p.maxHp; i++) drawHeart(nameX + 6 + i * heartStep, hy + (compact ? 31 : 42), heartR, i < p.hp);
-    } else {
-      // big-hearted knights get a compact counter instead of a mile of hearts
-      drawHeart(nameX + 6, hy + (compact ? 31 : 42), heartR, p.hp > 0);
-      ctx.font = '700 ' + (compact ? 13 : 16) + 'px Inter, sans-serif';
-      ctx.fillStyle = p.alive ? '#f0e2c3' : UI.dim;
-      ctx.fillText(p.hp + ' / ' + p.maxHp, nameX + 24, hy + (compact ? 36 : 48));
-    }
+    ctx.fillText(p.name, nameX, hy + (compact ? 14 : 16));
+    drawHeart(nameX + 5,hy + ph2 - 10,heartR,p.hp>0);
+    ctx.font='700 '+(compact?10:12)+'px Inter, sans-serif';ctx.fillStyle=p.alive?'#f0e2c3':UI.dim;
+    ctx.fillText(p.hp+' / '+p.maxHp,nameX+20,hy+ph2-6);
     // this knight's slots: 3 weapons + 3 effects, claimed logos inside, empty rings waiting
     const wIcons = (p.arsenal || [])
       .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon);
     const fIcons = (p.fx || []).map(k2 => (UPGRADES.find(u => u.key === k2) || {}).icon).filter(Boolean);
     const supIcons = SUPER_DEFS.filter(sd => (p.supers || {})[sd.key]).map(sd => sd.icon);
-    const mr = compact ? 7.5 : 9;
+    const mr = compact ? 5.5 : 6.5;
     ctx.strokeStyle = 'rgba(232,182,76,.22)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(trayX,hy+8); ctx.lineTo(trayX,hy+ph2-8); ctx.stroke();
     ctx.textAlign = 'center';
     ctx.font = '800 ' + (compact ? 8 : 9) + 'px Inter, sans-serif';
     ctx.fillStyle = 'rgba(232, 182, 76, 0.72)';
-    ctx.fillText('⚔', trayX + 13, hy + (compact ? 14 : 18));
+    ctx.fillText('⚔', trayX + 10, hy + 13);
     ctx.fillStyle = 'rgba(163, 217, 119, 0.8)';
-    ctx.fillText('✦', trayX + 13, hy + (compact ? 33 : 43));
+    ctx.fillText('✦', trayX + 10, hy + ph2 - 8);
     const drawSlot = (row, si, ic, kindCol) => {
-      const step2 = compact ? 33 : 36;
-      const ax2 = trayX + 38 + si * step2;
-      const ay2 = hy + (row ? (compact ? 31 : 41) : (compact ? 12 : 17));
+      const step2 = compact ? 28 : 30;
+      const ax2 = trayX + 28 + si * step2;
+      const ay2 = hy + (row ? ph2 - 9 : 11);
       if (ic) {
         ctx.fillStyle = 'rgba(5, 5, 6, 0.96)';
         ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2); ctx.fill();
@@ -7916,8 +7918,6 @@ function render(t) {
   }
 
   // center: timer + XP + level medallion
-  ornate(CX - 150, 8, 300, 96, 12);
-  drawCrest(CX, 8, 0.95);
   const mm = String(Math.floor(game.time / 60)).padStart(2, '0');
   const ss = String(Math.floor(game.time % 60)).padStart(2, '0');
   ctx.textAlign = 'center';
@@ -7925,40 +7925,20 @@ function render(t) {
   ctx.fillStyle = UI.goldPale;
   ctx.font = '800 9px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText('MISSION TIME', CX - 12, 22);
-  ctx.font = '700 28px Cinzel, Georgia, serif';
+  ctx.fillText('TIME', CX - 24, 25);
+  ctx.font = '700 22px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldPale;
-  ctx.fillText(mm + ':' + ss, CX - 12, 48);
-  ctx.fillStyle = 'rgba(10, 6, 16, 0.85)';
-  ctx.fillRect(CX - 128, 55, 214, 9);
-  const xg = ctx.createLinearGradient(CX - 128, 0, CX + 86, 0);
-  xg.addColorStop(0, '#7c3aed');
-  xg.addColorStop(1, '#c084fc');
-  ctx.fillStyle = xg;
-  ctx.fillRect(CX - 128, 55, 214 * Math.min(1, game.xp / game.xpNext), 9);
-  ctx.strokeStyle = UI.plateBorder;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(CX - 128, 55, 214, 9);
-  // level medallion
-  ctx.beginPath();
-  ctx.arc(CX + 116, 36, 20, 0, Math.PI * 2);
-  ctx.fillStyle = '#1a1410';
-  ctx.fill();
-  ctx.strokeStyle = UI.gold;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.textAlign = 'center';
-  ctx.font = '700 15px Cinzel, Georgia, serif';
-  ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.level), CX + 116, 41);
+  ctx.fillText(mm + ':' + ss, CX - 24, 47);
+  ctx.textAlign='left';ctx.font='800 9px Inter,sans-serif';ctx.fillStyle=UI.dim;ctx.fillText('LEVEL',CX+68,25);
+  ctx.font='700 18px Cinzel,Georgia,serif';ctx.fillStyle=UI.goldLight;ctx.fillText(String(game.level),CX+68,46);
   ctx.strokeStyle='rgba(232,182,76,.24)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(CX-126,70);ctx.lineTo(CX+126,70);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(CX-126,54);ctx.lineTo(CX+126,54);ctx.stroke();
   // objective countdown lives inside the mission plate
   if (game.endless) {
     ctx.font = '700 12px Inter, sans-serif';
     ctx.fillStyle = '#c9a8ff';
     ctx.textAlign = 'center';
-    ctx.fillText('∞ ENDLESS — THE CURSE NEVER STOPS', CX, 88);
+    ctx.fillText('∞ ENDLESS — THE CURSE NEVER STOPS', CX, 70);
   } else {
     const goalSec2 = MAPS[game.mapPick].goal * 60;
     const remain = Math.max(0, goalSec2 - game.time);
@@ -7967,17 +7947,17 @@ function render(t) {
     ctx.font = '600 11px Inter, sans-serif';
     ctx.fillStyle = 'rgba(240, 226, 195, 0.7)';
     ctx.textAlign = 'right';
-    ctx.fillText('SURVIVE', CX - 4, 88);
+    ctx.fillText('SURVIVE', CX - 4, 70);
     ctx.textAlign = 'left';
     ctx.font = '700 12px Inter, sans-serif';
     ctx.fillStyle = '#4ade80';
-    ctx.fillText(om + ':' + os, CX + 5, 88);
+    ctx.fillText(om + ':' + os, CX + 5, 70);
   }
 
   // right: banished counter with a little skull (pinned to the right edge)
   ctx.save();
   ctx.translate(ROOM_W - 960, 0);
-  ornate(790, 8, 160, 88, 12);
+  plate(790,20,160,44,8);
   ctx.fillStyle = '#e8e3d8';
   ctx.beginPath(); ctx.arc(802, 30, 11, 0, Math.PI * 2); ctx.fill();
   ctx.fillRect(796, 34, 12, 9);
@@ -7997,20 +7977,20 @@ function render(t) {
   ctx.textAlign = 'left';
   ctx.font = '600 11px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText('BANISHED', 824, 25);
+  ctx.fillText('BANISHED', 824, 33);
   ctx.font = '700 23px Cinzel, Georgia, serif';
   ctx.fillStyle = '#e8e3d8';
-  ctx.fillText(String(game.kills), 824, 48);
+  ctx.fillText(String(game.kills), 824, 55);
   ctx.strokeStyle='rgba(232,182,76,.24)';ctx.lineWidth=1;
-  ctx.beginPath();ctx.moveTo(802,56);ctx.lineTo(938,56);ctx.stroke();
-  drawUpgradeIcon('coin', 808, 75, 0.42, t);
+  ctx.beginPath();ctx.moveTo(872,25);ctx.lineTo(872,59);ctx.stroke();
+  drawUpgradeIcon('coin', 892, 42, 0.36, t);
   ctx.textAlign = 'left';
   ctx.font = '800 9px Inter, sans-serif';
   ctx.fillStyle = UI.dim;
-  ctx.fillText('TREASURY', 828, 72);
+  ctx.fillText('TREASURY', 910, 33);
   ctx.font = '700 15px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 828, 90);
+  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 910, 55);
   ctx.restore();
   if ((game.forgeT || 0) > 0) {
     ctx.textAlign = 'center';
