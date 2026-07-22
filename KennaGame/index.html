@@ -2202,6 +2202,7 @@ function confirmSelection() {
 }
 function startBattle() {
   keys.clear();
+  resetPadEdges();       // start the run with clean button edges (fixes dead controls on replay)
   const party = players.map(p => (p.joined && !p.remote ? p.heroKey : null));
   initRun();
   party.forEach((hk, i2) => {
@@ -9507,6 +9508,7 @@ function showMenu() {
   setPadFocus(document.getElementById('btnPlay'));
   game.paused = false;   // the menu supersedes the pause screen
   keys.clear();
+  resetPadEdges();       // no stale button state carried in from the run
   if (typeof updateHomeStats === 'function' && imgUIActive) updateHomeStats();
   refreshMenuLive();
   btnPlay.querySelector('.bTitle').textContent = 'Play';
@@ -9518,6 +9520,8 @@ function hideMenu() {
   closePanels();
   menuOpen = false;
   gameStarted = true;
+  keys.clear();
+  resetPadEdges();       // fresh input state entering any canvas screen
   menuEl.classList.add('hidden');
 }
 btnPlay.addEventListener('click', () => {
@@ -10059,6 +10063,12 @@ document.getElementById('netJoinBtn').addEventListener('click', () => {
    LEVEL-UP     d-pad = highlight card · A = take it
    VICTORY/DEFEAT  d-pad = highlight button · A = press it · B = menu    */
 const PADS = { prev: [{}, {}, {}, {}], rep: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
+// Wipe gamepad edge/repeat memory. Without this, a button still "held" as a run
+// ends stays marked pressed, so its next tap edge never fires — menus and the
+// armory feel dead until you release and press again. Call on every run/menu flip.
+function resetPadEdges() {
+  for (let i = 0; i < 4; i++) { PADS.prev[i] = {}; PADS.rep[i] = {}; }
+}
 function readPad(i) {
   const gps = navigator.getGamepads ? navigator.getGamepads() : [];
   const gp = gps[i];
