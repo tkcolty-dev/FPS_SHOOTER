@@ -1004,8 +1004,8 @@
     transform: none !important; filter: none !important;
   }
   @keyframes royalCommandSelect {
-    0%,100% { filter: brightness(1.08); transform: translateX(0) scale(1.015); background-position: 120% 0; }
-    50% { filter: brightness(1.34); transform: translateX(.28vw) scale(1.015); }
+    0%,100% { filter: brightness(1.08); transform: translateX(0) scale(1.025); background-position: 120% 0; }
+    50% { filter: brightness(1.34); transform: translateX(.2vw) scale(1.025); }
     100% { background-position: -120% 0; }
   }
   #menu.hasImage #btnStack .menuBtn.padFocus {
@@ -1027,9 +1027,17 @@
   #menu.hasImage #btnStack #btnExit.padFocus {
     background:linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
     background-size:240% 100% !important;
-    box-shadow:inset .32vw 0 #e8b64c,inset 0 1px rgba(255,244,215,.14),0 8px 20px rgba(0,0,0,.34) !important;
+    box-shadow:inset .32vw 0 #e8b64c,inset 0 1px rgba(255,244,215,.14),0 0 24px rgba(255,205,96,.48),0 10px 22px rgba(0,0,0,.4) !important;
   }
   #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; background:#24190d; }
+  #menu.hasImage #btnStack .menuBtn:hover {
+    background:linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
+    background-size:240% 100% !important;
+    box-shadow:inset .32vw 0 #e8b64c,inset 0 1px rgba(255,244,215,.14),0 0 24px rgba(255,205,96,.48),0 10px 22px rgba(0,0,0,.4) !important;
+    transform:scale(1.025) !important; filter:brightness(1.13) !important;
+  }
+  #menu.hasImage #btnStack .menuBtn:hover .bIcon { background:#5a3e19; color:#ffe2a0; }
+  #menu.hasImage #btnStack .menuBtn:hover .bChev { color:#ffe2a0; background:#24190d; }
 
   #menu.hasImage #chipKnights, #menu.hasImage #chipDate, #menu.hasImage #chipRemaster {
     top: 1.55% !important; height: 6.65% !important; background: #0d0b08 !important;
@@ -1056,14 +1064,6 @@
   #menu.hasImage #chipKnights.padFocus,
   #menu.hasImage #updateCard.padFocus,
   #menu.hasImage button.hsCard.padFocus { box-shadow:inset 0 -3px #e8b64c,0 0 24px rgba(255,205,96,.52) !important; }
-  #menu.hasImage #btnStack .menuBtn:active,
-  #menu.hasImage .iconBtn:active,
-  #menu.hasImage #chipKnights:active,
-  #menu.hasImage #updateCard:active,
-  #menu.hasImage button.hsCard:active {
-    box-shadow:inset 0 -3px #ffd878,0 0 26px rgba(255,205,96,.72) !important;
-    filter:brightness(1.22) !important;
-  }
   #menu.hasImage #homePadLegend { top: 86.4%; height: 4.8%; }
 </style>
 </head>
@@ -1229,7 +1229,7 @@
         <p>&#10022; Locked character cards now reserve one clear state label, preventing SELECTED and LOCKED chips from overlapping.</p>
         <p>&#10022; The home command deck now uses four distinct, generously spaced royal plaques in one easy-to-scan vertical rail.</p>
         <p>&#10022; Upgrade cards no longer use an INSPECTING badge; the selected frame and detail ledger communicate focus without extra interface jargon.</p>
-        <p>&#10022; Home status blocks and utility icons are smaller; clicks receive a bright gold press glow while Xbox-selected controls retain their gold focus.</p>
+        <p>&#10022; Home status blocks and utility icons are smaller; only the four main commands gain a subtle size lift and gold glow while hovered or selected.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
