@@ -938,10 +938,11 @@
 
   /* ===== 2026 home command reformat: opaque, clean, selection-only ===== */
   #menu.hasImage #btnStack {
-    inset: auto !important; left: 1.55% !important; top: 45.7% !important;
-    width: 27.35% !important; height: 39.8% !important;
-    padding: 1.05vh .8vw !important; box-sizing: border-box;
-    display: grid !important; grid-template-rows: repeat(4, 1fr); gap: 1.45vh;
+    inset: auto !important; left: 1.55% !important; top: 45.2% !important;
+    width: 31.25% !important; height: 39.4% !important;
+    padding: 1.15vh .82vw !important; box-sizing: border-box;
+    display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr));
+    grid-template-rows: 1.18fr 1fr .86fr; gap: 1.45vh .95vw;
     background: #0b0907; border-radius: 1.8vh;
     box-shadow: 0 18px 44px rgba(0,0,0,.55), inset 0 1px rgba(255,236,196,.055);
   }
@@ -960,20 +961,36 @@
       radial-gradient(circle at 14% 50%,rgba(232,182,76,.09),transparent 27%),
       linear-gradient(105deg,#211a11 0%,#17120d 58%,#100d09 100%) !important;
     border: 0 !important; border-radius: 1.05vh !important;
-    box-shadow: inset 0 1px rgba(255,236,196,.085), inset 0 -1px rgba(0,0,0,.55), inset 4px 0 rgba(232,182,76,.18) !important;
+    box-shadow: inset 0 1px rgba(255,236,196,.055), inset 0 -1px rgba(0,0,0,.55) !important;
     filter: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
     transform: none !important; animation: none !important;
     transition: transform .18s cubic-bezier(.2,.8,.2,1), filter .18s ease, background .18s ease !important;
   }
+  #menu.hasImage #btnStack #btnPlay { grid-column: 1 / 3; grid-row: 1; }
+  #menu.hasImage #btnStack #btnSettings { grid-column: 1; grid-row: 2; }
+  #menu.hasImage #btnStack #btnCredits { grid-column: 2; grid-row: 2; }
+  #menu.hasImage #btnStack #btnExit { grid-column: 1 / 3; grid-row: 3; }
+  #menu.hasImage #btnStack #btnSettings,
+  #menu.hasImage #btnStack #btnCredits {
+    grid-template-columns: 2.7vw minmax(0,1fr) !important; gap: .55vw !important;
+  }
+  #menu.hasImage #btnStack #btnSettings .bIcon,
+  #menu.hasImage #btnStack #btnCredits .bIcon { width:2.55vw; height:4.55vh; }
+  #menu.hasImage #btnStack #btnSettings .bChev,
+  #menu.hasImage #btnStack #btnCredits .bChev { display:none; }
+  #menu.hasImage #btnStack #btnSettings .bTitle,
+  #menu.hasImage #btnStack #btnCredits .bTitle { font-size:min(1.65vh,1.05vw); letter-spacing:.075em; }
+  #menu.hasImage #btnStack #btnSettings .bSub,
+  #menu.hasImage #btnStack #btnCredits .bSub { font-size:min(.92vh,.62vw); white-space:normal; line-height:1.25; }
   #menu.hasImage #btnStack .menuBtn::before,
   #menu.hasImage #btnStack .menuBtn::after { display: none !important; }
   #menu.hasImage #btnStack .menuBtn > * { visibility: visible !important; position: relative; z-index: 1; }
   #menu.hasImage #btnStack .bIcon {
     width: 3.05vw; height: 5.4vh; margin: 0 !important; display: grid; place-items: center;
-    color: #f0c96f;
-    background: radial-gradient(circle at 38% 32%,#5b4525 0%,#352616 46%,#1c150e 100%);
+    color: #a99262;
+    background: radial-gradient(circle at 38% 32%,#342a1d 0%,#231b13 50%,#15110d 100%);
     border-radius: 50%;
-    box-shadow: inset 0 0 0 2px #17100a, inset 0 0 0 3px rgba(232,182,76,.34), 0 3px 8px rgba(0,0,0,.35);
+    box-shadow: inset 0 0 0 2px #100d0a, inset 0 0 0 3px rgba(232,182,76,.12), 0 3px 8px rgba(0,0,0,.35);
     font: 700 min(2.5vh,1.7vw) Cinzel,serif;
   }
   #menu.hasImage #btnStack .bText { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
@@ -988,14 +1005,14 @@
   }
   #menu.hasImage #btnStack .bChev {
     display: grid; place-items:center; width:1.4vw; height:3.4vh;
-    color: rgba(244,230,198,.6); font: 300 min(3.2vh,2.1vw) Inter,sans-serif;
+    color: rgba(244,230,198,.34); font: 300 min(3.2vh,2.1vw) Inter,sans-serif;
     background:#0c0a07; border-radius:2vh;
     transition: transform .18s ease, color .18s ease;
   }
   #menu.hasImage #btnStack .menuBtn:hover,
   #menu.hasImage #btnStack .menuBtn:focus-visible {
     background:radial-gradient(circle at 14% 50%,rgba(232,182,76,.09),transparent 27%),linear-gradient(105deg,#211a11 0%,#17120d 58%,#100d09 100%) !important;
-    box-shadow:inset 0 1px rgba(255,236,196,.085),inset 0 -1px rgba(0,0,0,.55),inset 4px 0 rgba(232,182,76,.18) !important;
+    box-shadow:inset 0 1px rgba(255,236,196,.055),inset 0 -1px rgba(0,0,0,.55) !important;
     transform: none !important; filter: none !important;
   }
   @keyframes royalCommandSelect {
@@ -1012,10 +1029,19 @@
   #menu.hasImage #btnStack .menuBtn.padFocus .bIcon { background:#5a3e19; color:#ffe2a0; }
   #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; transform:translateX(.18vw); }
   #menu.hasImage #btnStack .menuBtn:active { transform: scale(.975) !important; filter: brightness(1.18) !important; }
-  #menu.hasImage #btnPlay { box-shadow:inset 0 1px rgba(255,236,196,.1),inset 0 -1px rgba(0,0,0,.55),inset 4px 0 #b98631 !important; }
+  #menu.hasImage #btnPlay { box-shadow:inset 0 1px rgba(255,236,196,.055),inset 0 -1px rgba(0,0,0,.55) !important; }
   #menu.hasImage #btnSettings { background:radial-gradient(circle at 14% 50%,rgba(190,145,68,.11),transparent 28%),linear-gradient(105deg,#241d14,#17130e 60%,#0f0d0a) !important; }
   #menu.hasImage #btnCredits { background:radial-gradient(circle at 14% 50%,rgba(106,142,184,.11),transparent 28%),linear-gradient(105deg,#171d22,#121518 60%,#0b0d0f) !important; }
   #menu.hasImage #btnExit { background:radial-gradient(circle at 14% 50%,rgba(176,89,76,.1),transparent 28%),linear-gradient(105deg,#211715,#16100f 60%,#0e0b0a) !important; }
+  #menu.hasImage #btnStack #btnPlay.padFocus,
+  #menu.hasImage #btnStack #btnSettings.padFocus,
+  #menu.hasImage #btnStack #btnCredits.padFocus,
+  #menu.hasImage #btnStack #btnExit.padFocus {
+    background:linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
+    background-size:240% 100% !important;
+    box-shadow:inset .32vw 0 #e8b64c,inset 0 1px rgba(255,244,215,.14),0 8px 20px rgba(0,0,0,.34) !important;
+  }
+  #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; background:#24190d; }
 
   #menu.hasImage #chipKnights, #menu.hasImage #chipDate, #menu.hasImage #chipRemaster {
     top: 1.55% !important; height: 8.35% !important; background: #0d0b08 !important;
@@ -1195,6 +1221,10 @@
         <p>&#10022; Choose the Battlefield now uses twelve cinematic storybook realm paintings, giving every destination a distinct atmosphere while retaining live weather, lock states, objectives, and Xbox navigation.</p>
         <p>&#10022; Live realms now use hand-painted terrain, premium enemy sprites, low defensive walls, and one shared weapon atlas across unlock cards, HUD slots, equipped art, and combat.</p>
         <p>&#10022; Live terrain was rebalanced for visual cohesion, and selected commands now receive a restrained moving shine while unselected buttons stay settled and opaque.</p>
+        <p>&#10022; Home command lighting is now strictly selection-only: the gold rail, bright medallion, chevron, and moving shine appear only on the active Play, Upgrades, Credits, or Exit command.</p>
+        <p>&#10022; Locked character cards now reserve one clear state label, preventing SELECTED and LOCKED chips from overlapping.</p>
+        <p>&#10022; The home command deck now gives Play a hero row, separates Upgrades and Credits into distinct secondary tiles, and keeps Exit in its own quieter row.</p>
+        <p>&#10022; Upgrade cards no longer use an INSPECTING badge; the selected frame and detail ledger communicate focus without extra interface jargon.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
@@ -6030,7 +6060,8 @@ function renderSelect(t, forP2) {
       ctx.shadowBlur = 16;
       ctx.stroke();
       ctx.restore();
-      drawStateChip('SELECTED', x + 7, y + 7, UI.goldLight);
+      // Locked cards own this state slot; the gold outline still shows inspection.
+      if (owned) drawStateChip('SELECTED', x + 7, y + 7, UI.goldLight);
       drawSelectedShine(x,y,cw,chh,t,.2);
     }
     // knight art (full color even when locked, like the mockup)
@@ -6288,7 +6319,6 @@ function renderArmory(t) {
       ctx.shadowBlur = 14;
       ctx.stroke();
       ctx.restore();
-      drawStateChip('INSPECTING', x + 7, y + 7, UI.goldLight);
       drawSelectedShine(x,y,cw,chh,t,.18);
     }
     // emblem
