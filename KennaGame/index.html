@@ -2787,13 +2787,13 @@ function spawnEnemy(forceX, forceY) {
     golem:     { r: 27, hp: 24, speed: 30, xp: 10 },
     charger:   { r: 17, hp: 6,  speed: 46, xp: 5 },
     warlock:   { r: 15, hp: 8,  speed: 48, xp: 7 },
-    reaper:    { r: 24, hp: 90, speed: 68, xp: 24 },
+    reaper:    { r: 26, hp: 175, speed: 72, xp: 32 },
     gilded:    { r: 12, hp: 2,  speed: 112, xp: 2 },
     yeti:      { r: 24, hp: 18, speed: 42, xp: 8 },
     magmite:   { r: 10, hp: 2,  speed: 116, xp: 2 },
   }[kind];
   // the curse hardens as the battle drags on, and later realms hit harder
-  const hpBonus = Math.floor(t / 150) + Math.floor(game.mapPick / 3);
+  const hpBonus = Math.floor(t / 110) + Math.floor(game.mapPick / 3);
   // after ~3½ minutes, gold-touched ELITES stalk the field — triple-tough, triple rewards
   const elite = kind !== 'gilded' && t > 210 && Math.random() < 0.06;
   const hp0 = Math.max(1, Math.round((spec.hp + hpBonus) * (elite ? 3 : 1) * diffMul().hp));
@@ -2815,10 +2815,12 @@ const BOSS_DEFS = {
   concur: { name: 'CONCUR THE SORCERER', r: 46, hp: 420, speed: 56, xp: 100, style: 'caster' },
 };
 // [spawn-pace multiplier, enemy cap] per realm — early realms breathe, late realms swarm
+// [pace multiplier, on-screen enemy cap] — later realms swarm harder. Caps are high
+// so a deep run becomes a wall of monsters to cut down.
 const MAP_SPAWN = {
-  meadow: [0.72, 140], courtyard: [0.82, 160], hall: [0.88, 170], forest: [0.95, 185],
-  crypt: [1, 195], snow: [1.08, 205], forge: [1.18, 220], throne: [1.3, 240],
-  candy: [1, 195], garden: [1.05, 205], lake: [1.15, 215], volcano: [1.28, 240],
+  meadow: [0.72, 230], courtyard: [0.82, 250], hall: [0.88, 265], forest: [0.95, 280],
+  crypt: [1, 290], snow: [1.08, 300], forge: [1.18, 315], throne: [1.3, 340],
+  candy: [1, 290], garden: [1.05, 300], lake: [1.15, 315], volcano: [1.28, 340],
 };
 const MAP_BOSS = ['titan', 'titan', 'wraith', 'wraith', 'wraith', 'titan', 'titan', 'concur', 'gummy', 'gummy', 'wraith', 'titan'];
 function spawnBoss() {
@@ -3904,22 +3906,26 @@ function update(dt) {
   // spawner — every realm has its own army size
   const MB = MAP_SPAWN[MAPS[game.mapPick].key] || [1, 220];
   game.spawnTimer -= dt;
-  // Gentle ramp: sparse at the start, building for ~10 minutes so the player can
-  // level up into the horde. Realm pace (MB[0]) and difficulty both scale it.
-  const interval = Math.max(0.28, (1.85 - game.time * 0.0028) * (1 - game.mapPick * 0.02)) / (MB[0] * diffMul().spawn);
+  // Calm start that ramps HARD into a swarm: sparse for the first minute, then the
+  // interval keeps dropping to a low floor by ~9 min while extra spawns pile on, so
+  // deep runs become a glorious wall of monsters. Realm pace + difficulty scale it.
+  const interval = Math.max(0.12, (2.0 - game.time * 0.0034) * (1 - game.mapPick * 0.02)) / (MB[0] * diffMul().spawn);
   if (game.spawnTimer <= 0 && enemies.length < MB[1]) {
     game.spawnTimer = interval;
     spawnEnemy();
-    if (game.time > 120 && Math.random() < 0.45 * diffMul().spawn) spawnEnemy();
-    if (game.time > 300 && Math.random() < 0.45 * diffMul().spawn) spawnEnemy();
+    const ex = diffMul().spawn;
+    if (game.time > 90  && Math.random() < 0.5 * ex) spawnEnemy();
+    if (game.time > 210 && Math.random() < 0.55 * ex) spawnEnemy();
+    if (game.time > 360 && Math.random() < 0.6 * ex) spawnEnemy();
+    if (game.time > 500 && Math.random() < 0.7 * ex) spawnEnemy();
   }
   game.burstTimer -= dt;
   if (game.burstTimer <= 0) {
-    game.burstTimer = 46;
+    game.burstTimer = Math.max(30, 46 - game.time / 40);   // hordes come more often deep in
     gameToast('⚠ A cursed horde approaches!');
     const fx = players[0].x, fy = players[0].y;
-    const n = Math.round((7 + Math.floor(game.time / 45)) * diffMul().spawn);
-    for (let k = 0; k < Math.min(28, n); k++) {
+    const n = Math.round((7 + Math.floor(game.time / 30)) * diffMul().spawn);
+    for (let k = 0; k < Math.min(40, n); k++) {
       const a = (k / n) * Math.PI * 2;
       spawnEnemy(fx + Math.cos(a) * 620, fy + Math.sin(a) * 620);
     }
@@ -10150,11 +10156,17 @@ document.getElementById('netJoinBtn').addEventListener('click', () => {
    LEVEL-UP     d-pad = highlight card · A = take it
    VICTORY/DEFEAT  d-pad = highlight button · A = press it · B = menu    */
 const PADS = { prev: [{}, {}, {}, {}], rep: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
-// Wipe gamepad edge/repeat memory. Without this, a button still "held" as a run
-// ends stays marked pressed, so its next tap edge never fires — menus and the
-// armory feel dead until you release and press again. Call on every run/menu flip.
+// Re-baseline gamepad edge/repeat memory to the CURRENT pad state. Seeding prev
+// with what's held RIGHT NOW does two things: (1) a stale "still pressed" flag from
+// the previous run is cleared, so menus/armory aren't dead until you release+press;
+// (2) a button that's genuinely held through the flip (e.g. Menu/Start while a run
+// begins) is NOT seen as a fresh press, so it can't phantom-pause / "open the map".
 function resetPadEdges() {
-  for (let i = 0; i < 4; i++) { PADS.prev[i] = {}; PADS.rep[i] = {}; }
+  for (let i = 0; i < 4; i++) {
+    PADS.rep[i] = {};
+    const s = readPad(i);
+    PADS.prev[i] = s ? Object.assign({}, s) : {};
+  }
 }
 function readPad(i) {
   const gps = navigator.getGamepads ? navigator.getGamepads() : [];
