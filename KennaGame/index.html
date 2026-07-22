@@ -2304,8 +2304,11 @@ function pickUpgrade(idx) {
     lvNow = ch.up[c.key] = pUpLvl(ch, c.key) + 1;
   } else {
     lvNow = game.up[c.key] = upLvl(c.key) + 1;
+  }
+  // every non-weapon upgrade (stat OR effect) claims a passive slot and shows up top
+  if (!c.weapon) {
     ch.fx = ch.fx || [];
-    if (!c.weapon && !ch.fx.includes(c.key) && ch.fx.length < 3) ch.fx.push(c.key);
+    if (!ch.fx.includes(c.key) && ch.fx.length < 3) ch.fx.push(c.key);
   }
   const multi = players.filter(p2 => p2.joined).length > 1;
   gameToast('✨ ' + (multi ? ch.name + ' — ' : '') + c.name + '  Lv ' + lvNow + '!');
@@ -2490,8 +2493,8 @@ function rollChestReward(opener) {
     op.fx = op.fx || [];
     const pool = UPGRADES.filter(u => {
       if (u.key === 'shuffle') return false;
-      if (STAT_KEYS.has(u.key)) return pUpLvl(op, u.key) < u.max;
-      if (upLvl(u.key) >= u.max) return false;
+      const lvl = STAT_KEYS.has(u.key) ? pUpLvl(op, u.key) : upLvl(u.key);
+      if (lvl >= u.max) return false;
       return op.fx.includes(u.key) || op.fx.length < 3;
     });
     if (pool.length) {
@@ -2546,9 +2549,10 @@ function applyChestReward(ch) {
       lv2 = op.up[rw.gift.key] = pUpLvl(op, rw.gift.key) + 1;
     } else {
       lv2 = game.up[rw.gift.key] = upLvl(rw.gift.key) + 1;
-      op.fx = op.fx || [];
-      if (!op.fx.includes(rw.gift.key) && op.fx.length < 3) op.fx.push(rw.gift.key);
     }
+    // chest gifts register in a passive slot too, same as level-up picks
+    op.fx = op.fx || [];
+    if (!op.fx.includes(rw.gift.key) && op.fx.length < 3) op.fx.push(rw.gift.key);
     const multi2 = players.filter(p2 => p2.joined).length > 1;
     gameToast('🎁 Chest gift' + (multi2 ? ' for ' + op.name : '') + ': ' + rw.gift.name + '  Lv ' + lv2 + '!');
   } else {
@@ -2662,9 +2666,10 @@ function buildChoices() {
   const ch = chooserP();
   ch.fx = ch.fx || [];
   const pool = UPGRADES.filter(u => {
-    if (STAT_KEYS.has(u.key)) return pUpLvl(ch, u.key) < u.max;   // training is slotless
-    if (upLvl(u.key) >= u.max) return false;
-    // effect gifts live in 3 slots: level what you own, or claim a free slot
+    const lvl = STAT_KEYS.has(u.key) ? pUpLvl(ch, u.key) : upLvl(u.key);
+    if (lvl >= u.max) return false;                       // maxed — never offer
+    // EVERY upgrade lives in one of the 3 passive slots: level one you already
+    // hold, or claim a free slot. Once all 3 are full, only owned gifts appear.
     return ch.fx.includes(u.key) || ch.fx.length < 3;
   });
   // Vampire-Survivors style: 3 weapon slots total — the signature you start with
@@ -4309,15 +4314,7 @@ function drawEnemy(e, t) {
     ctx.textAlign = 'center';
     ctx.fillText('✦', Math.cos(sa) * e.r * 1.5, Math.sin(sa) * e.r * 0.8 - e.r * 0.5);
   }
-  ctx.fillStyle = 'rgba(8, 5, 12, 0.52)';
-  ctx.beginPath();
-  ctx.ellipse(0, e.r * 1.12 - bob * 0.5, e.r * 1.02, Math.max(5, e.r * 0.34), 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 226, 160, 0.16)';
-  ctx.lineWidth = Math.max(1.2, e.r * 0.055);
-  ctx.beginPath();
-  ctx.ellipse(0, e.r * 1.1 - bob * 0.5, e.r * 1.06, Math.max(6, e.r * 0.38), 0, 0, Math.PI * 2);
-  ctx.stroke();
+  // (no ground shadow/ring under monsters — owner prefers them clean on the field)
 
   // the charger points its nose along the charge — rears back to aim, stretches to lunge
   if (e.kind === 'charger' && e.chargeState !== 'stalk' && (e.aimX || e.aimY)) {
@@ -7591,12 +7588,21 @@ function render(t) {
     ctx.rotate(df * 0.9 * (d2.seed % 2 ? 1 : -1));
     const dk = 1 + df * 1.1;
     ctx.scale(dk, Math.max(0.05, 1 - df * 0.7));
+    // white KILL-FLASH: blaze pure white at the instant of death, fading fast
+    const kflash = Math.max(0, 1 - df * 2.4);
     const dim = DRAWN_KINDS.has(d2.kind) ? null : ENEMY_IMG[d2.kind === 'mite' ? 'splitter' : d2.kind];
     if (dim) {
       const dh2 = d2.r * 2.1, dw2 = dh2 * (dim.width / dim.height);
       ctx.drawImage(dim, -dw2 / 2, -dh2 * 0.58, dw2, dh2);
+      if (kflash > 0.01) {
+        ctx.globalAlpha = (1 - df) * kflash;
+        ctx.globalCompositeOperation = 'source-atop';   // tint only the monster's own pixels
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-dw2 / 2, -dh2 * 0.58, dw2, dh2);
+        ctx.globalCompositeOperation = 'source-over';
+      }
     } else {
-      ctx.fillStyle = d2.color || '#e8e4da';
+      ctx.fillStyle = kflash > 0.5 ? '#ffffff' : (d2.color || '#e8e4da');
       ctx.beginPath(); ctx.arc(0, 0, d2.r * (1 - df * 0.4), 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
@@ -8513,7 +8519,7 @@ function render(t) {
           const fk = (p2.fx || [])[sl2];
           if (fk) {
             const u2 = UPGRADES.find(u3 => u3.key === fk);
-            const lv3 = upLvl(fk);
+            const lv3 = STAT_KEYS.has(fk) ? pUpLvl(p2, fk) : upLvl(fk);
             line(u2.icon, u2.name, 'Lv ' + lv3 + ' / ' + u2.max,
               lv3 >= u2.max ? 'MAX rank reached' : 'Next: ' + u2.desc, 'rgba(163, 217, 119, 0.8)');
           } else {
