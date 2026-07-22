@@ -10228,14 +10228,18 @@ window.addEventListener('gamepaddisconnected', e => {
     players[i].alive = false;
   }
 });
-// on an actual Xbox (Edge browser) the game goes fullscreen at the first tap
+// The game goes fullscreen at the first tap / key so it fills the whole screen
+// (browsers only allow fullscreen from a user gesture, and a reload always drops
+// out of fullscreen, so we re-arm this every load — on Xbox AND desktop).
 const IS_XBOX = /Xbox/i.test(navigator.userAgent);
+function goFullscreenOnce() {
+  if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+}
+window.addEventListener('pointerdown', goFullscreenOnce, { once: true });
+window.addEventListener('keydown', goFullscreenOnce, { once: true });
 if (IS_XBOX) {
-  window.addEventListener('pointerdown', () => {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    }
-  }, { once: true });
   setTimeout(() => { if (menuOpen) menuToastShow('🎮 Welcome, Xbox knight! Press A to play.'); }, 1500);
 }
 
