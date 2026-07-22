@@ -143,7 +143,12 @@
   }
   .panel .rowBtn:hover { background: rgba(201, 168, 106, 0.28); }
   .panel .diffBtn { padding: 0.7vh 1vw; font-size: 1.7vh; }
-  .panel .diffBtn.on { background: #e8b64c; color: #211a11; border-color: #ffe08a; font-weight: 700; box-shadow: 0 0 14px rgba(255,205,96,.5); }
+  /* !important so the selected gold state beats the more-specific hasImage rowBtn rule */
+  .panel .diffBtn.on {
+    background: #ffcf63 !important; color: #201a10 !important; border-color: #fff0c4 !important;
+    font-weight: 800 !important; box-shadow: 0 0 18px rgba(255,205,96,.75), inset 0 0 0 1px rgba(255,255,255,.3) !important;
+    transform: scale(1.06);
+  }
   .panel::-webkit-scrollbar { width: 8px; }
   .panel::-webkit-scrollbar-thumb { background: rgba(201, 168, 106, 0.4); border-radius: 4px; }
   .panel::-webkit-scrollbar-thumb:hover { background: rgba(201, 168, 106, 0.6); }
@@ -2369,6 +2374,10 @@ function initRun() {
   game.xp = 0; game.level = 1; game.xpNext = 10; game.choices = null;
   game.up = {}; game.phoenix = 0;
   game.burstTimer = 40; game.shake = 0;
+  // wipe every transient run flag so nothing carries over from a prior run/defeat
+  game.chestReveal = null; game.hurtFlash = 0; game.vacuumT = 0; game.callT = undefined;
+  game.joinAnim = null; game.armoryInspect = false; game.helpOpen = false; game.treeOpen = false;
+  game.settingsFromPause = false; game.pausePick = 0; game.padPick = null; game.forgeT = 0;
   game.stompT = 0; game.crownT = 0; game.mendK = 0;
   game.evolved = {};
   game.rerolls = 0;
