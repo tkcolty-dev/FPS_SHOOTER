@@ -2508,6 +2508,8 @@ function rollChestReward(opener) {
 function applyChestReward(ch) {
   const rw = ch.reward;
   SFX.levelup();
+  // big, unmistakable "you got X" banner (see the HUD renderer)
+  game.chestReveal = { icon: rw.icon, label: rw.label, t: game.time };
   if (rw.kind === 'super') {
     const tp = rw.forP && rw.forP.joined ? rw.forP : players[0];
     tp.supers = tp.supers || {};
@@ -2554,6 +2556,7 @@ function applyChestReward(ch) {
     op.fx = op.fx || [];
     if (!op.fx.includes(rw.gift.key) && op.fx.length < 3) op.fx.push(rw.gift.key);
     const multi2 = players.filter(p2 => p2.joined).length > 1;
+    game.chestReveal = { icon: rw.gift.icon, label: rw.gift.name.toUpperCase() + '  ·  LV ' + lv2, forName: multi2 ? op.name : '', t: game.time };
     gameToast('🎁 Chest gift' + (multi2 ? ' for ' + op.name : '') + ': ' + rw.gift.name + '  Lv ' + lv2 + '!');
   } else {
     drops.push({ x: ch.x - 22, y: ch.y + 8, kind: 'heart' });
@@ -8153,6 +8156,39 @@ function render(t) {
     ty += 38;
   }
 
+  // ---- chest reward reveal: a big, unmistakable "you got X" banner ----
+  if (game.chestReveal) {
+    const cr = game.chestReveal, age = game.time - cr.t, DUR = 2.9;
+    if (age > DUR) { game.chestReveal = null; }
+    else {
+      const a = Math.min(1, age * 4) * Math.min(1, (DUR - age) * 2.2);
+      const pop = 0.8 + easeOutQ(Math.min(1, age * 3)) * 0.2;
+      const bw = 320, bh = 126, by = 168;
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(CX, by);
+      ctx.scale(pop, pop);
+      ctx.fillStyle = 'rgba(14, 10, 6, 0.95)';
+      roundedRect(-bw / 2, -bh / 2, bw, bh, 16); ctx.fill();
+      ctx.strokeStyle = '#ffd98a'; ctx.lineWidth = 2.5;
+      roundedRect(-bw / 2, -bh / 2, bw, bh, 16); ctx.stroke();
+      ctx.drawImage(GLOWS.gilded, -40, -bh / 2 + 24, 80, 80);
+      ctx.textAlign = 'center';
+      ctx.font = '700 13px Cinzel, Georgia, serif';
+      ctx.fillStyle = '#ffd98a';
+      ctx.fillText('✦ ROYAL TREASURE ✦', 0, -bh / 2 + 22);
+      drawUpgradeIcon(cr.icon, 0, -bh / 2 + 52, 0.92, t);
+      ctx.fillStyle = '#fff3d6';
+      let fs = 18;
+      ctx.font = '800 ' + fs + 'px Cinzel, Georgia, serif';
+      while (ctx.measureText(cr.label).width > bw - 36 && fs > 10) { fs--; ctx.font = '800 ' + fs + 'px Cinzel, Georgia, serif'; }
+      ctx.fillText(cr.label, 0, bh / 2 - (cr.forName ? 22 : 16));
+      if (cr.forName) { ctx.font = '600 11px Inter, sans-serif'; ctx.fillStyle = UI.dim; ctx.fillText('for ' + cr.forName, 0, bh / 2 - 6); }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+  }
+
   // ---- level-up overlay ----
   cardRects = [];
   if (game.choices) {
@@ -10684,26 +10720,30 @@ const SFX = {
   } },
   gust()    { if (audioCtx && sfxGate('gu', 120)) nz(sfxBus, audioCtx.currentTime, 0.4, 0.13, { type: 'bandpass', freq: 800, att: 0.09 }); },
   hit()     { if (audioCtx && sfxGate('ht', 50))  tone(sfxBus, 'square', 0, audioCtx.currentTime, 0.06, 0.08, { hz: 200 + Math.random() * 60, slideTo: 120 }); },
-  kill()    { if (audioCtx && sfxGate('kl', 60)) {
-    const t0 = audioCtx.currentTime;
-    tone(sfxBus, 'triangle', 0, t0, 0.16, 0.16, { hz: 330, slideTo: 90 });
-    tone(sfxBus, 'sine', 0, t0 + 0.02, 0.12, 0.05, { hz: 1200, slideTo: 1900 });
+  kill()    { if (audioCtx && sfxGate('kl', 55)) {
+    // a meaty monster burst: punchy body-drop + wet splat + a little bursting pop
+    const t0 = audioCtx.currentTime, r = 0.9 + Math.random() * 0.22;
+    tone(sfxBus, 'sine', 0, t0, 0.2, 0.24, { hz: 240 * r, slideTo: 52, att: 0.004 });
+    tone(sfxBus, 'triangle', 0, t0, 0.13, 0.12, { hz: 190 * r, slideTo: 70 });
+    nz(sfxBus, t0, 0.14, 0.22, { type: 'lowpass', freq: 1700, att: 0.002 });
+    nz(sfxBus, t0 + 0.008, 0.06, 0.1, { type: 'bandpass', freq: 950 });
+    tone(sfxBus, 'sine', 0, t0 + 0.012, 0.11, 0.07, { hz: 680 * r, slideTo: 1500 });
   } },
-  gem()     { if (audioCtx && sfxGate('gm', 45)) {
-    // a warm celesta bell climbing a pentatonic ladder as you chain gems
+  gem()     { if (audioCtx && sfxGate('gm', 40)) {
+    // a bright crystal pluck climbing a pentatonic ladder as you chain gems
     const nw = performance.now();
     if (nw - (sfxLast.gmT || 0) > 900) sfxLast.gmN = 0;   // the melody resets if you stop collecting
     sfxLast.gmT = nw;
-    const ladder = [0, 2, 4, 7, 9, 12, 14, 16, 19];
+    const ladder = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
     const step = ladder[Math.min((sfxLast.gmN = (sfxLast.gmN || 0) + 1) - 1, ladder.length - 1)];
-    const hz = 784 * Math.pow(2, step / 12);
+    const hz = 880 * Math.pow(2, step / 12);
     const t0 = audioCtx.currentTime;
-    tone(sfxBus, 'triangle', 0, t0, 0.3, 0.13, { hz, att: 0.003 });          // warm body
-    tone(sfxBus, 'sine', 0, t0, 0.3, 0.05, { hz: hz * 1.004 });              // chorus glow
-    tone(sfxBus, 'sine', 0, t0, 0.16, 0.055, { hz: hz * 2, att: 0.003 });    // bell shimmer
-    tone(sfxBus, 'sine', 0, t0 + 0.03, 0.11, 0.02, { hz: hz * 3 });          // glass glint
+    nz(sfxBus, t0, 0.025, 0.05, { type: 'highpass', freq: 6500 });           // crisp tick transient
+    tone(sfxBus, 'triangle', 0, t0, 0.26, 0.14, { hz, att: 0.002 });         // bright pluck body
+    tone(sfxBus, 'sine', 0, t0, 0.3, 0.06, { hz: hz * 2, att: 0.002 });      // octave shimmer
+    tone(sfxBus, 'sine', 0, t0 + 0.02, 0.12, 0.045, { hz: hz * 3 });         // glass sparkle
     // topping the ladder rings a tiny triumphant twinkle
-    if (sfxLast.gmN === ladder.length) tone(sfxBus, 'sine', 0, t0 + 0.06, 0.4, 0.06, { hz: hz * 2, slideTo: hz * 2.5 });
+    if (sfxLast.gmN >= ladder.length) tone(sfxBus, 'sine', 0, t0 + 0.05, 0.42, 0.07, { hz: hz * 2, slideTo: hz * 2.6 });
   } },
   coin()    { if (audioCtx && sfxGate('cn', 70))  {
     const t0 = audioCtx.currentTime;
