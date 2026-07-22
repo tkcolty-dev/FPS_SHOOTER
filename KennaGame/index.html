@@ -1004,15 +1004,16 @@
     transform: none !important; filter: none !important;
   }
   @keyframes royalCommandSelect {
-    0%,100% { filter: brightness(1.08); transform: translateX(0) scale(1.025); background-position: 120% 0; }
-    50% { filter: brightness(1.34); transform: translateX(.2vw) scale(1.025); }
+    0%,100% { filter: brightness(1.22); transform: translateX(0) scale(1.04); background-position: 120% 0; }
+    50% { filter: brightness(1.32); transform: translateX(.12vw) scale(1.04); }
     100% { background-position: -120% 0; }
   }
   #menu.hasImage #btnStack .menuBtn.padFocus {
     background: linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
     background-size: 240% 100% !important; border: 0 !important;
     box-shadow: inset .32vw 0 #e8b64c, inset 0 1px rgba(255,244,215,.14), 0 8px 20px rgba(0,0,0,.34) !important;
-    animation: royalCommandSelect .85s ease-in-out infinite !important;
+    animation: royalCommandSelect 1.15s ease-in-out infinite !important;
+    z-index:4 !important;
   }
   #menu.hasImage #btnStack .menuBtn.padFocus .bIcon { background:#5a3e19; color:#ffe2a0; }
   #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; transform:translateX(.18vw); }
@@ -1027,14 +1028,14 @@
   #menu.hasImage #btnStack #btnExit.padFocus {
     background:linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
     background-size:240% 100% !important;
-    box-shadow:inset .32vw 0 #e8b64c,inset 0 1px rgba(255,244,215,.14),0 0 24px rgba(255,205,96,.48),0 10px 22px rgba(0,0,0,.4) !important;
+    box-shadow:inset .32vw 0 #ffd878,inset 0 1px rgba(255,250,228,.28),0 0 30px rgba(255,205,96,.66),0 12px 26px rgba(0,0,0,.46) !important;
   }
   #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; background:#24190d; }
   #menu.hasImage #btnStack .menuBtn:hover {
     background:linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
     background-size:240% 100% !important;
-    box-shadow:inset .32vw 0 #e8b64c,inset 0 1px rgba(255,244,215,.14),0 0 24px rgba(255,205,96,.48),0 10px 22px rgba(0,0,0,.4) !important;
-    transform:scale(1.025) !important; filter:brightness(1.13) !important;
+    box-shadow:inset .32vw 0 #ffd878,inset 0 1px rgba(255,250,228,.28),0 0 30px rgba(255,205,96,.66),0 12px 26px rgba(0,0,0,.46) !important;
+    transform:scale(1.04) !important; filter:brightness(1.26) !important; z-index:4 !important;
   }
   #menu.hasImage #btnStack .menuBtn:hover .bIcon { background:#5a3e19; color:#ffe2a0; }
   #menu.hasImage #btnStack .menuBtn:hover .bChev { color:#ffe2a0; background:#24190d; }
@@ -1229,7 +1230,7 @@
         <p>&#10022; Locked character cards now reserve one clear state label, preventing SELECTED and LOCKED chips from overlapping.</p>
         <p>&#10022; The home command deck now uses four distinct, generously spaced royal plaques in one easy-to-scan vertical rail.</p>
         <p>&#10022; Upgrade cards no longer use an INSPECTING badge; the selected frame and detail ledger communicate focus without extra interface jargon.</p>
-        <p>&#10022; Home status blocks and utility icons are smaller; only the four main commands gain a subtle size lift and gold glow while hovered or selected.</p>
+        <p>&#10022; Home status blocks and utility icons are smaller; the entire surface of each main command now enlarges, brightens, and glows clearly while hovered or selected.</p>
         <p>&#10022; Battle information is consolidated into three professional command zones, live terrain seams are removed, and mid-battle recruits retain their faded slide-in introduction.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
