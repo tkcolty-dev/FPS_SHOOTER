@@ -1004,13 +1004,12 @@
     transform: none !important; filter: none !important;
   }
   @keyframes royalCommandSelect {
-    0%,100% { filter: brightness(1.22); transform: translateX(0) scale(1.04); background-position: 120% 0; }
-    50% { filter: brightness(1.32); transform: translateX(.12vw) scale(1.04); }
-    100% { background-position: -120% 0; }
+    0%,100% { filter: brightness(1.18); transform: scale(1.025); }
+    50% { filter: brightness(1.28); transform: scale(1.035); }
   }
   #menu.hasImage #btnStack .menuBtn.padFocus {
-    background: linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
-    background-size: 240% 100% !important; border: 0 !important;
+    background: linear-gradient(105deg,#49351b 0%,#342613 55%,#21180e 100%) !important;
+    border: 0 !important;
     box-shadow: inset .32vw 0 #e8b64c, inset 0 1px rgba(255,244,215,.14), 0 8px 20px rgba(0,0,0,.34) !important;
     animation: royalCommandSelect 1.15s ease-in-out infinite !important;
     z-index:4 !important;
@@ -1026,19 +1025,14 @@
   #menu.hasImage #btnStack #btnSettings.padFocus,
   #menu.hasImage #btnStack #btnCredits.padFocus,
   #menu.hasImage #btnStack #btnExit.padFocus {
-    background:linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
-    background-size:240% 100% !important;
+    background:linear-gradient(105deg,#49351b 0%,#342613 55%,#21180e 100%) !important;
     box-shadow:inset .32vw 0 #ffd878,inset 0 1px rgba(255,250,228,.28),0 0 30px rgba(255,205,96,.66),0 12px 26px rgba(0,0,0,.46) !important;
   }
   #menu.hasImage #btnStack .menuBtn.padFocus .bChev { color:#ffe2a0; background:#24190d; }
   #menu.hasImage #btnStack .menuBtn:hover {
-    background:linear-gradient(108deg,#3a2a15 0%,#3a2a15 38%,#765728 49%,#3a2a15 60%,#3a2a15 100%) !important;
-    background-size:240% 100% !important;
-    box-shadow:inset .32vw 0 #ffd878,inset 0 1px rgba(255,250,228,.28),0 0 30px rgba(255,205,96,.66),0 12px 26px rgba(0,0,0,.46) !important;
-    transform:scale(1.04) !important; filter:brightness(1.26) !important; z-index:4 !important;
+    transform:none !important; filter:none !important; z-index:auto !important;
   }
-  #menu.hasImage #btnStack .menuBtn:hover .bIcon { background:#5a3e19; color:#ffe2a0; }
-  #menu.hasImage #btnStack .menuBtn:hover .bChev { color:#ffe2a0; background:#24190d; }
+  #menu.hasImage #btnStack .menuBtn:hover .bIcon { color:#a99262; }
 
   #menu.hasImage #chipKnights, #menu.hasImage #chipDate, #menu.hasImage #chipRemaster {
     top: 1.55% !important; height: 8.35% !important; background: #0d0b08 !important;
@@ -1238,6 +1232,10 @@
         <p>&#10022; The battle HUD now uses a survivor-style layout: a razor-thin full-width XP strip with compact hero/build, time/level, and score islands beneath it.</p>
         <p>&#10022; Survivor HUD labels were resized to fit their cards, and gray battlefield barriers now render as low flowering hedgerows over the unchanged collision footprints.</p>
         <p>&#10022; Static weapon badges beside and around heroes were removed; weapons now appear through their actual swings, thrusts, shots, slams, lashes, and projectiles.</p>
+        <p>&#10022; Pause now centers the war map between two clear action columns, adds direct Settings access, and returns to the paused battle when Settings closes.</p>
+        <p>&#10022; Upgrade levels remain visible while selected, with Y opening a large explanation; X remains reserved for Royal Gift rerolls.</p>
+        <p>&#10022; Defeat now fills the screen over the royal home artwork; hedges, active weapon impacts, the XP strip, collection feedback, and four-player HUD fit received another polish pass.</p>
+        <p>&#10022; Quick recovery notices clear sooner, Royal Magnet pulls gems and coins but leaves hearts, and current individual monster artwork can no longer be overwritten by the older fallback atlas.</p>
         <p>&#10022; Upgrade-card tier tracks and bottom navigation were respaced so ranks, captions, Back, and controller hints no longer collide.</p>
         <p>&#9876; 10 new weapons with real painted art &mdash; and a limited arsenal: win up to 3 extra weapons per knight, every level-up</p>
         <p>&#9889; SUPERWEAPONS: fuse two related weapons into piercing lasers &mdash; and forge the golden SUNBREAKER</p>
@@ -2007,6 +2005,9 @@ window.addEventListener('keydown', e => {
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % n;
     if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = (game.cursor - ac + n) % n;
     if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = (game.cursor + ac) % n;
+    if (game.armoryInspect && ['KeyY', 'Escape', 'Backspace'].includes(e.code)) { game.armoryInspect = false; SFX.pick(); return; }
+    if (e.code === 'KeyY') { game.armoryInspect = true; SFX.pick(); return; }
+    if (game.armoryInspect) return;
     if (['Space', 'Enter'].includes(e.code)) armoryBuy(game.cursor);
     if (e.code === 'KeyT' || e.code === 'Backspace') armoryExit();
     return;
@@ -2072,6 +2073,7 @@ canvas.addEventListener('mousemove', e => {
 });
 canvas.addEventListener('click', () => {
   if (menuOpen) return;
+  if (game.phase === 'armory' && game.armoryInspect) { game.armoryInspect = false; SFX.pick(); return; }
   if (game.phase === 'intro' || game.phase === 'ending') { advanceStory(); return; }
   if (game.paused && (game.helpOpen || game.treeOpen)) { game.helpOpen = false; game.treeOpen = false; SFX.pick(); return; }
   for (const c of cardRects) {
@@ -2103,6 +2105,7 @@ canvas.addEventListener('click', () => {
       else if (game.paused && (game.helpOpen || game.treeOpen)) { game.helpOpen = false; game.treeOpen = false; SFX.pick(); }
       else if (c.idx === -33 && game.paused) { game.helpOpen = true; SFX.pick(); }
       else if (c.idx === -34 && game.paused) { game.treeOpen = true; SFX.pick(); }
+      else if (c.idx === -35 && game.paused) { openPauseSettings(); }
       else if (c.idx === -30 && game.paused) { togglePause(); }
       else if (c.idx === -31 && game.paused) { showMenu(); }
       else if (c.idx === -32 && game.paused) { quitRun(); }
@@ -2303,6 +2306,7 @@ const game = {
   burstTimer: 40, shake: 0,
 };
 let enemies = [], slashes = [], particles = [], toasts = [], gems = [], drops = [], waves = [], dmgTexts = [], novas = [], bolts = [], runPets = [], chests = [], beams = [], strikes = [], dying = [];
+let hudXpShown = 0, hudGoldShown = 0;
 const cam = { x: WORLD_W / 2 - CX, y: WORLD_H / 2 - 320 };
 
 function initRun() {
@@ -2358,6 +2362,7 @@ function initRun() {
     }
   }
   game.runGold = 0;
+  hudXpShown = 0; hudGoldShown = kdMeta.gold;
   game.payout = 0;
   game.paidOut = false;
   game.victory = false;
@@ -2379,8 +2384,8 @@ function initRun() {
   game.freeGift = powerRank('fortune') > 0;
 }
 
-function gameToast(text) {
-  toasts.push({ text, age: 0 });
+function gameToast(text, ttl = 3) {
+  toasts.push({ text, age: 0, ttl });
   if (NET.role === 'host') netSend({ t: 'toast', m: text });
 }
 
@@ -3178,7 +3183,7 @@ function update(dt) {
   // toasts tick in every phase so messages show on selection screens too
   for (let i = toasts.length - 1; i >= 0; i--) {
     toasts[i].age += dt;
-    if (toasts[i].age > 3) toasts.splice(i, 1);
+    if (toasts[i].age > (toasts[i].ttl || 3)) toasts.splice(i, 1);
   }
   if (game.phase !== 'run' || game.over || game.victory || game.choices) return;
   game.time += dt;
@@ -3774,10 +3779,10 @@ function update(dt) {
     const dr = drops[i];
     const t = nearestAlivePlayer(dr.x, dr.y);
     if (t) {
-      // the Royal Magnet claims treasure and hearts, not just gems
+      // Royal Magnet claims gems (above) and coins; healing hearts stay where they fell.
       const dd = Math.hypot(t.x - dr.x, t.y - 14 - dr.y);
       const magR = t.magnet * 0.8;
-      if ((dd < magR && dd > 4) || game.vacuumT > 0) {
+      if ((dr.kind === 'coin' && dd < magR && dd > 4) || game.vacuumT > 0) {
         const pull2 = game.vacuumT > 0 ? 2600 : 300 * (1 - dd / magR) + 90;
         dr.x += ((t.x - dr.x) / dd) * pull2 * dt;
         dr.y += ((t.y - 14 - dr.y) / dd) * pull2 * dt;
@@ -3800,7 +3805,7 @@ function update(dt) {
       } else {
         t.hp = Math.min(t.maxHp, t.hp + 2);
         SFX.heart();
-        gameToast('❤ ' + t.name + ' recovers!');
+        gameToast('❤ ' + t.name + ' recovers!', 0.9);
       }
     }
   }
@@ -4075,26 +4080,28 @@ function drawStructure(s, M, t) {
 
 // Low storybook hedgerows retain the exact existing collision footprint.
 function drawBattleWall(s, M, t) {
-  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(18,Math.min(27,s.h*.27));
+  const x=s.x,y=s.y,w=Math.max(46,s.w),h=Math.max(22,Math.min(34,s.h*.32));
   ctx.save();
-  ctx.fillStyle='rgba(0,0,0,.24)';ctx.beginPath();ctx.ellipse(x,y+5,w*.5,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(x,y+6,w*.52,10,0,0,Math.PI*2);ctx.fill();
   const deep=M.key==='snow'?'#355747':M.key==='volcano'?'#4f3b2b':M.tuftB;
   const leaf=M.key==='snow'?'#557969':M.key==='volcano'?'#726044':M.tuftA;
+  // A continuous dark hedge body prevents the old row-of-dots silhouette.
+  ctx.fillStyle=deep;roundedRect(x-w/2,y-h*.72,w,h*.72,Math.min(16,h*.35));ctx.fill();
   ctx.fillStyle=deep;
-  for(let k=0;k<Math.ceil(w/20);k++){
-    const bx=x-w/2+10+k*20,br=13+hash2(s.seed,k+81)*5;
-    ctx.beginPath();ctx.arc(bx,y-h*.55-hash2(s.seed,k+91)*7,br,0,Math.PI*2);ctx.fill();
+  for(let k=0;k<Math.ceil(w/25)+1;k++){
+    const bx=x-w/2+k*25,br=16+hash2(s.seed,k+81)*7;
+    ctx.beginPath();ctx.ellipse(bx,y-h*.58-hash2(s.seed,k+91)*9,br,br*.78,0,0,Math.PI*2);ctx.fill();
   }
   ctx.fillStyle=leaf;
-  for(let k=0;k<Math.ceil(w/24);k++){
-    const bx=x-w/2+14+k*24,br=8+hash2(s.seed,k+101)*4;
-    ctx.beginPath();ctx.arc(bx,y-h*.8-hash2(s.seed,k+111)*5,br,0,Math.PI*2);ctx.fill();
+  for(let k=0;k<Math.ceil(w/31)+1;k++){
+    const bx=x-w/2+8+k*31,br=10+hash2(s.seed,k+101)*5;
+    ctx.beginPath();ctx.ellipse(bx,y-h*.88-hash2(s.seed,k+111)*7,br,br*.72,-.15,0,Math.PI*2);ctx.fill();
   }
-  ctx.fillStyle='rgba(255,255,210,.18)';
-  for(let k=0;k<Math.ceil(w/34);k++){const bx=x-w/2+16+k*34;ctx.beginPath();ctx.arc(bx,y-h-3,3,0,Math.PI*2);ctx.fill();}
+  ctx.strokeStyle='rgba(255,255,210,.22)';ctx.lineWidth=2;ctx.lineCap='round';
+  for(let k=0;k<Math.ceil(w/40);k++){const bx=x-w/2+18+k*40,ly=y-h-3-hash2(s.seed,k+141)*5;ctx.beginPath();ctx.moveTo(bx-5,ly+3);ctx.quadraticCurveTo(bx,ly-3,bx+6,ly);ctx.stroke();}
   const flower=M.key==='snow'?'#d9f3ff':M.key==='volcano'?'#fb923c':M.flowerA;
   ctx.fillStyle=flower;
-  for(let k=0;k<3;k++)if(hash2(s.seed,k+121)>.38){const fx=x-w/2+12+hash2(s.seed,k+131)*(w-24);ctx.beginPath();ctx.arc(fx,y-h-1,2.2,0,Math.PI*2);ctx.fill();}
+  for(let k=0;k<4;k++)if(hash2(s.seed,k+121)>.4){const fx=x-w/2+12+hash2(s.seed,k+131)*(w-24),fy=y-h*.9-hash2(s.seed,k+151)*10;for(let p=0;p<4;p++){ctx.beginPath();ctx.arc(fx+Math.cos(p*Math.PI/2)*2.2,fy+Math.sin(p*Math.PI/2)*2.2,1.7,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#ffe7a3';ctx.beginPath();ctx.arc(fx,fy,1.2,0,Math.PI*2);ctx.fill();ctx.fillStyle=flower;}
   ctx.restore();
 }
 
@@ -5100,7 +5107,9 @@ ENEMY_ATLAS.onload = () => {
     const bw = Math.max(1,x1-x0+1), bh = Math.max(1,y1-y0+1), scale = Math.min(286/bw,286/bh);
     const dw = bw*scale, dh = bh*scale;
     og.drawImage(scan,x0,y0,bw,bh,(320-dw)/2,(320-dh)/2,dw,dh);
-    ENEMY_IMG[key] = out;
+    // Individual monster files are the current approved art. The atlas is only
+    // a loading fallback and must never replace those newer creatures.
+    if (!ENEMY_IMG[key]) ENEMY_IMG[key] = out;
   });
 };
 ENEMY_ATLAS.src = 'enemy-atlas.png';
@@ -5840,7 +5849,8 @@ function renderCardScreen(t, title, items, drawItem) {
 function drawToasts(t) {
   let ty = 96;
   for (const tst of toasts) {
-    const a = Math.min(1, tst.age * 4) * Math.min(1, (3 - tst.age));
+    const ttl = tst.ttl || 3;
+    const a = Math.min(1, tst.age * 5) * Math.min(1, (ttl - tst.age) * 3);
     ctx.font = '600 14px Inter, sans-serif';
     const tw = ctx.measureText(tst.text).width + 42;
     ctx.globalAlpha = a;
@@ -5959,25 +5969,24 @@ function drawActionBtn(x, y, w, h, label, style, idx) {
   ctx.beginPath(); ctx.moveTo(x + 10, y + 2); ctx.lineTo(x + w - 10, y + 2); ctx.stroke();
   const padSel = ((game.victory || game.over) && game.panelPick != null &&
     (game.victory ? [-20, -21, -22] : [-21, -22])[game.panelPick] === idx) ||
-    (game.paused && [-30, -34, -33, -31, -32][game.pausePick || 0] === idx);
+    (game.paused && [-30, -34, -33, -35, -31, -32][game.pausePick || 0] === idx);
   const hov = padSel || (mouse.x > x && mouse.x < x + w && mouse.y > y && mouse.y < y + h);
   ctx.strokeStyle = hov ? '#ffd98a' : 'rgba(232, 182, 76, 0.55)';
   ctx.lineWidth = hov ? 2.2 : 1.5;
+  roundedRect(x, y, w, h, 9);
   ctx.stroke();
   if (padSel) {
     ctx.save();
     ctx.shadowColor = 'rgba(232, 182, 76, 0.6)';
     ctx.shadowBlur = 14;
+    roundedRect(x, y, w, h, 9);
     ctx.stroke();
     ctx.restore();
   }
+  // Whole-button lift and outline communicate focus; no loose diagonal sheen.
   if (hov) {
-    const shine = ((performance.now() * 0.00075) % 1) * (w + 44) - 22;
-    ctx.save();
-    roundedRect(x + 2, y + 2, w - 4, h - 4, 7); ctx.clip();
-    ctx.strokeStyle = 'rgba(255, 239, 194, 0.32)'; ctx.lineWidth = 10;
-    ctx.beginPath(); ctx.moveTo(x + shine - 18, y + h + 8); ctx.lineTo(x + shine + 18, y - 8); ctx.stroke();
-    ctx.restore();
+    ctx.save(); roundedRect(x + 3, y + 3, w - 6, h - 6, 7);
+    ctx.fillStyle = 'rgba(255,239,194,.07)'; ctx.fill(); ctx.restore();
   }
   ctx.textAlign = 'center';
   ctx.font = '700 14px Cinzel, Georgia, serif';
@@ -6369,7 +6378,9 @@ function renderArmory(t) {
       ctx.stroke();
       drawUpgradeIcon(it.icon, x + cw / 2, y + 36, 0.62, t);
     }
-    if (!sel && it.rank > 0) drawStateChip('RANK ' + it.rank, x + 7, y + 7, UI.green);
+    // Rank is permanent information: selection must never hide the current level.
+    drawStateChip('LEVEL ' + it.rank + ' / ' + it.max, x + 7, y + 7,
+      it.rank >= it.max ? UI.goldLight : it.rank > 0 ? UI.green : UI.dim);
     ctx.textAlign = 'center';
     ctx.font = '700 12px Cinzel, Georgia, serif';
     ctx.fillStyle = sel ? UI.goldLight : '#d9d2c0';
@@ -6490,7 +6501,24 @@ function renderArmory(t) {
       : 'NEED ' + (it.price - kdMeta.gold) + 'g MORE', scx, by + 28);
   }
 
-  drawHintsBar([['D-PAD / MOUSE', true], ['INSPECT', false], ['·', false], ['A / CLICK', true], ['BUY', false], ['·', false], ['B / ESC', true], ['LEAVE', false]]);
+  drawHintsBar([['D-PAD / MOUSE', true], ['SELECT', false], ['·', false], ['A / CLICK', true], ['BUY', false], ['·', false], ['Y', true], ['DETAILS', false], ['·', false], ['B', true], ['LEAVE', false]]);
+  if (game.armoryInspect) {
+    ctx.fillStyle = 'rgba(5,4,8,.94)'; ctx.fillRect(0,0,ROOM_W,640);
+    plate(CX - 310, 72, 620, 480, 22);
+    drawScreenTitle(it.name.toUpperCase(), 126);
+    if (it.pet) {
+      const pk3 = 'pet' + it.pet.proj;
+      if (ICON_IMG[pk3]) drawUpgradeIcon(pk3, CX, 224, 2.5, t);
+      else drawPet({ def: it.pet, seed: 3, x: CX, y: 224 }, t);
+    } else drawUpgradeIcon(it.icon, CX, 222, 2.2, t);
+    ctx.textAlign='center'; ctx.font='700 16px Cinzel,Georgia,serif'; ctx.fillStyle=UI.goldLight;
+    ctx.fillText('LEVEL ' + it.rank + ' OF ' + it.max, CX, 304);
+    wrapText(it.desc, CX, 336, 500, '600 17px Inter,sans-serif', '600 14px Inter,sans-serif', 24, 4, UI.text);
+    ctx.font='600 13px Inter,sans-serif'; ctx.fillStyle=UI.dim;
+    ctx.fillText(it.rank >= it.max ? 'This blessing has reached its full royal power.' :
+      'Next level costs ' + it.price + ' gold.', CX, 438);
+    drawHintsBar([['Y / B / ESC', true], ['CLOSE DETAILS', false]]);
+  }
   drawToasts(t);
 }
 
@@ -7372,6 +7400,10 @@ function render(t) {
     ctx.translate(st.x, st.y);
     ctx.rotate(st.ang);
     ctx.globalAlpha = 1 - f * f;
+    // One bold storybook treatment across every active weapon pose.
+    ctx.shadowColor = 'rgba(0,0,0,.72)';
+    ctx.shadowBlur = 5;
+    ctx.shadowOffsetY = 3;
     if (st.kind === 'hammer') {
       // raise… and SLAM
       const sw = f < 0.4 ? -1.9 + f / 0.4 * 0.6 : -1.3 + easeOutQ((f - 0.4) / 0.6) * 1.55;
@@ -7425,6 +7457,12 @@ function render(t) {
         ctx.moveTo(33, -8); ctx.lineTo(33 + 22 * (1 - f), 0); ctx.lineTo(33, 8);
         ctx.closePath(); ctx.fill();
       }
+    }
+    ctx.shadowColor='transparent';ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+    if (f < .58) {
+      const flashX = st.kind === 'bow' ? 28 : st.kind === 'staff' ? 34 : st.kind === 'blunder' ? 38 : 48;
+      ctx.globalAlpha=(1-f/.58)*.8;ctx.strokeStyle=st.col||'#ffe29a';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(flashX-5,-5);ctx.lineTo(flashX+5,5);ctx.moveTo(flashX+5,-5);ctx.lineTo(flashX-5,5);ctx.stroke();
     }
     ctx.restore();
   }
@@ -7804,23 +7842,28 @@ function render(t) {
   // ---- HUD: royal command bar (shrinks so 4 knights fit) ----
   const joined = players.filter(p => p.joined);
   const compact = joined.length >= 3;
-  const ph2 = compact ? 34 : joined.length > 1 ? 38 : 46, pStep = ph2 + 4;
-  const heartR = compact ? 6 : 8, heartStep = compact ? 14 : 18;
-  const portR = compact ? 11 : 14;
+  const ph2 = compact ? 27 : joined.length > 1 ? 38 : 46, pStep = ph2 + (compact ? 3 : 4);
+  const heartR = compact ? 5 : 8, heartStep = compact ? 12 : 18;
+  const portR = compact ? 9 : 14;
   const commandH = Math.max(74,12 + joined.length * pStep);
   // Vampire-survivor hierarchy: one razor-thin XP horizon, then three
   // lightweight information islands instead of a full opaque command bar.
-  ctx.fillStyle='rgba(8,7,9,.88)';roundedRect(10,5,ROOM_W-20,9,5);ctx.fill();
-  const topXp=ctx.createLinearGradient(10,0,ROOM_W-10,0);topXp.addColorStop(0,'#7c3aed');topXp.addColorStop(1,'#c084fc');
-  ctx.fillStyle=topXp;roundedRect(10,5,(ROOM_W-20)*Math.min(1,game.xp/game.xpNext),9,5);ctx.fill();
-  ctx.strokeStyle='rgba(232,182,76,.58)';ctx.lineWidth=1;roundedRect(10,5,ROOM_W-20,9,5);ctx.stroke();
+  const xpTarget=Math.min(1,game.xp/game.xpNext);
+  hudXpShown += (xpTarget-hudXpShown)*Math.min(1,.12);
+  const xpW=(ROOM_W-24)*Math.max(0,hudXpShown);
+  ctx.fillStyle='rgba(7,6,9,.94)';roundedRect(8,4,ROOM_W-16,13,6);ctx.fill();
+  ctx.strokeStyle='rgba(232,182,76,.5)';ctx.lineWidth=1;roundedRect(8,4,ROOM_W-16,13,6);ctx.stroke();
+  const topXp=ctx.createLinearGradient(12,0,ROOM_W-12,0);topXp.addColorStop(0,'#6d28d9');topXp.addColorStop(.55,'#a855f7');topXp.addColorStop(1,'#e9d5ff');
+  if(xpW>1){ctx.save();roundedRect(12,7,xpW,7,3.5);ctx.clip();ctx.fillStyle=topXp;ctx.fillRect(12,7,xpW,7);ctx.fillStyle='rgba(255,255,255,.28)';ctx.fillRect(12,7,xpW,2);ctx.restore();}
   let hy = 20;
   for (const p of joined) {
     const pcol = PLAYER_COLORS[Math.max(0, players.indexOf(p)) % 4];
-    const pw = compact ? 142 : 172;
-    const trayW = compact ? 112 : 120;
+    const pw = compact ? 126 : 172;
+    const trayW = compact ? 96 : 120;
     const trayX = 10 + pw;
     plate(10,hy,pw+trayW,ph2,8);
+    ctx.save();
+    roundedRect(11,hy+1,pw+trayW-2,ph2-2,7);ctx.clip();
     // player color bar
     ctx.fillStyle = pcol;
     ctx.fillRect(16, hy + 6, 4, ph2 - 12);
@@ -7859,7 +7902,7 @@ function render(t) {
       .map(wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2' : WEAPON_INFO[wt2].icon);
     const fIcons = (p.fx || []).map(k2 => (UPGRADES.find(u => u.key === k2) || {}).icon).filter(Boolean);
     const supIcons = SUPER_DEFS.filter(sd => (p.supers || {})[sd.key]).map(sd => sd.icon);
-    const mr = compact ? 5.5 : 6.5;
+    const mr = compact ? 4.5 : 6.5;
     ctx.strokeStyle = 'rgba(232,182,76,.22)';
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(trayX,hy+8); ctx.lineTo(trayX,hy+ph2-8); ctx.stroke();
@@ -7870,9 +7913,9 @@ function render(t) {
     ctx.fillStyle = 'rgba(163, 217, 119, 0.8)';
     ctx.fillText('✦', trayX + 10, hy + ph2 - 8);
     const drawSlot = (row, si, ic, kindCol) => {
-      const step2 = compact ? 28 : 30;
-      const ax2 = trayX + 28 + si * step2;
-      const ay2 = hy + (row ? ph2 - 9 : 11);
+      const step2 = compact ? 22 : 30;
+      const ax2 = trayX + (compact ? 22 : 28) + si * step2;
+      const ay2 = hy + (row ? ph2 - (compact ? 7 : 9) : (compact ? 7 : 11));
       if (ic) {
         ctx.fillStyle = 'rgba(5, 5, 6, 0.96)';
         ctx.beginPath(); ctx.arc(ax2, ay2, mr + 3, 0, Math.PI * 2); ctx.fill();
@@ -7896,6 +7939,7 @@ function render(t) {
     for (let si2 = 0; si2 < 3; si2++) drawSlot(0, si2, supIcons[si2] || wIcons[si2], supIcons[si2]
       ? `rgba(125, 211, 252, ${0.7 + 0.25 * Math.sin(t * 4)})` : 'rgba(232, 182, 76, 0.8)');
     for (let si2 = 0; si2 < 3; si2++) drawSlot(1, si2, fIcons[si2], 'rgba(163, 217, 119, 0.82)');
+    ctx.restore();
     hy += pStep;
   }
 
@@ -7972,7 +8016,9 @@ function render(t) {
   ctx.fillText('TREASURY', 910, 33);
   ctx.font = '700 13px Cinzel, Georgia, serif';
   ctx.fillStyle = UI.goldLight;
-  ctx.fillText(String(game.netGuest ? (game.netGold || 0) : kdMeta.gold), 910, 55);
+  const goldTarget=game.netGuest?(game.netGold||0):kdMeta.gold;
+  hudGoldShown += (goldTarget-hudGoldShown)*.16;
+  ctx.fillText(String(Math.round(hudGoldShown)), 910, 55);
   ctx.restore();
   if ((game.forgeT || 0) > 0) {
     ctx.textAlign = 'center';
@@ -8033,7 +8079,8 @@ function render(t) {
 
   let ty = 100;
   for (const tst of toasts) {
-    const a = Math.min(1, tst.age * 4) * Math.min(1, (3 - tst.age));
+    const ttl = tst.ttl || 3;
+    const a = Math.min(1, tst.age * 5) * Math.min(1, (ttl - tst.age) * 3);
     ctx.font = '600 14px Inter, sans-serif';
     const tw = ctx.measureText(tst.text).width + 42;
     ctx.globalAlpha = a;
@@ -8218,10 +8265,12 @@ function render(t) {
   }
 
   if (game.over) {
-    ctx.fillStyle = 'rgba(10, 5, 16, 0.78)';
+    // A complete results scene, not a dialog left floating over the battlefield.
+    drawScreenBg(t);
+    ctx.fillStyle = 'rgba(10, 5, 16, 0.72)';
     ctx.fillRect(0, 0, ROOM_W, 640);
-    plate(CX - 250, 150, 500, 330, 18);
-    for (const [dx, dy] of [[CX - 250, 150], [CX + 250, 150], [CX - 250, 480], [CX + 250, 480]]) {
+    plate(70, 48, ROOM_W - 140, 528, 24);
+    for (const [dx, dy] of [[70, 48], [ROOM_W - 70, 48], [70, 576], [ROOM_W - 70, 576]]) {
       ctx.save();
       ctx.translate(dx, dy);
       ctx.rotate(Math.PI / 4);
@@ -8270,10 +8319,10 @@ function render(t) {
     cardRects = [];
     ctx.fillStyle = 'rgba(6, 5, 10, 0.9)';
     ctx.fillRect(0, 0, ROOM_W, 640);
-    drawScreenTitle('PAUSED', 130);
+    drawScreenTitle('BATTLE PAUSED', 76);
     // ---- the war map: whole realm, chests, knights ----
-    const mw = 330, mh = Math.round(mw * WORLD_H / WORLD_W);
-    const mx = CX - mw / 2, my = 168;
+    const mw = 430, mh = Math.round(mw * WORLD_H / WORLD_W);
+    const mx = CX - mw / 2, my = 126;
     ctx.fillStyle = '#0b0a0e';
     ctx.fillRect(mx, my, mw, mh);
     ctx.fillStyle = MAPS[game.mapPick].base;
@@ -8336,16 +8385,17 @@ function render(t) {
       ctx.font = '600 14px Inter, sans-serif';
       ctx.fillText('The host paused the battle…', CX, my + mh + 46);
     } else {
-      const by2 = my + mh + 34;
-      drawActionBtn(CX - 400, by2, 148, 42, 'RESUME', 'green', -30);
-      drawActionBtn(CX - 240, by2, 148, 42, '⚔ ARSENAL', 'dark', -34);
-      drawActionBtn(CX - 80, by2, 148, 42, '📖 HELP', 'dark', -33);
-      drawActionBtn(CX + 80, by2, 148, 42, 'HOME MENU', 'gold', -31);
-      drawActionBtn(CX + 240, by2, 148, 42, '🏳 QUIT', 'dark', -32);
+      // The map owns the middle; primary actions sit left, reference/system actions right.
+      drawActionBtn(54, 150, 180, 52, 'Ⓐ  RESUME', 'green', -30);
+      drawActionBtn(54, 218, 180, 52, '⚔  ARSENAL', 'dark', -34);
+      drawActionBtn(ROOM_W - 234, 150, 180, 52, '📖  FIELD GUIDE', 'dark', -33);
+      drawActionBtn(ROOM_W - 234, 218, 180, 52, '⚙  SETTINGS', 'dark', -35);
+      drawActionBtn(ROOM_W - 234, 286, 180, 52, 'HOME MENU', 'gold', -31);
+      drawActionBtn(ROOM_W - 234, 354, 180, 52, '🏳  RETREAT', 'dark', -32);
       ctx.textAlign = 'center';
       ctx.fillStyle = 'rgba(240, 226, 195, 0.5)';
       ctx.font = '11px Inter, sans-serif';
-      ctx.fillText('ESC or START — resume', CX, by2 + 64);
+      ctx.fillText('START / ESC — resume   ·   D-PAD — choose   ·   A — confirm', CX, 558);
     }
     // ---- the ROYAL ARSENAL: everything installed, and where it leads ----
     if (game.treeOpen) {
@@ -9243,6 +9293,13 @@ function closePanels() {
   if (!panelShade.classList.contains('hidden') && typeof playSample === 'function') playSample('ui-close', 0.5);
   panelShade.classList.add('hidden');
   setPadFocus(null);
+  if (game.settingsFromPause) {
+    game.settingsFromPause = false;
+    menuOpen = false;
+    menuEl.classList.add('hidden');
+    game.paused = true;
+    game.pausePick = 3;
+  }
 }
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closePanels));
 panelShade.addEventListener('click', e => { if (e.target === panelShade) closePanels(); });
@@ -9320,7 +9377,8 @@ function showMenu() {
   keys.clear();
   if (typeof updateHomeStats === 'function' && imgUIActive) updateHomeStats();
   refreshMenuLive();
-  btnPlay.querySelector('.bTitle').textContent = gameStarted ? 'Continue' : 'Play';
+  btnPlay.querySelector('.bTitle').textContent = 'Play';
+  btnPlay.querySelector('.bSub').textContent = gameStarted ? 'Return to your adventure' : 'Begin your adventure';
   menuEl.classList.remove('hidden');
 }
 function hideMenu() {
@@ -9354,6 +9412,11 @@ function togglePause() {
   game.pausePick = 0;
   return true;
 }
+function openPauseSettings() {
+  game.settingsFromPause = true;
+  showMenu();
+  openPanel('settings');
+}
 function quitRun() {
   game.helpOpen = false;
   game.treeOpen = false;
@@ -9375,6 +9438,7 @@ function quitRun() {
 }
 window.addEventListener('keydown', e => {
   if (e.code !== 'Escape') return;
+  if (!menuOpen && game.phase === 'armory' && game.armoryInspect) { game.armoryInspect = false; SFX.pick(); return; }
   if (!panelShade.classList.contains('hidden')) closePanels();
   else if (menuOpen && gameStarted) hideMenu();
   else if (!menuOpen && gameStarted && togglePause()) return;   // in battle, Esc = pause
@@ -9798,7 +9862,7 @@ function startGuestRun(heroKey) {
 function guestTick(dt) {
   for (let i = toasts.length - 1; i >= 0; i--) {
     toasts[i].age += dt;
-    if (toasts[i].age > 3) toasts.splice(i, 1);
+    if (toasts[i].age > (toasts[i].ttl || 3)) toasts.splice(i, 1);
   }
   const s = NET.self;
   if (!s || !NET.snap || NET.snap.ph !== 'run') return;
@@ -10031,14 +10095,16 @@ function pollPads() {
 
     if (game.paused) {
       if (game.netGuest) continue;
-      if (dir('left')) game.pausePick = Math.max(0, (game.pausePick || 0) - 1);
+      if (dir('left')) game.pausePick = (game.pausePick || 0) >= 2 ? Math.min(1, (game.pausePick || 0) - 2) : (game.pausePick || 0);
       if (game.helpOpen || game.treeOpen) {
         if (tap('a') || tap('bBtn') || tap('start')) { game.helpOpen = false; game.treeOpen = false; SFX.pick(); }
         continue;
       }
-      if (dir('right')) game.pausePick = Math.min(4, (game.pausePick || 0) + 1);
+      if (dir('right')) game.pausePick = (game.pausePick || 0) < 2 ? (game.pausePick || 0) + 2 : (game.pausePick || 0);
+      if (dir('up')) game.pausePick = (game.pausePick || 0) < 2 ? Math.max(0,(game.pausePick||0)-1) : Math.max(2,(game.pausePick||0)-1);
+      if (dir('down')) game.pausePick = (game.pausePick || 0) < 2 ? Math.min(1,(game.pausePick||0)+1) : Math.min(5,(game.pausePick||0)+1);
       if (tap('bBtn')) togglePause();
-      else if (tap('a')) [togglePause, () => { game.treeOpen = true; SFX.pick(); }, () => { game.helpOpen = true; SFX.pick(); }, showMenu, quitRun][(game.pausePick || 0)]();
+      else if (tap('a')) [togglePause, () => { game.treeOpen = true; SFX.pick(); }, () => { game.helpOpen = true; SFX.pick(); }, openPauseSettings, showMenu, quitRun][(game.pausePick || 0)]();
       continue;
     }
 
@@ -10079,7 +10145,8 @@ function pollPads() {
       if (tap('a')) synthKey('Space');
       if (tap('lb')) synthKey('KeyQ');
       if (tap('rb')) synthKey('KeyE');
-      if (tap('x') && (game.phase === 'select' || game.phase === 'select2')) synthKey('KeyU');
+      if (tap('y') && game.phase === 'armory') synthKey('KeyY');
+      else if (tap('x') && (game.phase === 'select' || game.phase === 'select2')) synthKey('KeyU');
       if (tap('y') && (game.phase === 'select' || game.phase === 'lobby')) synthKey('KeyT');   // Y = upgrades
       if (tap('bBtn')) {
         if (game.phase === 'armory' || game.phase === 'select2') synthKey('Backspace');
