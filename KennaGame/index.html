@@ -36,20 +36,11 @@
   }
   #menuBgImg {
     position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: contain; display: none; z-index: 1;
+    object-fit: cover; display: none;
     image-rendering: auto;
-  }
-  /* Blurred cover-fit copy fills the letterbox bars so the home reads full-bleed
-     at ANY window/TV aspect ratio — the sharp painted UI above is never cropped. */
-  #menuBgFill {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; display: none; z-index: 0;
-    filter: blur(28px) brightness(0.5) saturate(1.1);
-    transform: scale(1.12);
   }
   #menu.hasImage #menuBg { display: none; }
   #menu.hasImage #menuBgImg { display: block; }
-  #menu.hasImage #menuBgFill { display: block; }
 
   .titleBlock {
     position: absolute; left: 7vw; top: 10vh;
@@ -1077,7 +1068,6 @@
 
 <div id="menu">
   <canvas id="menuBg"></canvas>
-  <img id="menuBgFill" src="title-bg.png" alt="" aria-hidden="true">
   <img id="menuBgImg" src="title-bg.png" alt="">
   <canvas id="menuFx"></canvas>
 
@@ -8642,7 +8632,9 @@ let imgUIActive = false;
 function sizeImgAnchor() {
   const W = window.innerWidth, H = window.innerHeight;
   const iw = menuImg.naturalWidth || 1659, ih = menuImg.naturalHeight || 948;
-  const s = Math.min(W / iw, H / ih);
+  // COVER-fit (fills the whole screen, matching the painted #menuBgImg below) —
+  // the home is full-bleed with no letterbox bars, as it was in the Codex build.
+  const s = Math.max(W / iw, H / ih);
   imgAnchor.style.width = iw * s + 'px';
   imgAnchor.style.height = ih * s + 'px';
   imgAnchor.style.left = (W - iw * s) / 2 + 'px';
@@ -10228,18 +10220,14 @@ window.addEventListener('gamepaddisconnected', e => {
     players[i].alive = false;
   }
 });
-// The game goes fullscreen at the first tap / key so it fills the whole screen
-// (browsers only allow fullscreen from a user gesture, and a reload always drops
-// out of fullscreen, so we re-arm this every load — on Xbox AND desktop).
+// on an actual Xbox (Edge browser) the game goes fullscreen at the first tap
 const IS_XBOX = /Xbox/i.test(navigator.userAgent);
-function goFullscreenOnce() {
-  if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-    document.documentElement.requestFullscreen().catch(() => {});
-  }
-}
-window.addEventListener('pointerdown', goFullscreenOnce, { once: true });
-window.addEventListener('keydown', goFullscreenOnce, { once: true });
 if (IS_XBOX) {
+  window.addEventListener('pointerdown', () => {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, { once: true });
   setTimeout(() => { if (menuOpen) menuToastShow('🎮 Welcome, Xbox knight! Press A to play.'); }, 1500);
 }
 
