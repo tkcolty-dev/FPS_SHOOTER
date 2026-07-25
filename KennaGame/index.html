@@ -2104,12 +2104,14 @@ window.addEventListener('keydown', e => {
     if (e.code === 'Backspace') { game.phase = 'select'; game.cursor = 0; }
     return;
   }
-  // upgrade picking — the keyboard is P1's, so it only picks on P1's turn (solo always works)
+  // upgrade picking — the keyboard is P1's (host) OR the guest's own hand online.
   if (game.choices) {
-    const kOk = (game.chooser || 0) === 0 || players.filter(p2 => p2.joined).length <= 1;
+    // online guest: pick only on YOUR turn (by gid). host/local: P1's turn or solo.
+    const kOk = game.netGuest ? (game.chooserGid === NET.id)
+      : ((game.chooser || 0) === 0 || players.filter(p2 => p2.joined).length <= 1);
     const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
     if (kOk && idx !== undefined && game.choices[idx]) pickUpgrade(idx);
-    if (kOk && e.code === 'KeyR') rerollChoices();
+    if (kOk && !game.netGuest && e.code === 'KeyR') rerollChoices();
     return;
   }
   // online guests don't restart or recruit P2 — the host commands the battle
@@ -10085,7 +10087,9 @@ function netMsg(m) {
       const p = players.find(q => q.remote && q.gid === m.from);
       if (p) { p.netX = m.x; p.netY = m.y; p.netDir = m.dir; p.netMv = !!m.mv; }
     } else if (m.t === 'pick') {
-      if (game.choices) pickUpgrade(Math.max(0, Math.min(2, m.i)));
+      // only the knight whose TURN it is may pick — a guest can't steal another's turn
+      const chP = players[game.chooser || 0];
+      if (game.choices && chP && chP.remote && chP.gid === m.from) pickUpgrade(Math.max(0, Math.min(2, m.i)));
     } else if (m.t === 'guest-') {
       const i = players.findIndex(q => q.remote && q.gid === m.id);
       if (i >= 0) { gameToast('🌐 ' + players[i].name + ' has left.'); players.splice(i, 1); }
@@ -10105,6 +10109,7 @@ function netBroadcast() {
     t: 'snap', ph: 'run',
     time: Math.round(game.time * 10) / 10, level: game.level, xp: game.xp, xpNext: game.xpNext,
     fg: Math.round((game.forgeT || 0) * 10) / 10, cho: game.chooser || 0,
+    choGid: (players[game.chooser] && players[game.chooser].gid) || 0,   // whose TURN it is, by gid (0 = host)
     kills: game.kills, gold: kdMeta.gold, map: game.mapPick,
     vic: game.victory ? 1 : 0, over: game.over ? 1 : 0, endless: game.endless ? 1 : 0,
     pz: game.paused ? 1 : 0,
@@ -10136,6 +10141,7 @@ function applySnap(m) {
   game.time = m.time; game.level = m.level; game.xp = m.xp; game.xpNext = m.xpNext;
   game.forgeT = m.fg || 0;
   game.chooser = m.cho || 0;
+  game.chooserGid = m.choGid || 0;   // guest uses this to know if it's THEIR turn to pick
   game.kills = m.kills; game.netGold = m.gold;
   game.victory = !!m.vic; game.over = !!m.over; game.endless = !!m.endless;
   game.paused = !!m.pz;
@@ -10469,13 +10475,14 @@ function pollPads() {
     }
 
     if (game.choices) {
-      // it's ONE knight's turn — ONLY their controller steers
-      if (i !== (game.chooser || 0)) continue;
+      // it's ONE knight's turn — ONLY their controller steers. Online, the guest's
+      // own pad (0) steers on THEIR turn (by gid); locally it's the chooser's pad.
+      if (game.netGuest ? (i !== 0 || game.chooserGid !== NET.id) : (i !== (game.chooser || 0))) continue;
       if (game.padPick === undefined || game.padPick === null) game.padPick = 1;
       if (dir('left')) game.padPick = Math.max(0, game.padPick - 1);
       if (dir('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
       if (tap('a')) pickUpgrade(game.padPick);
-      if (tap('x')) rerollChoices();
+      if (tap('x') && !game.netGuest) rerollChoices();
       continue;
     }
     if (game.victory || game.over) {
