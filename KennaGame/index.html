@@ -4407,16 +4407,17 @@ function drawEnemy(e, t) {
     // chilled/slowed tint — a cheap source-atop wash (NOT ctx.filter, which would
     // allocate a layer per slowed enemy per frame and tank fps in a big frost swarm)
     if (e.slowT > 0 && !(e.flash > 0)) {
-      ctx.globalAlpha = 0.42;
+      ctx.globalAlpha = 0.26;   // a subtle chill wash — must NOT overpower the white hit-flash
       ctx.globalCompositeOperation = 'source-atop';
-      ctx.fillStyle = '#7ec8ff';
+      ctx.fillStyle = '#8ecbff';
       ctx.fillRect(-iw / 2, -ih * 0.58, iw, ih);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1;
     }
-    // WHITE hit-flash: blaze the monster's own pixels white the instant it's struck
+    // WHITE hit-flash: blaze the monster's own pixels a STRONG white the instant it's
+    // struck (the overlay was far too faint before, so the teal body read as blue).
     if (e.flash > 0) {
-      ctx.globalAlpha = Math.min(1, e.flash * 1.7);
+      ctx.globalAlpha = Math.min(1, e.flash * 8);
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-iw / 2, -ih * 0.58, iw, ih);
