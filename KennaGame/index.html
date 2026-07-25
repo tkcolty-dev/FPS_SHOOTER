@@ -1140,8 +1140,8 @@
   <div id="updateCard">
     <div class="ucHead"><span id="ucHeadLabel">&#10022; LATEST UPDATE</span><span class="ucNew">NEW</span></div>
     <img src="patch-thumb.png" alt="" class="ucThumb">
-    <div class="ucTitle" id="ucTitle">v2.1 THE POLISHED HORDE</div>
-    <div class="ucBody" id="ucBody">The painted monster horde now rides into every realm &mdash; plus rounded field stones, true fullscreen fit, and a sweep of level-up, pause, and controller fixes.</div>
+    <div class="ucTitle" id="ucTitle">v2.2 THE LAUNCH EDITION</div>
+    <div class="ucBody" id="ucBody">A calm start that builds to a glorious swarm, a new Difficulty setting, a clean weapon+gift build, sky lightning, a full &ldquo;Kingdom Saved&rdquo; finale, and a release-day bug sweep.</div>
     <button class="ucBtn" id="btnPatch">VIEW PATCH NOTES &#8599;</button>
     <div class="ucDots" id="ucDots"><i class="on"></i><i></i><i></i><i></i></div>
   </div>
@@ -1225,7 +1225,15 @@
       <button class="panelX" data-close>&times;</button>
       <h2>The Royal Chronicle</h2>
       <div class="patchList">
-        <p class="verHead">v2.1 &mdash; THE POLISHED HORDE <span class="verTag">LATEST</span></p>
+        <p class="verHead">v2.2 &mdash; THE LAUNCH EDITION <span class="verTag">LATEST</span></p>
+        <p>&#10022; Difficulty setting &mdash; Easy, Normal, Hard, Extreme (Settings &rsaquo; Battle) &mdash; scaling how fast the horde grows and how tough each fiend is.</p>
+        <p>&#10022; Reworked pacing: a calm opening that ramps hard into a late-game swarm, with enemy types unlocking across each realm so you level up into them; the Reaper is a real threat now, and bosses keep marching in.</p>
+        <p>&#9876; Clean build system: 3 weapon slots (the one you start with, plus 2 you win) and 3 gift slots &mdash; every pick registers in the circles up top, and once full you level what you own.</p>
+        <p>&#9889; Storm Crown now cracks real forked lightning down from the sky; monsters blaze white the instant they&rsquo;re hit and when they fall.</p>
+        <p>&#128266; Meatier monster-kill and brighter gem-pickup sounds; music no longer drops out under a heavy swarm.</p>
+        <p>&#128081; Free all twelve realms and a full &ldquo;The Kingdom is Saved&rdquo; finale crowns you the Last Knight.</p>
+        <p>&#10022; Release bug sweep: fixed a level-up freeze on fully-built knights, a corrupt-save blank screen, dead controls / phantom-pause after a run, the Armory Back button on controller, reset-after-defeat carryover, and more.</p>
+        <p class="verHead">v2.1 &mdash; THE POLISHED HORDE</p>
         <p>&#10022; Fixed the painted monster atlas losing a load race to the old placeholder sprites &mdash; the polished horde now appears in every realm, every time, on cache-warm loads and every map.</p>
         <p>&#10022; Battlefield pebbles are now soft rounded field stones instead of boxy grey tiles.</p>
         <p>&#10022; Fullscreen now re-fits the whole game (and the home screen) when you enter or leave it &mdash; no more off-center or letterboxed picture after toggling on Xbox.</p>
@@ -2384,6 +2392,7 @@ function initRun() {
   game.chestReveal = null; game.hurtFlash = 0; game.vacuumT = 0; game.callT = undefined;
   game.joinAnim = null; game.armoryInspect = false; game.helpOpen = false; game.treeOpen = false;
   game.settingsFromPause = false; game.pausePick = 0; game.padPick = null; game.forgeT = 0;
+  game.kingdomSaved = false;
   game.stompT = 0; game.crownT = 0; game.mendK = 0;
   game.evolved = {};
   game.rerolls = 0;
@@ -3303,6 +3312,7 @@ function update(dt) {
     if (!kdMeta.mapsDone) kdMeta.mapsDone = [];
     kdMeta.mapsDone[game.mapPick] = true;
     saveMeta();
+    game.kingdomSaved = mapsCleared() >= MAPS.length;   // every realm freed — the grand award
     game.paidOut = true;   // an endless death afterwards must not pay or count twice
     playSting('victory');
     recordRun(true);
@@ -8408,11 +8418,21 @@ function render(t) {
       ctx.fillRect(-4, -4, 8, 8);
       ctx.restore();
     }
-    drawScreenTitle('VICTORY!', 196);
+    drawScreenTitle(game.kingdomSaved ? 'THE KINGDOM IS SAVED' : 'VICTORY!', 196);
     ctx.textAlign = 'center';
-    ctx.font = '700 17px Cinzel, Georgia, serif';
-    ctx.fillStyle = UI.goldPale;
-    ctx.fillText(MAPS[game.mapPick].name + ' IS SAFE!', CX, 238);
+    if (game.kingdomSaved) {
+      // a shimmering royal crown to crown the champion
+      ctx.font = '30px Georgia, serif';
+      ctx.fillStyle = `rgba(255, 216, 120, ${0.8 + 0.2 * Math.sin(t * 4)})`;
+      ctx.fillText('♛', CX, 232);
+      ctx.font = '700 16px Cinzel, Georgia, serif';
+      ctx.fillStyle = UI.goldPale;
+      ctx.fillText('Every realm is free — you saved the kingdom, ' + players[0].name + '!', CX, 256);
+    } else {
+      ctx.font = '700 17px Cinzel, Georgia, serif';
+      ctx.fillStyle = UI.goldPale;
+      ctx.fillText(MAPS[game.mapPick].name + ' IS SAFE!', CX, 238);
+    }
     const vmm = String(Math.floor(game.time / 60)).padStart(2, '0');
     const vss = String(Math.floor(game.time % 60)).padStart(2, '0');
     const vrows = [
@@ -8433,11 +8453,16 @@ function render(t) {
       ctx.fillText(v2, CX + 180, vy);
       vy += 34;
     }
-    if (game.mapPick < MAPS.length - 1) {
+    if (game.mapPick < MAPS.length - 1 && !game.kingdomSaved) {
       ctx.textAlign = 'center';
       ctx.font = '700 15px Cinzel, Georgia, serif';
       ctx.fillStyle = '#4ade80';
       ctx.fillText('🔓 ' + MAPS[game.mapPick + 1].name + ' UNLOCKED!', CX, vy + 8);
+    } else if (game.kingdomSaved) {
+      ctx.textAlign = 'center';
+      ctx.font = '700 15px Cinzel, Georgia, serif';
+      ctx.fillStyle = '#ffd98a';
+      ctx.fillText('✦ All 12 realms freed — a true Last Knight ✦', CX, vy + 8);
     }
     if (game.netGuest) {
       ctx.textAlign = 'center';
@@ -9692,8 +9717,8 @@ window.addEventListener('keydown', e => {
 
 // ---- update-card carousel ----
 const UC_SLIDES = [
-  { head: '✦ LATEST UPDATE', title: 'v2.1 THE POLISHED HORDE',
-    body: 'The painted monster horde now rides into EVERY realm — no old placeholder blobs slip through. Plus rounded field stones, true fullscreen fit on Xbox, level-up gifts that never vanish in a gem rush, and a sweep of battle, pause and controller fixes.',
+  { head: '✦ LATEST UPDATE', title: 'v2.2 THE LAUNCH EDITION',
+    body: 'A calm start that builds to a glorious late-game swarm, a new Difficulty setting (Easy → Extreme), a clean 3-weapon + 3-gift build with every pick shown up top, sky-splitting Storm Crown lightning, white hit/kill flashes, meatier kill and gem sounds, a full "Kingdom Saved" finale — and a top-to-bottom bug sweep for release.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
