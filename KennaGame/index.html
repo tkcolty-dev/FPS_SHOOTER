@@ -3377,10 +3377,9 @@ function update(dt) {
       if (keys.has('ArrowUp')) vy -= 1;
       if (keys.has('ArrowDown')) vy += 1;
     }
-    // the controller BOUND to this knight steers it (p.pad, set on join). Undefined
-    // = fall back to the slot index (host / legacy); -1 = keyboard-only, no pad.
-    const padKey = p.pad === undefined ? players.indexOf(p) : p.pad;
-    const pad = padKey >= 0 ? PADS['p' + padKey] : null;
+    // the controller resolved to this knight THIS frame (assignPads guarantees it's
+    // unique and reconnect-safe); -1 = no pad (keyboard knight or none free).
+    const pad = (p.padResolved >= 0) ? PADS['p' + p.padResolved] : null;
     if (pad) {
       vx += pad.ax + (pad.left ? -1 : 0) + (pad.right ? 1 : 0);
       vy += pad.ay + (pad.up ? -1 : 0) + (pad.down ? 1 : 0);
@@ -10397,7 +10396,33 @@ function nudgeRange(el, d) {
   el.dispatchEvent(new Event('input', { bubbles: true }));
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
+// Resolve which physical controller drives each knight THIS frame, guaranteeing
+// no controller ever drives two knights (the "one pad controls both" bug) and
+// re-binding a knight to a free controller if its own was unplugged / slept and
+// came back on a different index (Xbox pads sleep after inactivity).
+function assignPads() {
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  const connected = [];
+  for (let i = 0; i < 4; i++) if (gps[i] && gps[i].connected) connected.push(i);
+  const used = new Set();
+  // pass 1 — honor each knight's bound pad while it's still connected & unclaimed
+  for (const p of players) {
+    if (!p || !p.joined || p.remote) { if (p) p.padResolved = -1; continue; }
+    if (p.pad === -1) { p.padResolved = -1; continue; }   // keyboard knight — never gets a pad
+    const want = (p.pad === undefined || p.pad === null) ? players.indexOf(p) : p.pad;
+    if (want >= 0 && connected.includes(want) && !used.has(want)) { p.padResolved = want; used.add(want); }
+    else p.padResolved = -2;   // its controller is gone or taken — reassign below
+  }
+  // pass 2 — hand any knight that lost its controller a free connected one
+  for (const p of players) {
+    if (!p || !p.joined || p.remote || p.padResolved !== -2) continue;
+    const free = connected.find(idx => !used.has(idx));
+    if (free !== undefined) { p.padResolved = free; used.add(free); if (p.pad !== -1) p.pad = free; }
+    else p.padResolved = -1;   // no controller free — keyboard (if any) still works
+  }
+}
 function pollPads() {
+  assignPads();
   for (let i = 0; i < 4; i++) {
     const s = readPad(i);
     PADS['p' + i] = s;
