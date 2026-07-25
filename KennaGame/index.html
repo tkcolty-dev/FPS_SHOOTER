@@ -1084,7 +1084,7 @@
   <div id="menuTop">
     <div class="chip" id="chipKnights">&#9876; KNIGHTS <span id="statKnights">5 / 24</span></div>
     <div class="chip" id="chipDate">&mdash;</div>
-    <div class="chip" id="chipRemaster">REMASTER <span>v2.0</span></div>
+    <div class="chip" id="chipRemaster">REMASTER <span>v2.2</span></div>
   </div>
 
   <div class="titleBlock">
@@ -1457,6 +1457,11 @@
 // A birthday remake of "Math Fact Kingdom Deluxe" by Kenna Kuhn
 // ============================================================
 
+// Single source of truth for the version shown on the home EDITION chip. The
+// "v1.0 REMASTER" text on the painted update card is baked into title-bg.png and
+// can't change — this DOM chip is the one that tracks the latest patch. Bump here.
+const GAME_VERSION = 'v2.2';
+{ const vs = document.querySelector('#chipRemaster span'); if (vs) vs.textContent = GAME_VERSION; }
 const TILE = 64;
 const COLS = 15, ROWS = 10;
 const canvas = document.getElementById('game');
@@ -10329,9 +10334,13 @@ function pollPads() {
     if (menuOpen) {
       const panel = openPanelEl();
       if (panel) {
-        // a panel is open — d-pad walks the rows, left/right turns sliders
-        if (dir('up')) panelFocusMove(-1);
-        if (dir('down')) panelFocusMove(1);
+        // a panel is open. Text-heavy panels (Chronicle, Credits, Achievements…)
+        // have almost nothing to focus, so the d-pad SCROLLS them; interactive
+        // panels (Settings) move focus between controls.
+        const textHeavy = navCandidates(panel, PANEL_NAV_SEL).length <= 2;
+        const scrollable = panel.scrollHeight > panel.clientHeight + 4;
+        if (dir('up')) { if (textHeavy && scrollable) panel.scrollTop -= panel.clientHeight * 0.55; else panelFocusMove(-1); }
+        if (dir('down')) { if (textHeavy && scrollable) panel.scrollTop += panel.clientHeight * 0.55; else panelFocusMove(1); }
         const isRange = padFocusEl && padFocusEl.type === 'range' && panel.contains(padFocusEl);
         if (dir('left')) { if (isRange) nudgeRange(padFocusEl, -10); else panelFocusMove(-1); }
         if (dir('right')) { if (isRange) nudgeRange(padFocusEl, 10); else panelFocusMove(1); }
