@@ -2994,11 +2994,15 @@ function killEnemy(i) {
                    warlock: '#2dd4a0', reaper: '#f43f5e',
                    titan: '#94a3b8', wraith: '#7dd3fc', gummy: '#f472b6', concur: '#34d399',
                    yeti: '#bfe9ff', magmite: '#fb923c' };
-  for (let k = 0; k < (e.kind === 'golem' ? 16 : 8); k++) {
-    const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 120;
-    particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5, color: colors[e.kind], size: e.kind === 'golem' ? 5 : 3 });
+  // a punchy burst: a snappy white shock-ring, a colored ring, and energetic sparks
+  const big = e.kind === 'golem' || BOSS_DEFS[e.kind];
+  particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.18, color: '#ffffff', size: e.r * 1.15 });
+  particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.32, color: colors[e.kind], size: e.r });
+  for (let k = 0; k < (big ? 18 : 11); k++) {
+    const a = Math.random() * Math.PI * 2, s = 55 + Math.random() * 165;
+    particles.push({ x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 28, life: 0.42 + Math.random() * 0.28,
+      color: Math.random() < 0.32 ? '#ffffff' : colors[e.kind], size: 2 + Math.random() * (big ? 4.5 : 2.6) });
   }
-  particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.28, color: colors[e.kind], size: e.r });
   dying[dying.length - 1].color = colors[e.kind];
   if (e.kind === 'splitter') {
     // bursts into three curse-mites
@@ -7666,10 +7670,11 @@ function render(t) {
     ctx.save();
     ctx.translate(d2.x, d2.y);
     const df = d2.age / 0.26;
-    ctx.globalAlpha = 1 - df;
-    ctx.rotate(df * 0.9 * (d2.seed % 2 ? 1 : -1));
-    const dk = 1 + df * 1.1;
-    ctx.scale(dk, Math.max(0.05, 1 - df * 0.7));
+    ctx.globalAlpha = Math.max(0, 1 - df * 1.15);
+    ctx.rotate(df * 1.0 * (d2.seed % 2 ? 1 : -1));
+    // inflate with a snappy pop, then implode — juicier than a flat stretch-away
+    const dk = df < 0.32 ? 1 + (df / 0.32) * 0.42 : Math.max(0.04, 1.42 * (1 - (df - 0.32) / 0.68));
+    ctx.scale(dk, dk * (1 - df * 0.28));
     // white KILL-FLASH: blaze pure white at the instant of death, fading fast
     const kflash = Math.max(0, 1 - df * 2.4);
     const dim = DRAWN_KINDS.has(d2.kind) ? null : ENEMY_IMG[d2.kind === 'mite' ? 'splitter' : d2.kind];
