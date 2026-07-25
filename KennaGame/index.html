@@ -2029,7 +2029,7 @@ window.addEventListener('keydown', e => {
   // the story holds the floor — any key turns the page
   if (game.phase === 'intro' || game.phase === 'ending') {
     if (['Space', 'Enter'].includes(e.code)) advanceStory();
-    else if (e.code === 'Escape') skipStory();
+    else if (e.code === 'Escape') { skipStory(); e.stopImmediatePropagation(); }   // don't let the 2nd Esc listener also fire (home/pause)
     return;
   }
 
@@ -2061,7 +2061,7 @@ window.addEventListener('keydown', e => {
     const BACK = n;                 // the Back button is a real, focusable target after the grid
     const total = n + 1;
     const ac = n > 9 ? 4 : 3;
-    if (game.armoryInspect && ['KeyY', 'Escape', 'Backspace'].includes(e.code)) { game.armoryInspect = false; SFX.pick(); return; }
+    if (game.armoryInspect && ['KeyY', 'Escape', 'Backspace'].includes(e.code)) { game.armoryInspect = false; SFX.pick(); if (e.code === 'Escape') e.stopImmediatePropagation(); return; }
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + total - 1) % total;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % total;
     if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = game.cursor === BACK ? Math.max(0, n - 1) : (game.cursor - ac + n) % n;
