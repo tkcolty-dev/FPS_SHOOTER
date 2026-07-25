@@ -2303,6 +2303,8 @@ function confirmSelection2() {
   const p2 = players[slot];
   p2.joined = true;
   p2.joinedVia = game.joinVia || 'key';
+  // bind the controller (or keyboard) that joined this knight, so movement uses it
+  p2.pad = game.joinVia === 'pad' ? (game.joinPad == null ? slot : game.joinPad) : -1;
   if (slot === 0) game.heroPick = rk.key;   // P1 changed their mind — the battle honors it
   applyHero(p2, rk.key);
   applyRunUpgradesTo(p2);
@@ -3375,8 +3377,10 @@ function update(dt) {
       if (keys.has('ArrowUp')) vy -= 1;
       if (keys.has('ArrowDown')) vy += 1;
     }
-    // controller in the matching slot steers this knight
-    const pad = PADS['p' + players.indexOf(p)];
+    // the controller BOUND to this knight steers it (p.pad, set on join). Undefined
+    // = fall back to the slot index (host / legacy); -1 = keyboard-only, no pad.
+    const padKey = p.pad === undefined ? players.indexOf(p) : p.pad;
+    const pad = padKey >= 0 ? PADS['p' + padKey] : null;
     if (pad) {
       vx += pad.ax + (pad.left ? -1 : 0) + (pad.right ? 1 : 0);
       vy += pad.ay + (pad.up ? -1 : 0) + (pad.down ? 1 : 0);
@@ -6907,6 +6911,7 @@ function renderLobby(t) {
         game.fromLobby = true;
         game.joinSlot = game.joinAnim.slot;
         game.joinVia = game.joinAnim.via;
+        game.joinPad = game.joinAnim.pad;
         game.phase = 'select2';
         game.cursor = 0;
         game.joinAnim = null;
@@ -8831,7 +8836,7 @@ function render(t) {
     ctx.fillText('CHOOSE YOUR CHAMPION',0,-27);
     ctx.restore();
     if (ja >= 1) {
-      game.joinSlot=game.joinAnim.slot; game.joinVia=game.joinAnim.via;
+      game.joinSlot=game.joinAnim.slot; game.joinVia=game.joinAnim.via; game.joinPad=game.joinAnim.pad;
       game.phase='select2'; game.cursor=0; game.joinAnim=null;
     }
   }
@@ -10436,18 +10441,17 @@ function pollPads() {
       if (tap('start')) { startBattle(); continue; }
       if (i === 0 && tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; continue; }
       if (i === 0 && tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; continue; }
-      if (players[i] && !players[i].remote && tap('a') && !game.joinAnim) {
-        if (!players[i].joined && i !== 0) {
-          game.joinAnim = { slot: i, at: performance.now(), via: 'pad' };
-          SFX.join();
-        } else if (i === 0 || players[i].joinedVia !== 'key') {
-          // A re-opens YOUR OWN picker — a keyboard knight belongs to the keyboard
-          game.fromLobby = true;
-          game.joinSlot = i;
-          game.joinVia = 'pad';
-          game.phase = 'select2';
-          game.cursor = 0;
-          SFX.pick();
+      if (tap('a') && !game.joinAnim) {
+        // Which knight does THIS pad already control? Pad 0 is always P1/host; any
+        // other pad owns the joined knight it was bound to on join (p.pad === i).
+        const owned = (i === 0) ? 0 : players.findIndex((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i);
+        if (owned >= 0) {
+          game.fromLobby = true; game.joinSlot = owned; game.joinVia = 'pad'; game.joinPad = i;
+          game.phase = 'select2'; game.cursor = 0; SFX.pick();
+        } else {
+          // an unclaimed controller joins the NEXT FREE slot, bound to this pad
+          const free = players.findIndex((q, qi) => qi > 0 && !q.joined && !q.remote);
+          if (free > 0) { game.joinAnim = { slot: free, at: performance.now(), via: 'pad', pad: i }; SFX.join(); }
         }
       }
       continue;
@@ -10502,8 +10506,9 @@ function pollPads() {
       continue;
     }
     if (!inRun) {
-      // a joining knight's picker belongs to THEIR pad alone — no neighbors confirming for them
-      if (game.phase === 'select2' && i !== (game.joinSlot || 1)) continue;
+      // a joining knight's picker belongs to THEIR pad alone — no neighbors confirming
+      // for them. Pad joins: only the joining pad steers. Keyboard joins: no pad steers.
+      if (game.phase === 'select2') { if (game.joinVia === 'pad' ? (i !== (game.joinPad || 0)) : true) continue; }
       // canvas menus: d-pad/stick navigates (held = repeat), A confirms, B backs, LB/RB pages
       if (dir('left')) synthKey('ArrowLeft');
       if (dir('right')) synthKey('ArrowRight');
