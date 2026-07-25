@@ -1183,6 +1183,7 @@
       <div class="row"><span>Red hit flash</span><input type="checkbox" class="setTog" id="togFlash"></div>
       <div class="row"><span>Particle effects</span><input type="checkbox" class="setTog" id="togParticles"></div>
       <div class="row"><span>FPS counter</span><input type="checkbox" class="setTog" id="togFps"></div>
+      <div class="row"><span>Keep party together <small style="opacity:.6">(co-op: warp strays back to P1)</small></span><input type="checkbox" class="setTog" id="togKeepParty"></div>
       <div class="setSection">&#127918; Controls</div>
       <div class="row" style="font-size:1.7vh; opacity:0.85"><span>Move</span><span>WASD / arrows / left stick</span></div>
       <div class="row" style="font-size:1.7vh; opacity:0.85"><span>Join the battle</span><span>J &middot; or press &#127918; A on any pad</span></div>
@@ -3067,8 +3068,11 @@ function killEnemy(i) {
     playSting('victory');
   }
   const n = BOSS_DEFS[e.kind] ? 6 : (e.kind === 'golem' || e.kind === 'reaper') ? 3 : 1;
+  // XP-per-kill grows as the run goes on so leveling keeps pace with the steep
+  // late-game curve — tougher, later enemies are worth much more than early trash.
+  const xpScale = 1 + game.time / 240;
   for (let k = 0; k < n; k++) {
-    let gv = Math.ceil(e.xp / n);
+    let gv = Math.max(1, Math.ceil(e.xp * xpScale / n));
     if (Math.random() < 0.2 * upLvl('clover')) gv *= 2;
     const gp = pushOut(e.x + (Math.random() - 0.5) * 18, e.y + (Math.random() - 0.5) * 18, 14);
     gems.push({ x: gp.x, y: gp.y, v: gv, vx: 0, vy: 0 });
@@ -3980,14 +3984,33 @@ function update(dt) {
     dmgTexts[i].y -= 34 * dt;
     if (dmgTexts[i].age > 0.7) dmgTexts.splice(i, 1);
   }
-  // camera
-  const alive = players.filter(p => p.joined && p.alive);
-  const fx = alive.length ? alive.reduce((s, p) => s + p.x, 0) / alive.length : players[0].x;
-  const fy = alive.length ? alive.reduce((s, p) => s + p.y, 0) / alive.length : players[0].y;
+  // camera — Player 1 is ALWAYS the center of the world; extra knights orbit around
+  // them (and get a locator arrow / teleport-back if they stray off-screen).
+  const anchor = (players[0].joined && players[0].alive) ? players[0]
+    : (players.find(p => p.joined && p.alive) || players[0]);
+  const fx = anchor.x, fy = anchor.y;
   cam.x += ((fx - CX) - cam.x) * Math.min(1, dt * 5);
   cam.y += ((fy - 340) - cam.y) * Math.min(1, dt * 5);
   cam.x = Math.max(0, Math.min(WORLD_W - ROOM_W, cam.x));
   cam.y = Math.max(0, Math.min(WORLD_H - 640, cam.y));
+  // Keep the party together: an extra knight who's been off-screen too long fades
+  // out and is teleported back beside P1 (toggle in Settings).
+  if (settings.keepParty !== false) {
+    for (let pi = 1; pi < players.length; pi++) {
+      const p = players[pi];
+      if (!p.joined || !p.alive || p.remote) { if (p) p.offT = 0; continue; }
+      const sx = p.x - cam.x, sy = p.y - cam.y;
+      const off = sx < -30 || sx > ROOM_W + 30 || sy < -30 || sy > 640 + 30;
+      p.offT = off ? (p.offT || 0) + dt : 0;
+      if (p.offT > 2.6) {
+        for (let k = 0; k < 12; k++) { const a = Math.random() * Math.PI * 2; particles.push({ x: p.x, y: p.y - 16, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90 - 40, life: 0.4, color: PLAYER_COLORS[pi % 4], size: 3 }); }
+        p.x = anchor.x + (Math.random() - 0.5) * 70;
+        p.y = anchor.y + 40 + (Math.random() - 0.5) * 30;
+        p.offT = 0;
+        particles.push({ x: p.x, y: p.y - 16, vx: 0, vy: 0, ring: true, life: 0.3, color: PLAYER_COLORS[pi % 4], size: 26 });
+      }
+    }
+  }
 }
 
 // ---------- render helpers ----------
@@ -5992,6 +6015,30 @@ function drawToasts(t) {
     ctx.fillText(tst.text, CX, ty + 1);
     ctx.globalAlpha = 1;
     ty += 38;
+  }
+}
+
+// A small edge arrow pointing to an off-screen thing (a strayed knight, the
+// nearest chest). Drawn in room space; no-op when the target is already on-screen.
+function drawLocator(tx, ty, color, label) {
+  const rx = tx - cam.x, ry = ty - cam.y;
+  if (rx >= 6 && rx <= ROOM_W - 6 && ry >= 6 && ry <= 640 - 6) return;
+  const m = 24;
+  const crx = Math.max(m, Math.min(ROOM_W - m, rx));
+  const cry = Math.max(m, Math.min(640 - m, ry));
+  const ang = Math.atan2(ry - cry, rx - crx);
+  ctx.save();
+  ctx.translate(crx, cry);
+  ctx.rotate(ang);
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-5, -6.5); ctx.lineTo(-5, 6.5); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.restore();
+  if (label) {
+    ctx.fillStyle = color;
+    ctx.font = '700 9px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, crx - Math.cos(ang) * 15, cry - Math.sin(ang) * 15 + 3);
   }
 }
 
@@ -8016,6 +8063,17 @@ function render(t) {
     ctx.fillRect(0, 0, ROOM_W, 640);
   }
 
+  // ---- off-screen locators: strayed knights (their color) + nearest chest (gold) ----
+  for (let pi = 1; pi < players.length; pi++) {
+    const p = players[pi];
+    if (p.joined && p.alive) drawLocator(p.x, p.y, PLAYER_COLORS[pi % 4], 'P' + (pi + 1));
+  }
+  {
+    let nc = null, nd = 1e9;
+    for (const c2 of chests) { if (c2.open) continue; const d = Math.hypot(c2.x - (cam.x + CX), c2.y - (cam.y + 340)); if (d < nd) { nd = d; nc = c2; } }
+    if (nc) drawLocator(nc.x, nc.y, 'rgba(255, 216, 120, 0.92)', '');
+  }
+
   // ---- HUD: royal command bar (shrinks so 4 knights fit) ----
   const joined = players.filter(p => p.joined);
   const compact = joined.length >= 3;
@@ -9438,7 +9496,7 @@ const SONGBOOK = [
 
 // ---- settings (persisted) ----
 const settings = Object.assign(
-  { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false, anthem: 'march', difficulty: 'normal' },
+  { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false, anthem: 'march', difficulty: 'normal', keepParty: true },
   loadSave('kd_settings')
 );
 function saveSettings() {
@@ -9460,7 +9518,7 @@ setSfx.value = settings.sfx;
 setMusic.addEventListener('input', () => { settings.music = +setMusic.value; saveSettings(); });
 setSfx.addEventListener('input', () => { settings.sfx = +setSfx.value; saveSettings(); });
 for (const [id, key] of [['togShake', 'shake'], ['togDmg', 'dmgnums'], ['togFlash', 'flash'],
-                         ['togParticles', 'particles'], ['togFps', 'fps']]) {
+                         ['togParticles', 'particles'], ['togFps', 'fps'], ['togKeepParty', 'keepParty']]) {
   const el = document.getElementById(id);
   el.checked = settings[key] !== false;
   if (key === 'fps') el.checked = settings.fps === true;
