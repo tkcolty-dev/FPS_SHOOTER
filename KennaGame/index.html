@@ -1751,10 +1751,16 @@ function drawCrest(x, y, s) {
   ctx.restore();
 }
 
+// Safe save loader — a corrupt localStorage value must NEVER throw at load and
+// brick the game to a blank screen (the in-game reset button would never render).
+function loadSave(key, fallback) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : (fallback || {}); }
+  catch (e) { return fallback || {}; }
+}
 // ---------- persistent treasury & unlocks (like Vampire Survivors) ----------
 const kdMeta = Object.assign(
   { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'], power: {}, mapsDone: [], pets: {} },
-  JSON.parse(localStorage.getItem('kd_meta') || '{}')
+  loadSave('kd_meta')
 );
 function saveMeta() { localStorage.setItem('kd_meta', JSON.stringify(kdMeta)); }
 
@@ -2400,7 +2406,7 @@ function initRun() {
     p.hp = 6; p.maxHp = 6; p.alive = true; p.invuln = 0;
     p.speed = 235; p.attackEvery = 0.6; p.range = 175; p.damage = 1; p.arc = 1.2;
     p.magnet = 95; p.orbCount = 0; p.wave = 0;
-    p.barrier = 0; p.barrierCd = 0;
+    p.barrier = 0; p.barrierCd = 0; p.lastHurtT = -99;
     p.attackTimer = Math.random() * 0.5; p.reviveProgress = 0;
     const slot = players.indexOf(p);
     p.x = WORLD_W / 2 - 40 + slot * 34;
@@ -2725,6 +2731,14 @@ function buildChoices() {
   while (picks.length < 3 && pool.length) {
     picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
   }
+  // A fully-built, fully-maxed knight can leave `pool` empty. game.choices must
+  // NEVER be a truthy empty array — update() early-returns on game.choices, so an
+  // empty hand would freeze the game with no cards and no way out. Hand a bounty.
+  if (!picks.length) {
+    picks.push({ key: 'bounty_gift', name: 'Royal Bounty', icon: 'coin', max: 99,
+      desc: 'Your arsenal is complete, champion — take a purse of gold instead',
+      apply: () => { game.runGold = (game.runGold || 0) + 40; kdMeta.gold += 40; saveMeta(); } });
+  }
   game.choices = picks;
 }
 // gold buys a fresh hand — pricier every time you shuffle
@@ -2780,7 +2794,7 @@ function spawnEnemy(forceX, forceY) {
     wisp:      { r: 14, hp: 2,  speed: 58 + Math.random() * 22, xp: 1 },
     imp:       { r: 10, hp: 1,  speed: 100 + Math.random() * 25, xp: 1 },
     shade:     { r: 13, hp: 3,  speed: 64 + Math.random() * 18, xp: 2 },
-    brute:     { r: 20, hp: 9,  speed: 44, xp: 4 },
+    brute:     { r: 20, hp: 6,  speed: 44, xp: 4 },
     spitter:   { r: 15, hp: 4,  speed: 52, xp: 3 },
     splitter:  { r: 22, hp: 8,  speed: 40, xp: 4 },
     shellback: { r: 19, hp: 14, speed: 33, xp: 6 },
@@ -3925,7 +3939,7 @@ function update(dt) {
     gameToast('⚠ A cursed horde approaches!');
     const fx = players[0].x, fy = players[0].y;
     const n = Math.round((7 + Math.floor(game.time / 30)) * diffMul().spawn);
-    for (let k = 0; k < Math.min(40, n); k++) {
+    for (let k = 0; k < Math.min(40, n) && enemies.length < MB[1]; k++) {   // respect the realm cap
       const a = (k / n) * Math.PI * 2;
       spawnEnemy(fx + Math.cos(a) * 620, fy + Math.sin(a) * 620);
     }
@@ -4374,12 +4388,16 @@ function drawEnemy(e, t) {
   if (eim) {
     // the painted monster itself
     const ih = e.r * 2.1, iw = ih * (eim.width / eim.height);
+    ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
+    // chilled/slowed tint — a cheap source-atop wash (NOT ctx.filter, which would
+    // allocate a layer per slowed enemy per frame and tank fps in a big frost swarm)
     if (e.slowT > 0 && !(e.flash > 0)) {
-      ctx.filter = 'saturate(0.55) brightness(1.15) hue-rotate(160deg)';   // chilled/slowed tint
-      ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
-      ctx.filter = 'none';
-    } else {
-      ctx.drawImage(eim, -iw / 2, -ih * 0.58, iw, ih);
+      ctx.globalAlpha = 0.42;
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = '#7ec8ff';
+      ctx.fillRect(-iw / 2, -ih * 0.58, iw, ih);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
     }
     // WHITE hit-flash: blaze the monster's own pixels white the instant it's struck
     if (e.flash > 0) {
@@ -8800,8 +8818,8 @@ bushR.id = 'bushR';
 const homeStats = document.createElement('div');
 homeStats.id = 'homeStats';
 function updateHomeStats() {
-  const meta = JSON.parse(localStorage.getItem('kd_meta') || '{"gold":0,"unlocked":["kenna","bramble","ember","whisper","gale"]}');
-  const st = JSON.parse(localStorage.getItem('kd_stats') || '{"playMs":0}');
+  const meta = loadSave('kd_meta', { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'] });
+  const st = loadSave('kd_stats', { playMs: 0 });
   const mins = Math.floor((st.playMs || 0) / 60000);
   homeStats.innerHTML =
     '<button class="hsCard" id="hsGold" title="Royal Armory — spend your gold"><span class="hsIcon">◆</span><span class="hsCopy"><small>TREASURY</small><b>' + (meta.gold || 0) + ' GOLD</b></span></button>' +
@@ -9385,7 +9403,7 @@ const SONGBOOK = [
 // ---- settings (persisted) ----
 const settings = Object.assign(
   { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false, anthem: 'march', difficulty: 'normal' },
-  JSON.parse(localStorage.getItem('kd_settings') || '{}')
+  loadSave('kd_settings')
 );
 function saveSettings() {
   localStorage.setItem('kd_settings', JSON.stringify(settings));
@@ -9574,7 +9592,7 @@ document.getElementById('btnExit').addEventListener('click', () => {
 // ---- lifetime stats, persisted ----
 const kdStats = Object.assign(
   { playMs: 0, kills: 0, runs: 0, wins: 0, goldEarned: 0, launches: 0, coop: false, ach: {}, best: [], mailRead: 0 },
-  JSON.parse(localStorage.getItem('kd_stats') || '{}')
+  loadSave('kd_stats')
 );
 function saveStats() { localStorage.setItem('kd_stats', JSON.stringify(kdStats)); }
 const scTime = document.getElementById('scTime');
@@ -10037,7 +10055,7 @@ function applySnap(m) {
   NET.prevKills = m.kills;
   const nowS = performance.now() / 1000;
   players.length = 0;
-  for (const a of m.pl) {
+  for (const a of (m.pl || [])) {
     const [gid, hk, x, y, hp, maxHp, alive, fl, mv, rv, name, inv, arsS, supS] = a;
     const ars = arsS ? arsS.split('|') : [];
     const sup = {};
@@ -10059,19 +10077,19 @@ function applySnap(m) {
       });
     }
   }
-  enemies = m.en.map(a => ({
+  enemies = (m.en || []).map(a => ({
     kind: a[0], x: a[1], y: a[2], r: a[3], hp: a[4], maxHp: a[5], seed: a[6],
     chargeState: a[7] === 2 ? 'dash' : a[7] === 1 ? 'aim' : 'stalk',
     aimX: a[8] || 0, aimY: a[9] || 0, elite: !!a[10], spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
     shootCd: 9, stateT: 1, life: 9,
   }));
-  gems = m.gm.map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
-  drops = m.dr.map(a => ({ x: a[0], y: a[1], kind: a[2] ? 'coin' : 'heart', v: 2 }));
-  waves = m.wv.map(a => ({ x: a[0], y: a[1], ang: a[2], kind: a[3], sub: a[4] || undefined, life: a[5], vx: 0, vy: 0, hit: new Set(), dmg: 0 }));
+  gems = (m.gm || []).map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
+  drops = (m.dr || []).map(a => ({ x: a[0], y: a[1], kind: a[2] ? 'coin' : 'heart', v: 2 }));
+  waves = (m.wv || []).map(a => ({ x: a[0], y: a[1], ang: a[2], kind: a[3], sub: a[4] || undefined, life: a[5], vx: 0, vy: 0, hit: new Set(), dmg: 0 }));
   beams = (m.bm || []).map(a => ({ x: a[0], y: a[1], ang: a[2], len: a[3], w: 26, color: a[4], core: a[5], life: a[6] }));
-  slashes = m.sl.map(a => ({ x: a[0], y: a[1], ang: a[2], age: a[3], r: a[4] }));
-  bolts = m.bo.map(a => ({ x: a[0], y: a[1], vx: 0, vy: 0, life: 1 }));
-  runPets = m.pe.map(a => ({ def: PETS.find(p => p.proj === a[0]) || PETS[0], rank: 1, x: a[1], y: a[2], seed: a[3], cd: 9 }));
+  slashes = (m.sl || []).map(a => ({ x: a[0], y: a[1], ang: a[2], age: a[3], r: a[4] }));
+  bolts = (m.bo || []).map(a => ({ x: a[0], y: a[1], vx: 0, vy: 0, life: 1 }));
+  runPets = (m.pe || []).map(a => ({ def: PETS.find(p => p.proj === a[0]) || PETS[0], rank: 1, x: a[1], y: a[2], seed: a[3], cd: 9 }));
   chests = (m.cs || []).map(a => ({ x: a[0], y: a[1], open: !!a[2], seed: a[0] % 10 }));
 }
 function startGuestRun(heroKey) {
