@@ -81,11 +81,12 @@
   .dialog .row2 { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
   .agent-card .row { display: flex; align-items: center; gap: 8px; }
   .agent-name { font-weight: 700; font-size: 14px; }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a4a5e; margin-left: auto; }
-  .status-dot.thinking { background: #febc2e; animation: pulse 1s infinite; }
-  .status-dot.working { background: #28c840; animation: pulse .6s infinite; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #28c840; box-shadow: 0 0 6px rgba(40,200,64,.5); margin-left: auto; }
+  .status-dot.thinking { background: #febc2e; box-shadow: 0 0 8px rgba(254,188,46,.8); animation: pulse 1s infinite; }
+  .status-dot.working { background: #28c840; box-shadow: 0 0 8px rgba(40,200,64,.9); animation: pulse .6s infinite; }
   @keyframes pulse { 50% { opacity: .3; } }
   .agent-model { color: var(--dim); font-size: 10.5px; margin-top: 3px; word-break: break-all; }
+  .agent-tokens { color: var(--dim); font-size: 10px; margin-top: 4px; }
   .agent-act { color: var(--dim); font-size: 11px; margin-top: 6px; min-height: 14px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .agent-status-label { font-size: 10px; margin-top: 4px; }
@@ -224,12 +225,20 @@ function addActivity(a) {
   if (card) card.textContent = a.text;
 }
 
+function kfmt(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n); }
+function tokenLine(t) {
+  if (!t || (!t.in && !t.out)) return '<div class="agent-tokens">⚡ no usage yet</div>';
+  const cost = t.cost ? ` · ~$${t.cost.toFixed(2)}` : '';
+  return `<div class="agent-tokens">⚡ ${kfmt(t.in + t.out)} tokens${cost}</div>`;
+}
+
 function renderAgents() {
   agentsEl.innerHTML = '';
   for (const id in agentInfo) {
     const a = agentInfo[id];
-    const label = a.status === 'idle' ? '' :
-      `<div class="agent-status-label" style="color:${a.status==='working' ? '#28c840' : '#febc2e'}">${a.status === 'working' ? '⚙ working' : '… thinking'}</div>`;
+    const label = a.status === 'idle'
+      ? '<div class="agent-status-label" style="color:#28c840;opacity:.6">● ready</div>'
+      : `<div class="agent-status-label" style="color:${a.status==='working' ? '#28c840' : '#febc2e'}">${a.status === 'working' ? '⚙ working' : '… thinking'}</div>`;
     agentsEl.insertAdjacentHTML('beforeend', `
       <div class="agent-card">
         <span class="agent-kick" data-kick="${id}" title="disconnect">✕</span>
@@ -238,6 +247,7 @@ function renderAgents() {
           <span class="status-dot ${a.status}"></span>
         </div>
         <div class="agent-model">${esc(a.model || '')}</div>
+        ${tokenLine(a.tokens)}
         ${label}
         <div class="agent-act" id="act-${id}"></div>
       </div>`);

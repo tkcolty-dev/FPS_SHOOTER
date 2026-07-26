@@ -53,6 +53,7 @@ class AgentRunner {
     this.briefed = false;
     this.proc = null;
     this.status = 'idle';
+    this.tokens = { in: 0, out: 0, cost: 0 }; // lifetime usage in this room
   }
 
   setStatus(status, detail = '') {
@@ -114,6 +115,7 @@ RULES OF THE ROOM:
       this.setStatus('idle');
       this.proc = null;
       this.room.saveState();
+      this.room.broadcast('agents', { agents: this.room.agentList() }); // refresh token meters
       this.room.scheduleTurns();
     }
   }
@@ -181,6 +183,10 @@ class ClaudeAgent extends AgentRunner {
       }
     } else if (ev.type === 'result') {
       if (ev.session_id) this.sessionId = ev.session_id;
+      const u = ev.usage || {};
+      this.tokens.in += (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
+      this.tokens.out += u.output_tokens || 0;
+      this.tokens.cost += ev.total_cost_usd || 0;
       return typeof ev.result === 'string' ? ev.result : '';
     }
     return null;
@@ -228,6 +234,9 @@ class CodexAgent extends AgentRunner {
         texts.push(item.text);
       }
     } else if (ev.type === 'turn.completed') {
+      const u = ev.usage || {};
+      this.tokens.in += (u.input_tokens || 0) + (u.cached_input_tokens || 0);
+      this.tokens.out += (u.output_tokens || 0);
       return texts.length ? texts.join('\n\n') : '';
     }
     return null;
@@ -294,6 +303,7 @@ class Room {
           a.sessionId = sa.sessionId || null;
           a.briefed = !!sa.briefed;
           a.seenUpTo = Math.min(sa.seenUpTo || 0, this.messages.length);
+          if (sa.tokens) a.tokens = sa.tokens;
         }
       }
     } catch {}
@@ -304,7 +314,7 @@ class Room {
     this.saveTimer = setTimeout(() => {
       const state = {
         messages: this.messages,
-        agents: this.agents.map(a => ({ id: a.id, sessionId: a.sessionId, briefed: a.briefed, seenUpTo: a.seenUpTo })),
+        agents: this.agents.map(a => ({ id: a.id, sessionId: a.sessionId, briefed: a.briefed, seenUpTo: a.seenUpTo, tokens: a.tokens })),
       };
       fs.writeFile(this.stateFile, JSON.stringify(state), () => {});
     }, 300);
@@ -368,7 +378,7 @@ class Room {
   }
 
   agentList() {
-    return this.agents.map(a => ({ id: a.id, name: a.name, color: a.color, model: a.model, status: a.status }));
+    return this.agents.map(a => ({ id: a.id, name: a.name, color: a.color, model: a.model, status: a.status, tokens: a.tokens }));
   }
 
   addAgent(def) {

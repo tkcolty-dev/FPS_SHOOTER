@@ -226,9 +226,16 @@
 
   .track{
     display:grid;
-    grid-template-columns:64px repeat(8, 1fr);
+    grid-template-columns:82px repeat(8, 1fr);
     gap:8px;
     align-items:center;
+  }
+
+  .track-head{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    min-width:0;
   }
 
   .track-label{
@@ -248,6 +255,31 @@
     box-shadow:0 0 0 1.5px rgba(255,255,255,.7), 0 1px 2px rgba(43,40,34,.3);
     flex:none;
   }
+
+  .track-controls{
+    display:flex;
+    gap:4px;
+  }
+  .track-toggle{
+    width:25px;
+    height:17px;
+    border:0;
+    border-radius:4px;
+    cursor:pointer;
+    font-family:"IBM Plex Mono",monospace;
+    font-size:8px;
+    font-weight:600;
+    color:var(--engrave);
+    background:linear-gradient(180deg, #f1eee8, #d4d0c8);
+    box-shadow:0 1px 2px rgba(43,40,34,.28), 0 1px 0 rgba(255,255,255,.8) inset;
+  }
+  .track-toggle[aria-pressed="true"]{
+    color:#fff;
+    background:var(--tc);
+    box-shadow:0 1px 3px color-mix(in srgb, var(--tc) 55%, transparent) inset;
+  }
+  .track.is-silent .step{ opacity:.48; }
+  .track.is-solo .track-label{ color:var(--engrave-dark); }
 
   .step{
     aspect-ratio:1 / .82;
@@ -343,9 +375,10 @@
     .brand strong{ font-size:26px; }
     .transport{ grid-template-columns:auto auto auto auto; grid-template-rows:auto; justify-content:start; }
     .btn-play{ grid-row:auto; width:56px; height:44px; }
-    .track{ grid-template-columns:52px repeat(8, 1fr); gap:5px; }
+    .track{ grid-template-columns:62px repeat(8, 1fr); gap:5px; }
     .track .step:nth-of-type(5){ margin-left:5px; }
     .track-label{ font-size:9px; letter-spacing:.12em; }
+    .track-toggle{ width:23px; height:16px; }
     .face-bottom span{ letter-spacing:.12em; }
   }
 </style>
@@ -397,26 +430,86 @@
     { id:"clap",  name:"CLAP",  seed:[0,0,0,0,0,0,1,0] },
   ];
 
-  const pattern = TRACKS.map(t => [...t.seed]);
+  let pattern = TRACKS.map(t => [...t.seed]);
   let bpm = 112;
   let playing = false;
   let step = 0;            // next step to schedule
   let nextTime = 0;        // audio-clock time of that step
   let timer = null;
   let ctx = null;
+  const trackState = TRACKS.map(() => ({ muted:false, solo:false }));
+
+  // localStorage save/load
+  function loadState() {
+    const saved = localStorage.getItem("pd8-state");
+    if (saved) {
+      const state = JSON.parse(saved);
+      pattern = state.pattern || pattern;
+      bpm = state.bpm || 112;
+    }
+  }
+  function saveState() {
+    localStorage.setItem("pd8-state", JSON.stringify({ pattern, bpm }));
+  }
+  loadState();
 
   /* ---------- build the grid ---------- */
 
   const grid = document.getElementById("grid");
   const stepEls = [];
+  const trackEls = [];
+  const trackToggleEls = [];
+
+  function trackIsAudible(ti) {
+    const anySolo = trackState.some(state => state.solo);
+    return !trackState[ti].muted && (!anySolo || trackState[ti].solo);
+  }
+
+  function refreshTrackControls() {
+    trackState.forEach((state, ti) => {
+      const audible = trackIsAudible(ti);
+      trackEls[ti].classList.toggle("is-silent", !audible);
+      trackEls[ti].classList.toggle("is-solo", state.solo);
+      trackToggleEls[ti].mute.setAttribute("aria-pressed", String(state.muted));
+      trackToggleEls[ti].solo.setAttribute("aria-pressed", String(state.solo));
+    });
+  }
+
   TRACKS.forEach((t, ti) => {
     const row = document.createElement("div");
     row.className = "track";
     row.dataset.track = t.id;
+    trackEls[ti] = row;
+    const head = document.createElement("div");
+    head.className = "track-head";
     const label = document.createElement("span");
     label.className = "track-label";
     label.textContent = t.name;
-    row.appendChild(label);
+    head.appendChild(label);
+    const controls = document.createElement("div");
+    controls.className = "track-controls";
+    const mute = document.createElement("button");
+    mute.className = "track-toggle";
+    mute.textContent = "M";
+    mute.setAttribute("aria-label", `Mute ${t.name}`);
+    mute.setAttribute("aria-pressed", "false");
+    const solo = document.createElement("button");
+    solo.className = "track-toggle";
+    solo.textContent = "S";
+    solo.setAttribute("aria-label", `Solo ${t.name}`);
+    solo.setAttribute("aria-pressed", "false");
+    mute.addEventListener("click", () => {
+      trackState[ti].muted = !trackState[ti].muted;
+      refreshTrackControls();
+    });
+    solo.addEventListener("click", () => {
+      trackState[ti].solo = !trackState[ti].solo;
+      refreshTrackControls();
+    });
+    controls.append(mute, solo);
+    head.appendChild(controls);
+    row.appendChild(head);
+    trackToggleEls[ti] = { mute, solo };
     stepEls[ti] = [];
     for (let s = 0; s < STEPS; s++) {
       const b = document.createElement("button");
@@ -426,12 +519,23 @@
       b.addEventListener("click", () => {
         pattern[ti][s] ^= 1;
         b.setAttribute("aria-pressed", pattern[ti][s] ? "true" : "false");
+        saveState();
       });
       row.appendChild(b);
       stepEls[ti].push(b);
     }
     grid.appendChild(row);
   });
+
+  // sync UI after loading state
+  function updateUI() {
+    stepEls.forEach((row, ti) => {
+      row.forEach((btn, s) => {
+        btn.setAttribute("aria-pressed", pattern[ti][s] ? "true" : "false");
+      });
+    });
+    lcdBpm.textContent = bpm;
+  }
 
   const lcdSteps = document.getElementById("lcdSteps");
   const lcdDots = [];
@@ -444,6 +548,7 @@
   const lcdBpm = document.getElementById("lcdBpm");
   const lcdState = document.getElementById("lcdState");
   const playBtn = document.getElementById("playBtn");
+  updateUI();
 
   /* ---------- tiny synth drums ---------- */
 
@@ -509,7 +614,7 @@
   function schedule() {
     while (nextTime < ctx.currentTime + 0.12) {
       const s = step, when = nextTime;
-      pattern.forEach((row, ti) => { if (row[s]) voices[ti](when); });
+      pattern.forEach((row, ti) => { if (row[s] && trackIsAudible(ti)) voices[ti](when); });
       const delay = Math.max(0, (when - ctx.currentTime) * 1000);
       setTimeout(() => { if (playing) paint(s); }, delay);
       step = (step + 1) % STEPS;
@@ -560,6 +665,7 @@
   function setBpm(v) {
     bpm = Math.min(200, Math.max(60, v));
     lcdBpm.textContent = bpm;
+    saveState();
   }
   document.getElementById("bpmUp").addEventListener("click", () => setBpm(bpm + 5));
   document.getElementById("bpmDown").addEventListener("click", () => setBpm(bpm - 5));
@@ -568,6 +674,7 @@
     pattern.forEach(row => row.fill(0));
     document.querySelectorAll(".step").forEach(el => el.setAttribute("aria-pressed", "false"));
     lcdState.textContent = playing ? "PLAY" : "CLEARED";
+    saveState();
   });
 })();
 </script>
