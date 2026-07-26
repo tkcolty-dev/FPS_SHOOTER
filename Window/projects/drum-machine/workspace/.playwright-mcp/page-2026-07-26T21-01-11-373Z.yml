@@ -1,0 +1,61 @@
+- main [ref=e2]:
+  - application "PD-8 pocket drum machine" [ref=e3]:
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - strong [ref=e10]: PD·8
+        - generic [ref=e11]: POCKET DRUMS
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - generic [ref=e14]: PTN A1
+          - generic [ref=e15]: READY
+        - generic [ref=e16]: 112BPM
+      - generic [ref=e26]:
+        - button "Play or stop" [ref=e27] [cursor=pointer]: ▶
+        - button "Slow tempo down" [ref=e28] [cursor=pointer]: −5
+        - button "Speed tempo up" [ref=e29] [cursor=pointer]: "+5"
+        - button "CLEAR" [ref=e30] [cursor=pointer]
+    - region "Step sequencer, 4 tracks of 8 steps" [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]: KICK
+        - button "KICK step 1" [pressed] [ref=e34] [cursor=pointer]
+        - button "KICK step 2" [ref=e35] [cursor=pointer]
+        - button "KICK step 3" [ref=e36] [cursor=pointer]
+        - button "KICK step 4" [ref=e37] [cursor=pointer]
+        - button "KICK step 5" [pressed] [ref=e38] [cursor=pointer]
+        - button "KICK step 6" [ref=e39] [cursor=pointer]
+        - button "KICK step 7" [ref=e40] [cursor=pointer]
+        - button "KICK step 8" [ref=e41] [cursor=pointer]
+      - generic [ref=e42]:
+        - generic [ref=e43]: SNARE
+        - button "SNARE step 1" [ref=e44] [cursor=pointer]
+        - button "SNARE step 2" [ref=e45] [cursor=pointer]
+        - button "SNARE step 3" [pressed] [ref=e46] [cursor=pointer]
+        - button "SNARE step 4" [ref=e47] [cursor=pointer]
+        - button "SNARE step 5" [ref=e48] [cursor=pointer]
+        - button "SNARE step 6" [ref=e49] [cursor=pointer]
+        - button "SNARE step 7" [pressed] [ref=e50] [cursor=pointer]
+        - button "SNARE step 8" [ref=e51] [cursor=pointer]
+      - generic [ref=e52]:
+        - generic [ref=e53]: HAT
+        - button "HAT step 1" [pressed] [ref=e54] [cursor=pointer]
+        - button "HAT step 2" [pressed] [ref=e55] [cursor=pointer]
+        - button "HAT step 3" [pressed] [ref=e56] [cursor=pointer]
+        - button "HAT step 4" [pressed] [ref=e57] [cursor=pointer]
+        - button "HAT step 5" [pressed] [ref=e58] [cursor=pointer]
+        - button "HAT step 6" [pressed] [ref=e59] [cursor=pointer]
+        - button "HAT step 7" [pressed] [ref=e60] [cursor=pointer]
+        - button "HAT step 8" [pressed] [ref=e61] [cursor=pointer]
+      - generic [ref=e62]:
+        - generic [ref=e63]: CLAP
+        - button "CLAP step 1" [ref=e64] [cursor=pointer]
+        - button "CLAP step 2" [ref=e65] [cursor=pointer]
+        - button "CLAP step 3" [ref=e66] [cursor=pointer]
+        - button "CLAP step 4" [ref=e67] [cursor=pointer]
+        - button "CLAP step 5" [ref=e68] [cursor=pointer]
+        - button "CLAP step 6" [ref=e69] [cursor=pointer]
+        - button "CLAP step 7" [pressed] [ref=e70] [cursor=pointer]
+        - button "CLAP step 8" [ref=e71] [cursor=pointer]
+    - generic [ref=e72]:
+      - generic [ref=e73]: STEP SEQUENCER
+      - generic [ref=e81]: MONO OUT
+  - paragraph [ref=e82]: Click steps to program a beat · Space plays and stops

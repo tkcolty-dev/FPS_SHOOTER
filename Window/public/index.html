@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AGENT TERMINAL</title>
+<style>
+  :root {
+    --bg: #0a0e14; --panel: #0f141c; --panel2: #131a24; --border: #1e2836;
+    --text: #c8d3e0; --dim: #5c6b80; --green: #7ee787; --user: #7ee787;
+    --claude: #ff9668; --codex: #58c4dc; --sys: #8b7ec8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: #05070a; color: var(--text);
+    font-family: "SF Mono", ui-monospace, Menlo, Monaco, monospace;
+    font-size: 13px; display: flex; align-items: stretch; justify-content: center;
+  }
+  .window {
+    display: flex; flex-direction: column; width: 100%; max-width: 1500px;
+    margin: 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+  }
+  /* title bar */
+  .titlebar {
+    display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+    background: var(--panel); border-bottom: 1px solid var(--border); user-select: none;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .title { flex: 1; text-align: center; color: var(--dim); letter-spacing: 3px; font-size: 12px; }
+  .titlebar .btn { margin-left: 6px; }
+
+  /* project tabs */
+  .tabs { display: flex; align-items: flex-end; gap: 4px; padding: 8px 12px 0; background: var(--panel); border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .tab {
+    padding: 7px 16px; border: 1px solid var(--border); border-bottom: none;
+    border-radius: 8px 8px 0 0; color: var(--dim); cursor: pointer; font-size: 12px;
+    background: var(--panel2); white-space: nowrap; user-select: none;
+  }
+  .tab.active { background: var(--bg); color: var(--text); border-color: #2c3c52; }
+  .tab:hover:not(.active) { color: var(--text); }
+  .tab.newtab { color: var(--green); font-weight: 700; }
+  .tab .popout { margin-left: 8px; color: var(--dim); }
+  .tab .popout:hover { color: var(--green); }
+  .btn {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 12px; font: inherit; cursor: pointer;
+  }
+  .btn:hover { border-color: #35506e; }
+  .btn.stop { color: #ff5f57; }
+  .btn.preview { color: var(--green); }
+
+  .main { flex: 1; display: flex; min-height: 0; }
+
+  /* sidebar */
+  .side {
+    width: 250px; min-width: 250px; border-right: 1px solid var(--border);
+    background: var(--panel); display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .side h3 { font-size: 10px; letter-spacing: 2px; color: var(--dim); padding: 12px 14px 6px; }
+  .agent-card { margin: 4px 10px; padding: 10px 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; }
+  .agent-card .row { display: flex; align-items: center; gap: 8px; }
+  .agent-name { font-weight: 700; font-size: 14px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a4a5e; margin-left: auto; }
+  .status-dot.thinking { background: #febc2e; animation: pulse 1s infinite; }
+  .status-dot.working { background: #28c840; animation: pulse .6s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  .agent-model { color: var(--dim); font-size: 10.5px; margin-top: 3px; word-break: break-all; }
+  .agent-act { color: var(--dim); font-size: 11px; margin-top: 6px; min-height: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .agent-status-label { font-size: 10px; margin-top: 4px; }
+
+  .files { flex: 1; padding-bottom: 10px; }
+  .file { display: flex; padding: 3px 16px; color: var(--text); cursor: pointer; font-size: 12px; text-decoration: none; }
+  .file:hover { background: var(--panel2); }
+  .file .sz { margin-left: auto; color: var(--dim); font-size: 10px; }
+  .nofiles { color: var(--dim); padding: 4px 16px; font-size: 11px; font-style: italic; }
+
+  /* chat */
+  .chat-wrap { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .chat { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .msg { margin-bottom: 14px; max-width: 100%; }
+  .msg .head { font-weight: 700; margin-bottom: 3px; }
+  .msg .head .time { color: var(--dim); font-weight: 400; font-size: 10px; margin-left: 8px; }
+  .msg .body { white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; color: var(--text); }
+  .msg.user .head { color: var(--user); }
+  .msg.system .body { color: var(--sys); font-style: italic; font-size: 12px; }
+  .msg .idle-tag { color: var(--dim); font-size: 10px; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; margin-left: 8px; }
+  .act-line { color: var(--dim); font-size: 11.5px; padding: 1px 0 1px 14px; }
+  .act-line b { font-weight: 600; }
+
+  /* live build panel */
+  .preview-pane { width: 44%; min-width: 320px; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: var(--panel); }
+  .preview-pane[hidden] { display: none; }
+  .preview-head { display: flex; align-items: center; padding: 8px 12px; font-size: 10px; letter-spacing: 2px; color: var(--dim); border-bottom: 1px solid var(--border); }
+  .preview-head a { color: var(--green); margin-left: auto; text-decoration: none; letter-spacing: 0; font-size: 11px; }
+  .preview-head .reload { color: var(--dim); cursor: pointer; margin-left: 12px; letter-spacing: 0; font-size: 11px; }
+  #previewFrame { flex: 1; border: none; background: #fff; }
+
+  /* input */
+  .inputbar { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--panel); }
+  .prompt-char { color: var(--green); font-weight: 700; font-size: 16px; }
+  #input {
+    flex: 1; background: transparent; border: none; outline: none; color: var(--text);
+    font: inherit; font-size: 14px; caret-color: var(--green);
+  }
+  #input::placeholder { color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="titlebar">
+    <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+    <div class="title">AGENT TERMINAL — MULTI-AGENT ROOM</div>
+    <button class="btn preview" id="previewBtn">▶ Live Build</button>
+    <button class="btn stop" id="stopBtn">■ Stop</button>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div class="main">
+    <div class="side">
+      <h3>AGENTS</h3>
+      <div id="agents"></div>
+      <h3>WORKSPACE</h3>
+      <div class="files" id="files"><div class="nofiles">empty — give them a task</div></div>
+    </div>
+    <div class="chat-wrap">
+      <div class="chat" id="chat"></div>
+      <div class="inputbar">
+        <span class="prompt-char">❯</span>
+        <input id="input" placeholder="Tell your agents what to build… (they'll coordinate with each other)" autofocus>
+      </div>
+    </div>
+    <div class="preview-pane" id="previewPane" hidden>
+      <div class="preview-head">LIVE BUILD<span class="reload" id="reloadBtn">↻ reload</span><a href="/preview/" target="_blank" id="previewTab">open in tab ↗</a></div>
+      <iframe id="previewFrame" src="/preview/"></iframe>
+    </div>
+  </div>
+</div>
+<script>
+const chat = document.getElementById('chat');
+const agentsEl = document.getElementById('agents');
+const filesEl = document.getElementById('files');
+const input = document.getElementById('input');
+const agentInfo = {}; // id -> {name, color, model, status}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function fmtTime(ts) { return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+function atBottom() { return chat.scrollHeight - chat.scrollTop - chat.clientHeight < 60; }
+function scrollDown(force) { if (force || atBottom()) chat.scrollTop = chat.scrollHeight; }
+
+function addMsg(m) {
+  const stick = atBottom();
+  const div = document.createElement('div');
+  div.className = 'msg ' + m.from;
+  let text = m.text;
+  const idle = /\[IDLE\]\s*$/i.test(text.trim());
+  if (idle) text = text.replace(/\[IDLE\]\s*$/i, '').trim();
+  if (m.from === 'system') {
+    div.innerHTML = `<div class="body">${esc(m.text)}</div>`;
+  } else {
+    const name = m.from === 'user' ? 'you' : esc(m.name);
+    const color = m.from === 'user' ? 'var(--user)' : (agentInfo[m.from]?.color || 'var(--text)');
+    div.innerHTML = `<div class="head" style="color:${color}">${name}<span class="time">${fmtTime(m.ts)}</span>${idle ? '<span class="idle-tag">idle — waiting</span>' : ''}</div><div class="body">${esc(text)}</div>`;
+  }
+  chat.appendChild(div);
+  scrollDown(stick || m.from === 'user');
+}
+
+function addActivity(a) {
+  const stick = atBottom();
+  const div = document.createElement('div');
+  div.className = 'act-line';
+  const color = agentInfo[a.agent]?.color || 'var(--dim)';
+  div.innerHTML = `<b style="color:${color}">${esc(a.name)}</b> ${esc(a.text)}`;
+  chat.appendChild(div);
+  scrollDown(stick);
+  const card = document.getElementById('act-' + a.agent);
+  if (card) card.textContent = a.text;
+}
+
+function renderAgents() {
+  agentsEl.innerHTML = '';
+  for (const id in agentInfo) {
+    const a = agentInfo[id];
+    const label = a.status === 'idle' ? '' :
+      `<div class="agent-status-label" style="color:${a.status==='working' ? '#28c840' : '#febc2e'}">${a.status === 'working' ? '⚙ working' : '… thinking'}</div>`;
+    agentsEl.insertAdjacentHTML('beforeend', `
+      <div class="agent-card">
+        <div class="row">
+          <span class="agent-name" style="color:${a.color}">${esc(a.name)}</span>
+          <span class="status-dot ${a.status}"></span>
+        </div>
+        <div class="agent-model">${esc(a.model || '')}</div>
+        ${label}
+        <div class="agent-act" id="act-${id}"></div>
+      </div>`);
+  }
+}
+
+function renderFiles(files) {
+  if (!files.length) { filesEl.innerHTML = '<div class="nofiles">empty — give them a task</div>'; return; }
+  filesEl.innerHTML = files.map(f =>
+    `<a class="file" href="/file/${encodeURIComponent(currentProject)}/${encodeURIComponent(f.path)}" target="_blank">${esc(f.path)}<span class="sz">${f.size > 1024 ? (f.size/1024).toFixed(1)+'k' : f.size+'b'}</span></a>`
+  ).join('');
+}
+
+// ---- projects & tabs
+let currentProject = new URLSearchParams(location.search).get('project') || '';
+let projects = [];
+let es = null;
+
+function renderTabs() {
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  for (const id of projects) {
+    const t = document.createElement('div');
+    t.className = 'tab' + (id === currentProject ? ' active' : '');
+    t.textContent = id;
+    if (id === currentProject) {
+      const pop = document.createElement('span');
+      pop.className = 'popout'; pop.textContent = '⧉'; pop.title = 'open in new window';
+      pop.onclick = e => { e.stopPropagation(); window.open('/?project=' + encodeURIComponent(id), '_blank', 'width=1500,height=900'); };
+      t.appendChild(pop);
+    }
+    t.onclick = () => { if (id !== currentProject) connect(id); };
+    tabsEl.appendChild(t);
+  }
+  const plus = document.createElement('div');
+  plus.className = 'tab newtab';
+  plus.textContent = '+ new project';
+  plus.onclick = async () => {
+    const name = prompt('Project name:');
+    if (!name) return;
+    const r = await fetch('/projects', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+    const j = await r.json();
+    if (j.id) connect(j.id);
+  };
+  tabsEl.appendChild(plus);
+}
+
+function connect(project) {
+  if (es) es.close();
+  currentProject = project || '';
+  history.replaceState(null, '', currentProject ? '/?project=' + encodeURIComponent(currentProject) : '/');
+  chat.innerHTML = '<div class="msg system"><div class="body">connecting…</div></div>';
+  es = new EventSource('/events' + (currentProject ? '?project=' + encodeURIComponent(currentProject) : ''));
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data);
+    if (ev.type === 'hello') {
+      currentProject = ev.project;
+      projects = ev.projects || [];
+      history.replaceState(null, '', '/?project=' + encodeURIComponent(currentProject));
+      renderTabs();
+      chat.innerHTML = '';
+      for (const k in agentInfo) delete agentInfo[k];
+      for (const a of ev.agents) agentInfo[a.id] = a;
+      renderAgents();
+      for (const m of ev.messages) addMsg(m);
+      renderFiles(ev.files || []);
+      schedulePreviewReload(ev.files || [], true);
+      scrollDown(true);
+      if (!ev.messages.length) addMsg({ from: 'system', text: '● room open — your agents are standing by. Type a task below.', ts: Date.now() });
+    }
+    else if (ev.type === 'msg') addMsg(ev);
+    else if (ev.type === 'activity') addActivity(ev);
+    else if (ev.type === 'status') {
+      const a = agentInfo[ev.agent];
+      if (a) { a.status = ev.status; if (ev.model) a.model = ev.model; renderAgents(); }
+    }
+    else if (ev.type === 'files') { renderFiles(ev.files); schedulePreviewReload(ev.files); }
+    else if (ev.type === 'projects') { projects = ev.projects || []; renderTabs(); }
+  };
+}
+connect(currentProject);
+
+// ---- live build panel
+const pane = document.getElementById('previewPane');
+const frame = document.getElementById('previewFrame');
+let userClosedPane = false, reloadTimer = null;
+function previewURL() { return '/preview/' + encodeURIComponent(currentProject) + '/?t=' + Date.now(); }
+function schedulePreviewReload(files, switching) {
+  const hasIndex = files.some(f => f.path === 'index.html' || f.path.endsWith('/index.html'));
+  if (switching && !hasIndex) { pane.hidden = true; return; } // new project with no build yet
+  if (hasIndex && pane.hidden && !userClosedPane) pane.hidden = false; // auto-open when a build appears
+  if (pane.hidden) return;
+  clearTimeout(reloadTimer);
+  reloadTimer = setTimeout(() => {
+    frame.src = previewURL();
+    document.getElementById('previewTab').href = '/preview/' + encodeURIComponent(currentProject) + '/';
+  }, switching ? 50 : 1200);
+}
+document.getElementById('previewBtn').onclick = () => {
+  pane.hidden = !pane.hidden;
+  userClosedPane = pane.hidden;
+  if (!pane.hidden) frame.src = previewURL();
+};
+document.getElementById('reloadBtn').onclick = () => { frame.src = previewURL(); };
+
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && input.value.trim()) {
+    fetch('/send', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text: input.value, project: currentProject }) });
+    input.value = '';
+  }
+});
+document.getElementById('stopBtn').onclick = () => fetch('/stop', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ project: currentProject }) });
+</script>
+</body>
+</html>
