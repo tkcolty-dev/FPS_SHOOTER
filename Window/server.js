@@ -234,13 +234,29 @@ class CodexAgent extends AgentRunner {
   }
 }
 
-// ---- ROSTER: add/remove agents here. Any mix of Claude models + Codex works.
+// ---- ROSTER: persisted in agents.json, editable live from the UI.
+const AGENTS_FILE = path.join(ROOT, 'agents.json');
+const DEFAULT_DEFS = [
+  { id: 'claude', name: 'Claude', color: '#ff9668', type: 'claude', model: 'claude (loading…)' },
+  { id: 'codex', name: 'Codex', color: '#58c4dc', type: 'codex', model: 'gpt-5 · codex-cli 0.145' },
+  { id: 'haiku', name: 'Haiku', color: '#d2a8ff', type: 'claude', model: 'claude-haiku-4-5', modelFlag: 'claude-haiku-4-5-20251001' },
+];
+let agentDefs;
+try { agentDefs = JSON.parse(fs.readFileSync(AGENTS_FILE, 'utf8')); } catch { agentDefs = DEFAULT_DEFS; }
+function saveDefs() { fs.writeFileSync(AGENTS_FILE, JSON.stringify(agentDefs, null, 1)); }
+
+const PALETTE = ['#ff9668', '#58c4dc', '#d2a8ff', '#7ee787', '#f778ba', '#ffd33d', '#79c0ff', '#ffa198'];
+function nextColor() {
+  const used = new Set(agentDefs.map(d => d.color));
+  return PALETTE.find(c => !used.has(c)) || PALETTE[agentDefs.length % PALETTE.length];
+}
+
+function buildAgent(room, def) {
+  const Cls = def.type === 'codex' ? CodexAgent : ClaudeAgent;
+  return new Cls(room, { ...def });
+}
 function makeAgents(room) {
-  return [
-    new ClaudeAgent(room, { id: 'claude', name: 'Claude', color: '#ff9668', model: 'claude (loading…)' }),
-    new CodexAgent(room, { id: 'codex', name: 'Codex', color: '#58c4dc', model: 'gpt-5 · codex-cli 0.145' }),
-    new ClaudeAgent(room, { id: 'haiku', name: 'Haiku', color: '#d2a8ff', model: 'claude-haiku-4-5', modelFlag: 'claude-haiku-4-5-20251001' }),
-  ];
+  return agentDefs.map(def => buildAgent(room, def));
 }
 
 function saidIdle(t) { return /\[IDLE\]\s*$/i.test(t.trim()); }
@@ -351,13 +367,36 @@ class Room {
     return out;
   }
 
+  agentList() {
+    return this.agents.map(a => ({ id: a.id, name: a.name, color: a.color, model: a.model, status: a.status }));
+  }
+
+  addAgent(def) {
+    const a = buildAgent(this, def);
+    a.seenUpTo = this.messages.length; // don't react to old history
+    this.agents.push(a);
+    this.broadcast('agents', { agents: this.agentList() });
+    this.sys(`🔌 ${def.name} connected to the room`);
+    this.saveState();
+  }
+
+  removeAgent(id) {
+    const a = this.agents.find(x => x.id === id);
+    if (!a) return;
+    a.kill();
+    this.agents = this.agents.filter(x => x !== a);
+    this.broadcast('agents', { agents: this.agentList() });
+    this.sys(`🔌 ${a.name} disconnected`);
+    this.saveState();
+  }
+
   hello() {
     return {
       type: 'hello',
       project: this.id,
       projects: listProjects(),
       messages: this.messages,
-      agents: this.agents.map(a => ({ id: a.id, name: a.name, color: a.color, model: a.model, status: a.status })),
+      agents: this.agentList(),
       files: this.listTree(),
       port: PORT,
     };
@@ -452,6 +491,34 @@ const server = http.createServer(async (req, res) => {
       room.sys('⏹ stopped — agents halted. Send a message to resume.');
     }
     res.writeHead(200); res.end('{"ok":true}');
+    return;
+  }
+
+  if (p === '/agents/add' && req.method === 'POST') {
+    const { name, type, modelFlag } = await readBody(req);
+    const id = slug(name);
+    if (!id || !['claude', 'codex'].includes(type)) { res.writeHead(400); res.end('{"error":"bad agent"}'); return; }
+    if (agentDefs.some(d => d.id === id)) { res.writeHead(409); res.end('{"error":"name taken"}'); return; }
+    const def = {
+      id, name: name.trim(), color: nextColor(), type,
+      model: type === 'codex' ? 'gpt-5 · codex-cli 0.145' : (modelFlag || 'claude'),
+    };
+    if (type === 'claude' && modelFlag) def.modelFlag = modelFlag;
+    agentDefs.push(def);
+    saveDefs();
+    for (const room of rooms.values()) room.addAgent(def);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, id }));
+    return;
+  }
+
+  if (p === '/agents/remove' && req.method === 'POST') {
+    const { id } = await readBody(req);
+    agentDefs = agentDefs.filter(d => d.id !== id);
+    saveDefs();
+    for (const room of rooms.values()) room.removeAgent(id);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end('{"ok":true}');
     return;
   }
 

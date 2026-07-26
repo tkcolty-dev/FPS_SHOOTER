@@ -60,7 +60,25 @@
     background: var(--panel); display: flex; flex-direction: column; overflow-y: auto;
   }
   .side h3 { font-size: 10px; letter-spacing: 2px; color: var(--dim); padding: 12px 14px 6px; }
-  .agent-card { margin: 4px 10px; padding: 10px 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; }
+  .agent-card { margin: 4px 10px; padding: 10px 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; position: relative; }
+  .agent-kick { position: absolute; top: 6px; right: 8px; color: var(--dim); cursor: pointer; font-size: 11px; display: none; }
+  .agent-card:hover .agent-kick { display: block; }
+  .agent-kick:hover { color: #ff5f57; }
+  .connect-btn { margin: 6px 10px; padding: 7px; text-align: center; border: 1px dashed var(--border); border-radius: 8px; color: var(--green); cursor: pointer; font-size: 12px; }
+  .connect-btn:hover { border-color: var(--green); background: var(--panel2); }
+
+  /* connect-agent modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 10; }
+  .overlay[hidden] { display: none; }
+  .dialog { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; width: 340px; box-shadow: 0 20px 60px rgba(0,0,0,.7); }
+  .dialog h2 { font-size: 13px; letter-spacing: 2px; color: var(--green); margin-bottom: 14px; }
+  .dialog label { display: block; font-size: 10px; letter-spacing: 1px; color: var(--dim); margin: 10px 0 4px; }
+  .dialog input, .dialog select {
+    width: 100%; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font: inherit; padding: 7px 10px; outline: none;
+  }
+  .dialog input:focus, .dialog select:focus { border-color: #35506e; }
+  .dialog .row2 { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
   .agent-card .row { display: flex; align-items: center; gap: 8px; }
   .agent-name { font-weight: 700; font-size: 14px; }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #3a4a5e; margin-left: auto; }
@@ -122,6 +140,7 @@
     <div class="side">
       <h3>AGENTS</h3>
       <div id="agents"></div>
+      <div class="connect-btn" id="connectBtn">+ connect agent</div>
       <h3>WORKSPACE</h3>
       <div class="files" id="files"><div class="nofiles">empty — give them a task</div></div>
     </div>
@@ -135,6 +154,31 @@
     <div class="preview-pane" id="previewPane" hidden>
       <div class="preview-head">LIVE BUILD<span class="reload" id="reloadBtn">↻ reload</span><a href="/preview/" target="_blank" id="previewTab">open in tab ↗</a></div>
       <iframe id="previewFrame" src="/preview/"></iframe>
+    </div>
+  </div>
+</div>
+<div class="overlay" id="overlay" hidden>
+  <div class="dialog">
+    <h2>CONNECT AGENT</h2>
+    <label>NAME</label>
+    <input id="agName" placeholder="e.g. Scout" maxlength="20">
+    <label>ENGINE</label>
+    <select id="agType">
+      <option value="claude">Claude (Claude Code CLI)</option>
+      <option value="codex">Codex (GPT-5, ChatGPT app)</option>
+    </select>
+    <div id="modelRow">
+      <label>CLAUDE MODEL</label>
+      <select id="agModel">
+        <option value="">Default (Fable 5)</option>
+        <option value="claude-opus-4-8">Opus 4.8</option>
+        <option value="claude-sonnet-5">Sonnet 5</option>
+        <option value="claude-haiku-4-5-20251001">Haiku 4.5 (fast)</option>
+      </select>
+    </div>
+    <div class="row2">
+      <button class="btn" id="agCancel">cancel</button>
+      <button class="btn preview" id="agConnect">connect</button>
     </div>
   </div>
 </div>
@@ -188,6 +232,7 @@ function renderAgents() {
       `<div class="agent-status-label" style="color:${a.status==='working' ? '#28c840' : '#febc2e'}">${a.status === 'working' ? '⚙ working' : '… thinking'}</div>`;
     agentsEl.insertAdjacentHTML('beforeend', `
       <div class="agent-card">
+        <span class="agent-kick" data-kick="${id}" title="disconnect">✕</span>
         <div class="row">
           <span class="agent-name" style="color:${a.color}">${esc(a.name)}</span>
           <span class="status-dot ${a.status}"></span>
@@ -197,6 +242,13 @@ function renderAgents() {
         <div class="agent-act" id="act-${id}"></div>
       </div>`);
   }
+  agentsEl.querySelectorAll('[data-kick]').forEach(el => {
+    el.onclick = () => {
+      const a = agentInfo[el.dataset.kick];
+      if (a && confirm(`Disconnect ${a.name} from all projects?`))
+        fetch('/agents/remove', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id: el.dataset.kick }) });
+    };
+  });
 }
 
 function renderFiles(files) {
@@ -271,6 +323,11 @@ function connect(project) {
     }
     else if (ev.type === 'files') { renderFiles(ev.files); schedulePreviewReload(ev.files); }
     else if (ev.type === 'projects') { projects = ev.projects || []; renderTabs(); }
+    else if (ev.type === 'agents') {
+      for (const k in agentInfo) delete agentInfo[k];
+      for (const a of ev.agents) agentInfo[a.id] = a;
+      renderAgents();
+    }
   };
 }
 connect(currentProject);
@@ -305,6 +362,27 @@ input.addEventListener('keydown', e => {
   }
 });
 document.getElementById('stopBtn').onclick = () => fetch('/stop', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ project: currentProject }) });
+
+// ---- connect agent dialog
+const overlay = document.getElementById('overlay');
+document.getElementById('connectBtn').onclick = () => { overlay.hidden = false; document.getElementById('agName').focus(); };
+document.getElementById('agCancel').onclick = () => { overlay.hidden = true; };
+overlay.onclick = e => { if (e.target === overlay) overlay.hidden = true; };
+document.getElementById('agType').onchange = e => {
+  document.getElementById('modelRow').style.display = e.target.value === 'claude' ? '' : 'none';
+};
+document.getElementById('agConnect').onclick = async () => {
+  const name = document.getElementById('agName').value.trim();
+  const type = document.getElementById('agType').value;
+  const modelFlag = document.getElementById('agModel').value;
+  if (!name) return alert('Give the agent a name');
+  const r = await fetch('/agents/add', { method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, type, modelFlag: type === 'claude' ? modelFlag : undefined }) });
+  if (r.status === 409) return alert('That name is taken');
+  if (!r.ok) return alert('Could not connect agent');
+  overlay.hidden = true;
+  document.getElementById('agName').value = '';
+};
 </script>
 </body>
 </html>
