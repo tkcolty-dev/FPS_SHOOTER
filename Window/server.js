@@ -17,6 +17,7 @@ const PROJECTS_DIR = path.join(ROOT, 'projects');
 const CODEX_BIN = '/Applications/ChatGPT.app/Contents/Resources/codex';
 const MAX_AUTO_TURNS = 16;     // agent-to-agent turns allowed per user message
 const TURN_TIMEOUT_MS = 15 * 60 * 1000;
+const BRIEF_V = 4;             // bump to re-send the room briefing to existing agents
 
 // ---------------------------------------------------------------- migration
 // v1 kept a single ./workspace + ./state.json — fold it into projects/drum-machine
@@ -53,7 +54,16 @@ class AgentRunner {
     this.briefed = false;
     this.proc = null;
     this.status = 'idle';
+    this.briefedV = 0;
     this.tokens = { in: 0, out: 0, cost: 0 }; // lifetime usage in this room
+    this.stats = { turns: 0, ms: 0, files: 0, cmds: 0, searches: 0, lastActive: 0 };
+    this.currentEdits = new Set(); // files touched during the in-flight turn
+  }
+
+  touchFile(name) {
+    if (!name) return;
+    this.currentEdits.add(name);
+    this.room.broadcastClaims();
   }
 
   setStatus(status, detail = '') {
@@ -80,7 +90,18 @@ RULES OF THE ROOM:
 5. Keep chat replies SHORT — a few sentences: what you did, what's next, what you need from teammates. No huge code dumps in chat; code goes in files.
 6. If a teammate already claimed something, build on their files instead of rewriting them. Read their files before editing shared ones.
 7. When you have nothing left to do and are waiting, end your reply with the exact token [IDLE]. When the task is fully done and verified, say so and end with [IDLE].
-8. Disagreements: settle fast, pick the simplest path, keep momentum.`;
+8. Disagreements: settle fast, pick the simplest path, keep momentum.
+9. SEE AND TEST YOUR WORK — never declare something done without testing it:
+   - The live preview is http://localhost:${PORT}/preview/${this.room.id}/ .
+   - Claude-family agents: you have real browser tools (Playwright MCP) — load the preview, click through it, check the console, and SAVE SCREENSHOTS as .png files in the workspace. Every image saved there is automatically shown to the user and teammates in the chat.
+   - Codex: verify with real commands — curl the preview URL, run node scripts against your code, syntax-check. For visual checks, ask a Claude teammate to browser-test and screenshot.
+10. WEB SEARCH: you can search the live web (Claude-family: WebSearch/WebFetch tools; Codex: native web_search). Use it for docs, APIs, assets, and ideas instead of guessing.
+11. YOUR PRIVATE MEMORY: the file .notes/${this.name}.md in the workspace is YOURS alone — plans, learnings, todos, gotchas. Read it when you start a task, update it as you work. MEMORY.md stays for team-wide facts.
+12. PLAN BEFORE BUILDING: for any sizable task, first agree on a quick plan in chat (parts, owners, order — a few lines max), THEN build. Post progress as you go ("physics done, starting enemies") so teammates can plan around you.
+13. @MENTIONS: write @Name (e.g. @Codex) to direct a message — ONLY the mentioned agents get woken to reply; everyone else just reads it in the log later. Use directed asks instead of waking the whole team.
+14. TASK BOARD: TASKBOARD.md in the workspace is the shared board (a markdown table: task | owner | status | files). CLAIM work there before starting, update your status (planning/working/testing/done) as you go, and check it before touching files another row owns.
+15. LIVE STATUS: your prompt may include a "LIVE RIGHT NOW" section listing teammates who are mid-turn and the files they're editing. NEVER edit those files until they finish — pick other work or wait.
+16. CHAT HYGIENE: describe changes as one-line summaries or tiny diffs — never paste whole files into chat. In MEMORY.md keep one section per topic and prune superseded bullets when you edit. If the shared browser is busy, retry shortly or verify via curl/node instead.`;
   }
 
   unseen() {
@@ -90,12 +111,22 @@ RULES OF THE ROOM:
   buildPrompt() {
     const fresh = this.room.messages.slice(this.seenUpTo);
     this.seenUpTo = this.room.messages.length;
+    const stamp = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const transcript = fresh
       .filter(m => m.from !== this.id)
-      .map(m => `${m.from === 'user' ? 'USER' : m.name.toUpperCase()}: ${m.text}`)
+      .map(m => `[${stamp(m.ts)}] ${m.from === 'user' ? 'USER' : m.name.toUpperCase()}: ${m.text}`)
       .join('\n\n');
     let prompt = '';
-    if (!this.briefed) { prompt += this.briefing() + '\n\n'; this.briefed = true; }
+    if ((this.briefedV || 0) < BRIEF_V) {
+      prompt += (this.briefedV ? '(Updated room briefing — rules have changed:)\n\n' : '') + this.briefing() + '\n\n';
+      this.briefedV = BRIEF_V;
+    }
+    const live = this.room.agents.filter(a => a !== this && a.busy);
+    if (live.length) {
+      prompt += `--- LIVE RIGHT NOW (current, not cached) ---\n` + live.map(a =>
+        `${a.name} is mid-turn${a.currentEdits.size ? `, editing: ${[...a.currentEdits].join(', ')} — do NOT touch these files` : ''}`
+      ).join('\n') + `\n--- END LIVE ---\n\n`;
+    }
     prompt += `--- NEW MESSAGES IN THE ROOM ---\n${transcript}\n--- END ---\n\nDo any real work needed (files/commands in the shared workspace), then post your short reply to the room.`;
     return prompt;
   }
@@ -103,6 +134,10 @@ RULES OF THE ROOM:
   async runTurn() {
     this.busy = true;
     this.setStatus('thinking');
+    const t0 = Date.now();
+    this.stats.turns++;
+    this.stats.lastActive = t0;
+    this.currentEdits = new Set();
     const prompt = this.buildPrompt();
     try {
       const reply = await this.spawnTurn(prompt);
@@ -111,11 +146,16 @@ RULES OF THE ROOM:
     } catch (err) {
       this.room.sys(`⚠ ${this.name} turn failed: ${String(err).slice(0, 300)}`);
     } finally {
+      this.stats.ms += Date.now() - t0;
+      this.stats.lastActive = Date.now();
       this.busy = false;
+      this.currentEdits = new Set();
       this.setStatus('idle');
       this.proc = null;
       this.room.saveState();
+      this.room.broadcastClaims();
       this.room.broadcast('agents', { agents: this.room.agentList() }); // refresh token meters
+      broadcastUsage();
       this.room.scheduleTurns();
     }
   }
@@ -161,6 +201,8 @@ RULES OF THE ROOM:
   }
 }
 
+let lastRateLimit = null; // latest Claude plan window info seen from any agent
+
 class ClaudeAgent extends AgentRunner {
   command() {
     const args = ['-p', '--output-format', 'stream-json', '--verbose',
@@ -174,10 +216,18 @@ class ClaudeAgent extends AgentRunner {
       this.sessionId = ev.session_id;
       if (ev.model) this.model = ev.model;
       this.setStatus('thinking');
+    } else if (ev.type === 'rate_limit_event' && ev.rate_limit_info) {
+      lastRateLimit = ev.rate_limit_info;
     } else if (ev.type === 'assistant' && ev.message?.content) {
       for (const block of ev.message.content) {
         if (block.type === 'tool_use') {
           this.setStatus('working');
+          if (block.name === 'Write' || block.name === 'Edit') {
+            this.stats.files++;
+            this.touchFile(path.basename(block.input?.file_path || ''));
+          }
+          else if (block.name === 'Bash') this.stats.cmds++;
+          else if (block.name === 'WebSearch' || block.name === 'WebFetch') this.stats.searches++;
           this.activity(describeClaudeTool(block));
         }
       }
@@ -202,6 +252,8 @@ function describeClaudeTool(block) {
     case 'Read': return `👁 reading ${f(i.file_path)}`;
     case 'Bash': return `$ ${String(i.command || '').slice(0, 80)}`;
     case 'Glob': case 'Grep': return `🔍 searching ${i.pattern || ''}`;
+    case 'WebSearch': return `🌐 searching web: ${String(i.query || '').slice(0, 60)}`;
+    case 'WebFetch': return `🌐 reading ${String(i.url || '').slice(0, 60)}`;
     default: return `⚙ ${block.name}`;
   }
 }
@@ -209,7 +261,8 @@ function describeClaudeTool(block) {
 class CodexAgent extends AgentRunner {
   command() {
     // NOTE: `codex exec resume` rejects --sandbox; sandbox must go through -c.
-    const base = ['--json', '--skip-git-repo-check', '-c', 'sandbox_mode="workspace-write"', '-c', 'notify=[]'];
+    const base = ['--json', '--skip-git-repo-check', '-c', 'sandbox_mode="workspace-write"',
+      '-c', 'sandbox_workspace_write.network_access=true', '-c', 'tools.web_search=true', '-c', 'notify=[]'];
     const args = this.sessionId
       ? ['exec', 'resume', this.sessionId, ...base, '-']
       : ['exec', ...base, '-'];
@@ -223,11 +276,17 @@ class CodexAgent extends AgentRunner {
       const item = ev.item || {};
       if (item.type === 'command_execution' && ev.type === 'item.started') {
         this.setStatus('working');
+        this.stats.cmds++;
         this.activity(`$ ${String(item.command || '').slice(0, 80)}`);
       } else if (item.type === 'file_change' && ev.type === 'item.completed') {
         this.setStatus('working');
+        this.stats.files += (item.changes || []).length || 1;
+        for (const c of item.changes || []) this.touchFile(path.basename(c.path || ''));
         const files = (item.changes || []).map(c => path.basename(c.path || '')).join(', ');
         this.activity(`✏️ changed ${files || 'files'}`);
+      } else if (item.type === 'web_search' && ev.type === 'item.completed') {
+        this.stats.searches++;
+        this.activity(`🌐 searched: ${String(item.query || '').slice(0, 60)}`);
       } else if (item.type === 'reasoning' && ev.type === 'item.completed') {
         this.setStatus('thinking');
       } else if (item.type === 'agent_message' && ev.type === 'item.completed' && item.text) {
@@ -280,7 +339,11 @@ class Room {
     fs.mkdirSync(this.workspace, { recursive: true });
     const memFile = path.join(this.workspace, 'MEMORY.md');
     if (!fs.existsSync(memFile)) {
-      fs.writeFileSync(memFile, `# Team Memory — ${id}\n\n(Agents: keep short bullets here — decisions, conventions, status. Read on start.)\n`);
+      fs.writeFileSync(memFile, `# Team Memory — ${id}\n\n(Agents: keep short bullets here — decisions, conventions, status. One section per topic; prune superseded bullets.)\n`);
+    }
+    const boardFile = path.join(this.workspace, 'TASKBOARD.md');
+    if (!fs.existsSync(boardFile)) {
+      fs.writeFileSync(boardFile, `# Task Board — ${id}\n\n| task | owner | status | files |\n|------|-------|--------|-------|\n`);
     }
     this.messages = [];
     this.clients = new Set();
@@ -290,6 +353,8 @@ class Room {
     this.capNoticeShown = false;
     this.lastTree = '';
     this.saveTimer = null;
+    this.imgPrev = new Map();   // image sizes last tick (write-stability check)
+    this.imgPosted = null;      // image sizes already posted to chat (null = not baselined)
     this.loadState();
   }
 
@@ -301,9 +366,10 @@ class Room {
         const a = this.agents.find(x => x.id === sa.id);
         if (a) {
           a.sessionId = sa.sessionId || null;
-          a.briefed = !!sa.briefed;
+          a.briefedV = sa.briefedV || (sa.briefed ? 1 : 0); // legacy boolean = v1
           a.seenUpTo = Math.min(sa.seenUpTo || 0, this.messages.length);
           if (sa.tokens) a.tokens = sa.tokens;
+          if (sa.stats) a.stats = { ...a.stats, ...sa.stats };
         }
       }
     } catch {}
@@ -314,7 +380,7 @@ class Room {
     this.saveTimer = setTimeout(() => {
       const state = {
         messages: this.messages,
-        agents: this.agents.map(a => ({ id: a.id, sessionId: a.sessionId, briefed: a.briefed, seenUpTo: a.seenUpTo, tokens: a.tokens })),
+        agents: this.agents.map(a => ({ id: a.id, sessionId: a.sessionId, briefedV: a.briefedV || 0, seenUpTo: a.seenUpTo, tokens: a.tokens, stats: a.stats })),
       };
       fs.writeFile(this.stateFile, JSON.stringify(state), () => {});
     }, 300);
@@ -325,8 +391,9 @@ class Room {
     for (const res of this.clients) res.write(line);
   }
 
-  post(from, name, text) {
+  post(from, name, text, img) {
     const m = { n: this.messages.length, from, name, text, ts: Date.now() };
+    if (img) m.img = img;
     this.messages.push(m);
     this.broadcast('msg', m);
     this.saveState();
@@ -334,26 +401,52 @@ class Room {
   }
   sys(text) { this.post('system', 'system', text); }
 
+  claimsMap() {
+    const claims = {};
+    for (const a of this.agents) {
+      if (!a.busy) continue;
+      for (const f of a.currentEdits) claims[f] = { id: a.id, name: a.name, color: a.color };
+    }
+    return claims;
+  }
+  broadcastClaims() { this.broadcast('claims', { claims: this.claimsMap() }); }
+
+  // @Name tokens that match a real agent in the room (case-insensitive)
+  mentionTargets(text) {
+    const targets = new Set();
+    for (const m of String(text).matchAll(/@([A-Za-z0-9_-]+)/g)) {
+      const a = this.agents.find(x => x.name.toLowerCase() === m[1].toLowerCase());
+      if (a) targets.add(a.id);
+    }
+    return targets;
+  }
+
+  // Does this message wake this agent? (@mentions route; [IDLE] doesn't wake)
+  wakes(m, agent) {
+    if (m.from === 'system' || m.from === agent.id) return false;
+    const targets = this.mentionTargets(m.text);
+    if (targets.size) return targets.has(agent.id); // routed: only mentioned agents wake
+    if (m.from === 'user') return true;
+    return !saidIdle(m.text);
+  }
+
   scheduleTurns() {
     if (!this.running) return;
     for (const agent of this.agents) {
       if (agent.busy) continue;
-      const unseen = agent.unseen();
+      const unseen = this.messages.slice(agent.seenUpTo);
       if (!unseen.length) continue;
-      const fromUser = unseen.some(m => m.from === 'user');
-      const substantive = unseen.some(m => m.from !== 'user' && m.from !== 'system' && !saidIdle(m.text));
-      if (fromUser) {
-        // user messages always wake agents
-      } else if (!substantive) {
-        agent.seenUpTo = this.messages.length;
-        continue;
-      } else if (this.autoTurns >= MAX_AUTO_TURNS) {
-        if (!this.capNoticeShown) {
-          this.capNoticeShown = true;
-          this.sys(`⏸ auto-chat paused after ${MAX_AUTO_TURNS} agent turns — send a message to keep them going.`);
+      const wakers = unseen.filter(m => this.wakes(m, agent));
+      if (!wakers.length) continue; // stays asleep; unseen still delivered as context on next wake
+      const userWake = wakers.some(m => m.from === 'user');
+      if (!userWake) {
+        if (this.autoTurns >= MAX_AUTO_TURNS) {
+          if (!this.capNoticeShown) {
+            this.capNoticeShown = true;
+            this.sys(`⏸ auto-chat paused after ${MAX_AUTO_TURNS} agent turns — send a message to keep them going.`);
+          }
+          continue;
         }
-        continue;
-      } else {
         this.autoTurns++;
       }
       agent.runTurn(); // async, agents run in parallel
@@ -378,7 +471,7 @@ class Room {
   }
 
   agentList() {
-    return this.agents.map(a => ({ id: a.id, name: a.name, color: a.color, model: a.model, status: a.status, tokens: a.tokens }));
+    return this.agents.map(a => ({ id: a.id, name: a.name, color: a.color, model: a.model, status: a.status, tokens: a.tokens, stats: a.stats }));
   }
 
   addAgent(def) {
@@ -408,6 +501,9 @@ class Room {
       messages: this.messages,
       agents: this.agentList(),
       files: this.listTree(),
+      claims: this.claimsMap(),
+      paused: !this.running,
+      usage: { room: roomUsage(this), global: globalUsage(), rateLimit: lastRateLimit },
       port: PORT,
     };
   }
@@ -433,6 +529,23 @@ function broadcastAll(type, data) {
   for (const room of rooms.values()) room.broadcast(type, data);
 }
 
+function roomUsage(room) {
+  let tok = 0, cost = 0;
+  for (const a of room.agents) { tok += (a.tokens.in || 0) + (a.tokens.out || 0); cost += a.tokens.cost || 0; }
+  return { tok, cost };
+}
+function globalUsage() {
+  let tok = 0, cost = 0;
+  for (const r of rooms.values()) { const u = roomUsage(r); tok += u.tok; cost += u.cost; }
+  return { tok, cost };
+}
+function broadcastUsage() {
+  const global = globalUsage();
+  for (const room of rooms.values()) {
+    room.broadcast('usage', { room: roomUsage(room), global, rateLimit: lastRateLimit });
+  }
+}
+
 // boot existing projects; guarantee at least one
 for (const id of listProjects()) getRoom(id);
 if (!rooms.size) getRoom('playground');
@@ -440,10 +553,25 @@ if (!rooms.size) getRoom('playground');
 // ---------------------------------------------------------------- file watcher
 setInterval(() => {
   for (const room of rooms.values()) {
-    if (!room.clients.size) continue;
+    if (!room.clients.size && !room.agents.some(a => a.busy)) continue;
     const tree = room.listTree();
     const key = JSON.stringify(tree);
     if (key !== room.lastTree) { room.lastTree = key; room.broadcast('files', { files: tree }); }
+
+    // post new/changed screenshots to the chat once their size is stable
+    const imgs = tree.filter(f => /\.(png|jpe?g|gif|webp)$/i.test(f.path));
+    if (room.imgPosted === null) {
+      room.imgPosted = new Map(imgs.map(f => [f.path, f.size]));
+    } else {
+      for (const f of imgs) {
+        if (room.imgPosted.get(f.path) === f.size) continue;
+        if (room.imgPrev.get(f.path) === f.size) { // unchanged across 2 ticks = fully written
+          room.imgPosted.set(f.path, f.size);
+          room.post('system', 'system', `📸 ${f.path}`, f.path);
+        }
+      }
+    }
+    room.imgPrev = new Map(imgs.map(f => [f.path, f.size]));
   }
 }, 2000);
 
@@ -498,7 +626,33 @@ const server = http.createServer(async (req, res) => {
     if (room) {
       room.running = false;
       for (const a of room.agents) a.kill();
-      room.sys('⏹ stopped — agents halted. Send a message to resume.');
+      room.sys('⏹ stopped — agent turns killed. Hit Resume or send a message to continue.');
+      room.broadcast('paused', { paused: true });
+    }
+    res.writeHead(200); res.end('{"ok":true}');
+    return;
+  }
+
+  if (p === '/pause' && req.method === 'POST') {
+    const { project } = await readBody(req);
+    const room = getRoom(project);
+    if (room && room.running) {
+      room.running = false; // in-flight turns finish; no new turns start
+      room.sys('⏸ paused — current turns will finish, then everyone holds.');
+      room.broadcast('paused', { paused: true });
+    }
+    res.writeHead(200); res.end('{"ok":true}');
+    return;
+  }
+
+  if (p === '/resume' && req.method === 'POST') {
+    const { project } = await readBody(req);
+    const room = getRoom(project);
+    if (room && !room.running) {
+      room.running = true;
+      room.sys('▶ resumed.');
+      room.broadcast('paused', { paused: false });
+      room.scheduleTurns();
     }
     res.writeHead(200); res.end('{"ok":true}');
     return;
@@ -562,6 +716,8 @@ const server = http.createServer(async (req, res) => {
     if (!room) { res.writeHead(404); res.end('no such project'); return; }
     const file = path.normalize(path.join(room.workspace, decodeURIComponent(m[2])));
     if (!file.startsWith(room.workspace)) { res.writeHead(403); res.end(); return; }
+    const ext = path.extname(file).toLowerCase();
+    if (MIME[ext] && MIME[ext] !== 'text/html') return serveFile(res, file); // images etc. render natively
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     return fs.readFile(file, (e, d) => res.end(e ? 'not found' : d));
   }

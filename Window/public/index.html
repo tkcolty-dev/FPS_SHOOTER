@@ -60,6 +60,21 @@
     background: var(--panel); display: flex; flex-direction: column; overflow-y: auto;
   }
   .side h3 { font-size: 10px; letter-spacing: 2px; color: var(--dim); padding: 12px 14px 6px; }
+  .side-tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .side-tab { flex: 1; text-align: center; padding: 10px 0; font-size: 10px; letter-spacing: 1.5px; color: var(--dim); cursor: pointer; border-bottom: 2px solid transparent; user-select: none; }
+  .side-tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .side-tab:hover:not(.active) { color: var(--text); }
+  .pane { flex: 1; overflow-y: auto; padding-top: 8px; }
+  .pane[hidden] { display: none; }
+
+  /* stats pane */
+  .stat-card { margin: 4px 10px 10px; padding: 10px 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; }
+  .stat-card .sname { font-weight: 700; font-size: 13px; }
+  .stat-card .smodel { color: var(--dim); font-size: 10px; margin-bottom: 6px; word-break: break-all; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; color: var(--text); }
+  .stat-row .k { color: var(--dim); }
+  .room-stats { margin: 4px 10px 12px; padding: 8px 12px; border: 1px dashed var(--border); border-radius: 8px; font-size: 11px; color: var(--dim); }
+  .room-stats b { color: var(--text); }
   .agent-card { margin: 4px 10px; padding: 10px 12px; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; position: relative; }
   .agent-kick { position: absolute; top: 6px; right: 8px; color: var(--dim); cursor: pointer; font-size: 11px; display: none; }
   .agent-card:hover .agent-kick { display: block; }
@@ -79,6 +94,12 @@
   }
   .dialog input:focus, .dialog select:focus { border-color: #35506e; }
   .dialog .row2 { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+  /* usage bar */
+  .usagebar { display: flex; gap: 18px; align-items: center; padding: 6px 16px; border-top: 1px solid var(--border); background: var(--panel); font-size: 11px; color: var(--dim); white-space: nowrap; overflow-x: auto; }
+  .usagebar b { color: var(--text); font-weight: 600; }
+  .usagebar .ok { color: var(--green); }
+  .usagebar .warn { color: #febc2e; }
   .agent-card .row { display: flex; align-items: center; gap: 8px; }
   .agent-name { font-weight: 700; font-size: 14px; }
   .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #28c840; box-shadow: 0 0 6px rgba(40,200,64,.5); margin-left: auto; }
@@ -95,6 +116,17 @@
   .file { display: flex; padding: 3px 16px; color: var(--text); cursor: pointer; font-size: 12px; text-decoration: none; }
   .file:hover { background: var(--panel2); }
   .file .sz { margin-left: auto; color: var(--dim); font-size: 10px; }
+  .file .claim { margin-left: 8px; font-size: 10px; }
+
+  /* pinned task board */
+  .board { border-bottom: 1px solid var(--border); background: var(--panel); max-height: 150px; overflow-y: auto; }
+  .board[hidden] { display: none; }
+  .board-head { display: flex; align-items: center; padding: 6px 14px; font-size: 10px; letter-spacing: 2px; color: var(--dim); cursor: pointer; user-select: none; }
+  .board-head .chev { margin-left: auto; }
+  .board-body { padding: 0 14px 8px; font-size: 11.5px; white-space: pre-wrap; color: var(--text); font-family: inherit; }
+  .board-body table { border-collapse: collapse; width: 100%; }
+  .board-body td, .board-body th { border: 1px solid var(--border); padding: 3px 8px; text-align: left; font-size: 11px; }
+  .board-body th { color: var(--dim); font-weight: 600; }
   .nofiles { color: var(--dim); padding: 4px 16px; font-size: 11px; font-style: italic; }
 
   /* chat */
@@ -107,6 +139,7 @@
   .msg.user .head { color: var(--user); }
   .msg.system .body { color: var(--sys); font-style: italic; font-size: 12px; }
   .msg .idle-tag { color: var(--dim); font-size: 10px; border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; margin-left: 8px; }
+  .chat-img { display: block; max-width: min(420px, 90%); max-height: 260px; margin-top: 6px; border: 1px solid var(--border); border-radius: 8px; }
   .act-line { color: var(--dim); font-size: 11.5px; padding: 1px 0 1px 14px; }
   .act-line b { font-weight: 600; }
 
@@ -134,23 +167,39 @@
     <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
     <div class="title">AGENT TERMINAL — MULTI-AGENT ROOM</div>
     <button class="btn preview" id="previewBtn">▶ Live Build</button>
+    <button class="btn" id="pauseBtn" style="color:#febc2e">⏸ Pause</button>
     <button class="btn stop" id="stopBtn">■ Stop</button>
   </div>
   <div class="tabs" id="tabs"></div>
   <div class="main">
     <div class="side">
-      <h3>AGENTS</h3>
-      <div id="agents"></div>
-      <div class="connect-btn" id="connectBtn">+ connect agent</div>
-      <h3>WORKSPACE</h3>
-      <div class="files" id="files"><div class="nofiles">empty — give them a task</div></div>
+      <div class="side-tabs">
+        <div class="side-tab active" data-pane="agents">AGENTS</div>
+        <div class="side-tab" data-pane="files">FILES</div>
+        <div class="side-tab" data-pane="stats">STATS</div>
+      </div>
+      <div class="pane" id="pane-agents">
+        <div id="agents"></div>
+        <div class="connect-btn" id="connectBtn">+ connect agent</div>
+      </div>
+      <div class="pane" id="pane-files" hidden>
+        <div class="files" id="files"><div class="nofiles">empty — give them a task</div></div>
+      </div>
+      <div class="pane" id="pane-stats" hidden>
+        <div id="stats"></div>
+      </div>
     </div>
     <div class="chat-wrap">
+      <div class="board" id="board" hidden>
+        <div class="board-head" id="boardHead">TASK BOARD<span class="chev" id="boardChev">▾</span></div>
+        <div class="board-body" id="boardBody"></div>
+      </div>
       <div class="chat" id="chat"></div>
       <div class="inputbar">
         <span class="prompt-char">❯</span>
         <input id="input" placeholder="Tell your agents what to build… (they'll coordinate with each other)" autofocus>
       </div>
+      <div class="usagebar" id="usagebar">💰 usage: waiting for first turn…</div>
     </div>
     <div class="preview-pane" id="previewPane" hidden>
       <div class="preview-head">LIVE BUILD<span class="reload" id="reloadBtn">↻ reload</span><a href="/preview/" target="_blank" id="previewTab">open in tab ↗</a></div>
@@ -202,8 +251,9 @@ function addMsg(m) {
   let text = m.text;
   const idle = /\[IDLE\]\s*$/i.test(text.trim());
   if (idle) text = text.replace(/\[IDLE\]\s*$/i, '').trim();
+  const imgHtml = m.img ? `<a href="/file/${encodeURIComponent(currentProject)}/${encodeURIComponent(m.img)}" target="_blank"><img class="chat-img" src="/file/${encodeURIComponent(currentProject)}/${encodeURIComponent(m.img)}?v=${m.ts}" loading="lazy"></a>` : '';
   if (m.from === 'system') {
-    div.innerHTML = `<div class="body">${esc(m.text)}</div>`;
+    div.innerHTML = `<div class="body">${esc(m.text)}</div>${imgHtml}`;
   } else {
     const name = m.from === 'user' ? 'you' : esc(m.name);
     const color = m.from === 'user' ? 'var(--user)' : (agentInfo[m.from]?.color || 'var(--text)');
@@ -261,12 +311,92 @@ function renderAgents() {
   });
 }
 
-function renderFiles(files) {
-  if (!files.length) { filesEl.innerHTML = '<div class="nofiles">empty — give them a task</div>'; return; }
-  filesEl.innerHTML = files.map(f =>
-    `<a class="file" href="/file/${encodeURIComponent(currentProject)}/${encodeURIComponent(f.path)}" target="_blank">${esc(f.path)}<span class="sz">${f.size > 1024 ? (f.size/1024).toFixed(1)+'k' : f.size+'b'}</span></a>`
-  ).join('');
+function ago(ts) {
+  if (!ts) return 'never';
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return Math.floor(s/3600) + 'h ago';
 }
+
+function renderStats() {
+  const el = document.getElementById('stats');
+  let totalMsgs = 0, totalCost = 0, totalTok = 0;
+  let html = '';
+  for (const id in agentInfo) {
+    const a = agentInfo[id];
+    const s = a.stats || {};
+    const t = a.tokens || { in: 0, out: 0, cost: 0 };
+    totalCost += t.cost || 0; totalTok += (t.in || 0) + (t.out || 0);
+    const avg = s.turns ? Math.round((s.ms || 0) / s.turns / 1000) : 0;
+    html += `
+      <div class="stat-card">
+        <div class="sname" style="color:${a.color}">${esc(a.name)}</div>
+        <div class="smodel">${esc(a.model || '')}</div>
+        <div class="stat-row"><span class="k">turns taken</span><span>${s.turns || 0}</span></div>
+        <div class="stat-row"><span class="k">avg turn time</span><span>${avg}s</span></div>
+        <div class="stat-row"><span class="k">files edited</span><span>${s.files || 0}</span></div>
+        <div class="stat-row"><span class="k">commands run</span><span>${s.cmds || 0}</span></div>
+        <div class="stat-row"><span class="k">web searches</span><span>${s.searches || 0}</span></div>
+        <div class="stat-row"><span class="k">tokens</span><span>${kfmt((t.in||0)+(t.out||0))}</span></div>
+        ${t.cost ? `<div class="stat-row"><span class="k">est. cost</span><span>~$${t.cost.toFixed(2)}</span></div>` : ''}
+        <div class="stat-row"><span class="k">last active</span><span>${ago(s.lastActive)}</span></div>
+      </div>`;
+  }
+  el.innerHTML = `<div class="room-stats">room total: <b>${kfmt(totalTok)}</b> tokens${totalCost ? ` · <b>~$${totalCost.toFixed(2)}</b> (claude side)` : ''}</div>` + html;
+}
+
+document.querySelectorAll('.side-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.side-tab').forEach(t => t.classList.toggle('active', t === tab));
+    document.querySelectorAll('.pane').forEach(p => p.hidden = p.id !== 'pane-' + tab.dataset.pane);
+    if (tab.dataset.pane === 'stats') renderStats();
+  };
+});
+
+let lastFiles = [], claims = {};
+function renderFiles(files) {
+  if (files) lastFiles = files;
+  files = lastFiles;
+  if (!files.length) { filesEl.innerHTML = '<div class="nofiles">empty — give them a task</div>'; return; }
+  filesEl.innerHTML = files.map(f => {
+    const base = f.path.split('/').pop();
+    const c = claims[base];
+    const badge = c ? `<span class="claim" style="color:${c.color}">✏ ${esc(c.name)}</span>` : '';
+    return `<a class="file" href="/file/${encodeURIComponent(currentProject)}/${encodeURIComponent(f.path)}" target="_blank">${esc(f.path)}${badge}<span class="sz">${f.size > 1024 ? (f.size/1024).toFixed(1)+'k' : f.size+'b'}</span></a>`;
+  }).join('');
+}
+
+// ---- pinned task board (renders TASKBOARD.md)
+let boardSize = -1, boardCollapsed = false;
+function mdTableToHtml(md) {
+  const rows = md.split('\n').filter(l => l.trim().startsWith('|'));
+  const cells = rows.map(r => r.split('|').slice(1, -1).map(c => c.trim())).filter(r => r.length && !r[0].match(/^-+$/));
+  const data = cells.filter(r => !r.every(c => /^-*$/.test(c)));
+  if (data.length < 2) return null; // header only = empty board
+  return '<table><tr>' + data[0].map(c => `<th>${esc(c)}</th>`).join('') + '</tr>' +
+    data.slice(1).map(r => '<tr>' + r.map(c => `<td>${esc(c)}</td>`).join('') + '</tr>').join('') + '</table>';
+}
+async function refreshBoard(files) {
+  const f = (files || lastFiles).find(x => x.path === 'TASKBOARD.md');
+  const boardEl = document.getElementById('board');
+  if (!f) { boardEl.hidden = true; boardSize = -1; return; }
+  if (f.size === boardSize) return;
+  boardSize = f.size;
+  try {
+    const md = await (await fetch(`/file/${encodeURIComponent(currentProject)}/TASKBOARD.md?t=` + Date.now())).text();
+    const html = mdTableToHtml(md);
+    if (!html) { boardEl.hidden = true; return; }
+    document.getElementById('boardBody').innerHTML = html;
+    boardEl.hidden = false;
+    document.getElementById('boardBody').style.display = boardCollapsed ? 'none' : '';
+  } catch { boardEl.hidden = true; }
+}
+document.getElementById('boardHead').onclick = () => {
+  boardCollapsed = !boardCollapsed;
+  document.getElementById('boardBody').style.display = boardCollapsed ? 'none' : '';
+  document.getElementById('boardChev').textContent = boardCollapsed ? '▸' : '▾';
+};
 
 // ---- projects & tabs
 let currentProject = new URLSearchParams(location.search).get('project') || '';
@@ -320,7 +450,11 @@ function connect(project) {
       for (const a of ev.agents) agentInfo[a.id] = a;
       renderAgents();
       for (const m of ev.messages) addMsg(m);
+      claims = ev.claims || {};
       renderFiles(ev.files || []);
+      boardSize = -1; refreshBoard(ev.files || []);
+      setPaused(ev.paused);
+      if (ev.usage) renderUsage(ev.usage);
       schedulePreviewReload(ev.files || [], true);
       scrollDown(true);
       if (!ev.messages.length) addMsg({ from: 'system', text: '● room open — your agents are standing by. Type a task below.', ts: Date.now() });
@@ -331,12 +465,16 @@ function connect(project) {
       const a = agentInfo[ev.agent];
       if (a) { a.status = ev.status; if (ev.model) a.model = ev.model; renderAgents(); }
     }
-    else if (ev.type === 'files') { renderFiles(ev.files); schedulePreviewReload(ev.files); }
+    else if (ev.type === 'files') { renderFiles(ev.files); refreshBoard(ev.files); schedulePreviewReload(ev.files); }
+    else if (ev.type === 'claims') { claims = ev.claims || {}; renderFiles(); }
+    else if (ev.type === 'paused') setPaused(ev.paused);
+    else if (ev.type === 'usage') renderUsage(ev);
     else if (ev.type === 'projects') { projects = ev.projects || []; renderTabs(); }
     else if (ev.type === 'agents') {
       for (const k in agentInfo) delete agentInfo[k];
       for (const a of ev.agents) agentInfo[a.id] = a;
       renderAgents();
+      if (!document.getElementById('pane-stats').hidden) renderStats();
     }
   };
 }
@@ -372,6 +510,31 @@ input.addEventListener('keydown', e => {
   }
 });
 document.getElementById('stopBtn').onclick = () => fetch('/stop', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ project: currentProject }) });
+
+function renderUsage(u) {
+  const bar = document.getElementById('usagebar');
+  const r = u.room || { tok: 0, cost: 0 }, g = u.global || { tok: 0, cost: 0 };
+  let plan = '';
+  if (u.rateLimit) {
+    const ok = u.rateLimit.status === 'allowed';
+    const resets = u.rateLimit.resetsAt ? new Date(u.rateLimit.resetsAt * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '?';
+    plan = `<span>claude plan: <span class="${ok ? 'ok' : 'warn'}">${ok ? '● OK' : '▲ ' + esc(u.rateLimit.status)}</span> · ${esc(u.rateLimit.rateLimitType || '').replace('_',' ')} window resets <b>${resets}</b></span>`;
+  }
+  bar.innerHTML =
+    `<span>💰 this room: <b>${kfmt(r.tok)}</b> tok · <b>~$${r.cost.toFixed(2)}</b></span>` +
+    `<span>all projects: <b>${kfmt(g.tok)}</b> tok · <b>~$${g.cost.toFixed(2)}</b></span>` + plan +
+    `<span style="margin-left:auto">$ = claude side only · codex bills to your ChatGPT plan</span>`;
+}
+
+let isPaused = false;
+function setPaused(p) {
+  isPaused = !!p;
+  const b = document.getElementById('pauseBtn');
+  b.textContent = isPaused ? '▶ Resume' : '⏸ Pause';
+  b.style.color = isPaused ? '#28c840' : '#febc2e';
+}
+document.getElementById('pauseBtn').onclick = () =>
+  fetch(isPaused ? '/resume' : '/pause', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ project: currentProject }) });
 
 // ---- connect agent dialog
 const overlay = document.getElementById('overlay');
