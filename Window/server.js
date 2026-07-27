@@ -370,6 +370,7 @@ class Room {
           a.seenUpTo = Math.min(sa.seenUpTo || 0, this.messages.length);
           if (sa.tokens) a.tokens = sa.tokens;
           if (sa.stats) a.stats = { ...a.stats, ...sa.stats };
+          if (sa.model) a.model = sa.model;
         }
       }
     } catch {}
@@ -380,7 +381,7 @@ class Room {
     this.saveTimer = setTimeout(() => {
       const state = {
         messages: this.messages,
-        agents: this.agents.map(a => ({ id: a.id, sessionId: a.sessionId, briefedV: a.briefedV || 0, seenUpTo: a.seenUpTo, tokens: a.tokens, stats: a.stats })),
+        agents: this.agents.map(a => ({ id: a.id, sessionId: a.sessionId, briefedV: a.briefedV || 0, seenUpTo: a.seenUpTo, tokens: a.tokens, stats: a.stats, model: a.model })),
       };
       fs.writeFile(this.stateFile, JSON.stringify(state), () => {});
     }, 300);
@@ -598,6 +599,27 @@ const server = http.createServer(async (req, res) => {
   const p = url.pathname;
 
   if (p === '/') return serveFile(res, path.join(ROOT, 'public', 'index.html'));
+  if (p === '/usage') return serveFile(res, path.join(ROOT, 'public', 'usage.html'));
+
+  if (p === '/usage.json') {
+    const data = {
+      updated: Date.now(),
+      rateLimit: lastRateLimit,
+      global: globalUsage(),
+      rooms: [...rooms.values()].map(r => ({
+        id: r.id,
+        usage: roomUsage(r),
+        agents: r.agents.map(a => ({
+          id: a.id, name: a.name, color: a.color, model: a.model, status: a.status,
+          type: a instanceof CodexAgent ? 'codex' : 'claude',
+          tokens: a.tokens, stats: a.stats,
+        })),
+      })),
+    };
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(data));
+    return;
+  }
 
   if (p === '/events') {
     const room = getRoom(url.searchParams.get('project') || listProjects()[0] || 'playground');

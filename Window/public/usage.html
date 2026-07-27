@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USAGE — Agent Terminal</title>
+<style>
+  :root {
+    --bg: #0a0e14; --panel: #0f141c; --panel2: #131a24; --border: #1e2836;
+    --text: #c8d3e0; --dim: #5c6b80; --green: #7ee787; --warn: #febc2e; --red: #ff5f57;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #05070a; color: var(--text); font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px; padding: 24px; }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 14px; letter-spacing: 3px; color: var(--dim); margin-bottom: 4px; }
+  .sub { color: var(--dim); font-size: 11px; margin-bottom: 20px; }
+  .sub a { color: var(--green); text-decoration: none; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .card h2 { font-size: 11px; letter-spacing: 2px; color: var(--dim); margin-bottom: 12px; }
+  .big { font-size: 26px; font-weight: 700; color: var(--text); }
+  .big .unit { font-size: 12px; color: var(--dim); font-weight: 400; }
+  .kv { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+  .kv .k { color: var(--dim); }
+  .ok { color: var(--green); } .warn { color: var(--warn); } .bad { color: var(--red); }
+  .bar { height: 8px; background: var(--panel2); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; margin: 8px 0 4px; }
+  .bar > div { height: 100%; background: var(--green); }
+  table { border-collapse: collapse; width: 100%; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  th, td { padding: 8px 14px; text-align: left; font-size: 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--dim); font-weight: 600; font-size: 10px; letter-spacing: 1.5px; background: var(--panel2); }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; }
+  .proj { color: var(--dim); font-size: 11px; }
+  .agent-name { font-weight: 700; }
+  .section { font-size: 11px; letter-spacing: 2px; color: var(--dim); margin: 24px 0 10px; }
+  .note { color: var(--dim); font-size: 11px; margin-top: 16px; line-height: 1.6; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3a4a5e; margin-right: 6px; }
+  .dot.busy { background: var(--green); box-shadow: 0 0 6px rgba(40,200,64,.8); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>USAGE &amp; PLANS</h1>
+  <div class="sub">auto-refreshes every 5s · <a href="/">← back to terminal</a> · last updated <span id="upd">…</span></div>
+
+  <div class="cards" id="cards">loading…</div>
+
+  <div class="section">PER PROJECT · PER AGENT</div>
+  <div id="tableWrap">loading…</div>
+
+  <div class="note">
+    <b>How billing works:</b> Claude-family agents (Fable, Sonnet, Haiku, Opus) spend from your <b>Claude plan</b> — the window status above is live from Anthropic's rate-limit headers.
+    Codex spends from your <b>ChatGPT plan</b>; OpenAI doesn't expose remaining quota through the CLI, so its card shows what this terminal has consumed.
+    Token counts include cached context re-reads, which cost far less than fresh tokens — the $ estimate (Claude side, reported by the CLI itself) is the number that matters.
+  </div>
+</div>
+<script>
+function kfmt(n) { return n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n||0); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function ago(ts) {
+  if (!ts) return '—';
+  const s = Math.floor((Date.now()-ts)/1000);
+  return s < 60 ? s+'s ago' : s < 3600 ? Math.floor(s/60)+'m ago' : Math.floor(s/3600)+'h ago';
+}
+
+async function refresh() {
+  let d;
+  try { d = await (await fetch('/usage.json')).json(); } catch { return; }
+  document.getElementById('upd').textContent = new Date(d.updated).toLocaleTimeString();
+
+  // --- summary cards
+  let claudeTok = 0, claudeCost = 0, codexTok = 0, turns = 0;
+  for (const r of d.rooms) for (const a of r.agents) {
+    turns += a.stats?.turns || 0;
+    if (a.type === 'codex') codexTok += (a.tokens.in||0)+(a.tokens.out||0);
+    else { claudeTok += (a.tokens.in||0)+(a.tokens.out||0); claudeCost += a.tokens.cost||0; }
+  }
+  const rl = d.rateLimit;
+  let planHtml = '<div class="kv"><span class="k">status</span><span class="warn">no turns yet this session</span></div>';
+  if (rl) {
+    const ok = rl.status === 'allowed';
+    const resets = rl.resetsAt ? new Date(rl.resetsAt*1000).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) : '?';
+    planHtml =
+      `<div class="kv"><span class="k">window status</span><span class="${ok?'ok':'bad'}">${ok?'● allowed':'▲ '+esc(rl.status)}</span></div>` +
+      `<div class="kv"><span class="k">window type</span><span>${esc((rl.rateLimitType||'').replace(/_/g,' '))}</span></div>` +
+      `<div class="kv"><span class="k">resets at</span><span>${resets}</span></div>` +
+      (rl.utilization != null ? `<div class="bar"><div style="width:${Math.min(100,rl.utilization)}%"></div></div><div class="kv"><span class="k">window used</span><span>${rl.utilization}%</span></div>` : '') +
+      `<div class="kv"><span class="k">overage</span><span>${esc(rl.overageStatus||'n/a')}${rl.isUsingOverage?' (in use!)':''}</span></div>`;
+  }
+  document.getElementById('cards').innerHTML = `
+    <div class="card">
+      <h2>CLAUDE PLAN (fable · sonnet · haiku)</h2>
+      <div class="big">~$${claudeCost.toFixed(2)} <span class="unit">est. API-equivalent spend</span></div>
+      <div class="kv"><span class="k">tokens through terminal</span><span>${kfmt(claudeTok)}</span></div>
+      ${planHtml}
+    </div>
+    <div class="card">
+      <h2>CHATGPT PLAN (codex · gpt-5)</h2>
+      <div class="big">${kfmt(codexTok)} <span class="unit">tokens through terminal</span></div>
+      <div class="kv"><span class="k">billing</span><span>your ChatGPT subscription</span></div>
+      <div class="kv"><span class="k">remaining quota</span><span class="k">not exposed by OpenAI CLI</span></div>
+    </div>
+    <div class="card">
+      <h2>ALL PROJECTS TOTAL</h2>
+      <div class="big">${kfmt(d.global.tok)} <span class="unit">tokens</span></div>
+      <div class="kv"><span class="k">est. cost (claude side)</span><span>~$${d.global.cost.toFixed(2)}</span></div>
+      <div class="kv"><span class="k">agent turns taken</span><span>${turns}</span></div>
+      <div class="kv"><span class="k">projects</span><span>${d.rooms.length}</span></div>
+    </div>`;
+
+  // --- per project/agent table
+  let rows = '';
+  for (const r of d.rooms) {
+    const ru = r.usage;
+    rows += `<tr><td colspan="4" class="proj">▸ ${esc(r.id)}</td><td class="num proj">${kfmt(ru.tok)}</td><td class="num proj">${ru.cost?'~$'+ru.cost.toFixed(2):''}</td><td></td></tr>`;
+    for (const a of r.agents) {
+      const t = a.tokens, s = a.stats || {};
+      if (!(t.in||t.out||s.turns)) continue;
+      rows += `<tr>
+        <td><span class="dot ${a.status!=='idle'?'busy':''}"></span><span class="agent-name" style="color:${a.color}">${esc(a.name)}</span></td>
+        <td>${esc(a.model)}</td>
+        <td class="num">${s.turns||0}</td>
+        <td class="num">${s.files||0} files · ${s.cmds||0} cmds · ${s.searches||0} 🌐</td>
+        <td class="num">${kfmt((t.in||0)+(t.out||0))}</td>
+        <td class="num">${t.cost?'~$'+t.cost.toFixed(2):'—'}</td>
+        <td class="num">${ago(s.lastActive)}</td>
+      </tr>`;
+    }
+  }
+  document.getElementById('tableWrap').innerHTML =
+    `<table><tr><th>AGENT</th><th>MODEL</th><th class="num">TURNS</th><th class="num">WORK DONE</th><th class="num">TOKENS</th><th class="num">EST. COST</th><th class="num">LAST ACTIVE</th></tr>${rows}</table>`;
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
