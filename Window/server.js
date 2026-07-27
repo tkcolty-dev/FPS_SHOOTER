@@ -17,7 +17,7 @@ const PROJECTS_DIR = path.join(ROOT, 'projects');
 const CODEX_BIN = '/Applications/ChatGPT.app/Contents/Resources/codex';
 const MAX_AUTO_TURNS = 16;     // agent-to-agent turns allowed per user message
 const TURN_TIMEOUT_MS = 15 * 60 * 1000;
-const BRIEF_V = 4;             // bump to re-send the room briefing to existing agents
+const BRIEF_V = 5;             // bump to re-send the room briefing to existing agents
 
 // ---------------------------------------------------------------- migration
 // v1 kept a single ./workspace + ./state.json — fold it into projects/drum-machine
@@ -101,7 +101,8 @@ RULES OF THE ROOM:
 13. @MENTIONS: write @Name (e.g. @Codex) to direct a message — ONLY the mentioned agents get woken to reply; everyone else just reads it in the log later. Use directed asks instead of waking the whole team.
 14. TASK BOARD: TASKBOARD.md in the workspace is the shared board (a markdown table: task | owner | status | files). CLAIM work there before starting, update your status (planning/working/testing/done) as you go, and check it before touching files another row owns.
 15. LIVE STATUS: your prompt may include a "LIVE RIGHT NOW" section listing teammates who are mid-turn and the files they're editing. NEVER edit those files until they finish — pick other work or wait.
-16. CHAT HYGIENE: describe changes as one-line summaries or tiny diffs — never paste whole files into chat. In MEMORY.md keep one section per topic and prune superseded bullets when you edit. If the shared browser is busy, retry shortly or verify via curl/node instead.`;
+16. CHAT HYGIENE: describe changes as one-line summaries or tiny diffs — never paste whole files into chat. In MEMORY.md keep one section per topic and prune superseded bullets when you edit. If the shared browser is busy, retry shortly or verify via curl/node instead.
+17. TEACHING CODE: the user reads your code to learn. Write beginner-friendly code — clear names, short functions, and generous comments that explain WHAT each chunk does in plain words (comment every function and any tricky line). Keep a README.md in the workspace that explains in simple language what each file does and how the pieces fit together; update it whenever the structure changes. In chat, explain things simply — no unexplained jargon.`;
   }
 
   unseen() {
