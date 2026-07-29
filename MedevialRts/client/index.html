@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Medieval RTS</title>
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.js" } }
+</script>
+</head>
+<body>
+
+<!-- ============ TITLE SCREEN ============ -->
+<div id="screen-title" class="screen active">
+  <canvas id="title-bg"></canvas>
+  <div class="title-inner">
+    <!-- ART SLOT: assets/title_logo.png replaces this text logo automatically -->
+    <div id="title-logo">
+      <img id="title-logo-img" src="assets/title_logo.png" alt=""
+        onerror="this.style.display='none'"
+        onload="document.querySelector('.logo-text').style.display='none';document.querySelector('.logo-sub').style.display='none'">
+      <h1 class="logo-text">MEDIEVAL<span>RTS</span></h1>
+      <div class="logo-sub">⚔ Build. Train. Conquer. ⚔</div>
+    </div>
+    <input id="name-input" class="text-input" maxlength="14" placeholder="Your name" autocomplete="off">
+    <div class="menu" id="title-menu">
+      <button class="menu-btn focusable" id="btn-host">⚔&nbsp; Host Game</button>
+      <button class="menu-btn focusable" id="btn-join">🛡&nbsp; Join Game</button>
+      <button class="menu-btn ghost focusable" id="btn-help">📜&nbsp; How to Play</button>
+    </div>
+    <div class="title-hint">🎮 Controller ready — press <b>A</b> to select &nbsp;|&nbsp; 3D · 4-player online</div>
+  </div>
+</div>
+
+<!-- ============ MODE PICKER ============ -->
+<div id="screen-mode" class="screen">
+  <canvas class="bg-passthrough"></canvas>
+  <div class="panel-card">
+    <h2>Choose a Battle</h2>
+    <div class="menu">
+      <button class="menu-btn focusable mode-btn" id="btn-mode-ffa">
+        🌍 Online Battle<small>1–4 devices · free-for-all · add bots</small>
+      </button>
+      <button class="menu-btn focusable mode-btn" id="btn-mode-2v2">
+        🤝 2v2 Team War<small>2 devices · 2 players share each screen</small>
+      </button>
+      <button class="menu-btn focusable mode-btn" id="btn-mode-1v1">
+        ⚔ 1v1 Split Screen<small>1 device · left vs right · small map</small>
+      </button>
+      <button class="menu-btn ghost focusable" id="btn-mode-back">Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ JOIN SCREEN ============ -->
+<div id="screen-join" class="screen">
+  <div class="panel-card">
+    <h2>Join a Game</h2>
+    <p class="muted">Enter the 4-letter room code from the host's lobby.<br>Joining a 2v2 brings BOTH players on this device.</p>
+    <input id="code-input" class="text-input code" maxlength="4" placeholder="CODE" autocomplete="off">
+    <div class="menu">
+      <button class="menu-btn focusable" id="btn-join-go">Join</button>
+      <button class="menu-btn ghost focusable" id="btn-join-back">Back</button>
+    </div>
+    <div id="join-error" class="error-text"></div>
+  </div>
+</div>
+
+<!-- ============ LOBBY SCREEN ============ -->
+<div id="screen-lobby" class="screen">
+  <div class="panel-card wide">
+    <h2>Lobby</h2>
+    <div class="room-code">Room code: <span id="lobby-code">----</span></div>
+    <div id="lobby-mode" class="muted"></div>
+    <div id="lobby-players" class="lobby-list"></div>
+    <div class="menu row">
+      <button class="menu-btn focusable" id="btn-add-bot">+ Add Bot</button>
+      <button class="menu-btn go focusable" id="btn-start">▶ Start Game</button>
+      <button class="menu-btn ghost focusable" id="btn-lobby-back">Leave</button>
+    </div>
+    <p class="muted">Friends join with the room code — works in the Xbox Edge browser with controllers.</p>
+  </div>
+</div>
+
+<!-- ============ GAME SCREEN ============ -->
+<div id="screen-game" class="screen">
+  <canvas id="game-canvas"></canvas>
+  <canvas id="overlay-canvas"></canvas>
+  <canvas id="minimap"></canvas>
+
+  <div id="hud-top">
+    <div id="hud-players"></div>
+  </div>
+
+  <div id="hud-bottom"></div>
+
+  <div id="toast"></div>
+  <div id="gp-hints">🎮 <b>A</b> select/command · <b>B</b> cancel · <b>X</b> build · <b>Y</b> army · <b>RB</b> builders · <b>LB</b> castle · triggers zoom</div>
+</div>
+
+<!-- ============ GAME OVER ============ -->
+<div id="screen-over" class="screen overlay-screen">
+  <div class="panel-card">
+    <h2 id="over-title">Victory!</h2>
+    <p id="over-sub" class="muted"></p>
+    <div class="menu">
+      <button class="menu-btn focusable" id="btn-over-back">Back to Title</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HELP OVERLAY ============ -->
+<div id="screen-help" class="screen overlay-screen">
+  <div class="panel-card wide">
+    <h2>How to Play</h2>
+    <div class="help-cols">
+      <div>
+        <h3>Goal</h3>
+        <p>Destroy the enemy <b>Castles</b>. Lose yours and you're out.</p>
+        <h3>Economy</h3>
+        <p>Select a <b>Builder</b> and place <b>Windmills</b> next to wheat <b>Farms</b> — windmills near farms earn way more money.</p>
+        <h3>Army</h3>
+        <p><b>Barracks</b>: swordsmen &amp; archers · <b>Stables</b>: knights · <b>Siege Workshop</b>: catapults &amp; hot air balloons 🎈 (flying — only archers, towers, and balloons can shoot them!) · <b>Towers</b> defend · 🧱 <b>Walls</b> connect into ramparts and block enemy ground troops (balloons float over).</p>
+      </div>
+      <div>
+        <h3>Mouse &amp; Keyboard</h3>
+        <p>Left-drag: select · Click ground/enemy with units selected: move/attack (right-click works too) · <b>B</b>: build menu · <b>WASD</b>: camera · Wheel: zoom · <b>Esc</b>: cancel</p>
+        <h3>Controller (Xbox)</h3>
+        <p>Left stick: cursor · Right stick: camera · <b>A</b>: select/command (hold + move = box select) · <b>B</b>: cancel · <b>X</b>: build · <b>Y</b>: select army · <b>RB</b>: builders · <b>LB</b>: jump to castle · Triggers: zoom · D-pad: menu buttons</p>
+        <h3>Modes</h3>
+        <p><b>2v2</b>: two devices, two players on each screen (2 controllers, or mouse + controller). <b>1v1</b>: one device, split screen.</p>
+      </div>
+    </div>
+    <div class="menu">
+      <button class="menu-btn focusable" id="btn-help-back">Close</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
