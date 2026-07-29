@@ -1,5 +1,7 @@
 // Single shared mutable state object for all client modules.
 
+import { BUILDINGS } from '/shared/gamedata.js';
+
 export const G = {
   screen: 'title',
   name: '',
@@ -44,6 +46,23 @@ export function mkLocal(lp, slot) {
 }
 
 export function moneyOf(slot) { return G.moneyAll[slot] ?? 0; }
+
+// Mirrors the server's build-placement rules so the ghost can show validity
+// BEFORE clicking. Returns null when placeable, else a human reason.
+export function canPlaceAt(L, kind, w) {
+  const spec = BUILDINGS[kind];
+  if (!spec) return 'Unknown building';
+  if (moneyOf(L.slot) < spec.cost) return `Need $${spec.cost}`;
+  if (w.x < 60 || w.y < 60 || w.x > G.world.w - 60 || w.y > G.world.h - 60) return 'Too close to the map edge';
+  for (const e of G.ents.values()) {
+    if (e.k !== 'farm' && !BUILDINGS[e.k]) continue;
+    const gap = (kind === 'wall' && e.k === 'wall') ? 2 : 10;
+    if (Math.hypot(e.x - w.x, e.y - w.y) < (e.r || 30) + spec.size / 2 + gap) {
+      return e.k === 'farm' ? 'Too close to the farm — leave a gap' : 'Too close to another building';
+    }
+  }
+  return null;
+}
 
 export function selEnts(L) {
   const out = [];

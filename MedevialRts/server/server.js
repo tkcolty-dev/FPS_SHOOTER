@@ -183,7 +183,10 @@ wss.on('connection', ws => {
     else if (m.t === 'cmd') {
       if (!room || !room.game) return;
       const p = room.players.find(p => p.ws === ws && p.lp === (m.lp || 0));
-      if (p && !p.dead) room.game.handleCmd(p.slot, m);
+      if (p && !p.dead) {
+        const err = room.game.handleCmd(p.slot, m);
+        if (typeof err === 'string') sendTo(ws, { t: 'error', msg: err });
+      }
     }
 
     else if (m.t === 'leave') leaveRoom(ws);

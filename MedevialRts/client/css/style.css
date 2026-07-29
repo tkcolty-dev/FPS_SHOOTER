@@ -186,6 +186,7 @@ body {
 
 #gp-hints {
   position: absolute; right: 12px; bottom: 118px; z-index: 11; color: var(--muted);
+  pointer-events: none;
   font-size: 12px; background: rgba(15, 11, 7, 0.7); padding: 6px 10px; border-radius: 6px;
   display: none; max-width: 420px; text-align: right;
 }

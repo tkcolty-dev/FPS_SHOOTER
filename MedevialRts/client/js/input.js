@@ -4,7 +4,7 @@
 //   • 2 locals, mouse in use → first pad drives local player 2
 //   • 2 locals, no mouse (e.g. Xbox) → pad 1 → P1, pad 2 → P2
 
-import { G, selEnts } from './state.js';
+import { G, selEnts, canPlaceAt } from './state.js';
 import { cmd } from './net.js';
 import { screenToWorld, vpForLocal, camStateFor } from './renderer.js';
 import { BUILDINGS, UNITS } from '/shared/gamedata.js';
@@ -55,6 +55,7 @@ export function initInput() {
       if (L.placing) { placeAt(L, e.clientX, e.clientY); return; }
       L.drag = { x0: e.clientX, y0: e.clientY, x1: e.clientX, y1: e.clientY };
     } else if (e.button === 2) {
+      if (L.placing) { L.placing = null; refreshPanels(); return; } // right-click exits placement
       commandAt(L, e.clientX, e.clientY);
     }
   });
@@ -101,9 +102,12 @@ export function cancelAction(L) {
 function placeAt(L, sx, sy) {
   const w = screenToWorld(sx, sy, L.lp);
   const builders = selEnts(L).filter(e => e.k === 'builder').map(e => e.i);
-  if (!builders.length) { L.placing = null; return; }
+  if (!builders.length) { L.placing = null; refreshPanels(); return; }
+  const err = canPlaceAt(L, L.placing, w);
+  if (err) { toast(`❌ ${err}`); return; } // stay in placement mode, try again
   cmd(L, { kind: 'build', b: L.placing, ids: builders, x: w.x, y: w.y });
-  L.placing = null;
+  // walls chain-place so you can drag out a rampart; others place once
+  if (L.placing !== 'wall') { L.placing = null; L.buildOpen = false; }
   refreshPanels();
 }
 

@@ -56,9 +56,23 @@ function bricks(x,y,w,h,color=P.stoneDark) {
   return s;
 }
 function buildingBase(kind, pal=P) {
-  const isCastle=kind==="castle", W=isCastle?260:kind==="tower"?120:192, H=isCastle?260:kind==="tower"?120:192;
+  const isCastle=kind==="castle", W=isCastle?260:kind==="tower"?120:kind==="wall"?80:192, H=isCastle?260:kind==="tower"?120:kind==="wall"?80:192;
   let b=shadow(W/2,H*.85,W*.36,H*.10);
-  if (kind==="windmill") {
+  if (kind==="wall") {
+    // A compact, nearly square merlon-topped block. The broad stone faces remain
+    // legible when isolated, while the straight sides line up cleanly in rows.
+    b += poly("9,28 40,15 71,28 71,62 40,75 9,62",pal.stoneDark,5);
+    b += poly("9,28 40,41 40,75 9,62",pal.stone,5);
+    b += poly("40,41 71,28 71,62 40,75",pal.stoneDark,5);
+    b += poly("9,28 40,15 71,28 40,41",pal.stoneLight,5);
+    b += line(11,45,39,56,pal.stoneDark,3)+line(41,56,69,45,pal.stone,3);
+    b += line(24,34,24,68,pal.stoneDark,3)+line(56,34,56,68,pal.stone,3);
+    for (const [x,y] of [[10,20],[28,13],[46,13],[64,20]]) {
+      b += rect(x,y,14,15,pal.stoneLight,2,4);
+    }
+    b += poly("12,28 40,18 68,28 40,38",pal.stone,3);
+    b += line(26,23,40,29,pal.stoneDark,2)+line(54,23,40,29,pal.stoneDark,2);
+  } else if (kind==="windmill") {
     b += poly("60,154 132,154 120,54 72,54",pal.stone,6)+bricks(66,70,60,80,pal.stoneDark);
     b += poly("62,58 96,28 130,58",pal.roof,6)+poly("96,28 130,58 118,62",pal.roofDark,0,"none");
     b += rect(84,116,24,38,pal.woodDark,7,5)+rect(76,74,40,26,"#91bed0",5,5);
@@ -96,7 +110,8 @@ function buildingBase(kind, pal=P) {
   return {W,H,b};
 }
 async function buildings() {
-  for (const kind of ["castle","windmill","barracks","stables","workshop","tower"]) {
+  const kinds=["castle","windmill","barracks","stables","workshop","tower","wall"];
+  for (const kind of kinds) {
     const {W,H,b}=buildingBase(kind,P); await write(`${kind}.png`,W,H,b);
   }
   const blade = ell(68,68,10,10,P.woodLight,5) +
@@ -107,7 +122,7 @@ async function buildings() {
     dark:{...P,stone:"#505253",stoneDark:"#292c2d",roof:"#353b3d",roofDark:"#202425",wood:"#515355",woodDark:"#292b2c"},
     forest:{...P,stone:"#8d9678",stoneDark:"#5e674f",roof:"#49633c",roofDark:"#30452d",wood:"#557044",woodDark:"#34472e"}
   };
-  for(const [skin,pal] of Object.entries(skins)) for(const kind of ["castle","windmill","barracks","stables","workshop","tower"]){
+  for(const [skin,pal] of Object.entries(skins)) for(const kind of kinds){
     const {W,H,b}=buildingBase(kind,pal); await write(`${kind}__${skin}.png`,W,H,b);
   }
 }
@@ -128,6 +143,23 @@ async function units(){
   let b=shadow(50,89,38,8)+rect(20,48,60,28,P.wood,4,6)+ell(26,76,15,15,P.woodDark,5)+ell(74,76,15,15,P.woodDark,5);
   b+=line(29,47,65,22,P.woodDark,8)+line(65,22,76,34,P.woodDark,7)+ell(67,24,7,7,P.steelDark,4)+pathEl("M68 21 L87 13 L90 33 L75 35 Z",P.wood,5);
   await write("catapult.png",100,100,b);
+  // Flying unit: intentionally no baked ground shadow (the renderer supplies it).
+  b=`<defs><clipPath id="balloon-envelope"><path d="M56 7 C27 7 15 27 20 51 C24 70 39 80 56 87 C73 80 88 70 92 51 C97 27 85 7 56 7 Z"/></clipPath></defs>`;
+  b+=pathEl("M56 7 C27 7 15 27 20 51 C24 70 39 80 56 87 C73 80 88 70 92 51 C97 27 85 7 56 7 Z",P.straw,6);
+  b+=`<g clip-path="url(#balloon-envelope)" stroke="none">
+    <path d="M19 4 C37 25 37 63 48 86 L32 89 C18 65 9 29 19 4 Z" fill="${P.stoneLight}"/>
+    <path d="M38 3 C46 25 45 65 51 88 L43 89 C32 61 29 26 38 3 Z" fill="${P.woodLight}"/>
+    <path d="M74 3 C66 25 67 65 61 88 L69 89 C80 61 83 26 74 3 Z" fill="${P.woodLight}"/>
+    <path d="M93 4 C75 25 75 63 64 86 L80 89 C94 65 103 29 93 4 Z" fill="${P.stoneLight}"/>
+    <path d="M53 5 L59 5 L61 88 L51 88 Z" fill="${P.strawDark}"/>
+  </g>`;
+  b+=pathEl("M56 7 C27 7 15 27 20 51 C24 70 39 80 56 87 C73 80 88 70 92 51 C97 27 85 7 56 7 Z","none",6);
+  b+=pathEl("M22 48 Q56 61 90 48","none",3,P.strawDark);
+  b+=line(38,76,44,96,P.woodDark,3)+line(74,76,68,96,P.woodDark,3);
+  b+=line(48,84,48,96,P.woodDark,3)+line(64,84,64,96,P.woodDark,3);
+  b+=poly("43,95 69,95 66,108 46,108",P.wood,4);
+  b+=line(47,100,65,100,P.woodLight,2)+line(53,96,52,107,P.woodDark,2)+line(60,96,61,107,P.woodDark,2);
+  await write("balloon.png",112,112,b);
 }
 async function terrain(){
   // Seamless because edge-crossing details are duplicated at opposite edges.

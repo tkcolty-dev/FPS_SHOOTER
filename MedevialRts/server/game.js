@@ -102,18 +102,20 @@ export class Game {
       }
     } else if (c.kind === 'build') {
       const spec = BUILDINGS[c.b];
-      if (!spec || !spec.cost || c.b === 'castle') return;
-      if (this.money[slot] < spec.cost) return;
+      if (!spec || !spec.cost || c.b === 'castle') return 'Cannot build that';
+      if (this.money[slot] < spec.cost) return `Need $${spec.cost}`;
       const x = clamp(c.x, 60, this.w - 60), y = clamp(c.y, 60, this.h - 60);
       for (const e of this.ents.values()) {
         // walls may sit close to other walls so lines connect tightly
         const gap = (c.b === 'wall' && e.kind === 'wall') ? 2 : 10;
-        if ((e.cat === 'bld' || e.cat === 'farm') && dist(e, { x, y }) < e.r + spec.size / 2 + gap) return;
+        if ((e.cat === 'bld' || e.cat === 'farm') && dist(e, { x, y }) < e.r + spec.size / 2 + gap) {
+          return 'Too close to something else — pick an open spot';
+        }
       }
       const builders = (c.ids || [])
         .map(id => this.ents.get(id))
         .filter(u => u && u.cat === 'unit' && u.kind === 'builder' && u.owner === slot);
-      if (!builders.length) return;
+      if (!builders.length) return 'No builder selected';
       this.money[slot] -= spec.cost;
       const site = this.addBuilding(c.b, slot, x, y, false);
       for (const b of builders) { b.buildId = site.id; b.dest = null; b.tgt = 0; b.forced = 0; }

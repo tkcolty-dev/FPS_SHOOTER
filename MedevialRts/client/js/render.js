@@ -5,7 +5,7 @@
 //   Any sprite that exists is drawn automatically; anything missing falls
 //   back to a built-in vector placeholder. See assets/README-ART.md.
 
-import { G } from './state.js';
+import { G, canPlaceAt } from './state.js';
 import { BUILDINGS, UNITS, COLORS, SKINS, WALL_LINK_RANGE } from '/shared/gamedata.js';
 
 export const ART_KEYS = [
@@ -548,8 +548,12 @@ function drawOverlay(now, vps) {
       if (G.mode === '1v1' && vpForLocal(L.lp).i !== vp.i) continue;
       const spec = BUILDINGS[L.placing];
       const wpos = screenToWorld(L.cursor.x, L.cursor.y, L.lp);
+      const err = canPlaceAt(L, L.placing, wpos);
+      const col = err ? '#ff6b5d' : '#7dffa0';
       const c = worldToScreen(wpos.x, wpos.y, vp);
-      octx.strokeStyle = '#eaf6ff';
+      octx.fillStyle = err ? 'rgba(255,90,70,0.16)' : 'rgba(120,255,150,0.14)';
+      octx.fillRect(c.x - spec.size / 2 * cs.zoom, c.y - spec.size / 2 * cs.zoom, spec.size * cs.zoom, spec.size * cs.zoom);
+      octx.strokeStyle = col;
       octx.lineWidth = 2;
       octx.setLineDash([8, 6]);
       octx.strokeRect(c.x - spec.size / 2 * cs.zoom, c.y - spec.size / 2 * cs.zoom, spec.size * cs.zoom, spec.size * cs.zoom);
@@ -560,10 +564,10 @@ function drawOverlay(now, vps) {
         octx.stroke();
       }
       octx.setLineDash([]);
-      octx.fillStyle = '#eaf6ff';
       octx.font = '13px Trebuchet MS';
       octx.textAlign = 'center';
-      octx.fillText(spec.name, c.x, c.y - spec.size / 2 * cs.zoom - 8);
+      octx.fillStyle = col;
+      octx.fillText(err ? `✕ ${err}` : `✓ ${spec.name} — click to place`, c.x, c.y - spec.size / 2 * cs.zoom - 8);
     }
 
     // drag boxes
