@@ -248,14 +248,28 @@ function paper(){
   return { pw, ph, m, ov, printW, printH,
            stepX: Math.max(0.1, printW - ov), stepY: Math.max(0.1, printH - ov) };
 }
+const GAP = 0.08;                       // breathing room between repeated copies, in inches
+
 function layout(it){
   const p = paper();
   const targetW = it.widthIn;
   const targetH = targetW * (it.img.naturalHeight / it.img.naturalWidth);
+  const dpi  = it.img.naturalWidth / targetW;
+  const fitsOnOneSheet = targetW <= p.printW && targetH <= p.printH;
+
+  // Small piece wanted many times over: pack copies onto each sheet instead of
+  // burning a whole page on one hex.
+  if(fitsOnOneSheet && it.copies > 1){
+    const perRow = Math.max(1, Math.floor((p.printW + GAP) / (targetW + GAP)));
+    const perCol = Math.max(1, Math.floor((p.printH + GAP) / (targetH + GAP)));
+    const perSheet = perRow * perCol;
+    return { ...p, mode:'gang', targetW, targetH, dpi, copies: it.copies,
+             perRow, perCol, perSheet, sheets: Math.ceil(it.copies / perSheet), cols:1, rows:1 };
+  }
+
   const cols = targetW <= p.printW ? 1 : Math.ceil((targetW - p.printW) / p.stepX) + 1;
   const rows = targetH <= p.printH ? 1 : Math.ceil((targetH - p.printH) / p.stepY) + 1;
-  const dpi  = it.img.naturalWidth / targetW;
-  return { ...p, targetW, targetH, cols, rows, sheets: cols*rows, dpi };
+  return { ...p, mode:'tile', targetW, targetH, cols, rows, sheets: cols*rows, dpi, copies:1 };
 }
 
 /* ───────── item list ───────── */
@@ -265,7 +279,7 @@ function addImage(file){
   img.onload = () => {
     const it = { id: 'i'+Date.now()+Math.round(performance.now()),
                  name: file.name.replace(/\.[^.]+$/,'').slice(0,40) || 'Piece',
-                 url, img, unit:'in', widthIn: 20 };
+                 url, img, unit:'in', widthIn: 20, copies: 1 };
     items.push(it); selId = it.id;
     renderItems(); renderPreview();
   };
@@ -302,24 +316,26 @@ function renderItems(){
         '<option value="in"'+(it.unit==='in'?' selected':'')+'>inches</option>'+
         '<option value="cm"'+(it.unit==='cm'?' selected':'')+'>cm</option>'+
       '</select></div>'+
-      '<div><label>Sheets across</label><input type="number" min="1" step="1" value="'+L.cols+'"></div>';
+      '<div><label>How many</label><input type="number" min="1" step="1" value="'+it.copies+'"></div>';
     const [wIn, uSel, cIn] = row.querySelectorAll('input,select');
     wIn.oninput = () => { const v=Number(wIn.value); if(v>0){ it.widthIn = v*IN[it.unit];
       renderItems(); renderPreview(); } };
     uSel.onchange = () => { it.unit = uSel.value; renderItems(); };
-    cIn.oninput = () => {                       // choose by sheets instead of inches
-      const n = Math.max(1, Math.round(Number(cIn.value)||1));
-      const p = paper();
-      it.widthIn = n===1 ? p.printW : p.printW + (n-1)*p.stepX;
+    cIn.oninput = () => {
+      it.copies = Math.max(1, Math.round(Number(cIn.value)||1));
       renderItems(); renderPreview();
     };
 
     const stats = document.createElement('div');
     const dpiCls = L.dpi < 120 ? 'warn' : (L.dpi >= 200 ? 'good' : '');
+    const spread = L.mode === 'gang'
+      ? '<div class="stat"><span>Per sheet</span><b>'+L.perRow+' × '+L.perCol+' = '+L.perSheet+'</b></div>'
+      : '<div class="stat"><span>Spread over</span><b>'+L.cols+' × '+L.rows+' sheets</b></div>';
     stats.innerHTML =
       '<div class="stat"><span>Finished size</span><b>'+
-        fmt(L.targetW,it.unit)+' × '+fmt(L.targetH,it.unit)+' '+it.unit+'</b></div>'+
-      '<div class="stat"><span>Sheets</span><b>'+L.cols+' × '+L.rows+' = '+L.sheets+'</b></div>'+
+        fmt(L.targetW,it.unit)+' × '+fmt(L.targetH,it.unit)+' '+it.unit+' each</b></div>'+
+      spread +
+      '<div class="stat"><span>Paper needed</span><b>'+L.sheets+(L.sheets===1?' sheet':' sheets')+'</b></div>'+
       '<div class="stat '+dpiCls+'"><span>Sharpness</span><b>'+Math.round(L.dpi)+' dpi'+
         (L.dpi<120?' — blurry':'')+'</b></div>';
 
@@ -339,6 +355,26 @@ function renderPreview(){
   cv.hidden=false; es.hidden=true;
 
   const L = layout(it);
+
+  if(L.mode === 'gang'){                       // show one sheet, packed with copies
+    const S = Math.min(560 / L.pw, 460 / L.ph);
+    const W = Math.round(L.pw*S), H = Math.round(L.ph*S);
+    cv.width = W; cv.height = H; cv.style.width = W+'px'; cv.style.height = H+'px';
+    const g = cv.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0,0,W,H);
+    let placed = 0;
+    for(let r=0;r<L.perCol;r++) for(let c=0;c<L.perRow;c++){
+      if(placed++ >= L.copies) break;
+      g.drawImage(it.img, (L.m + c*(L.targetW+GAP))*S, (L.m + r*(L.targetH+GAP))*S,
+                  L.targetW*S, L.targetH*S);
+    }
+    g.strokeStyle = 'rgba(217,164,65,.95)'; g.lineWidth = 1;
+    g.strokeRect(L.m*S+.5, L.m*S+.5, L.printW*S, L.printH*S);
+    $('sheetcount').textContent =
+      L.copies+' copies · '+L.perSheet+' per sheet · '+L.sheets+(L.sheets===1?' sheet':' sheets');
+    return;
+  }
+
   const SCALE = Math.min(760 / L.targetW, 460 / L.targetH);   // px per inch on screen
   const W = Math.round(L.targetW*SCALE), H = Math.round(L.targetH*SCALE);
   cv.width = W; cv.height = H; cv.style.width = W+'px'; cv.style.height = H+'px';
@@ -380,6 +416,35 @@ function buildSheets(list){
 
   for(const it of list){
     const L = layout(it);
+
+    if(L.mode === 'gang'){                     // many copies packed per sheet
+      let left = L.copies;
+      while(left > 0){
+        const sheet = document.createElement('div');
+        sheet.className='psheet';
+        sheet.style.width = L.pw+'in'; sheet.style.height = L.ph+'in';
+        for(let r=0;r<L.perCol && left>0;r++){
+          for(let c=0;c<L.perRow && left>0;c++, left--){
+            const im = document.createElement('img');
+            im.src = it.url;
+            im.style.position='absolute';
+            im.style.width = L.targetW+'in'; im.style.height = L.targetH+'in';
+            im.style.left = (L.m + c*(L.targetW+GAP))+'in';
+            im.style.top  = (L.m + r*(L.targetH+GAP))+'in';
+            sheet.appendChild(im);
+          }
+        }
+        if(showMarks){
+          const slug=document.createElement('div'); slug.className='slug';
+          slug.textContent = it.name;
+          slug.style.left=L.m+'in'; slug.style.bottom='0.06in';
+          sheet.appendChild(slug);
+        }
+        root.appendChild(sheet);
+      }
+      continue;
+    }
+
     for(let r=0;r<L.rows;r++){
       for(let c=0;c<L.cols;c++){
         const sheet = document.createElement('div');
