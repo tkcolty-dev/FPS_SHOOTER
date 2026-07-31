@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Medieval Civilization — Design Packet</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,3 27,9.5 27,22.5 16,29 5,22.5 5,9.5' fill='none' stroke='%238a6a2f' stroke-width='2.5'/%3E%3C/svg%3E">
+<style>
+  @page{ size:letter; margin:0.62in 0.6in 0.55in; }
+
+  :root{
+    --ink:#15202B;
+    --gray:#5C6672;
+    --rule:#B8BFC7;
+    --hair:#D9DEE3;
+    --gold:#8A6A2F;
+    --wash:#F2F1EC;
+
+    --display:"Copperplate","Copperplate Gothic Light",Optima,"Trajan Pro",serif;
+    --body:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;
+    --util:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:#fff;color:var(--ink);
+    font-family:var(--body);font-size:10.6pt;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .sheet{max-width:7.4in;margin:0 auto;padding:0.5in 0.3in 1in}
+
+  /* ── type ─────────────────────────────── */
+  h1,h2,h3{font-family:var(--display);font-weight:400;margin:0}
+  .kicker{font-family:var(--util);font-size:7.6pt;letter-spacing:.19em;text-transform:uppercase;color:var(--gray)}
+  p{margin:0 0 .5em}
+  strong{font-weight:700}
+  em.said{font-style:italic}
+
+  /* ── cover ────────────────────────────── */
+  .cover{text-align:center;padding:0.55in 0 0}
+  .cover h1{font-size:34pt;letter-spacing:.1em;line-height:1.08;margin:.18in 0 .1in}
+  .cover .sub{font-family:var(--util);font-size:8.4pt;letter-spacing:.24em;text-transform:uppercase;color:var(--gray)}
+  .crest{width:104px;height:104px;margin:0 auto;display:block}
+  .artbox{border:1.5px dashed var(--rule);border-radius:5px;height:3.05in;margin:.3in 0 .22in;
+    display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}
+  .artbox span{font-family:var(--util);font-size:8.2pt;letter-spacing:.13em;text-transform:uppercase;color:var(--gray);line-height:2}
+  .byline{font-family:var(--display);font-size:12.5pt;letter-spacing:.14em;margin-top:.1in}
+  .byline small{display:block;font-family:var(--util);font-size:7.6pt;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--gray);margin-top:8px;font-weight:400}
+
+  /* ── page structure ───────────────────── */
+  .page{page-break-before:always;break-before:page}
+  .banner{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    border-bottom:2px solid var(--ink);padding-bottom:5px;margin-bottom:16px}
+  .banner h2{font-size:15.5pt;letter-spacing:.11em}
+  .banner .num{font-family:var(--util);font-size:9pt;color:var(--gold);letter-spacing:.1em}
+
+  /* Two-track layout: rules on the left, scribe's notes in the margin */
+  .track{display:grid;grid-template-columns:1fr 1.72in;gap:20px;align-items:start}
+  .rules{min-width:0}
+  .margin{min-width:0}
+
+  .rule-item{margin-bottom:12px;page-break-inside:avoid;break-inside:avoid}
+  .rule-item h3{font-family:var(--body);font-weight:700;font-size:10.6pt;margin-bottom:2px}
+  .rule-item h3 .n{font-family:var(--util);font-size:8.4pt;color:var(--gold);margin-right:7px;letter-spacing:.04em}
+
+  /* Marginalia — the packet's signature: our answers sit beside your rules, never inside them */
+  .note{border-left:2.5px solid var(--gold);padding:0 0 0 9px;margin-bottom:15px;
+    font-size:8.8pt;line-height:1.42;color:#33404E;page-break-inside:avoid;break-inside:avoid}
+  .note b{display:block;font-family:var(--util);font-size:7pt;letter-spacing:.15em;
+    text-transform:uppercase;color:var(--gold);margin-bottom:3px;font-weight:400}
+  .note.ask{border-left-color:var(--ink)}
+  .note.ask b{color:var(--ink)}
+
+  .quote{font-size:9pt;color:var(--gray);font-style:italic;border-left:1.5px solid var(--hair);
+    padding-left:9px;margin:0 0 12px}
+
+  .callout{background:var(--wash);border-radius:5px;padding:11px 13px;margin:0 0 14px;
+    page-break-inside:avoid;break-inside:avoid}
+  .callout .kicker{margin-bottom:5px;display:block}
+
+  table{width:100%;border-collapse:collapse;font-size:9.6pt;margin:0 0 13px}
+  th,td{text-align:left;padding:5px 8px 5px 0;border-bottom:1px solid var(--hair);vertical-align:top}
+  th{font-family:var(--util);font-size:7.4pt;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--gray);font-weight:400;border-bottom:1px solid var(--rule)}
+  td.k{font-weight:700;white-space:nowrap;padding-right:14px}
+
+  ul{margin:0 0 .5em;padding-left:1.05em}
+  li{margin-bottom:3px}
+
+  .box{border:1px solid var(--rule);border-radius:5px;padding:12px 14px;margin-bottom:14px;
+    page-break-inside:avoid;break-inside:avoid}
+  .box h3{font-family:var(--display);font-size:10.5pt;letter-spacing:.1em;margin-bottom:7px}
+
+  .check{list-style:none;padding-left:0}
+  .check li{padding-left:22px;position:relative;margin-bottom:6px}
+  .check li::before{content:"";position:absolute;left:0;top:2px;width:12px;height:12px;
+    border:1.3px solid var(--gray);border-radius:2px}
+
+  /* ── play aids ────────────────────────── */
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .card{border:1.3px solid var(--ink);border-radius:6px;padding:12px 13px;
+    page-break-inside:avoid;break-inside:avoid}
+  .card h3{font-family:var(--display);font-size:10pt;letter-spacing:.11em;
+    border-bottom:1px solid var(--hair);padding-bottom:5px;margin-bottom:7px}
+  .card table{font-size:8.5pt;margin:0}
+  .card td{padding:3px 6px 3px 0;border-bottom:1px dotted var(--hair)}
+  .cut{font-family:var(--util);font-size:7pt;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--gray);text-align:center;margin:2px 0 12px}
+
+  .tracker{width:100%;border-collapse:collapse;font-size:9pt}
+  .tracker th{border-bottom:1.3px solid var(--ink)}
+  .tracker td{height:26px;border-bottom:1px solid var(--hair)}
+  .tracker .lvl,.tracker .hp{width:1.05in;text-align:center}
+  .pips span{display:inline-block;width:11px;height:11px;border:1.2px solid var(--gray);
+    border-radius:2px;margin-right:3px}
+
+  .lines div{border-bottom:1px solid var(--hair);height:.28in}
+
+  svg.grid{width:100%;height:auto;display:block}
+  .hex-cap{font-family:var(--util);font-size:7.4pt;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--gray);text-align:center;margin-top:7px}
+
+  .foot{border-top:1px solid var(--hair);margin-top:20px;padding-top:7px;
+    font-family:var(--util);font-size:7.2pt;letter-spacing:.1em;color:var(--gray);
+    display:flex;justify-content:space-between}
+
+  /* ── screen-only helper ───────────────── */
+  .printbar{position:fixed;top:14px;right:14px;z-index:9;display:flex;gap:8px;align-items:center;
+    background:var(--ink);color:#fff;border-radius:8px;padding:8px 10px;font-family:var(--util);font-size:9pt}
+  .printbar button{font-family:var(--util);font-size:9pt;background:#fff;color:var(--ink);
+    border:none;border-radius:5px;padding:6px 11px;cursor:pointer}
+  .printbar button:hover{background:#E8E4D8}
+
+  @media print{
+    .printbar{display:none}
+    .sheet{max-width:none;padding:0}
+    body{font-size:10.2pt}
+    a{text-decoration:none;color:inherit}
+  }
+</style>
+</head>
+<body>
+
+<div class="printbar">
+  <span>Print on letter paper</span>
+  <button onclick="window.print()">Print packet</button>
+</div>
+
+<div class="sheet">
+
+<!-- ═══════════ COVER ═══════════ -->
+<section class="cover">
+  <svg class="crest" viewBox="0 0 100 100" aria-hidden="true">
+    <polygon points="50,6 88,28 88,72 50,94 12,72 12,28" fill="none" stroke="#15202B" stroke-width="2.4"/>
+    <polygon points="50,20 76,35 76,65 50,80 24,65 24,35" fill="none" stroke="#8A6A2F" stroke-width="1.5"/>
+    <path d="M38 62 V44 l6 5 6-9 6 9 6-5 v18 z" fill="#15202B"/>
+    <circle cx="50" cy="34" r="3.4" fill="#8A6A2F"/>
+  </svg>
+
+  <div class="sub">A board game of islands, armies and ambition</div>
+  <h1>MEDIEVAL<br>CIVILIZATION</h1>
+
+  <div class="artbox">
+    <span>Cover art goes here<br>— drawn by us, enhanced by Dad —</span>
+  </div>
+
+  <div class="byline">
+    DESIGN PACKET · NIGHT ONE
+    <small>31 July 2026 · Everything we said, written down</small>
+  </div>
+</section>
+
+<!-- ═══════════ HOW TO USE ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>HOW TO READ THIS</h2><span class="num">§ 0</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p>This is your first design session, sorted into sections. Everything in the main column is <strong>your idea</strong>, taken from what the two of you actually said out loud on 31 July.</p>
+
+      <p>The gold notes in the margin are <strong>suggested answers</strong> to problems you raised but did not finish. They are suggestions only. Cross out any you disagree with — you are the designers, and a rule you argued over will always beat a rule handed to you.</p>
+
+      <div class="callout">
+        <span class="kicker">Before you trust a line</span>
+        <p style="margin:0">The recording was rough in places, so a few sentences were reconstructed from context. If a rule below sounds like something neither of you said, it is probably a mis-hearing — fix it in pen and it becomes right.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">0.1</span>Who plays first</h3>
+        <p>The two of you play the very first game. One of you sits out as the <strong>Rules Helper</strong> instead of taking a kingdom — reading rules aloud, settling arguments, and writing down anything that feels broken. Then you teach Mom and Dad.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">0.2</span>The deadline</h3>
+        <p>Playable before the end of the school year. That is enough time if you build the small version first (see § 9).</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">0.3</span>Where it came from</h3>
+        <p>This is your favourite video game turned into something you can hold. Where a rule was already decided in <em>Medieval RTS</em>, we kept it, so the board game and the computer game feel like one world.</p>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>Your question</b>
+        “Are we ready to make the list of stuff now — have we done enough to start planning and making it?”
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Yes. You settled movement, boats, transport and buildings in one sitting — that is the hard half. § 9 is your shopping list and build order. Start cutting hexes this week.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Being Rules Helper is not sitting out. Whoever does it will understand the game best and will win most of the games afterwards.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 0 · HOW TO READ THIS</span></div>
+</section>
+
+<!-- ═══════════ 1. THE BOARD ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>THE BOARD</h2><span class="num">§ 1</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p class="quote">“So should we do hexagons — maybe we separate each island into 20 hexagons… and the whole ocean will be hexagons, right, just like the land.”</p>
+
+      <div class="rule-item">
+        <h3><span class="n">1.1</span>Everything is hexagons</h3>
+        <p>Land and sea are both hex grids. One hexagon is the unit of distance for every rule in this packet.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">1.2</span>Islands are 20 hexagons</h3>
+        <p>Each island is made of exactly <strong>20 land hexes</strong>. Every player gets one island, and starts with a <strong>castle</strong> on it.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">1.3</span>The ocean between</h3>
+        <p>Ocean hexes fill the space between islands. Boats move on them; soldiers cannot enter them without a transport (§ 4).</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">1.4</span>Face-down exploring</h3>
+        <p>Ocean and unclaimed land tiles start <strong>face down</strong> and flip when someone reaches them. Nobody knows the whole map at the start.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">1.5</span>Built like a blueprint</h3>
+        <p>The board is layered: the island underneath, the people and buildings on top of it.</p>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>Left open</b>
+        How many islands, and how far apart?
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        One island per player, arranged around a shared ocean. Leave <strong>4–6 ocean hexes</strong> between neighbours: far enough that invading is a real decision, close enough that a 10-hex boat move (§ 4.1) can cross in one go.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Put 2–3 small <strong>unclaimed islands</strong> (5 hexes each) in the middle. They give the fleet somewhere to go besides straight at each other, and they are what makes exploring worth doing.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Hex sizes: cut them about <strong>1.5 inches</strong> across. Big enough to stand several soldiers on, small enough that 20 of them fit a poster board.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 1 · THE BOARD</span></div>
+</section>
+
+<!-- ═══════════ 2. YOUR TURN ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>YOUR TURN</h2><span class="num">§ 2</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p class="quote">“You have two move tokens, one build token and one attack token.” · “Tokens are for moving and placing stuff — and then the attacking is where you roll the dice.”</p>
+
+      <div class="rule-item">
+        <h3><span class="n">2.1</span>Four tokens a turn</h3>
+        <p>Every turn you get the same four tokens. Spend them in any order, then your turn ends. Unspent tokens do not carry over.</p>
+      </div>
+
+      <table>
+        <tr><th>Token</th><th>What it buys</th></tr>
+        <tr><td class="k">Move ×2</td><td>Move a group up to 5 land hexes, or a fleet up to 10 ocean hexes</td></tr>
+        <tr><td class="k">Build ×1</td><td>Place one building, or upgrade one building</td></tr>
+        <tr><td class="k">Attack ×1</td><td>Start one fight — the fight itself is settled with dice</td></tr>
+      </table>
+
+      <div class="rule-item">
+        <h3><span class="n">2.2</span>Tokens move, dice decide</h3>
+        <p>This is the heart of the game. <strong>Tokens are for moving and placing.</strong> Once a fight starts, tokens stop mattering and the dice take over (§ 5).</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">2.3</span>Distance costs time</h3>
+        <p>Because one move token only carries you 5 hexes, crossing your own island takes real turns. That delay is deliberate — it is what makes far-away land feel far away.</p>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>Left open</b>
+        Who goes first, and how do you collect resources?
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Everyone rolls one die at the start; highest goes first, then play clockwise. Re-roll ties.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Add a free <strong>Harvest step</strong> at the start of each turn, before you spend tokens: collect resources from every hex you own. It costs no token, so gathering never competes with moving.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Keep the token count at four for the first playtest even if turns feel short. It is far easier to add a fifth token later than to take one away once you are used to it.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 2 · YOUR TURN</span></div>
+</section>
+
+<!-- ═══════════ 3. MOVING ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>MOVING ARMIES</h2><span class="num">§ 3</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p class="quote">“It would be painful to move the whole army one person at a time.” · “Over four people it takes two move tokens to move five spaces of that whole army — technically more efficient than moving one at a time.”</p>
+
+      <div class="rule-item">
+        <h3><span class="n">3.1</span>Five hexes per move token</h3>
+        <p>One move token moves a unit up to <strong>5 hexes</strong>, in any direction, including diagonally. Somewhere 6 hexes away cannot be reached with a single token, no matter what.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">3.2</span>Small groups: up to four</h3>
+        <p>Up to <strong>4 soldiers</strong> standing together move as one group for one move token.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">3.3</span>Big armies: five or more</h3>
+        <p>An army of <strong>5 or more</strong> costs <strong>both</strong> move tokens — but the whole army moves at once, however big it is. With 20 or 30 soldiers this is enormously better than shuffling them one at a time.</p>
+      </div>
+
+      <div class="callout">
+        <span class="kicker">Why this rule is good</span>
+        <p style="margin:0">It solves the boring problem (moving a big army piece by piece) and creates an interesting one (a big army eats your whole turn, so it cannot move and split up in the same turn). Keep it.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">3.4</span>Siege machines march like soldiers</h3>
+        <p>Siege machines move exactly as soldiers do, and count toward the size of the group.</p>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>Left open</b>
+        Is there a limit on army size?
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Cap it at <strong>30 soldiers</strong> per player — the number you said out loud. It also caps how many pieces you have to make.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Balloons from the video game fit here neatly: a balloon spends one move token for <strong>5 hexes</strong>, flies over walls, water and enemies alike, and carries a single soldier. Only archers and towers can shoot one down.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        A group has to <em>start</em> the move together on one hex. Otherwise a token could sweep up soldiers from all over the island, and the 5-hex limit would stop meaning anything.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 3 · MOVING ARMIES</span></div>
+</section>
+
+<!-- ═══════════ 4. BOATS ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>BOATS &amp; TRANSPORT</h2><span class="num">§ 4</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p class="quote">“Boats move ten spaces for one move token, because the whole ocean is bigger than one island — and boats move faster than soldiers do.”</p>
+
+      <div class="rule-item">
+        <h3><span class="n">4.1</span>Ten hexes per move token</h3>
+        <p>A boat moves up to <strong>10 ocean hexes</strong> for one move token — double a soldier, because the ocean is wide.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">4.2</span>Fleets follow the army rule</h3>
+        <p>Up to 4 boats move for one token. <strong>5 or more</strong> boats cost both move tokens and sail together as a fleet.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">4.3</span>Transport boats are special</h3>
+        <p>Ordinary boats cannot carry anyone. Moving soldiers or siege machines across water requires a <strong>transport boat</strong>, built for that job.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">4.4</span>The dock</h3>
+        <p>Each player has one <strong>dock area</strong> beside the board. Soldiers being shipped are lifted off the island and placed in the dock — they are at sea, so they cannot defend your island or be attacked on it. Leaving them standing on land while also sailing would be an unfair double.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">4.5</span>Five aboard, three boats</h3>
+        <p><strong>5 soldiers</strong> per transport boat, and at most <strong>3 transport boats</strong> at once — so 15 soldiers can be at sea at any moment.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">4.6</span>Landing</h3>
+        <p>When a transport reaches its destination, take those soldiers out of the dock and place them where they land.</p>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>Left open</b>
+        Does unloading cost a card, or is it free?
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Free. If the transport finishes its move on an ocean hex touching land, the soldiers step off onto that hex immediately. An extra card here would add a rule to remember without adding a decision to make.
+      </div>
+      <div class="note ask">
+        <b>Left open</b>
+        What happens if a loaded transport is sunk?
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Everyone aboard is lost — take all 5 out of your dock. Brutal, and exactly right: it turns an invasion into a gamble and gives war boats a job worth doing, guarding the transports.
+      </div>
+      <div class="note ask">
+        <b>Your question</b>
+        “Should there be fishing boats?”
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Yes — and make them cheap. A fishing boat parked on an ocean hex next to your island earns <strong>1 food per turn</strong> and needs no token to stay there. It gives the sea a peaceful use, and gives raiders something to burn.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 4 · BOATS &amp; TRANSPORT</span></div>
+</section>
+
+<!-- ═══════════ 5. BUILDINGS ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>BUILDING</h2><span class="num">§ 5</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p class="quote">“So we're going to have the wall, the outpost, the barracks — and how should the armoury work? Something like an armoury shop.”</p>
+
+      <div class="rule-item">
+        <h3><span class="n">5.1</span>Builders build where they stand</h3>
+        <p>A builder can only build in the <strong>hex it is standing on</strong>. To build somewhere far away, you have to walk there first.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">5.2</span>What you can build</h3>
+      </div>
+
+      <table>
+        <tr><th>Building</th><th>What it does</th></tr>
+        <tr><td class="k">Castle</td><td>Your heart. You start with one; lose it and you are out</td></tr>
+        <tr><td class="k">Wall</td><td>Stops enemies on the ground. They must stop and break it</td></tr>
+        <tr><td class="k">Outpost</td><td>A forward base away from the castle</td></tr>
+        <tr><td class="k">Barracks</td><td>Trains soldiers</td></tr>
+        <tr><td class="k">Armoury</td><td>A shop — spend gold to make your soldiers stronger</td></tr>
+        <tr><td class="k">Windmill</td><td>Must sit next to a farm; turns food into more food</td></tr>
+        <tr><td class="k">Tower</td><td>Shoots — and is one of only two things that can pop a balloon</td></tr>
+      </table>
+
+      <div class="rule-item">
+        <h3><span class="n">5.3</span>Buildings live on paper</h3>
+        <p>Rather than a model for every building, each player keeps a <strong>building sheet</strong>. Write the building down when you build it, tick it when it is upgraded, cross it out when it is destroyed. There is a printable sheet at the back of this packet.</p>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>You disagreed</b>
+        One of you said four buildings per hex, the other said two.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        <strong>Two buildings per hex</strong> — except your castle's hex, which holds four. Your capital becomes the square worth defending hardest.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Walls should not count toward that limit. Put them on the <strong>edges between hexes</strong> instead of inside them — a wall is a line, and on a hex grid an edge is exactly that.
+      </div>
+      <div class="note ask">
+        <b>Your question</b>
+        “Should we have upgrades for buildings or not?”
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Yes, but <strong>one level only</strong>, costing the same again. One tick box per building keeps the paper simple.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Armoury: pay gold once for <strong>+1 on every attack roll</strong>, permanently. Simple, expensive, worth racing for.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Outpost: a builder may build in any hex <strong>touching one</strong>, not just the hex it stands on. That is how you expand without walking the builder home each time.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 5 · BUILDING</span></div>
+</section>
+
+<!-- ═══════════ 6. FIGHTING ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>FIGHTING &amp; SIEGES</h2><span class="num">§ 6</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p class="quote">“The attacking is where you roll the dice.” · “Siege machines aren't as easy to kill, and they do more damage to walls — how are we going to calculate damage to walls?”</p>
+
+      <div class="rule-item">
+        <h3><span class="n">6.1</span>Attacks are dice</h3>
+        <p>Spend your attack token to start a fight between two touching hexes. Both sides roll; the dice decide. Tokens got you there — they do not decide who wins.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">6.2</span>Siege machines</h3>
+        <ul>
+          <li>Harder to kill than a soldier</li>
+          <li>Do far more damage to walls</li>
+          <li>Need a transport boat to cross water (§ 4.3)</li>
+        </ul>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">6.3</span>Balloons go over</h3>
+        <p>Straight from the video game, and worth protecting: <strong>balloons fly over walls</strong>. Only <strong>archers and towers</strong> can shoot one down. A wall is not safety if the sky is open.</p>
+      </div>
+
+      <div class="callout">
+        <span class="kicker">The one big gap</span>
+        <p style="margin:0">Wall damage was the question you ran out of time on. A worked-out answer is in the margin — try it as written for one game, then change the numbers rather than the system.</p>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>Your question</b>
+        “How are we going to calculate damage to walls?”
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Give every wall <strong>3 blocks</strong> of health, drawn as three tick boxes on your building sheet. Then, spending one attack token, roll one die per attacker:
+      </div>
+      <div class="note">
+        <b>Rolling on a wall</b>
+        <table style="font-size:8.4pt;margin:4px 0 0">
+          <tr><td style="padding:2px 6px 2px 0;border:none">Soldier</td><td style="padding:2px 0;border:none">5–6 → 1 block</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Siege</td><td style="padding:2px 0;border:none">3–6 → 2 blocks</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Balloon</td><td style="padding:2px 0;border:none">flies over — no roll</td></tr>
+        </table>
+        Cross out blocks as they break. At zero the wall is gone and the hex is open.
+      </div>
+      <div class="note">
+        <b>Why these numbers</b>
+        A lone soldier needs roughly six turns to chew through a wall — hopeless, which is the point. One siege machine does it in about two. That is what makes siege machines worth building and walls worth having.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Soldier against soldier: both roll one die, higher roll wins and the loser is removed, defender wins ties. Add <strong>+2 to the defender</strong> if they are behind a standing wall.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 6 · FIGHTING &amp; SIEGES</span></div>
+</section>
+
+<!-- ═══════════ 7. RESOURCES ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>RESOURCES &amp; WINNING</h2><span class="num">§ 7</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <p class="quote">“Four resources: food, wood, stone, gold. Beans for tokens.”</p>
+
+      <div class="rule-item">
+        <h3><span class="n">7.1</span>Four resources</h3>
+      </div>
+
+      <table>
+        <tr><th>Resource</th><th>Comes from</th><th>Spent on</th></tr>
+        <tr><td class="k">Food</td><td>Farms, fishing boats</td><td>Soldiers</td></tr>
+        <tr><td class="k">Wood</td><td>Forest hexes</td><td>Boats, buildings</td></tr>
+        <tr><td class="k">Stone</td><td>Mountain hexes</td><td>Walls, towers, sieges</td></tr>
+        <tr><td class="k">Gold</td><td>Gold hexes</td><td>Armoury, upgrades</td></tr>
+      </table>
+
+      <div class="rule-item">
+        <h3><span class="n">7.2</span>Beans are the money</h3>
+        <p>Dried beans as tokens — four kinds, or four colours of paper square. Cheap, and you already have them.</p>
+      </div>
+
+      <div class="rule-item">
+        <h3><span class="n">7.3</span>Four kingdoms</h3>
+        <p>Kingdom, Royal, Dark and Forest, the same four as the video game. Give each a small advantage so choosing matters.</p>
+      </div>
+
+      <table>
+        <tr><th>Kingdom</th><th>Advantage</th></tr>
+        <tr><td class="k">Royal</td><td>Starts with extra gold</td></tr>
+        <tr><td class="k">Forest</td><td>Farms give +1 food</td></tr>
+        <tr><td class="k">Dark</td><td>Soldiers cost 1 less</td></tr>
+        <tr><td class="k">Kingdom</td><td>Repairs walls for free</td></tr>
+      </table>
+    </div>
+
+    <div class="margin">
+      <div class="note ask">
+        <b>Not yet decided</b>
+        How does anybody actually win?
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Pick one before the first game rather than leaving it open — a game with no ending gets abandoned rather than finished.
+      </div>
+      <div class="note">
+        <b>Conquest</b>
+        Destroy every other castle. The clearest, and the longest.
+      </div>
+      <div class="note">
+        <b>The Wonder</b>
+        First to build the Grand Cathedral, at an enormous price in all four resources. Lets a peaceful player win, and gives everyone else a clock they can see ticking.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        For game one, use <strong>both</strong>: first to take every castle <em>or</em> finish the Wonder. Two ways to win means two ways to play, and you will learn twice as much from one evening.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Harvest rate to start with: <strong>1 resource per matching hex per turn</strong>. Round numbers are easy to fix later.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 7 · RESOURCES &amp; WINNING</span></div>
+</section>
+
+<!-- ═══════════ 8. STILL OPEN ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>STILL TO DECIDE</h2><span class="num">§ 8</span></div>
+
+  <p style="margin-bottom:14px">Every question either of you raised and did not finish. Decide them together and write the answer in the blank column — that column is the reason this page is printed.</p>
+
+  <table>
+    <tr><th style="width:31%">Question</th><th style="width:34%">Suggested answer</th><th style="width:35%">What we decided</th></tr>
+    <tr><td class="k">Damage to walls</td><td>3 blocks; soldier 5–6 for one, siege 3–6 for two</td><td></td></tr>
+    <tr><td class="k">Buildings per hex</td><td>Two, or four on the castle hex</td><td></td></tr>
+    <tr><td class="k">Building upgrades</td><td>Yes — one level, same cost again</td><td></td></tr>
+    <tr><td class="k">Fishing boats</td><td>Yes — 1 food a turn, parked next to your island</td><td></td></tr>
+    <tr><td class="k">Unloading soldiers</td><td>Free when the boat lands</td><td></td></tr>
+    <tr><td class="k">Sunk transports</td><td>Everyone aboard is lost</td><td></td></tr>
+    <tr><td class="k">How to win</td><td>All castles, or the Wonder</td><td></td></tr>
+    <tr><td class="k">Turn order</td><td>Roll a die, highest first, then clockwise</td><td></td></tr>
+    <tr><td class="k">Army size cap</td><td>30 soldiers</td><td></td></tr>
+    <tr><td class="k">Number of islands</td><td>One each, plus 2–3 small ones in the middle</td><td></td></tr>
+    <tr><td class="k">Balloon rules</td><td>5 hexes, over everything, carries one soldier</td><td></td></tr>
+    <tr><td class="k">Armoury shop</td><td>Gold once for +1 attack, permanently</td><td></td></tr>
+    <tr><td class="k">Outpost job</td><td>Build in any hex touching it</td><td></td></tr>
+    <tr><td class="k">Cost of everything</td><td>Not yet discussed — see § 9</td><td></td></tr>
+  </table>
+
+  <div class="box">
+    <h3>OUR OWN RULES</h3>
+    <div class="lines">
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 8 · STILL TO DECIDE</span></div>
+</section>
+
+<!-- ═══════════ 9. MAKE IT ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>WHAT TO MAKE</h2><span class="num">§ 9</span></div>
+
+  <div class="track">
+    <div class="rules">
+      <div class="box">
+        <h3>SHOPPING LIST</h3>
+        <ul class="check">
+          <li>Poster board or foam board — the islands</li>
+          <li>Dried beans, four kinds — resources</li>
+          <li>Two dice</li>
+          <li>Small tokens for soldiers: LEGO, buttons or coins, in four colours</li>
+          <li>Coloured paper — four kingdoms</li>
+          <li>Scissors, glue, ruler, pencil</li>
+          <li>The highlighter you already found</li>
+          <li>A folder or box to keep it all in</li>
+        </ul>
+      </div>
+
+      <div class="box">
+        <h3>BUILD IN THIS ORDER</h3>
+        <ul class="check">
+          <li>Cut 40 hexes and lay out two islands of 20</li>
+          <li>Cut 20 ocean hexes to go between them</li>
+          <li>Make 30 soldiers in two colours</li>
+          <li>Print two building sheets and two turn cards</li>
+          <li><strong>Play the tiny version</strong> — castles, soldiers, walls, one way to win. Nothing else</li>
+          <li>Then add boats and transports</li>
+          <li>Then add siege machines and balloons</li>
+          <li>Then add the four kingdoms and the armoury</li>
+          <li>Draw the cover, and ask Dad to enhance it</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="margin">
+      <div class="note">
+        <b>Side answer</b>
+        Play the tiny version before anything is finished. Most board games die because the makers built every piece first and only then found out that a rule was no fun.
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Costs are the one thing you never talked about. Do not agonise — write a price on everything in ten minutes, play, then fix whatever felt too cheap. Starting numbers:
+        <table style="font-size:8.4pt;margin:5px 0 0">
+          <tr><td style="padding:2px 6px 2px 0;border:none">Soldier</td><td style="padding:2px 0;border:none">2 food</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Wall</td><td style="padding:2px 0;border:none">2 stone</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Barracks</td><td style="padding:2px 0;border:none">3 wood</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Outpost</td><td style="padding:2px 0;border:none">2 wood 1 stone</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Tower</td><td style="padding:2px 0;border:none">3 stone</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Boat</td><td style="padding:2px 0;border:none">3 wood</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Transport</td><td style="padding:2px 0;border:none">4 wood</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Fishing boat</td><td style="padding:2px 0;border:none">2 wood</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Siege</td><td style="padding:2px 0;border:none">3 wood 3 stone</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Balloon</td><td style="padding:2px 0;border:none">4 gold</td></tr>
+          <tr><td style="padding:2px 6px 2px 0;border:none">Armoury</td><td style="padding:2px 0;border:none">5 gold</td></tr>
+        </table>
+      </div>
+      <div class="note">
+        <b>Side answer</b>
+        Keep a notebook beside the board while you play and write down every argument. Arguments are where the next version comes from.
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>§ 9 · WHAT TO MAKE</span></div>
+</section>
+
+<!-- ═══════════ PLAY AID: TURN CARDS ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>TURN CARDS</h2><span class="num">CUT OUT</span></div>
+  <p class="cut">Print, cut along the boxes, one for each player</p>
+
+  <div class="cards" id="turncards"></div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>PLAY AID · TURN CARDS</span></div>
+</section>
+
+<!-- ═══════════ PLAY AID: BUILDING SHEET ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>BUILDING SHEET</h2><span class="num">ONE EACH</span></div>
+
+  <p style="margin-bottom:5px"><span class="kicker">Player</span> ______________________  <span class="kicker" style="margin-left:22px">Kingdom</span> ______________________</p>
+  <p style="font-size:9pt;color:var(--gray);margin-bottom:12px">Write a building in when you build it. Tick <em>Level 2</em> when you upgrade it. Cross out the blocks as a wall breaks. Cross out the whole row when it is destroyed.</p>
+
+  <table class="tracker" id="tracker"></table>
+
+  <div class="box" style="margin-top:16px">
+    <h3>THE DOCK — SOLDIERS AT SEA</h3>
+    <p style="font-size:9pt;color:var(--gray);margin-bottom:8px">Five soldiers per transport, three transports at once. Put the pieces on this box while they sail.</p>
+    <table style="margin:0">
+      <tr><td class="k" style="width:1.5in">Transport 1</td><td class="pips"><span></span><span></span><span></span><span></span><span></span></td></tr>
+      <tr><td class="k">Transport 2</td><td class="pips"><span></span><span></span><span></span><span></span><span></span></td></tr>
+      <tr><td class="k">Transport 3</td><td class="pips"><span></span><span></span><span></span><span></span><span></span></td></tr>
+    </table>
+  </div>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>PLAY AID · BUILDING SHEET</span></div>
+</section>
+
+<!-- ═══════════ PLAY AID: ISLAND TEMPLATE ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>ISLAND TEMPLATE</h2><span class="num">20 HEXES</span></div>
+  <p style="margin-bottom:12px">An island of exactly 20 hexagons, at playing size. Trace it onto card once for every player.</p>
+
+  <svg class="grid" id="island" viewBox="0 0 570 365" aria-label="A twenty hexagon island"></svg>
+  <p class="hex-cap">Rows of 4 · 5 · 6 · 5 = 20 land hexes</p>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>PLAY AID · ISLAND TEMPLATE</span></div>
+</section>
+
+<!-- ═══════════ PLAY AID: HEX PAPER ═══════════ -->
+<section class="page">
+  <div class="banner"><h2>HEX PAPER</h2><span class="num">SKETCH ON THIS</span></div>
+  <p style="margin-bottom:12px">Blank hexes for drawing the ocean, the small middle islands, or a map you like better than ours.</p>
+
+  <svg class="grid" id="hexpaper" viewBox="0 0 600 660" aria-label="Blank hexagon grid"></svg>
+
+  <div class="foot"><span>MEDIEVAL CIVILIZATION</span><span>PLAY AID · HEX PAPER</span></div>
+</section>
+
+</div>
+
+<script>
+/* ── Turn reference cards ─────────────────────────── */
+const cardHTML = `
+  <h3>YOUR TURN</h3>
+  <table>
+    <tr><td style="width:52%"><b>Harvest</b> — free</td><td>1 per hex you own</td></tr>
+    <tr><td><b>Move</b> ×2</td><td>5 land / 10 sea</td></tr>
+    <tr><td><b>Build</b> ×1</td><td>place or upgrade</td></tr>
+    <tr><td><b>Attack</b> ×1</td><td>then roll dice</td></tr>
+  </table>
+  <table style="margin-top:8px">
+    <tr><td style="width:52%">Up to 4 together</td><td>1 move token</td></tr>
+    <tr><td>5 or more together</td><td>2 move tokens</td></tr>
+    <tr><td>Soldier vs soldier</td><td>high roll wins</td></tr>
+    <tr><td>Behind a wall</td><td>defender +2</td></tr>
+    <tr><td>Wall</td><td>3 blocks</td></tr>
+    <tr><td>Soldier hits wall</td><td>5–6 → 1 block</td></tr>
+    <tr><td>Siege hits wall</td><td>3–6 → 2 blocks</td></tr>
+    <tr><td>Balloon</td><td>flies over walls</td></tr>
+    <tr><td>Pops a balloon</td><td>archers, towers</td></tr>
+  </table>`;
+document.getElementById('turncards').innerHTML =
+  Array.from({length:4}, () => '<div class="card">'+cardHTML+'</div>').join('');
+
+/* ── Building sheet rows ──────────────────────────── */
+const rows = ['Castle','','','','','','','','','','','',''];
+document.getElementById('tracker').innerHTML =
+  '<tr><th>Building</th><th>Hex</th><th class="lvl">Level 2</th><th class="hp">Blocks left</th></tr>' +
+  rows.map(r => '<tr><td>'+r+'</td><td></td><td class="lvl pips"><span></span></td>'+
+    '<td class="hp pips"><span></span><span></span><span></span></td></tr>').join('');
+
+/* ── Hex drawing ──────────────────────────────────── */
+function hexPath(cx, cy, r){
+  let p = '';
+  for(let i=0;i<6;i++){
+    const a = Math.PI/180 * (60*i - 30);       // pointy-top
+    p += (i?'L':'M') + (cx + r*Math.cos(a)).toFixed(1) + ' ' + (cy + r*Math.sin(a)).toFixed(1);
+  }
+  return p + 'Z';
+}
+function drawHexes(svg, rowSpec, r, x0, y0, stroke, width){
+  const w = Math.sqrt(3) * r, vs = 1.5 * r;
+  let out = '';
+  rowSpec.forEach((count, row) => {
+    const rowW = count * w;
+    const startX = x0 + (rowSpec.maxW - rowW) / 2;
+    for(let c=0;c<count;c++){
+      out += '<path d="'+hexPath(startX + w/2 + c*w, y0 + r + row*vs, r)+
+             '" fill="none" stroke="'+stroke+'" stroke-width="'+width+'"/>';
+    }
+  });
+  svg.innerHTML = out;
+}
+
+// Island: 4 / 5 / 6 / 5 = 20 hexes
+const islandRows = [4,5,6,5];
+islandRows.maxW = 6 * Math.sqrt(3) * 52;
+drawHexes(document.getElementById('island'), islandRows, 52, 15, 12, '#15202B', 2);
+
+// Hex paper: a full page of blanks
+const paperRows = Array.from({length:14}, (_,i) => i%2 ? 9 : 10);
+paperRows.maxW = 10 * Math.sqrt(3) * 30;
+drawHexes(document.getElementById('hexpaper'), paperRows, 30, 8, 8, '#C3C9D0', 1);
+</script>
+</body>
+</html>
