@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Scribe — voice notes for Medieval Civilization</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F141C'/%3E%3Ccircle cx='16' cy='16' r='4' fill='none' stroke='%2348B39C' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='9' fill='none' stroke='%23D9A441' stroke-width='2' opacity='.75'/%3E%3Ccircle cx='16' cy='16' r='13.5' fill='none' stroke='%23D9A441' stroke-width='1.5' opacity='.35'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#0F141C;
+    --panel:#161E2A;
+    --panel-2:#1E2836;
+    --line:#2A3646;
+    --gold:#D9A441;
+    --verdigris:#48B39C;
+    --crimson:#C24A3F;
+    --parchment:#E9E3D6;
+    --muted:#8A94A4;
+
+    --display:"Copperplate","Copperplate Gothic Light",Optima,"Trajan Pro",serif;
+    --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 620px at 18% -8%, rgba(217,164,65,.10), transparent 62%),
+      radial-gradient(820px 520px at 92% 4%, rgba(72,179,156,.07), transparent 60%),
+      var(--ink);
+    color:var(--parchment);
+    font-family:var(--body);
+    font-size:16px;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 22px 80px}
+
+  /* ── Masthead ─────────────────────────────── */
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
+    padding-bottom:16px;border-bottom:1px solid var(--line)}
+  .wordmark{font-family:var(--display);font-size:26px;letter-spacing:.16em;color:var(--parchment);margin:0}
+  .wordmark .of{color:var(--gold)}
+  .tagline{font-family:var(--mono);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+
+  .eyebrow{font-family:var(--display);font-size:11px;letter-spacing:.24em;color:var(--gold);
+    text-transform:uppercase;margin:0 0 10px}
+
+  /* ── Console ──────────────────────────────── */
+  .console{display:grid;grid-template-columns:260px 1fr;gap:30px;align-items:center;
+    margin:30px 0 26px;padding:26px;border:1px solid var(--line);border-radius:16px;
+    background:linear-gradient(180deg,var(--panel-2),var(--panel))}
+
+  /* Signature: the listening horn */
+  .horn{position:relative;width:230px;height:230px;justify-self:center}
+  .horn svg{width:100%;height:100%;display:block;overflow:visible}
+  .ring{fill:none;stroke:var(--line);stroke-width:2;transition:stroke .12s linear,opacity .12s linear}
+  .ring.lit{stroke:var(--verdigris);opacity:1}
+  .ring.hot{stroke:var(--gold)}
+  .horn-core{position:absolute;inset:0;display:grid;place-content:center;text-align:center;pointer-events:none}
+  .level{font-family:var(--mono);font-size:30px;font-weight:600;color:var(--parchment);letter-spacing:-.02em}
+  .level small{font-size:13px;color:var(--muted);font-weight:400}
+  .range{font-family:var(--display);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--gold);margin-top:5px;min-height:14px}
+
+  .status{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+  .listening .dot{background:var(--crimson);animation:pulse 1.6s ease-in-out infinite}
+  .listening .status{color:var(--parchment)}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(194,74,63,.55)}50%{opacity:.75;box-shadow:0 0 0 7px rgba(194,74,63,0)}}
+
+  h2.headline{font-family:var(--display);font-size:27px;letter-spacing:.05em;margin:0 0 6px;line-height:1.2}
+  .sub{color:var(--muted);font-size:14.5px;margin:0 0 18px;max-width:52ch}
+
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+  button{font-family:var(--body);font-size:14px;cursor:pointer;border-radius:9px;
+    border:1px solid var(--line);background:var(--panel-2);color:var(--parchment);
+    padding:10px 15px;transition:background .15s,border-color .15s,color .15s}
+  button:hover{background:#26313F;border-color:#3A4A5E}
+  button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  button:disabled{opacity:.4;cursor:not-allowed}
+
+  .primary{background:var(--verdigris);border-color:var(--verdigris);color:#08221D;font-weight:650;padding:11px 22px}
+  .primary:hover{background:#5AC5AD;border-color:#5AC5AD}
+  .listening .primary{background:var(--crimson);border-color:var(--crimson);color:#FDECEA}
+  .listening .primary:hover{background:#D25A4F;border-color:#D25A4F}
+
+  /* Boost */
+  .boost{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  .boost-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:9px}
+  .boost-label{font-family:var(--display);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold)}
+  .boost-val{font-family:var(--mono);font-size:13px;color:var(--parchment)}
+  input[type=range]{width:100%;accent-color:var(--gold);height:22px}
+  input[type=range]:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:7px;line-height:1.5}
+
+  /* ── Ledger ───────────────────────────────── */
+  .ledger-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  select,input[type=search],input.title{font-family:var(--body);font-size:14px;color:var(--parchment);
+    background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 12px}
+  input[type=search]{flex:1;min-width:170px}
+  input.title{font-family:var(--display);letter-spacing:.08em;font-size:17px;background:transparent;
+    border:none;border-bottom:1px solid transparent;padding:2px 0;flex:1;min-width:200px;border-radius:0}
+  input.title:hover{border-bottom-color:var(--line)}
+  input.title:focus{outline:none;border-bottom-color:var(--gold)}
+  select:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+  .spacer{flex:1}
+  .count{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+
+  .ledger{border:1px solid var(--line);border-radius:14px;background:var(--panel);overflow:hidden}
+  .entry{display:grid;grid-template-columns:74px 1fr auto;gap:14px;align-items:start;
+    padding:13px 16px;border-bottom:1px solid rgba(42,54,70,.6)}
+  .entry:last-child{border-bottom:none}
+  .entry:hover{background:rgba(42,54,70,.24)}
+  .entry.starred{background:rgba(217,164,65,.09);box-shadow:inset 3px 0 0 var(--gold)}
+  .stamp{font-family:var(--mono);font-size:12px;color:var(--muted);padding-top:3px;letter-spacing:-.02em}
+  .said{white-space:pre-wrap;word-break:break-word;outline:none;border-radius:5px}
+  .said:focus{background:rgba(217,164,65,.10);box-shadow:0 0 0 2px var(--gold)}
+  .acts{display:flex;gap:3px;opacity:0;transition:opacity .12s}
+  .entry:hover .acts,.entry:focus-within .acts,.entry.starred .acts{opacity:1}
+  .icon{background:none;border:none;padding:4px 6px;font-size:14px;line-height:1;color:var(--muted);border-radius:6px}
+  .icon:hover{background:var(--panel-2);color:var(--parchment)}
+  .icon.on{color:var(--gold)}
+
+  .interim{padding:13px 16px;display:grid;grid-template-columns:74px 1fr;gap:14px;
+    color:var(--muted);font-style:italic;border-top:1px dashed var(--line)}
+  .interim .stamp{font-style:normal}
+  .caret{display:inline-block;width:2px;height:1em;background:var(--verdigris);
+    vertical-align:-2px;margin-left:2px;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .empty{padding:52px 24px;text-align:center;color:var(--muted)}
+  .empty .mark{font-family:var(--display);font-size:15px;letter-spacing:.2em;color:var(--gold);
+    text-transform:uppercase;margin-bottom:10px}
+
+  .footer-bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);opacity:0;
+    background:var(--panel-2);border:1px solid var(--gold);color:var(--parchment);
+    padding:11px 18px;border-radius:10px;font-size:14px;pointer-events:none;
+    transition:opacity .2s,transform .2s;z-index:50;max-width:88vw;text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  .warn{border:1px solid var(--crimson);background:rgba(194,74,63,.12);color:#F0C9C4;
+    padding:13px 16px;border-radius:11px;margin-bottom:20px;font-size:14px}
+
+  @media (max-width:760px){
+    .wrap{padding:20px 16px 60px}
+    .wordmark{font-size:20px;letter-spacing:.12em}
+    .console{grid-template-columns:1fr;gap:20px;padding:20px}
+    .horn{width:180px;height:180px}
+    /* Stack: time + actions on one row, the words below at full width */
+    .entry{grid-template-columns:1fr auto;grid-template-areas:"stamp acts" "said said";gap:4px 10px;padding:12px 14px}
+    .entry .stamp{grid-area:stamp;padding-top:0}
+    .entry .acts{grid-area:acts;opacity:1}
+    .entry .said{grid-area:said}
+    .interim{grid-template-columns:1fr;gap:4px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1 class="wordmark">THE SCRIBE <span class="of">·</span> MEDIEVAL CIVILIZATION</h1>
+    <span class="tagline">Everything said, written down</span>
+  </header>
+
+  <div id="warn" class="warn" hidden></div>
+
+  <!-- Console -->
+  <section class="console" id="console">
+    <div class="horn">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="ring" data-i="0" cx="100" cy="100" r="30"></circle>
+        <circle class="ring" data-i="1" cx="100" cy="100" r="45"></circle>
+        <circle class="ring" data-i="2" cx="100" cy="100" r="60"></circle>
+        <circle class="ring" data-i="3" cx="100" cy="100" r="75"></circle>
+        <circle class="ring" data-i="4" cx="100" cy="100" r="90"></circle>
+      </svg>
+      <div class="horn-core">
+        <div class="level" id="levelNum">—<small> dB</small></div>
+        <div class="range" id="rangeTxt"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="status"><span class="dot"></span><span id="statusTxt">Idle</span></div>
+      <p class="eyebrow">Listening post</p>
+      <h2 class="headline">Talk. It writes.</h2>
+      <p class="sub">Say anything and it lands in the ledger below with a timestamp. It keeps listening until you stop it, and saves as you go.</p>
+
+      <div class="controls">
+        <button class="primary" id="toggleBtn">Start listening</button>
+        <button id="markBtn" title="Drop a marker at this moment">Mark this spot</button>
+        <button id="playBtn" disabled>Play back louder</button>
+        <button id="dlAudioBtn" disabled>Save audio</button>
+      </div>
+
+      <div class="boost">
+        <div class="boost-head">
+          <span class="boost-label">Boost</span>
+          <span class="boost-val" id="boostVal">6×</span>
+        </div>
+        <input type="range" id="boost" min="1" max="24" step="1" value="6" aria-label="Boost">
+        <p class="hint" id="boostHint">Amplifies faint, far-off speech in the meter and in the saved recording, so you can hear someone across the room on playback.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ledger -->
+  <div class="ledger-bar">
+    <input class="title" id="sessionTitle" value="Brainstorm" aria-label="Session name" spellcheck="false">
+    <select id="sessionPick" aria-label="Choose a session"></select>
+    <button id="newBtn">New session</button>
+  </div>
+
+  <div class="ledger-bar">
+    <input type="search" id="search" placeholder="Search everything said…" aria-label="Search the ledger">
+    <span class="count" id="count">0 lines</span>
+  </div>
+
+  <main class="ledger" id="ledger" aria-live="polite"></main>
+
+  <div class="footer-bar">
+    <button id="copyBtn">Copy all</button>
+    <button id="mdBtn">Export notes</button>
+    <button id="starOnlyBtn">Export starred only</button>
+    <span class="spacer"></span>
+    <button id="delBtn">Delete this session</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ───────── state ───────── */
+const KEY='scribe.v1';
+let store = load();
+let cur   = store.sessions[0];
+let listening=false, wantListening=false;
+let rec=null, audioCtx=null, gainNode=null, analyser=null, mediaRec=null, chunks=[], micStream=null;
+let lastBlob=null, wakeLock=null, restartTimer=null;
+
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(KEY));
+    if(s && s.sessions && s.sessions.length) return s;
+  }catch(e){}
+  return {sessions:[newSession()]};
+}
+function newSession(){
+  return {id:'s'+Date.now(), title:'Brainstorm', createdAt:new Date().toISOString(), lines:[]};
+}
+function save(){ try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){toast('Storage is full — export your notes.');} }
+
+/* ───────── helpers ───────── */
+const $=id=>document.getElementById(id);
+const consoleEl=$('console');
+function stamp(iso){
+  const d=new Date(iso);
+  return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+}
+let toastTimer;
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2400);
+}
+function download(name,text,type){
+  const b=new Blob([text],{type:type||'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(b); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* ───────── ledger rendering ───────── */
+function render(){
+  const q=$('search').value.trim().toLowerCase();
+  const ledger=$('ledger');
+  const lines=cur.lines.map((l,i)=>({l,i}))
+    .filter(({l})=>!q || l.text.toLowerCase().includes(q));
+
+  ledger.innerHTML='';
+
+  if(!lines.length){
+    const e=document.createElement('div'); e.className='empty';
+    e.innerHTML = q
+      ? '<div class="mark">Nothing matches</div><div>No line contains “'+q.replace(/[<>&]/g,'')+'”.</div>'
+      : '<div class="mark">The page is blank</div><div>Press Start listening and talk. Every word lands here.</div>';
+    ledger.appendChild(e);
+  }
+
+  for(const {l,i} of lines){
+    const row=document.createElement('div');
+    row.className='entry'+(l.star?' starred':'');
+
+    const s=document.createElement('div'); s.className='stamp'; s.textContent=stamp(l.t);
+
+    const said=document.createElement('div');
+    said.className='said'; said.contentEditable='true'; said.spellcheck=false;
+    said.textContent=l.text;
+    said.addEventListener('blur',()=>{ cur.lines[i].text=said.textContent.trim(); save(); updateCount(); });
+    said.addEventListener('keydown',ev=>{ if(ev.key==='Enter'&&!ev.shiftKey){ev.preventDefault();said.blur();} });
+
+    const acts=document.createElement('div'); acts.className='acts';
+    const star=document.createElement('button');
+    star.className='icon'+(l.star?' on':''); star.textContent='★';
+    star.title=l.star?'Unstar':'Star this line';
+    star.setAttribute('aria-label',star.title);
+    star.onclick=()=>{ cur.lines[i].star=!cur.lines[i].star; save(); render(); };
+    const del=document.createElement('button');
+    del.className='icon'; del.textContent='✕'; del.title='Delete line';
+    del.setAttribute('aria-label','Delete line');
+    del.onclick=()=>{ cur.lines.splice(i,1); save(); render(); };
+    acts.append(star,del);
+
+    row.append(s,said,acts);
+    ledger.appendChild(row);
+  }
+
+  if(interimText){
+    const iv=document.createElement('div'); iv.className='interim';
+    iv.innerHTML='<div class="stamp">now</div><div>'+
+      interimText.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))+
+      '<span class="caret"></span></div>';
+    ledger.appendChild(iv);
+    iv.scrollIntoView({block:'nearest'});
+  }
+  updateCount();
+}
+function updateCount(){
+  const n=cur.lines.length, w=cur.lines.reduce((a,l)=>a+l.text.split(/\s+/).filter(Boolean).length,0);
+  $('count').textContent = n+(n===1?' line':' lines')+' · '+w+' words';
+}
+function renderSessions(){
+  const p=$('sessionPick'); p.innerHTML='';
+  for(const s of store.sessions){
+    const o=document.createElement('option');
+    o.value=s.id;
+    o.textContent=s.title+' — '+new Date(s.createdAt).toLocaleDateString([], {month:'short',day:'numeric'});
+    if(s.id===cur.id) o.selected=true;
+    p.appendChild(o);
+  }
+  $('sessionTitle').value=cur.title;
+}
+
+/* ───────── adding lines ───────── */
+function addLine(text,star){
+  text=text.trim(); if(!text) return;
+  cur.lines.push({t:new Date().toISOString(), text, star:!!star});
+  save(); render();
+  window.scrollTo({top:document.body.scrollHeight, behavior:'smooth'});
+}
+
+/* ───────── speech recognition ───────── */
+let interimText='';
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if(!SR){
+  const w=$('warn'); w.hidden=false;
+  w.textContent='This browser can’t turn speech into text. Open this page in Google Chrome or Microsoft Edge.';
+  $('toggleBtn').disabled=true;
+}
+
+function buildRecognizer(){
+  const r=new SR();
+  r.continuous=true;
+  r.interimResults=true;
+  r.lang='en-US';
+  r.maxAlternatives=1;
+
+  r.onresult=e=>{
+    let interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const res=e.results[i];
+      if(res.isFinal) addLine(res[0].transcript);
+      else interim+=res[0].transcript;
+    }
+    interimText=interim;
+    if(interim) render();
+  };
+
+  r.onerror=e=>{
+    if(e.error==='not-allowed' || e.error==='service-not-allowed'){
+      wantListening=false; setListening(false);
+      const w=$('warn'); w.hidden=false;
+      w.textContent='Microphone access is blocked. Click the mic icon in the address bar, allow it, then press Start listening again.';
+    } else if(e.error==='audio-capture'){
+      wantListening=false; setListening(false);
+      toast('No microphone found.');
+    }
+    // no-speech / network / aborted: onend restarts us
+  };
+
+  r.onend=()=>{
+    interimText='';
+    if(wantListening){
+      clearTimeout(restartTimer);
+      restartTimer=setTimeout(()=>{ try{ r.start(); }catch(err){} },260);
+    } else {
+      setListening(false);
+    }
+  };
+  return r;
+}
+
+/* ───────── mic: meter + boosted recording ───────── */
+async function startAudio(){
+  micStream=await navigator.mediaDevices.getUserMedia({audio:{
+    echoCancellation:false,   // don't carve out far-field room sound
+    noiseSuppression:false,   // keep quiet distant voices
+    autoGainControl:true,     // let the OS lift faint input
+    channelCount:1
+  }});
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  const src=audioCtx.createMediaStreamSource(micStream);
+  gainNode=audioCtx.createGain();
+  gainNode.gain.value=Number($('boost').value);
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=1024;
+  const dest=audioCtx.createMediaStreamDestination();
+
+  src.connect(gainNode); gainNode.connect(analyser); analyser.connect(dest);
+
+  chunks=[]; lastBlob=null;
+  try{
+    mediaRec=new MediaRecorder(dest.stream);
+    mediaRec.ondataavailable=e=>{ if(e.data.size) chunks.push(e.data); };
+    mediaRec.onstop=()=>{
+      if(chunks.length){
+        lastBlob=new Blob(chunks,{type:mediaRec.mimeType||'audio/webm'});
+        $('playBtn').disabled=false; $('dlAudioBtn').disabled=false;
+      }
+    };
+    mediaRec.start(1000);
+  }catch(err){ mediaRec=null; }
+
+  meterLoop();
+}
+function stopAudio(){
+  try{ mediaRec && mediaRec.state!=='inactive' && mediaRec.stop(); }catch(e){}
+  if(micStream) micStream.getTracks().forEach(t=>t.stop());
+  if(audioCtx) audioCtx.close();
+  micStream=null; audioCtx=null; analyser=null;
+  paintMeter(0);
+}
+
+const rings=[...document.querySelectorAll('.ring')];
+function paintMeter(db){
+  // db runs roughly -60 (silence) → 0 (loud). Map onto 5 rings.
+  const norm=Math.max(0,Math.min(1,(db+60)/60));
+  const lit=Math.round(norm*rings.length);
+  rings.forEach((r,i)=>{
+    r.classList.toggle('lit', i<lit);
+    r.classList.toggle('hot', i<lit && i>=rings.length-1);
+  });
+  $('levelNum').innerHTML = (analyser? Math.round(db) : '—')+'<small> dB</small>';
+  let txt='';
+  if(analyser){
+    if(norm<.10) txt='Silence';
+    else if(norm<.30) txt='Far off';
+    else if(norm<.55) txt='Across the room';
+    else if(norm<.80) txt='Nearby';
+    else txt='Right here';
+  }
+  $('rangeTxt').textContent=txt;
+}
+function meterLoop(){
+  if(!analyser) return;
+  const buf=new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let sum=0; for(let i=0;i<buf.length;i++) sum+=buf[i]*buf[i];
+  const rms=Math.sqrt(sum/buf.length);
+  paintMeter(rms>0 ? Math.max(-60,20*Math.log10(rms)) : -60);
+  requestAnimationFrame(meterLoop);
+}
+
+/* ───────── start / stop ───────── */
+function setListening(on){
+  listening=on;
+  consoleEl.classList.toggle('listening',on);
+  $('toggleBtn').textContent = on?'Stop listening':'Start listening';
+  $('statusTxt').textContent = on?'Listening':'Idle';
+}
+async function start(){
+  wantListening=true;
+  try{ await startAudio(); }
+  catch(err){
+    wantListening=false;
+    const w=$('warn'); w.hidden=false;
+    w.textContent='Microphone access is blocked. Click the mic icon in the address bar, allow it, then press Start listening again.';
+    return;
+  }
+  rec=buildRecognizer();
+  try{ rec.start(); }catch(e){}
+  setListening(true);
+  try{ wakeLock=await navigator.wakeLock.request('screen'); }catch(e){}
+}
+function stop(){
+  wantListening=false;
+  clearTimeout(restartTimer);
+  try{ rec && rec.stop(); }catch(e){}
+  stopAudio();
+  setListening(false);
+  interimText=''; render();
+  if(wakeLock){ try{wakeLock.release();}catch(e){} wakeLock=null; }
+}
+
+/* ───────── exports ───────── */
+function toMarkdown(onlyStars){
+  const lines=cur.lines.filter(l=>!onlyStars||l.star);
+  let out='# '+cur.title+'\n\n'+new Date(cur.createdAt).toLocaleString()+'\n\n';
+  for(const l of lines) out+= (l.star?'★ ':'- ')+'**'+stamp(l.t)+'** — '+l.text+'\n';
+  return out;
+}
+
+/* ───────── wiring ───────── */
+$('toggleBtn').onclick=()=>listening?stop():start();
+$('markBtn').onclick=()=>{ addLine('— — — mark — — —', true); toast('Marker dropped'); };
+
+$('boost').oninput=e=>{
+  const v=Number(e.target.value);
+  $('boostVal').textContent=v+'×';
+  if(gainNode) gainNode.gain.value=v;
+};
+
+$('playBtn').onclick=()=>{
+  if(!lastBlob) return;
+  const a=new Audio(URL.createObjectURL(lastBlob)); a.play();
+  toast('Playing the boosted recording');
+};
+$('dlAudioBtn').onclick=()=>{
+  if(!lastBlob) return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(lastBlob);
+  a.download=cur.title.replace(/[^\w -]/g,'')+'.webm'; a.click();
+};
+
+$('search').oninput=render;
+$('sessionTitle').oninput=e=>{ cur.title=e.target.value||'Untitled'; save(); renderSessions(); };
+$('sessionPick').onchange=e=>{
+  cur=store.sessions.find(s=>s.id===e.target.value);
+  renderSessions(); render();
+};
+$('newBtn').onclick=()=>{
+  cur=newSession(); store.sessions.unshift(cur); save(); renderSessions(); render();
+  $('sessionTitle').focus(); $('sessionTitle').select();
+};
+$('delBtn').onclick=()=>{
+  if(!confirm('Delete “'+cur.title+'” and its '+cur.lines.length+' lines? This can’t be undone.')) return;
+  store.sessions=store.sessions.filter(s=>s.id!==cur.id);
+  if(!store.sessions.length) store.sessions=[newSession()];
+  cur=store.sessions[0]; save(); renderSessions(); render();
+};
+$('copyBtn').onclick=async()=>{
+  try{ await navigator.clipboard.writeText(toMarkdown(false)); toast('Notes copied'); }
+  catch(e){ toast('Copy failed — use Export notes instead.'); }
+};
+$('mdBtn').onclick=()=>download(cur.title.replace(/[^\w -]/g,'')+'.md',toMarkdown(false),'text/markdown');
+$('starOnlyBtn').onclick=()=>{
+  if(!cur.lines.some(l=>l.star)) return toast('No starred lines yet — press ★ on the good ones.');
+  download(cur.title.replace(/[^\w -]/g,'')+'-starred.md',toMarkdown(true),'text/markdown');
+};
+
+document.addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){ e.preventDefault(); listening?stop():start(); }
+});
+window.addEventListener('beforeunload',e=>{ if(listening){ e.preventDefault(); e.returnValue=''; } });
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState==='visible' && listening && !wakeLock){
+    try{ wakeLock=await navigator.wakeLock.request('screen'); }catch(e){}
+  }
+});
+
+renderSessions(); render(); paintMeter(-60);
+</script>
+</body>
+</html>
