@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Press — print the board at real size</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F141C'/%3E%3Crect x='7' y='7' width='8' height='8' fill='none' stroke='%23D9A441' stroke-width='1.6'/%3E%3Crect x='17' y='7' width='8' height='8' fill='none' stroke='%23D9A441' stroke-width='1.6'/%3E%3Crect x='7' y='17' width='8' height='8' fill='none' stroke='%2348B39C' stroke-width='1.6'/%3E%3Crect x='17' y='17' width='8' height='8' fill='none' stroke='%23D9A441' stroke-width='1.6'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --ink:#0F141C; --panel:#161E2A; --panel-2:#1E2836; --line:#2A3646;
+    --gold:#D9A441; --verdigris:#48B39C; --crimson:#C24A3F;
+    --parchment:#E9E3D6; --muted:#8A94A4;
+    --display:"Copperplate","Copperplate Gothic Light",Optima,serif;
+    --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Inter,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(1000px 600px at 15% -10%, rgba(217,164,65,.09), transparent 60%),
+      radial-gradient(800px 500px at 90% 0%, rgba(72,179,156,.06), transparent 60%), var(--ink);
+    color:var(--parchment);font-family:var(--body);font-size:15px;line-height:1.5;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 70px}
+
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;
+    padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:22px}
+  h1{font-family:var(--display);font-size:24px;letter-spacing:.15em;margin:0;font-weight:400}
+  h1 .dot{color:var(--gold)}
+  .tagline{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+
+  .cols{display:grid;grid-template-columns:330px 1fr;gap:24px;align-items:start}
+
+  .card{background:linear-gradient(180deg,var(--panel-2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:18px}
+  .card + .card{margin-top:16px}
+  .card h2{font-family:var(--display);font-size:12px;letter-spacing:.2em;color:var(--gold);
+    text-transform:uppercase;margin:0 0 14px;font-weight:400}
+
+  label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px}
+  .row{display:flex;gap:10px;margin-bottom:13px}
+  .row > div{flex:1;min-width:0}
+
+  input,select{width:100%;font-family:var(--body);font-size:14px;color:var(--parchment);
+    background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+  input:focus,select:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold)}
+  input[type=number]{font-family:var(--mono)}
+
+  button{font-family:var(--body);font-size:14px;cursor:pointer;border-radius:9px;
+    border:1px solid var(--line);background:var(--panel-2);color:var(--parchment);
+    padding:10px 15px;transition:background .15s,border-color .15s}
+  button:hover{background:#26313F;border-color:#3A4A5E}
+  button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .primary{background:var(--verdigris);border-color:var(--verdigris);color:#08221D;font-weight:650}
+  .primary:hover{background:#5AC5AD;border-color:#5AC5AD}
+
+  /* Drop zone */
+  .drop{border:1.5px dashed var(--line);border-radius:12px;padding:26px 16px;text-align:center;
+    cursor:pointer;transition:border-color .15s,background .15s}
+  .drop:hover,.drop.over{border-color:var(--gold);background:rgba(217,164,65,.06)}
+  .drop .big{font-family:var(--display);font-size:13px;letter-spacing:.16em;color:var(--gold);
+    text-transform:uppercase;margin-bottom:6px}
+  .drop .small{font-size:12.5px;color:var(--muted)}
+
+  /* Item list */
+  .item{border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:11px;background:var(--panel)}
+  .item.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+  .item-head{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .thumb{width:42px;height:42px;border-radius:6px;object-fit:cover;background:var(--ink);
+    border:1px solid var(--line);flex:none;cursor:pointer}
+  .item-name{flex:1;min-width:0;font-size:14px;background:transparent;border:none;padding:2px 0;
+    border-bottom:1px solid transparent;border-radius:0}
+  .item-name:hover{border-bottom-color:var(--line)}
+  .item-name:focus{outline:none;border-bottom-color:var(--gold)}
+  .icon{background:none;border:none;color:var(--muted);padding:4px 6px;font-size:14px;border-radius:6px}
+  .icon:hover{background:var(--panel-2);color:var(--parchment)}
+
+  .stat{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;
+    justify-content:space-between;gap:10px;padding:3px 0}
+  .stat b{color:var(--parchment);font-weight:400}
+  .stat.warn b{color:var(--crimson)}
+  .stat.good b{color:var(--verdigris)}
+
+  /* Preview */
+  .stage{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;
+    min-height:440px;display:flex;flex-direction:column}
+  .stage-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
+  .stage-head h2{font-family:var(--display);font-size:12px;letter-spacing:.2em;color:var(--gold);
+    text-transform:uppercase;margin:0;font-weight:400}
+  .sheetcount{font-family:var(--mono);font-size:12px;color:var(--muted)}
+  .canvas-wrap{flex:1;display:flex;align-items:center;justify-content:center;position:relative;min-height:0}
+  #preview{max-width:100%;max-height:62vh;display:block;border-radius:4px}
+  .empty{color:var(--muted);text-align:center;padding:60px 20px}
+  .empty .mark{font-family:var(--display);font-size:13px;letter-spacing:.2em;color:var(--gold);
+    text-transform:uppercase;margin-bottom:9px}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:12.5px;color:var(--muted)}
+  .legend i{display:inline-block;width:14px;height:2px;vertical-align:3px;margin-right:6px}
+  .legend .g i{background:var(--gold)}
+  .legend .v i{background:var(--verdigris)}
+
+  .foot{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+  .spacer{flex:1}
+  .hint{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.45}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,14px);opacity:0;
+    background:var(--panel-2);border:1px solid var(--gold);padding:11px 18px;border-radius:10px;
+    font-size:14px;pointer-events:none;transition:opacity .2s,transform .2s;z-index:60}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  .check{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--parchment);cursor:pointer;
+    margin-bottom:9px}
+  .check input{width:auto;margin:0}
+
+  @media (max-width:900px){ .cols{grid-template-columns:1fr} }
+
+  /* ── PRINT ─────────────────────────────────────── */
+  #printRoot{display:none}
+  @media print{
+    body{background:#fff}
+    .wrap,.toast{display:none !important}
+    #printRoot{display:block}
+    .psheet{position:relative;overflow:hidden;page-break-after:always;break-after:page}
+    .psheet:last-child{page-break-after:auto;break-after:auto}
+    .win{position:absolute;overflow:hidden}
+    .win img{position:absolute;image-rendering:auto}
+    .mark{position:absolute;background:#000}
+    .slug{position:absolute;font:8pt ui-monospace,monospace;color:#666}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <h1>THE PRESS <span class="dot">·</span> MEDIEVAL CIVILIZATION</h1>
+    <span class="tagline">Print it the size it really is</span>
+  </header>
+
+  <div class="cols">
+    <!-- ── Left: controls ── -->
+    <div>
+      <div class="card">
+        <h2>Artwork</h2>
+        <div class="drop" id="drop">
+          <div class="big">Drop pictures here</div>
+          <div class="small">or click to choose — PNG or JPG, as many as you like</div>
+        </div>
+        <input type="file" id="file" accept="image/*" multiple hidden>
+      </div>
+
+      <div class="card">
+        <h2>Paper</h2>
+        <div class="row">
+          <div>
+            <label for="paper">Size</label>
+            <select id="paper">
+              <option value="8.5x11" selected>Letter</option>
+              <option value="8.27x11.69">A4</option>
+            </select>
+          </div>
+          <div>
+            <label for="orient">Way up</label>
+            <select id="orient">
+              <option value="portrait" selected>Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="margin">Edge your printer can't reach (in)</label>
+            <input type="number" id="margin" value="0.25" min="0" max="1" step="0.05">
+          </div>
+          <div>
+            <label for="overlap">Overlap to tape (in)</label>
+            <input type="number" id="overlap" value="0.3" min="0" max="2" step="0.05">
+          </div>
+        </div>
+        <label class="check">
+          <input type="checkbox" id="marks">
+          <span>Add faint corner ticks and a sheet label</span>
+        </label>
+        <p class="hint">Off by default — sheets print as pure artwork, nothing drawn on top. The overlap alone tells you how far to slide each sheet under the next.</p>
+      </div>
+
+      <div class="card">
+        <h2>Pieces to print</h2>
+        <div id="items"></div>
+        <p class="hint" id="noItems">Nothing yet. Drop in a picture to begin.</p>
+      </div>
+    </div>
+
+    <!-- ── Right: preview ── -->
+    <div>
+      <div class="stage">
+        <div class="stage-head">
+          <h2>How it lands on paper</h2>
+          <span class="sheetcount" id="sheetcount"></span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="preview" hidden></canvas>
+          <div class="empty" id="emptyState">
+            <div class="mark">Nothing to show</div>
+            <div>Drop in your board picture and tell it how wide the real board should be.<br>
+                 It works out the sheets and prints them at exactly that size.</div>
+          </div>
+        </div>
+        <div class="legend">
+          <span class="g"><i></i>Where each sheet ends</span>
+          <span class="v"><i></i>Overlap you tape under</span>
+        </div>
+      </div>
+
+      <div class="foot">
+        <button class="primary" id="printSel" disabled>Print this piece</button>
+        <button id="printAll" disabled>Print everything</button>
+        <span class="spacer"></span>
+        <button id="ruler">Print a test ruler</button>
+      </div>
+      <p class="hint">Print the test ruler first and measure it. If it reads exactly 6 inches, your printer is at true size and the board will come out right. If it's short, turn off “Fit to page” or “Scale to fit” in the print box.</p>
+    </div>
+  </div>
+</div>
+
+<div id="printRoot"></div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ───────── state ───────── */
+const items = [];            // {id,name,url,img,w,h,unit,widthIn}
+let selId = null;
+const $ = id => document.getElementById(id);
+const IN = { in: 1, cm: 1/2.54 };
+
+let toastT;
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* ───────── paper maths ───────── */
+function paper(){
+  const [w,h] = $('paper').value.split('x').map(Number);
+  const land = $('orient').value === 'landscape';
+  const pw = land ? h : w, ph = land ? w : h;
+  const m = Math.max(0, Number($('margin').value) || 0);
+  const ov = Math.max(0, Number($('overlap').value) || 0);
+  const printW = pw - 2*m, printH = ph - 2*m;
+  return { pw, ph, m, ov, printW, printH,
+           stepX: Math.max(0.1, printW - ov), stepY: Math.max(0.1, printH - ov) };
+}
+function layout(it){
+  const p = paper();
+  const targetW = it.widthIn;
+  const targetH = targetW * (it.img.naturalHeight / it.img.naturalWidth);
+  const cols = targetW <= p.printW ? 1 : Math.ceil((targetW - p.printW) / p.stepX) + 1;
+  const rows = targetH <= p.printH ? 1 : Math.ceil((targetH - p.printH) / p.stepY) + 1;
+  const dpi  = it.img.naturalWidth / targetW;
+  return { ...p, targetW, targetH, cols, rows, sheets: cols*rows, dpi };
+}
+
+/* ───────── item list ───────── */
+function addImage(file){
+  const url = URL.createObjectURL(file);
+  const img = new Image();
+  img.onload = () => {
+    const it = { id: 'i'+Date.now()+Math.round(performance.now()),
+                 name: file.name.replace(/\.[^.]+$/,'').slice(0,40) || 'Piece',
+                 url, img, unit:'in', widthIn: 20 };
+    items.push(it); selId = it.id;
+    renderItems(); renderPreview();
+  };
+  img.onerror = () => toast('That file would not open as a picture.');
+  img.src = url;
+}
+
+function renderItems(){
+  const box = $('items'); box.innerHTML='';
+  $('noItems').hidden = items.length > 0;
+  for(const it of items){
+    const L = layout(it);
+    const el = document.createElement('div');
+    el.className = 'item' + (it.id===selId ? ' sel' : '');
+    el.onclick = e => { if(e.target.tagName!=='INPUT' && e.target.tagName!=='BUTTON'){
+      selId = it.id; renderItems(); renderPreview(); } };
+
+    const head = document.createElement('div'); head.className='item-head';
+    const th = document.createElement('img'); th.className='thumb'; th.src=it.url; th.alt='';
+    const nm = document.createElement('input'); nm.className='item-name'; nm.value=it.name;
+    nm.oninput = () => { it.name = nm.value; };
+    const del = document.createElement('button'); del.className='icon'; del.textContent='✕';
+    del.title='Remove'; del.setAttribute('aria-label','Remove '+it.name);
+    del.onclick = () => { const i=items.indexOf(it); items.splice(i,1);
+      URL.revokeObjectURL(it.url); if(selId===it.id) selId = items[0]?.id ?? null;
+      renderItems(); renderPreview(); };
+    head.append(th,nm,del);
+
+    const row = document.createElement('div'); row.className='row';
+    row.innerHTML =
+      '<div><label>How wide, for real</label>'+
+      '<input type="number" min="0.5" step="0.5" value="'+it.widthIn/IN[it.unit]+'"></div>'+
+      '<div><label>Units</label><select>'+
+        '<option value="in"'+(it.unit==='in'?' selected':'')+'>inches</option>'+
+        '<option value="cm"'+(it.unit==='cm'?' selected':'')+'>cm</option>'+
+      '</select></div>'+
+      '<div><label>Sheets across</label><input type="number" min="1" step="1" value="'+L.cols+'"></div>';
+    const [wIn, uSel, cIn] = row.querySelectorAll('input,select');
+    wIn.oninput = () => { const v=Number(wIn.value); if(v>0){ it.widthIn = v*IN[it.unit];
+      renderItems(); renderPreview(); } };
+    uSel.onchange = () => { it.unit = uSel.value; renderItems(); };
+    cIn.oninput = () => {                       // choose by sheets instead of inches
+      const n = Math.max(1, Math.round(Number(cIn.value)||1));
+      const p = paper();
+      it.widthIn = n===1 ? p.printW : p.printW + (n-1)*p.stepX;
+      renderItems(); renderPreview();
+    };
+
+    const stats = document.createElement('div');
+    const dpiCls = L.dpi < 120 ? 'warn' : (L.dpi >= 200 ? 'good' : '');
+    stats.innerHTML =
+      '<div class="stat"><span>Finished size</span><b>'+
+        fmt(L.targetW,it.unit)+' × '+fmt(L.targetH,it.unit)+' '+it.unit+'</b></div>'+
+      '<div class="stat"><span>Sheets</span><b>'+L.cols+' × '+L.rows+' = '+L.sheets+'</b></div>'+
+      '<div class="stat '+dpiCls+'"><span>Sharpness</span><b>'+Math.round(L.dpi)+' dpi'+
+        (L.dpi<120?' — blurry':'')+'</b></div>';
+
+    el.append(head,row,stats);
+    box.appendChild(el);
+  }
+  const has = items.length>0;
+  $('printSel').disabled = !has; $('printAll').disabled = !has;
+}
+function fmt(inches, unit){ const v = inches / IN[unit]; return (Math.round(v*10)/10).toString(); }
+
+/* ───────── preview ───────── */
+function renderPreview(){
+  const it = items.find(i => i.id === selId);
+  const cv = $('preview'), es = $('emptyState');
+  if(!it){ cv.hidden=true; es.hidden=false; $('sheetcount').textContent=''; return; }
+  cv.hidden=false; es.hidden=true;
+
+  const L = layout(it);
+  const SCALE = Math.min(760 / L.targetW, 460 / L.targetH);   // px per inch on screen
+  const W = Math.round(L.targetW*SCALE), H = Math.round(L.targetH*SCALE);
+  cv.width = W; cv.height = H; cv.style.width = W+'px'; cv.style.height = H+'px';
+
+  const g = cv.getContext('2d');
+  g.clearRect(0,0,W,H);
+  g.drawImage(it.img, 0, 0, W, H);
+
+  // Every sheet's printable window, drawn over the art so you can see the split
+  g.lineWidth = 1;
+  for(let r=0;r<L.rows;r++){
+    for(let c=0;c<L.cols;c++){
+      const x = c*L.stepX*SCALE, y = r*L.stepY*SCALE;
+      const w = L.printW*SCALE,  h = L.printH*SCALE;
+      g.strokeStyle = 'rgba(217,164,65,.95)';
+      g.strokeRect(x+.5, y+.5, w, h);
+      if(L.ov > 0){                                  // the strip that gets taped under
+        g.fillStyle = 'rgba(72,179,156,.22)';
+        if(c < L.cols-1) g.fillRect(x + (L.printW-L.ov)*SCALE, y, L.ov*SCALE, h);
+        if(r < L.rows-1) g.fillRect(x, y + (L.printH-L.ov)*SCALE, w, L.ov*SCALE);
+      }
+    }
+  }
+  $('sheetcount').textContent =
+    L.sheets + (L.sheets===1?' sheet':' sheets') + ' · ' +
+    fmt(L.targetW,it.unit)+' × '+fmt(L.targetH,it.unit)+' '+it.unit;
+}
+
+/* ───────── printing ───────── */
+function setPageSize(){
+  const p = paper();
+  let s = document.getElementById('pageStyle');
+  if(!s){ s = document.createElement('style'); s.id='pageStyle'; document.head.appendChild(s); }
+  s.textContent = '@page{ size:'+p.pw+'in '+p.ph+'in; margin:0 }';
+}
+function buildSheets(list){
+  const root = $('printRoot'); root.innerHTML='';
+  const showMarks = $('marks').checked;
+
+  for(const it of list){
+    const L = layout(it);
+    for(let r=0;r<L.rows;r++){
+      for(let c=0;c<L.cols;c++){
+        const sheet = document.createElement('div');
+        sheet.className='psheet';
+        sheet.style.width = L.pw+'in'; sheet.style.height = L.ph+'in';
+
+        const win = document.createElement('div');
+        win.className='win';
+        win.style.left = L.m+'in'; win.style.top = L.m+'in';
+        win.style.width = L.printW+'in'; win.style.height = L.printH+'in';
+
+        const im = document.createElement('img');
+        im.src = it.url;
+        im.style.width = L.targetW+'in'; im.style.height = L.targetH+'in';
+        im.style.left = (-c*L.stepX)+'in'; im.style.top = (-r*L.stepY)+'in';
+        win.appendChild(im);
+        sheet.appendChild(win);
+
+        if(showMarks){
+          const t=0.02, len=0.22;                    // hairline corner ticks, in the white margin
+          const corners = [[0,0],[1,0],[0,1],[1,1]];
+          for(const [cx,cy] of corners){
+            const hx=document.createElement('div'); hx.className='mark';
+            hx.style.width=len+'in'; hx.style.height=t+'in';
+            hx.style.left=(cx? L.m+L.printW-len : L.m)+'in';
+            hx.style.top =(cy? L.m+L.printH : L.m-t)+'in';
+            const vy=document.createElement('div'); vy.className='mark';
+            vy.style.width=t+'in'; vy.style.height=len+'in';
+            vy.style.left=(cx? L.m+L.printW : L.m-t)+'in';
+            vy.style.top =(cy? L.m+L.printH-len : L.m)+'in';
+            sheet.append(hx,vy);
+          }
+          const slug=document.createElement('div'); slug.className='slug';
+          slug.textContent = it.name+'  row '+(r+1)+' · column '+(c+1);
+          slug.style.left=L.m+'in'; slug.style.bottom='0.06in';
+          sheet.appendChild(slug);
+        }
+        root.appendChild(sheet);
+      }
+    }
+  }
+  return root.children.length;
+}
+function doPrint(list){
+  if(!list.length) return;
+  setPageSize();
+  const n = buildSheets(list);
+  const imgs = [...$('printRoot').querySelectorAll('img')];
+  Promise.all(imgs.map(i => i.complete ? 1 : new Promise(res => { i.onload=res; i.onerror=res; })))
+    .then(() => { toast(n + (n===1?' sheet':' sheets') + ' sent'); setTimeout(()=>window.print(), 120); });
+}
+
+/* Ruler page — measure it to prove the printer is not shrinking anything */
+function printRuler(){
+  setPageSize();
+  const p = paper();
+  const root = $('printRoot');
+  let ticks = '';
+  for(let i=0;i<=6;i++){
+    ticks += '<div style="position:absolute;left:'+(p.m+i)+'in;top:'+p.m+'in;width:0.02in;height:'+
+             (i%1?0.2:0.4)+'in;background:#000"></div>'+
+             '<div style="position:absolute;left:'+(p.m+i+0.04)+'in;top:'+(p.m+0.42)+
+             'in;font:9pt ui-monospace,monospace">'+i+'</div>';
+  }
+  root.innerHTML =
+    '<div class="psheet" style="width:'+p.pw+'in;height:'+p.ph+'in">'+
+      '<div style="position:absolute;left:'+p.m+'in;top:'+p.m+'in;width:6in;height:0.02in;background:#000"></div>'+
+      ticks +
+      '<div style="position:absolute;left:'+p.m+'in;top:'+(p.m+0.85)+
+        'in;font:11pt -apple-system,sans-serif;width:6in">This line is exactly 6 inches. Measure it. '+
+        'If it is short, your printer is scaling — turn off “Fit to page” and print again.</div>'+
+    '</div>';
+  setTimeout(()=>window.print(), 120);
+}
+
+/* ───────── wiring ───────── */
+const drop = $('drop');
+drop.onclick = () => $('file').click();
+$('file').onchange = e => { [...e.target.files].forEach(addImage); e.target.value=''; };
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => {
+  [...e.dataTransfer.files].filter(f => f.type.startsWith('image/')).forEach(addImage); });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
+
+['paper','orient','margin','overlap'].forEach(id =>
+  $(id).addEventListener('input', () => { renderItems(); renderPreview(); }));
+
+$('printSel').onclick = () => { const it = items.find(i=>i.id===selId); if(it) doPrint([it]); };
+$('printAll').onclick = () => doPrint(items);
+$('ruler').onclick = printRuler;
+
+renderItems(); renderPreview();
+</script>
+</body>
+</html>
