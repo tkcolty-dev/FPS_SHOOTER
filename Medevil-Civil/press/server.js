@@ -44,7 +44,7 @@ async function printers(){
 /* ── take the sheets the page built, make a PDF, send it to CUPS ── */
 async function printJob(body){
   if(!CHROME) throw new Error('Google Chrome is needed to make the PDF, and it was not found.');
-  const { html, images = {}, pw, ph, printer, title = 'The Press', copies = 1 } = body;
+  const { html, images = {}, pw, ph, printer, title = 'The Press', copies = 1, gray = false } = body;
   if(!html)    throw new Error('Nothing to print.');
   if(!printer) throw new Error('No printer chosen.');
 
@@ -64,8 +64,12 @@ async function printJob(body){
     if(!fs.existsSync(pdf)) throw new Error('The PDF could not be made.');
 
     // The PDF already carries the exact page size, so scaling must stay off.
+    // Front side only, whatever the printer's own default happens to be.
+    // Both spellings are sent: drivers honour one or the other, not always both.
     const args = ['-d', printer, '-t', title, '-n', String(copies),
-                  '-o','sides=one-sided', '-o','fit-to-page=false'];
+                  '-o','sides=one-sided', '-o','Duplex=None',
+                  '-o','fit-to-page=false'];
+    if(gray) args.push('-o','ColorModel=Gray', '-o','print-color-mode=monochrome');
     if(pw > ph) args.push('-o','landscape');
     args.push(pdf);
     const out = await run('lp', args);

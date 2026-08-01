@@ -295,6 +295,12 @@
           <span class="badge">Straight to the printer</span>
           <select id="printerPick" aria-label="Which printer"></select>
         </div>
+        <div class="direct-head" style="margin-top:11px">
+          <label class="lockrow" style="margin:0">
+            <input type="checkbox" id="grayPrint">
+            <span>Print in grey — saves colour toner</span>
+          </label>
+        </div>
         <div class="foot" style="margin-top:12px">
           <button class="primary" id="sendSel" disabled>Send this piece</button>
           <button id="sendAll" disabled>Send everything</button>
@@ -803,7 +809,7 @@ async function sendToPrinter(list, title){
     const doc = standaloneDoc(list);
     const r = await fetch('/api/print', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ ...doc, printer: $('printerPick').value, title })
+      body: JSON.stringify({ ...doc, printer: $('printerPick').value, title, gray: $('grayPrint').checked })
     });
     const out = await r.json();
     if(!out.ok) throw new Error(out.error || 'The printer refused the job.');
@@ -864,7 +870,7 @@ $('sendRuler').onclick = async () => {
     body: JSON.stringify({ html:'<!doctype html><meta charset="utf-8"><style>@page{size:'+p.pw+'in '+p.ph+
       'in;margin:0}html,body{margin:0}.psheet{position:relative;overflow:hidden}</style>'+
       $('printRoot').innerHTML, images:{}, pw:p.pw, ph:p.ph,
-      printer:$('printerPick').value, title:'Test ruler' }) }).then(r=>r.json()).catch(e=>({error:e.message}));
+      printer:$('printerPick').value, title:'Test ruler', gray:$('grayPrint').checked }) }).then(r=>r.json()).catch(e=>({error:e.message}));
   toast(r.ok ? 'Test ruler sent · '+r.jobId : (r.error||'Could not send'));
 };
 
