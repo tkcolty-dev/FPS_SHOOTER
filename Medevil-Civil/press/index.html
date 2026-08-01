@@ -130,6 +130,21 @@
   .legend i{display:inline-block;width:15px;height:2px;vertical-align:3px;margin-right:7px;border-radius:1px}
   .legend .g i{background:var(--gold)} .legend .v i{background:var(--verdigris)}
 
+  .direct{margin-top:16px;border:1px solid var(--verdigris);border-radius:var(--r);
+    background:rgba(76,184,160,.08);padding:15px 16px}
+  .direct-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .direct-head select{flex:1;min-width:180px;background:var(--ink)}
+  .badge{font-family:var(--display);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--verdigris);white-space:nowrap}
+  .direct .hint{color:#9FBDB6}
+
+  .viadialog{margin-top:14px;border:1px solid var(--line);border-radius:var(--r);padding:12px 16px}
+  .viadialog summary{cursor:pointer;font-size:13px;color:var(--muted);list-style:none}
+  .viadialog summary::-webkit-details-marker{display:none}
+  .viadialog summary::before{content:"▸ ";color:var(--faint)}
+  .viadialog[open] summary::before{content:"▾ "}
+  .viadialog summary:hover{color:var(--text)}
+
   .setup{margin-top:16px;border:1px solid var(--gold-dim);border-radius:var(--r);
     background:rgba(220,169,69,.07);padding:14px 16px}
   .setup h3{font-family:var(--display);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
@@ -275,12 +290,30 @@
         <p>Under <b>More settings</b>, tick <b>Background graphics</b> too, or pale artwork prints hollow.</p>
       </div>
 
-      <div class="foot">
-        <button class="primary" id="printSel" disabled>Print this piece</button>
-        <button id="printAll" disabled>Print everything</button>
-        <span class="spacer"></span>
-        <button id="ruler">Print a test ruler</button>
+      <div class="direct" id="direct" hidden>
+        <div class="direct-head">
+          <span class="badge">Straight to the printer</span>
+          <select id="printerPick" aria-label="Which printer"></select>
+        </div>
+        <div class="foot" style="margin-top:12px">
+          <button class="primary" id="sendSel" disabled>Send this piece</button>
+          <button id="sendAll" disabled>Send everything</button>
+          <span class="spacer"></span>
+          <button id="sendRuler">Send test ruler</button>
+        </div>
+        <p class="hint" style="margin-top:9px">No print box, so nothing can rescale it — the sheets go
+          out at exactly the size shown above.</p>
       </div>
+
+      <details class="viadialog">
+        <summary>Or print through the browser instead</summary>
+        <div class="foot" style="margin-top:12px">
+          <button id="printSel" disabled>Print this piece</button>
+          <button id="printAll" disabled>Print everything</button>
+          <span class="spacer"></span>
+          <button id="ruler">Print a test ruler</button>
+        </div>
+      </details>
       <p class="hint">Not sure it worked? Print the test ruler and measure it. Exactly 6 inches means
         you are at true size — anything shorter means the scale is still wrong.</p>
     </div>
@@ -374,7 +407,10 @@ function layout(it){
 /* ─────────── items ─────────── */
 function addImage(file){
   const url = URL.createObjectURL(file);
+  const fr = new FileReader();
   const img = new Image();
+  fr.onload = () => { const it = items.find(i => i.url === url); if(it) it.dataUrl = fr.result; };
+  fr.readAsDataURL(file);
   img.onload = () => {
     const it = { id:'i'+Date.now()+Math.round(performance.now()),
                  name:(file.name.replace(/\.[^.]+$/,'')||'Piece').slice(0,40),
@@ -503,6 +539,7 @@ function renderItems(){
   $('printAll').textContent = 'Print everything · '+total+(total===1?' sheet':' sheets');
   $('printSel').disabled = !sel;
   $('printAll').disabled = inc.length === 0;
+  refreshSendButtons();
 }
 
 /* one width/height control: type "1 1/2", or tap − and + to nudge by an eighth */
@@ -622,7 +659,7 @@ function setPageSize(){
   if(!s){ s = document.createElement('style'); s.id='pageStyle'; document.head.appendChild(s); }
   s.textContent = '@page{ size:'+p.pw+'in '+p.ph+'in; margin:0 }';
 }
-function buildSheets(list){
+function buildSheets(list, srcFor){
   const root = $('printRoot'); root.innerHTML='';
   const showMarks = $('marks').checked;
 
@@ -637,7 +674,7 @@ function buildSheets(list){
         sheet.style.width=L.pw+'in'; sheet.style.height=L.ph+'in';
         for(let r=0;r<L.perCol && left>0;r++)
           for(let c=0;c<L.perRow && left>0;c++, left--){
-            const im=document.createElement('img'); im.src=it.url;
+            const im=document.createElement('img'); im.src=srcFor?srcFor(it):it.url;
             im.style.position='absolute';
             im.style.width=L.targetW+'in'; im.style.height=L.targetH+'in';
             im.style.left=(L.m + c*(L.targetW+GAP))+'in';
@@ -662,7 +699,7 @@ function buildSheets(list){
       const win=document.createElement('div'); win.className='win';
       win.style.left=L.m+'in'; win.style.top=L.m+'in';
       win.style.width=L.printW+'in'; win.style.height=L.printH+'in';
-      const im=document.createElement('img'); im.src=it.url;
+      const im=document.createElement('img'); im.src=srcFor?srcFor(it):it.url;
       im.style.width=L.targetW+'in'; im.style.height=L.targetH+'in';
       im.style.left=(-c*L.stepX)+'in'; im.style.top=(-r*L.stepY)+'in';
       win.appendChild(im); sheet.appendChild(win);
@@ -698,7 +735,7 @@ function doPrint(list){
   Promise.all(imgs.map(i => i.complete ? 1 : new Promise(r => { i.onload=r; i.onerror=r; })))
     .then(() => { toast(n+(n===1?' sheet':' sheets')+' sent'); setTimeout(()=>window.print(),120); });
 }
-function printRuler(){
+function buildRuler(){
   setPageSize();
   const p = paper();
   let ticks='';
@@ -713,7 +750,83 @@ function printRuler(){
       '<div style="position:absolute;left:'+p.m+'in;top:'+(p.m+0.85)+'in;font:11pt -apple-system,sans-serif;width:6in">'+
         'This line is exactly 6 inches. Measure it. If it is short, your printer is scaling — '+
         'turn off “Fit to page” and print again.</div></div>';
-  setTimeout(()=>window.print(),120);
+  return p;
+}
+function printRuler(){ buildRuler(); setTimeout(()=>window.print(),120); }
+
+/* ─────────── straight to the printer (no print dialog) ─────────── */
+let PRINTERS = { list:[], def:null };
+
+async function findPrinters(){
+  try{
+    const r = await fetch('/api/printers');
+    if(!r.ok) throw 0;
+    PRINTERS = await r.json();
+  }catch{ return; }                       // plain static server: keep the browser buttons only
+  if(!PRINTERS.list.length) return;
+  const pick = $('printerPick');
+  pick.innerHTML = PRINTERS.list.map(p =>
+    '<option value="'+p+'"'+(p===PRINTERS.def?' selected':'')+'>'+p.replace(/_/g,' ')+'</option>').join('');
+  $('direct').hidden = false;
+  refreshSendButtons();
+}
+
+/* The same sheets the page just built, as a document that stands on its own */
+function standaloneDoc(list){
+  const p = paper();
+  const images = {};
+  const srcFor = it => {
+    const name = it.id + '.png';
+    images[name] = it.dataUrl;
+    return name;
+  };
+  buildSheets(list, srcFor);
+  const html =
+    '<!doctype html><meta charset="utf-8"><style>'+
+    '@page{size:'+p.pw+'in '+p.ph+'in;margin:0}'+
+    'html,body{margin:0;padding:0}'+
+    '.psheet{position:relative;overflow:hidden;page-break-after:always;break-after:page}'+
+    '.psheet:last-child{page-break-after:auto;break-after:auto}'+
+    '.win{position:absolute;overflow:hidden}.win img{position:absolute}'+
+    '.mark{position:absolute;background:#000}'+
+    '.slug{position:absolute;font:8pt ui-monospace,monospace;color:#666}'+
+    '</style>' + $('printRoot').innerHTML;
+  return { html, images, pw:p.pw, ph:p.ph };
+}
+
+async function sendToPrinter(list, title){
+  if(!list.length) return;
+  const btns = [...document.querySelectorAll('#direct button')];
+  btns.forEach(b => b.disabled = true);
+  toast('Making the sheets…');
+  try{
+    const doc = standaloneDoc(list);
+    const r = await fetch('/api/print', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ ...doc, printer: $('printerPick').value, title })
+    });
+    const out = await r.json();
+    if(!out.ok) throw new Error(out.error || 'The printer refused the job.');
+    toast(out.pages + (out.pages===1?' sheet sent · ':' sheets sent · ') + out.jobId);
+  }catch(e){
+    toast(e.message.slice(0,120));
+  }finally{
+    btns.forEach(b => b.disabled = false);
+    refreshSendButtons();
+  }
+}
+
+function refreshSendButtons(){
+  if($('direct').hidden) return;
+  const sel = items.find(i => i.id === selId);
+  const inc = items.filter(i => i.include);
+  const total = inc.reduce((n,i) => n + layout(i).sheets, 0);
+  $('sendSel').textContent = sel
+    ? 'Send this piece · '+layout(sel).sheets+(layout(sel).sheets===1?' sheet':' sheets')
+    : 'Send this piece';
+  $('sendAll').textContent = 'Send everything · '+total+(total===1?' sheet':' sheets');
+  $('sendSel').disabled = !sel;
+  $('sendAll').disabled = inc.length === 0;
 }
 
 /* ─────────── wiring ─────────── */
@@ -742,6 +855,20 @@ $('marks').onchange = () => {};
 $('printSel').onclick = () => { const it = items.find(i=>i.id===selId); if(it) doPrint([it]); };
 $('printAll').onclick = () => doPrint(items.filter(i => i.include));
 $('ruler').onclick = printRuler;
+
+$('sendSel').onclick = () => { const it = items.find(i=>i.id===selId); if(it) sendToPrinter([it], it.name); };
+$('sendAll').onclick = () => sendToPrinter(items.filter(i=>i.include), 'The Press');
+$('sendRuler').onclick = async () => {
+  const p = buildRuler();
+  const r = await fetch('/api/print', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ html:'<!doctype html><meta charset="utf-8"><style>@page{size:'+p.pw+'in '+p.ph+
+      'in;margin:0}html,body{margin:0}.psheet{position:relative;overflow:hidden}</style>'+
+      $('printRoot').innerHTML, images:{}, pw:p.pw, ph:p.ph,
+      printer:$('printerPick').value, title:'Test ruler' }) }).then(r=>r.json()).catch(e=>({error:e.message}));
+  toast(r.ok ? 'Test ruler sent · '+r.jobId : (r.error||'Could not send'));
+};
+
+findPrinters();
 
 renderItems(); renderPreview();
 </script>
