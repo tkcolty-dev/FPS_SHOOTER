@@ -826,6 +826,24 @@
   .hsAction { border-color:rgba(232,182,76,.55); background:linear-gradient(180deg,#2a2114,#151008); }
   .hsAction .hsIcon { font-family:Inter,sans-serif; font-weight:900; border-radius:50%; }
   .hsAction .hsCopy b { color:#ffd98a; }
+  /* ---- objectives: the home card's mini slider + the panel's bounty rows ---- */
+  .hsBar { display:block; width:100%; height:0.7vh; background:rgba(255,255,255,.14); border-radius:0.35vh; overflow:hidden; margin-top:0.45vh; }
+  .hsBar i { display:block; height:100%; background:linear-gradient(90deg,#8fd460,#c5f39b); border-radius:inherit; transition:width .4s ease; }
+  #hsQuest .hsCopy b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:13vw; }
+  .objRow { display:block; width:100%; box-sizing:border-box; text-align:left; appearance:none; cursor:pointer;
+    background:rgba(255,255,255,.045); border:1px solid rgba(232,182,76,.28); border-radius:1vh;
+    padding:1vh 1.3vh; margin:0.55vh 0; color:#f0e2c3; font:600 1.55vh Inter,sans-serif; transition:border-color .15s ease, box-shadow .15s ease; }
+  .objRow:hover, .objRow.padFocus { border-color:#ffd98a; box-shadow:0 0 14px rgba(255,217,138,.3); }
+  .objRow.done { opacity:.5; cursor:default; }
+  .objRow.activeQ { border-color:#8fd460; box-shadow:0 0 12px rgba(143,212,96,.3); }
+  .objRow .objName { font:700 1.75vh Cinzel,Georgia,serif; color:#ffd98a; }
+  .objRow.activeQ .objName { color:#c5f39b; }
+  .objRow .objReward { float:right; color:#ffd98a; font-weight:800; }
+  .objRow .objDesc { display:block; opacity:.72; margin-top:.25vh; }
+  .objBar { display:block; clear:both; height:0.95vh; background:rgba(255,255,255,.12); border-radius:0.5vh; overflow:hidden; margin-top:0.7vh; }
+  .objBar i { display:block; height:100%; background:linear-gradient(90deg,#e8b64c,#ffd98a); border-radius:inherit; }
+  .objRow.done .objBar i, .objRow.activeQ .objBar i { background:linear-gradient(90deg,#8fd460,#c5f39b); }
+  .objProg { float:right; opacity:.75; font-size:1.3vh; margin-top:.35vh; }
   #menu.hasImage #chipKnights, #menu.hasImage #chipDate, #menu.hasImage #chipRemaster { padding-top:1.25vh; box-sizing:border-box; position:absolute; }
   #menu.hasImage #chipKnights::before, #menu.hasImage #chipDate::before, #menu.hasImage #chipRemaster::before {
     position:absolute; top:.55vh; left:0; right:0; text-align:center;
@@ -1381,6 +1399,15 @@
         <button class="rowBtn" data-close>Back</button>
       </div>
     </div>
+    <div class="panel" id="objectivesPanel" style="display:none">
+      <button class="panelX" data-close>&times;</button>
+      <h2>Royal Objectives</h2>
+      <p style="text-align:center; opacity:.75; margin:0 0 1vh">Choose <b>one</b> bounty to work toward &mdash; fill its bar and the gold is yours!</p>
+      <div class="patchList" id="objList"></div>
+      <div class="row" style="justify-content:center; margin-top:2vh">
+        <button class="rowBtn" data-close>Back</button>
+      </div>
+    </div>
     <div class="panel" id="onlinePanel" style="display:none">
       <button class="panelX" data-close>&times;</button>
       <h2>Battle Together</h2>
@@ -1633,7 +1660,7 @@ const heroSprites = {
 // ============================================================
 // THE LAST KNIGHT — co-op survivors mode
 // ============================================================
-const WORLD_W = 4200, WORLD_H = 3150;
+const WORLD_W = 6400, WORLD_H = 4800;   // a MUCH bigger kingdom to roam
 
 // royal UI palette (matches the home page)
 const UI = {
@@ -1984,7 +2011,9 @@ let structures = [];
 function genStructures(mi) {
   structures = [];
   const M = MAPS[mi];
-  for (let i = 0; i < 90; i++) {
+  // prop density rides the world's area, so a bigger kingdom never feels empty
+  const nProps = Math.round(90 * (WORLD_W * WORLD_H) / (4200 * 3150));
+  for (let i = 0; i < nProps; i++) {
     const x = 160 + hash2(i * 13 + mi * 7, 1) * (WORLD_W - 320);
     const y = 200 + hash2(i * 13 + mi * 7, 2) * (WORLD_H - 380);
     if (Math.hypot(x - WORLD_W / 2, y - WORLD_H / 2) < 280) continue;
@@ -2345,11 +2374,20 @@ function pickUpgrade(idx) {
   if (game.netGuest) { netSend({ t: 'pick', i: idx }); SFX.pick(); return; }
   SFX.pick();
   const ch = chooserP();
-  c.apply(ch);
+  // co-op: stat gifts bless the WHOLE party, not just the chooser — a pick that
+  // visibly did nothing for the other knights read as "upgrades only affect P1".
+  // Levels are recorded on every knight so rejoins and max-checks stay honest.
+  const party = players.filter(q => q.joined);
+  const shareStats = STAT_KEYS.has(c.key) && party.length > 1;
+  if (shareStats) party.forEach(q => c.apply(q));
+  else c.apply(ch);
   let lvNow;
   if (STAT_KEYS.has(c.key)) {
-    ch.up = ch.up || {};
-    lvNow = ch.up[c.key] = pUpLvl(ch, c.key) + 1;
+    (shareStats ? party : [ch]).forEach(q => {
+      q.up = q.up || {};
+      q.up[c.key] = pUpLvl(q, c.key) + 1;
+    });
+    lvNow = pUpLvl(ch, c.key);
   } else {
     lvNow = game.up[c.key] = upLvl(c.key) + 1;
   }
@@ -2463,10 +2501,11 @@ function initRun() {
   game.paidOut = false;
   game.victory = false;
   genStructures(game.mapPick);
-  // treasure chests — rare prizes, far from the spawn AND far from each other
+  // treasure chests — a FEW to start; more keep arriving all battle (see updateChestSpawner)
   chests = [];
+  game.chestT = 55;
   let ctries = 0;
-  const chestGoal = 6 + 2 * powerRank('chests');
+  const chestGoal = 3 + 2 * powerRank('chests');
   while (chests.length < chestGoal && ctries++ < 400) {
     const cx3 = 260 + Math.random() * (WORLD_W - 520);
     const cy3 = 260 + Math.random() * (WORLD_H - 520);
@@ -2561,6 +2600,7 @@ function rollChestReward(opener) {
 }
 function applyChestReward(ch) {
   const rw = ch.reward;
+  kdStats.chests = (kdStats.chests || 0) + 1;
   SFX.levelup();
   // big, unmistakable "you got X" banner (see the HUD renderer)
   game.chestReveal = { icon: rw.icon, label: rw.label, t: game.time };
@@ -2707,6 +2747,7 @@ function rotateHeroes() {
 }
 function levelUp() {
   game.level += 1;
+  if (game.level > (kdStats.bestLevel || 0)) kdStats.bestLevel = game.level;
   SFX.levelup();
   // each crown is MUCH harder to earn than the last — steep Vampire-Survivors ramp
   const jn = players.filter(p2 => p2.joined).length;
@@ -2987,6 +3028,7 @@ function hitPlayer(t, e) {
 function killEnemy(i) {
   const e = enemies[i];
   game.kills++;
+  if (e.elite) kdStats.elites = (kdStats.elites || 0) + 1;
   SFX.kill();
   dying.push({ kind: e.kind, x: e.x, y: e.y, r: e.r, seed: e.seed, elite: e.elite, age: 0 });
   if (upLvl('mend') > 0) {
@@ -3353,11 +3395,15 @@ function update(dt) {
     if (p.invuln > 0) p.invuln -= dt;
 
     if (!p.alive) {
-      const mate = players.find(q => q !== p && q.joined && q.alive);
-      if (mate && Math.hypot(mate.x - p.x, mate.y - p.y) < 70) {
+      // ANY living knight close to the body revives — it used to test only the
+      // FIRST alive teammate (usually P1), so P3 kneeling on the body did nothing
+      const mate = players.find(q => q !== p && q.joined && q.alive &&
+        Math.hypot(q.x - p.x, q.y - p.y) < 70);
+      if (mate) {
         p.reviveProgress += dt * (1 + 0.4 * upLvl('rally'));
         if (p.reviveProgress >= 2.5) {
           p.alive = true; p.hp = 3; p.invuln = 2; p.reviveProgress = 0;
+          kdStats.revives = (kdStats.revives || 0) + 1;
           gameToast(p.name + ' is back on their feet!');
         }
       } else {
@@ -3630,11 +3676,12 @@ function update(dt) {
         if (d > 265) { e.x += dx * e.speed * sl * dt; e.y += dy * e.speed * sl * dt; }
         else if (d < 175) { e.x -= dx * e.speed * 0.8 * sl * dt; e.y -= dy * e.speed * 0.8 * sl * dt; }
         e.shootCd -= dt;
-        if (e.shootCd <= 0 && d < 430 && e.spawnAge > 1) {
-          e.shootCd = e.kind === 'yeti' ? 3.6 : 2.8;
+        // nerfed: they fired too often and the balls flew too fast/far — dodgeable now
+        if (e.shootCd <= 0 && d < 400 && e.spawnAge > 1) {
+          e.shootCd = e.kind === 'yeti' ? 4.4 : 4.0;
           SFX.bolt();
-          const bsp = e.kind === 'yeti' ? 120 : 168;
-          bolts.push({ x: e.x, y: e.y - 6, vx: dx * bsp, vy: dy * bsp, life: 3.2 });
+          const bsp = e.kind === 'yeti' ? 110 : 145;
+          bolts.push({ x: e.x, y: e.y - 6, vx: dx * bsp, vy: dy * bsp, life: 2.5 });
         }
       } else if (e.boss && BOSS_DEFS[e.kind].style === 'slam') {
         // the slammer kings: lumber close, then smash the earth
@@ -3698,19 +3745,20 @@ function update(dt) {
       } else if (e.kind === 'warlock') {
         // blinks across the field and hurls a ring of curse bolts
         e.stateT -= dt;
+        // nerfed: blinks farther away, fires 3 slower bolts, and rests longer between casts
         if (e.stateT <= 0 && e.spawnAge > 1.5) {
           const wa = Math.random() * Math.PI * 2;
-          const wd = 210 + Math.random() * 90;
+          const wd = 270 + Math.random() * 100;
           particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.25, color: '#2dd4a0', size: e.r });
           e.x = Math.max(20, Math.min(WORLD_W - 20, t.x + Math.cos(wa) * wd));
           e.y = Math.max(20, Math.min(WORLD_H - 20, t.y + Math.sin(wa) * wd));
           particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.25, color: '#2dd4a0', size: e.r });
-          for (let k = 0; k < 4; k++) {
-            const ba = (k / 4) * Math.PI * 2 + Math.random() * 0.6;
-            bolts.push({ x: e.x, y: e.y - 8, vx: Math.cos(ba) * 150, vy: Math.sin(ba) * 150, life: 2.6 });
+          for (let k = 0; k < 3; k++) {
+            const ba = (k / 3) * Math.PI * 2 + Math.random() * 0.6;
+            bolts.push({ x: e.x, y: e.y - 8, vx: Math.cos(ba) * 125, vy: Math.sin(ba) * 125, life: 2.2 });
           }
           SFX.bolt();
-          e.stateT = 4.5 + Math.random() * 2;
+          e.stateT = 6 + Math.random() * 2.5;
         }
         e.x += dx * e.speed * 0.5 * sl * dt;
         e.y += dy * e.speed * 0.5 * sl * dt;
@@ -3970,6 +4018,23 @@ function update(dt) {
     if (game.time > 210 && Math.random() < 0.55 * ex) spawnEnemy();
     if (game.time > 360 && Math.random() < 0.6 * ex) spawnEnemy();
     if (game.time > 500 && Math.random() < 0.7 * ex) spawnEnemy();
+  }
+  // war chests keep arriving the whole battle: rare early, then more and more,
+  // dropped a stroll away from the party (the chest locator arrow points the way)
+  game.chestT = (game.chestT === undefined ? 55 : game.chestT) - dt;
+  if (game.chestT <= 0) {
+    game.chestT = Math.max(16, 60 - game.time * 0.09 - 4 * powerRank('chests'));
+    if (chests.filter(c3 => !c3.open).length < 9) {
+      for (let ctry = 0; ctry < 30; ctry++) {
+        const ca = Math.random() * Math.PI * 2, cd = 700 + Math.random() * 900;
+        const cx4 = Math.max(140, Math.min(WORLD_W - 140, players[0].x + Math.cos(ca) * cd));
+        const cy4 = Math.max(160, Math.min(WORLD_H - 140, players[0].y + Math.sin(ca) * cd));
+        if (chests.some(c3 => !c3.open && Math.hypot(c3.x - cx4, c3.y - cy4) < 550)) continue;
+        const cp4 = pushOut(cx4, cy4, 26);
+        chests.push({ x: cp4.x, y: cp4.y, open: false, seed: Math.random() * 10 });
+        break;
+      }
+    }
   }
   game.burstTimer -= dt;
   if (game.burstTimer <= 0) {
@@ -9032,14 +9097,29 @@ function updateHomeStats() {
   const meta = loadSave('kd_meta', { gold: 0, unlocked: ['kenna', 'bramble', 'ember', 'whisper', 'gale'] });
   const st = loadSave('kd_stats', { playMs: 0 });
   const mins = Math.floor((st.playMs || 0) / 60000);
+  // the active objective card — a live slider toward the chosen bounty.
+  // (__questReady guards the early image-load call that runs before QUEST_DEFS.)
+  let qCard = '';
+  if (window.__questReady) {
+    checkQuestComplete();
+    const q = activeQuest();
+    if (q) {
+      const cur = Math.min(q.prog(), q.target), pct = Math.round(100 * cur / q.target);
+      qCard = '<button class="hsCard hsAction" id="hsQuest" title="' + q.desc + ' — ' + q.reward + ' gold"><span class="hsIcon">🏅</span><span class="hsCopy"><small>OBJECTIVE · ' + q.reward + 'G</small><b>' + q.name + '</b><span class="hsBar"><i style="width:' + pct + '%"></i></span><small>' + (q.fmt ? q.fmt(cur) : cur + ' / ' + q.target) + '</small></span></button>';
+    } else {
+      qCard = '<button class="hsCard hsAction" id="hsQuest" title="Royal Objectives — bounties for gold"><span class="hsIcon">🏅</span><span class="hsCopy"><small>OBJECTIVES</small><b>PICK A BOUNTY</b></span></button>';
+    }
+  }
   homeStats.innerHTML =
     '<button class="hsCard" id="hsGold" title="Royal Armory — spend your gold"><span class="hsIcon">◆</span><span class="hsCopy"><small>TREASURY</small><b>' + (meta.gold || 0) + ' GOLD</b></span></button>' +
     '<div class="hsCard"><span class="hsIcon">♞</span><span class="hsCopy"><small>ROSTER</small><b>' + (meta.unlocked || []).length + ' / ' + ROSTER.length + ' KNIGHTS</b></span></div>' +
-    '<div class="hsCard"><span class="hsIcon">◷</span><span class="hsCopy"><small>PLAYTIME</small><b>' + Math.floor(mins / 60) + 'H ' + (mins % 60) + 'M</b></span></div>' +
+    qCard +
     '<button class="hsCard hsAction" id="hsOnline"><span class="hsIcon">X</span><span class="hsCopy"><small>KINGDOM</small><b>ONLINE</b></span></button>' +
     '<button class="hsCard hsAction" id="hsSettings2"><span class="hsIcon">Y</span><span class="hsCopy"><small>SYSTEM</small><b>SETTINGS</b></span></button>';
   homeStats.querySelector('#hsSettings2').addEventListener('click', () => openPanel('settings'));
   homeStats.querySelector('#hsOnline').addEventListener('click', () => openPanel('online'));
+  const hsQ = homeStats.querySelector('#hsQuest');
+  if (hsQ) hsQ.addEventListener('click', () => { fillObjectivesPanel(); openPanel('objectives'); });
   homeStats.querySelector('#hsGold').addEventListener('click', () => {
     hideMenu();
     game.phase = 'armory';
@@ -9977,9 +10057,91 @@ panels.mail = document.getElementById('mailPanel');
 panels.bell = document.getElementById('bellPanel');
 panels.quest = document.getElementById('questPanel');
 panels.online = document.getElementById('onlinePanel');
+panels.objectives = document.getElementById('objectivesPanel');
 
 function mapsCleared() { return (kdMeta.mapsDone || []).filter(Boolean).length; }
 function armoryRanks() { return Object.values(kdMeta.power || {}).reduce((s, r) => s + r, 0); }
+
+// ---- royal objectives: pick ONE bounty, fill its bar, claim the gold ----
+kdMeta.questsDone = kdMeta.questsDone || {};
+const QUEST_DEFS = [
+  { key: 'kill10',   icon: '⚔', name: 'First Blood',        desc: 'Banish 10 curse-spirits',            target: 10,    reward: 100,  prog: () => kdStats.kills || 0 },
+  { key: 'kill100',  icon: '⚔', name: "Squire's Hundred",   desc: 'Banish 100 curse-spirits',           target: 100,   reward: 200,  prog: () => kdStats.kills || 0 },
+  { key: 'kill500',  icon: '🗡', name: 'Curse Breaker',      desc: 'Banish 500 curse-spirits',           target: 500,   reward: 400,  prog: () => kdStats.kills || 0 },
+  { key: 'kill2500', icon: '🔥', name: 'Legion Slayer',      desc: 'Banish 2,500 curse-spirits',         target: 2500,  reward: 900,  prog: () => kdStats.kills || 0 },
+  { key: 'kill10k',  icon: '☄', name: 'Myriad of Spirits',  desc: 'Banish 10,000 curse-spirits',        target: 10000, reward: 2500, prog: () => kdStats.kills || 0 },
+  { key: 'win1',     icon: '👑', name: 'First Victory',      desc: 'Save a realm from the curse',        target: 1,     reward: 250,  prog: () => kdStats.wins || 0 },
+  { key: 'win5',     icon: '👑', name: 'Seasoned Savior',    desc: 'Win 5 battles',                      target: 5,     reward: 600,  prog: () => kdStats.wins || 0 },
+  { key: 'win15',    icon: '👑', name: 'Legend of the Realm', desc: 'Win 15 battles',                    target: 15,    reward: 1500, prog: () => kdStats.wins || 0 },
+  { key: 'realms3',  icon: '🗺', name: 'Pathfinder',         desc: 'Free 3 different realms',            target: 3,     reward: 500,  prog: () => mapsCleared() },
+  { key: 'realms8',  icon: '🏰', name: 'Realm Master',       desc: 'Free all 8 realms of the kingdom',   target: 8,     reward: 1500, prog: () => Math.min(8, mapsCleared()) },
+  { key: 'boss3',    icon: '💀', name: 'Champion Hunter',    desc: 'Slay 3 champions of the curse',      target: 3,     reward: 300,  prog: () => kdStats.bossKills || 0 },
+  { key: 'boss15',   icon: '💀', name: 'Bane of Champions',  desc: 'Slay 15 champions of the curse',     target: 15,    reward: 800,  prog: () => kdStats.bossKills || 0 },
+  { key: 'concur',   icon: '🔮', name: "Concur's End",       desc: 'Defeat Concur the Sorcerer himself', target: 1,     reward: 1200, prog: () => kdStats.concurDown ? 1 : 0 },
+  { key: 'chest10',  icon: '🎁', name: 'Treasure Hunter',    desc: 'Open 10 war chests',                 target: 10,    reward: 250,  prog: () => kdStats.chests || 0 },
+  { key: 'chest40',  icon: '🎁', name: "Dragon's Hoard",     desc: 'Open 40 war chests',                 target: 40,    reward: 700,  prog: () => kdStats.chests || 0 },
+  { key: 'gold5k',   icon: '🪙', name: 'Royal Fortune',      desc: 'Earn 5,000 gold in your career',     target: 5000,  reward: 500,  prog: () => kdStats.goldEarned || 0 },
+  { key: 'gold20k',  icon: '🪙', name: 'The Golden Age',     desc: 'Earn 20,000 gold in your career',    target: 20000, reward: 1600, prog: () => kdStats.goldEarned || 0 },
+  { key: 'revive3',  icon: '💞', name: 'Field Medic',        desc: 'Revive fallen knights 3 times',      target: 3,     reward: 300,  prog: () => kdStats.revives || 0 },
+  { key: 'revive10', icon: '💞', name: 'Guardian Angel',     desc: 'Revive fallen knights 10 times',     target: 10,    reward: 700,  prog: () => kdStats.revives || 0 },
+  { key: 'coop',     icon: '🤝', name: 'Shoulder to Shoulder', desc: 'Fight a battle with a friend',     target: 1,     reward: 200,  prog: () => kdStats.coop ? 1 : 0 },
+  { key: 'elite25',  icon: '✨', name: 'Gold-Touched Bane',  desc: 'Slay 25 gold-touched elites',        target: 25,    reward: 450,  prog: () => kdStats.elites || 0 },
+  { key: 'time30',   icon: '⏳', name: 'Devoted Squire',     desc: 'Spend 30 minutes in the kingdom',    target: 30,    reward: 250,  prog: () => Math.floor((kdStats.playMs || 0) / 60000) },
+  { key: 'time180',  icon: '⏳', name: 'Sworn Protector',    desc: 'Spend 3 hours in the kingdom',       target: 180,   reward: 900,  prog: () => Math.floor((kdStats.playMs || 0) / 60000) },
+  { key: 'level10',  icon: '🌟', name: 'Rising Star',        desc: 'Reach level 10 in a single battle',  target: 10,    reward: 300,  prog: () => kdStats.bestLevel || 0 },
+  { key: 'level18',  icon: '🌟', name: 'Power Overwhelming', desc: 'Reach level 18 in a single battle',  target: 18,    reward: 800,  prog: () => kdStats.bestLevel || 0 },
+  { key: 'survive8', icon: '🕰', name: 'Iron Endurance',     desc: 'Survive 8 minutes in one battle',    target: 480,   reward: 350,  prog: () => (kdStats.best && kdStats.best[0] ? kdStats.best[0].t : 0), fmt: s => fmtClock(Math.min(s, 480)) + ' / 8:00' },
+  { key: 'survive15', icon: '🕰', name: 'The Long Watch',    desc: 'Survive 15 minutes in one battle',   target: 900,   reward: 900,  prog: () => (kdStats.best && kdStats.best[0] ? kdStats.best[0].t : 0), fmt: s => fmtClock(Math.min(s, 900)) + ' / 15:00' },
+  { key: 'kn10',     icon: '🛡', name: 'Knight Collector',   desc: 'Gather 10 knights in your order',    target: 10,    reward: 500,  prog: () => (kdMeta.unlocked || []).length },
+  { key: 'kn24',     icon: '⚜', name: 'The Full Round Table', desc: 'Recruit every knight in the land',  target: ROSTER.length, reward: 2500, prog: () => (kdMeta.unlocked || []).length },
+  { key: 'pets3',    icon: '🐾', name: 'Royal Menagerie',    desc: 'Adopt all 3 royal pets',             target: 3,     reward: 450,  prog: () => Object.values(kdMeta.pets || {}).filter(r => r > 0).length },
+  { key: 'forge10',  icon: '⚒', name: 'Master Blacksmith',  desc: 'Forge 10 Armory upgrade ranks',      target: 10,    reward: 400,  prog: () => armoryRanks() },
+];
+window.__questReady = true;
+function activeQuest() {
+  return QUEST_DEFS.find(q => q.key === kdMeta.quest && !kdMeta.questsDone[q.key]) || null;
+}
+function checkQuestComplete() {
+  const q = activeQuest();
+  if (!q || q.prog() < q.target) return false;
+  kdMeta.questsDone[q.key] = true;
+  kdMeta.quest = null;
+  kdMeta.gold += q.reward;
+  saveMeta();
+  const msg = '🏅 OBJECTIVE COMPLETE — ' + q.name + '! +' + q.reward + ' GOLD';
+  if (menuOpen) menuToastShow(msg + ' · choose your next bounty!');
+  else gameToast(msg);
+  if (typeof SFX !== 'undefined') SFX.unlock();
+  return true;
+}
+function fillObjectivesPanel() {
+  checkQuestComplete();
+  const rows = QUEST_DEFS.map(q => {
+    const done = !!kdMeta.questsDone[q.key];
+    const cur = Math.min(q.prog(), q.target);
+    const pct = Math.round((done ? 1 : cur / q.target) * 100);
+    const act = !done && kdMeta.quest === q.key;
+    const progTxt = done ? 'CLAIMED ✓' : (q.fmt ? q.fmt(cur) : cur + ' / ' + q.target);
+    return '<button class="objRow' + (done ? ' done' : act ? ' activeQ' : '') + '" data-quest="' + q.key + '"' + (done ? ' disabled' : '') + '>' +
+      '<span class="objReward">' + (done ? '✓ ' : '') + q.reward + 'g</span>' +
+      '<span class="objName">' + q.icon + ' ' + q.name + (act ? ' — WORKING ON IT' : '') + '</span>' +
+      '<span class="objDesc">' + q.desc + '</span>' +
+      '<span class="objProg">' + progTxt + '</span>' +
+      '<span class="objBar"><i style="width:' + pct + '%"></i></span>' +
+      '</button>';
+  });
+  const doneCount = QUEST_DEFS.filter(q => kdMeta.questsDone[q.key]).length;
+  rows.unshift('<p style="text-align:center" class="achProg">Completed: ' + doneCount + ' / ' + QUEST_DEFS.length + '</p>');
+  const list = document.getElementById('objList');
+  list.innerHTML = rows.join('');
+  list.querySelectorAll('.objRow:not(.done)').forEach(b => b.addEventListener('click', () => {
+    kdMeta.quest = kdMeta.quest === b.dataset.quest ? null : b.dataset.quest;   // tap again to drop it
+    saveMeta();
+    if (typeof playSample === 'function') playSample('ui-toggle', 0.6);
+    fillObjectivesPanel();
+    if (imgUIActive) updateHomeStats();
+  }));
+}
 
 const ACH_DEFS = [
   { key: 'battle',  icon: '⚔', name: 'First Battle', desc: 'Fight your first battle',
@@ -10054,6 +10216,7 @@ function recordRun(win) {
   saveStats();
   gameToast('✦ Kingdom saved');
   checkAchievements();
+  checkQuestComplete();   // a bounty finished this run pays out right here
 }
 
 function fmtClock(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
