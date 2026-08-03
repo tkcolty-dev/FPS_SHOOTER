@@ -1227,7 +1227,7 @@
       <h2>The Royal Chronicle</h2>
       <div class="patchList">
         <p class="verHead">v2.2 &mdash; THE LAUNCH EDITION <span class="verTag">LATEST</span></p>
-        <p>&#10022; Difficulty setting &mdash; Easy, Normal, Hard, Extreme (Settings &rsaquo; Battle) &mdash; scaling how fast the horde grows and how tough each fiend is.</p>
+        <p>&#10022; Difficulty setting &mdash; Easy, Normal, Hard, Extreme (Settings &rsaquo; Battle) &mdash; scaling the horde's pace, toughness (bosses too), speed, damage, and the gold payout for braving it.</p>
         <p>&#10022; Reworked pacing: a calm opening that ramps hard into a late-game swarm, with enemy types unlocking across each realm so you level up into them; the Reaper is a real threat now, and bosses keep marching in.</p>
         <p>&#9876; Clean build system: 3 weapon slots (the one you start with, plus 2 you win) and 3 gift slots &mdash; every pick registers in the circles up top, and once full you level what you own.</p>
         <p>&#9889; Storm Crown now cracks real forked lightning down from the sky; monsters blaze white the instant they&rsquo;re hit and when they fall.</p>
@@ -1786,25 +1786,25 @@ const ROSTER = [
   { key: 'ember',    name: 'DAME EMBER',    role: 'Knight of the Flame',  wtype: 'nova',    tabard: '#b7452e', price: 0,   mods: {} },
   { key: 'whisper',  name: 'DAME WHISPER',   role: 'Knight of Shadows',    wtype: 'daggers', tabard: '#5b3d8f', price: 0,   mods: {} },
   { key: 'gale',     name: 'DAME GALE',     role: 'Knight of the Wind',   wtype: 'gust',    tabard: '#3f8fae', price: 0,   mods: {} },
-  { key: 'oakheart', name: 'SIR OAKHEART',  role: 'Knight of the Grove',  wtype: 'axe',   tabard: '#2d5016', price: 200, mods: { hp: 2 } },
-  { key: 'rose',     name: 'DAME ROSE',     role: 'Knight of Thorns',     wtype: 'boomer', tabard: '#e75480', price: 200, mods: { speedM: 1.1 } },
-  { key: 'frost',    name: 'SIR FROST',     role: 'Knight of Winter',     wtype: 'icestaff',    tabard: '#7dd3fc', price: 250, mods: { atkM: 0.9 } },
-  { key: 'sunfire',  name: 'DAME SUNFIRE',  role: 'Knight of the Dawn',   wtype: 'whip',    tabard: '#f59e0b', price: 250, mods: { dmg: 1 } },
-  { key: 'storm',    name: 'SIR STORM',     role: 'Knight of Thunder',    wtype: 'trident',   tabard: '#64748b', price: 300, mods: { wave: 1 } },
-  { key: 'ivy',      name: 'DAME IVY',      role: 'Knight of Vines',      wtype: 'daggers', tabard: '#22c55e', price: 300, sig: 2, mods: { magnetM: 1.6 } },
-  { key: 'coal',     name: 'SIR COAL',      role: 'Knight of the Forge',  wtype: 'blunder',    tabard: '#3f3f46', price: 350, mods: { hp: 1, dmg: 1 } },
-  { key: 'star',     name: 'DAME STAR',     role: 'Knight of Midnight',   wtype: 'scepter',    tabard: '#fde047', price: 350, mods: { magnetM: 1.4, speedM: 1.06 } },
-  { key: 'pebble',   name: 'SIR PEBBLE',    role: 'Knight of the Mountain', wtype: 'hammer', tabard: '#a8a29e', price: 400, mods: { hp: 4, speedM: 0.92 } },
-  { key: 'swift',    name: 'DAME SWIFT',    role: 'Knight of Rivers',     wtype: 'daggers', tabard: '#38bdf8', price: 450, sig: 2, mods: { speedM: 1.18, atkM: 0.92 } },
-  { key: 'grumble',  name: 'SIR GRUMBLE',   role: 'Knight of Mondays',    wtype: 'flail',   tabard: '#92400e', price: 450, mods: { dmg: 2, atkM: 1.3 } },
-  { key: 'lily',     name: 'DAME LILY',     role: 'Knight of the Lake',   wtype: 'nova',    tabard: '#f9a8d4', price: 500, sig: 2, mods: { hp: 3 } },
-  { key: 'tumble',   name: 'SIR TUMBLE',    role: 'Knight of Chaos',      wtype: 'gust',    tabard: '#fb7185', price: 500, sig: 2, mods: { speedM: 1.25, hp: -2 } },
-  { key: 'nova',     name: 'DAME NOVA',     role: 'Knight of the Void',   wtype: 'nova',    tabard: '#c084fc', price: 600, sig: 3, mods: { atkM: 0.85 } },
-  { key: 'moss',     name: 'SIR MOSS',      role: 'Knight of Patience',   wtype: 'bow',   tabard: '#4d7c0f', price: 600, mods: { orb: 1 } },
-  { key: 'comet',    name: 'DAME COMET',    role: 'Knight of the Sky',    wtype: 'daggers', tabard: '#67e8f9', price: 700, sig: 3, mods: { wave: 1 } },
-  { key: 'biscuit',  name: 'SIR BISCUIT',   role: 'Knight of the Feast',  wtype: 'slash',   tabard: '#d4a373', price: 800, sig: 2, mods: { hp: 5 } },
-  { key: 'aurora',   name: 'DAME AURORA',   role: 'Knight of Lights',     wtype: 'gust',    tabard: '#a5b4fc', price: 900, sig: 3, mods: { orb: 2 } },
-  { key: 'queen',    name: 'QUEEN KENNA',   role: 'Ruler of the Kingdom', wtype: 'slash',   tabard: '#e8b64c', price: 1500, sig: 3, mods: { hp: 2, dmg: 1, speedM: 1.1, atkM: 0.85, wave: 1 } },
+  { key: 'oakheart', name: 'SIR OAKHEART',  role: 'Knight of the Grove',  wtype: 'axe',   tabard: '#2d5016', price: 400, mods: { hp: 2 } },
+  { key: 'rose',     name: 'DAME ROSE',     role: 'Knight of Thorns',     wtype: 'boomer', tabard: '#e75480', price: 400, mods: { speedM: 1.1 } },
+  { key: 'frost',    name: 'SIR FROST',     role: 'Knight of Winter',     wtype: 'icestaff',    tabard: '#7dd3fc', price: 500, mods: { atkM: 0.9 } },
+  { key: 'sunfire',  name: 'DAME SUNFIRE',  role: 'Knight of the Dawn',   wtype: 'whip',    tabard: '#f59e0b', price: 500, mods: { dmg: 1 } },
+  { key: 'storm',    name: 'SIR STORM',     role: 'Knight of Thunder',    wtype: 'trident',   tabard: '#64748b', price: 650, mods: { wave: 1 } },
+  { key: 'ivy',      name: 'DAME IVY',      role: 'Knight of Vines',      wtype: 'daggers', tabard: '#22c55e', price: 650, sig: 2, mods: { magnetM: 1.6 } },
+  { key: 'coal',     name: 'SIR COAL',      role: 'Knight of the Forge',  wtype: 'blunder',    tabard: '#3f3f46', price: 800, mods: { hp: 1, dmg: 1 } },
+  { key: 'star',     name: 'DAME STAR',     role: 'Knight of Midnight',   wtype: 'scepter',    tabard: '#fde047', price: 800, mods: { magnetM: 1.4, speedM: 1.06 } },
+  { key: 'pebble',   name: 'SIR PEBBLE',    role: 'Knight of the Mountain', wtype: 'hammer', tabard: '#a8a29e', price: 950, mods: { hp: 4, speedM: 0.92 } },
+  { key: 'swift',    name: 'DAME SWIFT',    role: 'Knight of Rivers',     wtype: 'daggers', tabard: '#38bdf8', price: 1100, sig: 2, mods: { speedM: 1.18, atkM: 0.92 } },
+  { key: 'grumble',  name: 'SIR GRUMBLE',   role: 'Knight of Mondays',    wtype: 'flail',   tabard: '#92400e', price: 1100, mods: { dmg: 2, atkM: 1.3 } },
+  { key: 'lily',     name: 'DAME LILY',     role: 'Knight of the Lake',   wtype: 'nova',    tabard: '#f9a8d4', price: 1300, sig: 2, mods: { hp: 3 } },
+  { key: 'tumble',   name: 'SIR TUMBLE',    role: 'Knight of Chaos',      wtype: 'gust',    tabard: '#fb7185', price: 1300, sig: 2, mods: { speedM: 1.25, hp: -2 } },
+  { key: 'nova',     name: 'DAME NOVA',     role: 'Knight of the Void',   wtype: 'nova',    tabard: '#c084fc', price: 1600, sig: 3, mods: { atkM: 0.85 } },
+  { key: 'moss',     name: 'SIR MOSS',      role: 'Knight of Patience',   wtype: 'bow',   tabard: '#4d7c0f', price: 1600, mods: { orb: 1 } },
+  { key: 'comet',    name: 'DAME COMET',    role: 'Knight of the Sky',    wtype: 'daggers', tabard: '#67e8f9', price: 1900, sig: 3, mods: { wave: 1 } },
+  { key: 'biscuit',  name: 'SIR BISCUIT',   role: 'Knight of the Feast',  wtype: 'slash',   tabard: '#d4a373', price: 2200, sig: 2, mods: { hp: 5 } },
+  { key: 'aurora',   name: 'DAME AURORA',   role: 'Knight of Lights',     wtype: 'gust',    tabard: '#a5b4fc', price: 2600, sig: 3, mods: { orb: 2 } },
+  { key: 'queen',    name: 'QUEEN KENNA',   role: 'Ruler of the Kingdom', wtype: 'slash',   tabard: '#e8b64c', price: 4000, sig: 3, mods: { hp: 2, dmg: 1, speedM: 1.1, atkM: 0.85, wave: 1 } },
 ];
 // forge sprites for every roster knight
 for (const rk of ROSTER) {
@@ -2075,13 +2075,17 @@ window.addEventListener('keydown', e => {
     const BACK = n;                 // the Back button is a real, focusable target after the grid
     const total = n + 1;
     const ac = n > 9 ? 4 : 3;
-    if (game.armoryInspect && ['KeyY', 'Escape', 'Backspace'].includes(e.code)) { game.armoryInspect = false; SFX.pick(); if (e.code === 'Escape') e.stopImmediatePropagation(); return; }
+    if (game.armoryInspect) {
+      // the details overlay holds the floor: close on Y/B/Esc/A, and swallow the
+      // d-pad so it can't silently drag the hidden shop cursor underneath
+      if (['KeyY', 'Escape', 'Backspace', 'Space', 'Enter'].includes(e.code)) { game.armoryInspect = false; SFX.pick(); if (e.code === 'Escape') e.stopImmediatePropagation(); }
+      return;
+    }
     if (['KeyA', 'ArrowLeft'].includes(e.code)) game.cursor = (game.cursor + total - 1) % total;
     if (['KeyD', 'ArrowRight'].includes(e.code)) game.cursor = (game.cursor + 1) % total;
     if (['KeyW', 'ArrowUp'].includes(e.code)) game.cursor = game.cursor === BACK ? Math.max(0, n - 1) : (game.cursor - ac + n) % n;
     if (['KeyS', 'ArrowDown'].includes(e.code)) game.cursor = game.cursor === BACK ? 0 : (game.cursor + ac >= n ? BACK : game.cursor + ac);
     if (e.code === 'KeyY' && game.cursor !== BACK) { game.armoryInspect = true; SFX.pick(); return; }
-    if (game.armoryInspect) return;
     if (['Space', 'Enter'].includes(e.code)) { if (game.cursor === BACK) armoryExit(); else armoryBuy(game.cursor); }
     if (e.code === 'KeyT' || e.code === 'Backspace') armoryExit();
     return;
@@ -2106,9 +2110,11 @@ window.addEventListener('keydown', e => {
   }
   // upgrade picking — the keyboard is P1's (host) OR the guest's own hand online.
   if (game.choices) {
-    // online guest: pick only on YOUR turn (by gid). host/local: P1's turn or solo.
+    // online guest: pick only on YOUR turn (by gid). host/local: P1's turn, solo,
+    // or a KEYBOARD knight's turn (pad -1 — the keys are the only hands they have).
     const kOk = game.netGuest ? (game.chooserGid === NET.id)
-      : ((game.chooser || 0) === 0 || players.filter(p2 => p2.joined).length <= 1);
+      : ((game.chooser || 0) === 0 || players.filter(p2 => p2.joined).length <= 1
+         || (players[game.chooser] && players[game.chooser].pad === -1));
     const idx = { Digit1: 0, Digit2: 1, Digit3: 2 }[e.code];
     if (kOk && idx !== undefined && game.choices[idx]) pickUpgrade(idx);
     if (kOk && !game.netGuest && e.code === 'KeyR') rerollChoices();
@@ -2292,14 +2298,15 @@ function confirmSelection2() {
     return;
   }
   // one knight per player — no twins on the battlefield
-  const slot0 = game.joinSlot || 1;
-  const takenBy = players.findIndex((q, qi) => q.joined && qi !== slot0 && q.heroKey === rk.key);
+  // (?? not || — slot 0 is P1 re-picking their own knight; || turned it into 1
+  //  and silently overwrote P2's knight + controller binding, jumbling everyone)
+  const slot = game.joinSlot ?? 1;
+  const takenBy = players.findIndex((q, qi) => q.joined && qi !== slot && q.heroKey === rk.key);
   if (takenBy >= 0) {
     SFX.denied();
     gameToast('⚔ ' + rk.name + ' already rides with P' + (takenBy + 1) + '!');
     return;
   }
-  const slot = game.joinSlot || 1;
   const p2 = players[slot];
   p2.joined = true;
   p2.joinedVia = game.joinVia || 'key';
@@ -2832,7 +2839,7 @@ function spawnEnemy(forceX, forceY) {
   const hp0 = Math.max(1, Math.round((spec.hp + hpBonus) * (elite ? 3 : 1) * diffMul().hp));
   enemies.push({
     x, y, kind, r: spec.r * (elite ? 1.18 : 1), hp: hp0, maxHp: hp0, elite,
-    speed: (spec.speed + Math.min(44, t * 0.22)) * (elite ? 1.12 : 1), xp: spec.xp * (elite ? 3 : 1),
+    speed: (spec.speed + Math.min(44, t * 0.22)) * (elite ? 1.12 : 1) * (diffMul().speed || 1), xp: spec.xp * (elite ? 3 : 1),
     kx: 0, ky: 0, flash: 0, orbCd: 0, spawnAge: 0,
     seed: Math.random() * 100,
     shootCd: 1.4 + Math.random(), chargeState: 'stalk', stateT: 2 + Math.random(), aimX: 0, aimY: 0,
@@ -2870,11 +2877,12 @@ function spawnBoss() {
   else { x = cam.x + Math.random() * ROOM_W; y = cam.y + 640 + m; }
   x = Math.max(60, Math.min(WORLD_W - 60, x));
   y = Math.max(60, Math.min(WORLD_H - 60, y));
-  const mult = 1 + game.mapPick * 0.3 + (game.bossWave - 1) * 0.55;
+  // bosses answer to the Difficulty setting too — they used to ignore it entirely
+  const mult = (1 + game.mapPick * 0.3 + (game.bossWave - 1) * 0.55) * (diffMul().hp || 1);
   enemies.push({
     x, y, kind: bk, boss: true, r: bd.r,
     hp: Math.round(bd.hp * mult), maxHp: Math.round(bd.hp * mult),
-    speed: bd.speed, xp: bd.xp, kx: 0, ky: 0, flash: 0, orbCd: 0, spawnAge: 0,
+    speed: bd.speed * (diffMul().speed || 1), xp: bd.xp, kx: 0, ky: 0, flash: 0, orbCd: 0, spawnAge: 0,
     seed: Math.random() * 100, shootCd: 3, chargeState: 'stalk',
     stateT: 3, aimX: 0, aimY: 0, life: 99999, slamT: 4, telT: 0,
   });
@@ -2926,7 +2934,7 @@ function hitPlayer(t, e) {
     particles.push({ x: t.x, y: t.y - 18, vx: 0, vy: 0, ring: true, life: 0.3, color: '#7dd3fc', size: 30 });
     return;
   }
-  t.hp -= 1;
+  t.hp -= diffMul().dmg || 1;   // on Extreme every blow costs 2 hearts
   t.lastHurtT = game.time;
   t.invuln = 1.2 + 0.25 * upLvl('plate');
   game.shake = 0.25;
@@ -2955,7 +2963,7 @@ function hitPlayer(t, e) {
       playSting('defeat');
       if (!game.paidOut) {
         game.paidOut = true;
-        game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
+        game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')) * (diffMul().gold || 1));
         kdMeta.gold += game.payout;
         saveMeta();
         recordRun(false);
@@ -3324,7 +3332,7 @@ function update(dt) {
   const goalSec = MAPS[game.mapPick].goal * 60;
   if (!game.endless && game.time >= goalSec) {
     game.victory = true;
-    game.payout = Math.round((game.kills * 0.6 + game.level * 12 + 150 + game.mapPick * 60) * (1 + 0.1 * powerRank('greed')));
+    game.payout = Math.round((game.kills * 0.6 + game.level * 12 + 150 + game.mapPick * 60) * (1 + 0.1 * powerRank('greed')) * (diffMul().gold || 1));
     kdMeta.gold += game.payout;
     if (!kdMeta.mapsDone) kdMeta.mapsDone = [];
     kdMeta.mapsDone[game.mapPick] = true;
@@ -3989,11 +3997,13 @@ function update(dt) {
     dmgTexts[i].y -= 34 * dt;
     if (dmgTexts[i].age > 0.7) dmgTexts.splice(i, 1);
   }
-  // camera — Player 1 is ALWAYS the center of the world; extra knights orbit around
-  // them (and get a locator arrow / teleport-back if they stray off-screen).
-  const anchor = (players[0].joined && players[0].alive) ? players[0]
-    : (players.find(p => p.joined && p.alive) || players[0]);
-  const fx = anchor.x, fy = anchor.y;
+  // camera — follow the PARTY, not just P1: scroll toward the midpoint of every
+  // knight still fighting, so nobody has to sprint after Player 1 to stay on
+  // screen. Solo it's exactly the old behavior. Locator arrows + the keep-party
+  // teleport still catch anyone who truly strays.
+  const aliveK = players.filter(p => p.joined && p.alive);
+  const fx = aliveK.length ? aliveK.reduce((s2, p) => s2 + p.x, 0) / aliveK.length : players[0].x;
+  const fy = aliveK.length ? aliveK.reduce((s2, p) => s2 + p.y, 0) / aliveK.length : players[0].y;
   cam.x += ((fx - CX) - cam.x) * Math.min(1, dt * 5);
   cam.y += ((fy - 340) - cam.y) * Math.min(1, dt * 5);
   cam.x = Math.max(0, Math.min(WORLD_W - ROOM_W, cam.x));
@@ -4009,8 +4019,9 @@ function update(dt) {
       p.offT = off ? (p.offT || 0) + dt : 0;
       if (p.offT > 2.6) {
         for (let k = 0; k < 12; k++) { const a = Math.random() * Math.PI * 2; particles.push({ x: p.x, y: p.y - 16, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90 - 40, life: 0.4, color: PLAYER_COLORS[pi % 4], size: 3 }); }
-        p.x = anchor.x + (Math.random() - 0.5) * 70;
-        p.y = anchor.y + 40 + (Math.random() - 0.5) * 30;
+        const home = (players[0].joined && players[0].alive && p !== players[0]) ? players[0] : { x: fx, y: fy };
+        p.x = home.x + (Math.random() - 0.5) * 70;
+        p.y = home.y + 40 + (Math.random() - 0.5) * 30;
         p.offT = 0;
         particles.push({ x: p.x, y: p.y - 16, vx: 0, vy: 0, ring: true, life: 0.3, color: PLAYER_COLORS[pi % 4], size: 26 });
       }
@@ -6248,7 +6259,7 @@ function renderSelect(t, forP2) {
   ctx.moveTo(400, 36); ctx.quadraticCurveTo(440, 30, 466, 34);
   ctx.moveTo(560, 36); ctx.quadraticCurveTo(520, 30, 494, 34);
   ctx.stroke();
-  drawScreenTitle(forP2 ? 'PLAYER ' + ((game.joinSlot || 1) + 1) + ' — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 64);
+  drawScreenTitle(forP2 ? 'PLAYER ' + ((game.joinSlot ?? 1) + 1) + ' — CHOOSE CHARACTER' : 'CHOOSE CHARACTER', 64);
 
   cardRects = [];
   const cols = 5, perPage = 15, cw = 100, chh = 118, gap = 10;
@@ -9508,13 +9519,14 @@ const settings = Object.assign(
 function saveSettings() {
   localStorage.setItem('kd_settings', JSON.stringify(settings));
 }
-// difficulty scales how FAST the horde grows and how TOUGH each fiend is.
+// difficulty scales how FAST the horde grows, how TOUGH each fiend is (bosses too),
+// how QUICK they run, how HARD they hit, and the gold payout for braving it.
 // (Each realm also has its own base pace in MAP_SPAWN, so later maps are harder.)
 const DIFFS = {
-  easy:    { spawn: 0.72, hp: 0.75, label: 'Easy' },
-  normal:  { spawn: 1.0,  hp: 1.0,  label: 'Normal' },
-  hard:    { spawn: 1.32, hp: 1.4,  label: 'Hard' },
-  extreme: { spawn: 1.7,  hp: 1.9,  label: 'Extreme' },
+  easy:    { spawn: 0.72, hp: 0.75, speed: 0.88, dmg: 1, gold: 0.9,  label: 'Easy' },
+  normal:  { spawn: 1.0,  hp: 1.0,  speed: 1.0,  dmg: 1, gold: 1.0,  label: 'Normal' },
+  hard:    { spawn: 1.32, hp: 1.4,  speed: 1.08, dmg: 1, gold: 1.2,  label: 'Hard' },
+  extreme: { spawn: 1.7,  hp: 1.9,  speed: 1.16, dmg: 2, gold: 1.45, label: 'Extreme' },
 };
 function diffMul() { return DIFFS[settings.difficulty] || DIFFS.normal; }
 const setMusic = document.getElementById('setMusic');
@@ -9768,7 +9780,7 @@ function quitRun() {
   // retreat with honor: salvage a defeat payout and ride home
   if (!game.paidOut) {
     game.paidOut = true;
-    game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')));
+    game.payout = Math.round((game.kills * 0.4 + game.level * 8) * (1 + 0.1 * powerRank('greed')) * (diffMul().gold || 1));
     kdMeta.gold += game.payout;
     saveMeta();
     recordRun(false);
@@ -10462,14 +10474,17 @@ function pollPads() {
       continue;
     }
     if (game.phase === 'lobby') {
+      // P1's controller is whichever pad assignPads resolved for them THIS frame —
+      // not literally index 0 (indices get holes when pads sleep/unplug).
+      const p1Pad = players[0].padResolved >= 0 ? players[0].padResolved : 0;
       // START begins the battle — A only ever joins or re-picks, so no accidental launches
       if (tap('start')) { startBattle(); continue; }
-      if (i === 0 && tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; continue; }
-      if (i === 0 && tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; continue; }
+      if (i === p1Pad && tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; continue; }
+      if (i === p1Pad && tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; continue; }
       if (tap('a') && !game.joinAnim) {
-        // Which knight does THIS pad already control? Pad 0 is always P1/host; any
+        // Which knight does THIS pad already control? P1's pad re-picks P1; any
         // other pad owns the joined knight it was bound to on join (p.pad === i).
-        const owned = (i === 0) ? 0 : players.findIndex((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i);
+        const owned = (i === p1Pad) ? 0 : players.findIndex((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i);
         if (owned >= 0) {
           game.fromLobby = true; game.joinSlot = owned; game.joinVia = 'pad'; game.joinPad = i;
           game.phase = 'select2'; game.cursor = 0; SFX.pick();
@@ -10505,8 +10520,13 @@ function pollPads() {
 
     if (game.choices) {
       // it's ONE knight's turn — ONLY their controller steers. Online, the guest's
-      // own pad (0) steers on THEIR turn (by gid); locally it's the chooser's pad.
-      if (game.netGuest ? (i !== 0 || game.chooserGid !== NET.id) : (i !== (game.chooser || 0))) continue;
+      // own pad (0) steers on THEIR turn (by gid); locally it's the chooser's BOUND
+      // pad (padResolved), which is NOT the same as their slot number — P3 may hold
+      // pad 1, or P2 pad 2. Comparing i to the slot froze the wrong controller in.
+      const chP = players[game.chooser || 0];
+      const chPad = chP && chP.padResolved >= 0 ? chP.padResolved
+        : ((game.chooser || 0) === 0 ? 0 : -9);   // keyboard P1 falls back to pad 0; keyboard P2+ = no pad
+      if (game.netGuest ? (i !== 0 || game.chooserGid !== NET.id) : (i !== chPad)) continue;
       if (game.padPick === undefined || game.padPick === null) game.padPick = 1;
       if (dir('left')) game.padPick = Math.max(0, game.padPick - 1);
       if (dir('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
@@ -10533,7 +10553,13 @@ function pollPads() {
     if (!inRun) {
       // a joining knight's picker belongs to THEIR pad alone — no neighbors confirming
       // for them. Pad joins: only the joining pad steers. Keyboard joins: no pad steers.
-      if (game.phase === 'select2') { if (game.joinVia === 'pad' ? (i !== (game.joinPad || 0)) : true) continue; }
+      if (game.phase === 'select2') { if (game.joinVia === 'pad' ? (i !== (game.joinPad ?? 0)) : true) continue; }
+      // single-cursor screens (roster, shop, map): only P1's pad drives — a second
+      // controller's stick drift or taps was yanking the cursor and buying things
+      if (game.phase === 'select' || game.phase === 'map' || game.phase === 'armory') {
+        const p1Pad = players[0].padResolved >= 0 ? players[0].padResolved : 0;
+        if (i !== p1Pad) continue;
+      }
       // canvas menus: d-pad/stick navigates (held = repeat), A confirms, B backs, LB/RB pages
       if (dir('left')) synthKey('ArrowLeft');
       if (dir('right')) synthKey('ArrowRight');
@@ -10547,16 +10573,23 @@ function pollPads() {
       const yTap = tap('y'), xTap = tap('x');
       if (yTap && game.phase === 'armory') synthKey('KeyY');
       else if (xTap && (game.phase === 'select' || game.phase === 'select2')) synthKey('KeyU');
-      if (yTap && (game.phase === 'select' || game.phase === 'lobby')) synthKey('KeyT');   // Y = upgrades
+      if (yTap && game.phase === 'select') synthKey('KeyT');   // Y = upgrades (lobby handles its own Y above)
       if (tap('bBtn')) {
         if (game.phase === 'armory' || game.phase === 'select2') synthKey('Backspace');
         else if (game.phase === 'map') { game.phase = 'select'; game.cursor = 0; }
         else synthKey('Escape');                          // select -> home menu
       }
-    } else if (i >= 1 && players[i] && !players[i].joined && !players[i].remote && tap('a') && !game.joinAnim) {
-      // any extra controller presses A mid-battle to join as P2/P3/P4
-      game.joinAnim = { slot:i, at:performance.now(), via:'pad', fromRun:true };
-      SFX.join();
+    } else if (tap('a') && !game.joinAnim
+               && i !== (players[0].padResolved >= 0 ? players[0].padResolved : 0)
+               && !players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i)) {
+      // any extra controller presses A mid-battle to join the NEXT FREE slot —
+      // pad number ≠ slot number, so match by binding, and carry pad:i so the
+      // picker answers to THIS controller (it used to be missing → pad 0 steered)
+      const free = players.findIndex((q, qi) => qi > 0 && !q.joined && !q.remote);
+      if (free > 0) {
+        game.joinAnim = { slot: free, at: performance.now(), via: 'pad', pad: i, fromRun: true };
+        SFX.join();
+      }
     }
   }
 }
@@ -10568,10 +10601,11 @@ window.addEventListener('gamepaddisconnected', e => {
   const i = e.gamepad.index;
   gameToast('🎮 Controller ' + (i + 1) + ' disconnected');
   PADS['p' + i] = null;
-  // in the lobby, an unplugged controller gives up its seat
-  if (game.phase === 'lobby' && i >= 1 && players[i] && players[i].joined && !players[i].remote) {
-    players[i].joined = false;
-    players[i].alive = false;
+  // in the lobby, an unplugged controller gives up its seat — find the knight
+  // BOUND to this pad (q.pad), not players[i]; pad number ≠ slot number
+  if (game.phase === 'lobby') {
+    const k = players.findIndex((q, qi) => qi >= 1 && q.joined && !q.remote && q.pad === i);
+    if (k >= 0) { players[k].joined = false; players[k].alive = false; }
   }
 });
 // On Xbox (a full-screen TV app already) the first tap requests fullscreen.
