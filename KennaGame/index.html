@@ -1886,6 +1886,7 @@ function upgradeKnight(rk) {
 }
 
 function armoryExit() {
+  game.armoryInspect = false;   // never carry a stuck details overlay out of the shop
   if (game.netGuest) {
     // guests shop mid-battle and return straight to the fight
     game.phase = 'run';
@@ -5101,13 +5102,15 @@ function drawPlayerSprite(p, t) {
   ctx.beginPath();
   ctx.ellipse(p.x, p.y - 2, 18, 7, 0, 0, Math.PI * 2);
   ctx.fill();
-  // with friends in the fight, every knight wears their player's color
+  // with friends in the fight, every knight wears their player's color —
+  // unless they're nearly dead: then the ring burns pulsing red for everyone to see
   const slot = players.indexOf(p);
+  const nearDeath = p.alive && p.maxHp > 0 && p.hp / p.maxHp <= 0.34;
+  const ringCol = nearDeath ? '#e5484d' : PLAYER_COLORS[Math.max(0, slot) % 4];
   if (slot >= 0 && p.alive) {
-    const col = PLAYER_COLORS[slot % 4];
-    ctx.globalAlpha = 0.72 + Math.sin(t * 3.2 + slot) * 0.08;
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 2.2;
+    ctx.globalAlpha = nearDeath ? 0.6 + 0.4 * Math.sin(t * 6) : 0.72 + Math.sin(t * 3.2 + slot) * 0.08;
+    ctx.strokeStyle = ringCol;
+    ctx.lineWidth = nearDeath ? 3 : 2.2;
     ctx.beginPath();
     ctx.ellipse(p.x, p.y - 2, 21, 9, 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -5115,11 +5118,13 @@ function drawPlayerSprite(p, t) {
   }
   if (slot >= 0 && players.filter(q => q.joined).length > 1) {
     const col = PLAYER_COLORS[slot % 4];
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.ellipse(p.x, p.y - 2, 21, 9, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    if (!nearDeath) {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - 2, 21, 9, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     // your color, your arrow — always know which knight is yours
     const abob = Math.sin(t * 4.5 + slot * 1.7) * 3;
     const ay = p.y - 72 + abob;
@@ -5172,6 +5177,19 @@ function drawPlayerSprite(p, t) {
     ctx.fill();
   }
   if (p.invuln > 0 && Math.floor(t * 14) % 2) ctx.globalAlpha = 0.45;
+  // near death the knight visibly burns red — a pulsing crimson wash on the
+  // sprite itself, so danger reads even without glancing at the HUD
+  const lowHp = p.maxHp > 0 && p.hp / p.maxHp <= 0.34;
+  const redFilter = lowHp ? 'sepia(' + (0.55 + 0.2 * Math.sin(t * 6)).toFixed(2) + ') hue-rotate(-50deg) saturate(2.6)' : 'none';
+  if (lowHp) {
+    // a pulsing crimson glow around the knight — unmistakable even from the couch
+    const dngr = 0.3 + 0.25 * Math.sin(t * 6);
+    const dg = ctx.createRadialGradient(p.x, p.y - 6, 4, p.x, p.y - 6, 34);
+    dg.addColorStop(0, 'rgba(229, 72, 77, ' + (dngr * 0.75).toFixed(2) + ')');
+    dg.addColorStop(1, 'rgba(229, 72, 77, 0)');
+    ctx.fillStyle = dg;
+    ctx.beginPath(); ctx.arc(p.x, p.y - 6, 34, 0, Math.PI * 2); ctx.fill();
+  }
   if (im) {
     // vampire-survivors style: one hero sprite, mirrored by facing, rocking as it walks
     const rock = p.moving ? Math.sin(p.animTime * 11) * 0.085 : 0;
@@ -5179,6 +5197,7 @@ function drawPlayerSprite(p, t) {
     const breathe = p.moving ? 1 : 1 + Math.sin(t * 2.6) * 0.012;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    if (lowHp) ctx.filter = redFilter;
     ctx.translate(p.x, p.y - hop);
     ctx.rotate(rock);
     ctx.scale(p.faceLeft ? -1 : 1, breathe);
@@ -5189,6 +5208,7 @@ function drawPlayerSprite(p, t) {
     const frame = p.moving ? (Math.floor(p.animTime * 8) % 2) : 1;
     const spr = (p.dir === 'left' || p.dir === 'right') ? set.side[frame] : set[p.dir][frame];
     const bob = (p.moving && frame === 1) ? -2 : 0;
+    if (lowHp) ctx.filter = redFilter;
     if (p.dir === 'left') {
       ctx.save();
       ctx.translate(p.x + 32, p.y - 60 + bob);
@@ -5198,6 +5218,7 @@ function drawPlayerSprite(p, t) {
     } else {
       ctx.drawImage(spr, p.x - 32, p.y - 60 + bob);
     }
+    ctx.filter = 'none';
   }
   ctx.globalAlpha = 1;
   // Equipped art belongs to attack poses and projectiles. Static atlas badges
@@ -8145,10 +8166,31 @@ function render(t) {
     ctx.font = '700 ' + (compact ? 10 : 12) + 'px Cinzel, Georgia, serif';
     ctx.fillStyle = p.alive ? UI.goldPale : UI.dim;
     const nameX = pcx + portR + 11;
-    ctx.fillText(p.name, nameX, hy + (compact ? 14 : 16));
-    drawHeart(nameX + 5,hy + ph2 - 10,heartR,p.hp>0);
-    ctx.font='700 '+(compact?10:12)+'px Inter, sans-serif';ctx.fillStyle=p.alive?'#f0e2c3':UI.dim;
-    ctx.fillText(p.hp+' / '+p.maxHp,nameX+20,hy+ph2-6);
+    // cap the name's width so it can't collide with the hp numbers on its right
+    ctx.fillText(p.name, nameX, hy + (compact ? 14 : 16), 10 + pw - nameX - (compact ? 30 : 40));
+    // health BAR instead of a lone heart — how close to death reads at a glance,
+    // green → amber → red, and it pulses when the knight is nearly done
+    const hbX = nameX, hbW = 10 + pw - nameX - 6, hbH = compact ? 6 : 8, hbY = hy + ph2 - (compact ? 10 : 13);
+    const hpFrac = p.alive ? Math.max(0, Math.min(1, p.hp / p.maxHp)) : 0;
+    roundedRect(hbX, hbY, hbW, hbH, hbH / 2); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1; ctx.stroke();
+    if (hpFrac > 0) {
+      const lowBar = hpFrac <= 0.34;
+      ctx.save();
+      roundedRect(hbX, hbY, hbW, hbH, hbH / 2); ctx.clip();
+      ctx.globalAlpha = lowBar ? 0.7 + 0.3 * Math.sin(t * 7) : 1;
+      ctx.fillStyle = hpFrac > 0.55 ? '#4ade80' : hpFrac > 0.34 ? '#fbbf24' : '#e5484d';
+      ctx.fillRect(hbX, hbY, hbW * hpFrac, hbH);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fillRect(hbX, hbY, hbW * hpFrac, 2);
+      ctx.restore();
+    }
+    ctx.textAlign = 'right';
+    ctx.font = '700 ' + (compact ? 8.5 : 10) + 'px Inter, sans-serif';
+    ctx.fillStyle = p.alive ? '#f0e2c3' : UI.dim;
+    ctx.fillText(p.hp + '/' + p.maxHp, hbX + hbW, hy + (compact ? 14 : 16));
+    ctx.textAlign = 'left';
     // this knight's slots: 3 weapons + 3 effects, claimed logos inside, empty rings waiting.
     // Slot 1 is ALWAYS the signature weapon you start with; won weapons fill 2 & 3.
     const wIconOf = wt2 => (wt2 === 'hammer' && game.evolved && game.evolved.hammer) ? 'hammer2'
@@ -8698,6 +8740,55 @@ function render(t) {
       ctx.fillStyle = 'rgba(240, 226, 195, 0.5)';
       ctx.font = '11px Inter, sans-serif';
       ctx.fillText('START / ESC — resume   ·   D-PAD — choose   ·   A — confirm', CX, 558);
+      // ---- YOUR GIFTS: the pausing knight's build, hover any icon to read it ----
+      const gpx = (game.pausedBy != null && players[game.pausedBy] && players[game.pausedBy].joined) ? game.pausedBy : 0;
+      const gp = players[gpx];
+      ctx.textAlign = 'left';
+      ctx.font = '700 12px Cinzel, Georgia, serif';
+      ctx.fillStyle = PLAYER_COLORS[gpx % 4];
+      ctx.fillText('P' + (gpx + 1) + ' — YOUR GIFTS', 54, 300);
+      const gifts = [];
+      const wsig = WEAPON_INFO[gp.wtype];
+      if (wsig) gifts.push({ icon: wsig.icon, name: wsig.name, sub: 'Signature · Tier ' + (gp.sigTier || 1), desc: wsig.desc });
+      for (const wk of (gp.arsenal || [])) { const wi4 = WEAPON_INFO[wk]; if (wi4) gifts.push({ icon: wi4.icon, name: wi4.name, sub: 'Arsenal weapon', desc: wi4.desc }); }
+      SUPER_DEFS.filter(d4 => (gp.supers || {})[d4.key]).forEach(d4 =>
+        gifts.push({ icon: d4.icon, name: d4.name, sub: 'SUPERWEAPON', desc: 'Two weapons fused into one — full power.' }));
+      for (const u4 of UPGRADES) {
+        const lv4 = STAT_KEYS.has(u4.key) ? pUpLvl(gp, u4.key) : upLvl(u4.key);
+        if (lv4 > 0) gifts.push({ icon: u4.icon, name: u4.name, sub: 'Lv ' + lv4 + ' / ' + u4.max, desc: u4.desc });
+      }
+      let gHover = null;
+      gifts.slice(0, 30).forEach((g4, gi4) => {
+        const gx4 = 68 + (gi4 % 5) * 36, gy4 = 322 + Math.floor(gi4 / 5) * 36;
+        const hov4 = mouse.x >= gx4 - 16 && mouse.x <= gx4 + 16 && mouse.y >= gy4 - 16 && mouse.y <= gy4 + 16;
+        if (hov4) gHover = { g: g4, x: gx4, y: gy4 };
+        ctx.beginPath(); ctx.arc(gx4, gy4, 15, 0, Math.PI * 2);
+        ctx.fillStyle = hov4 ? 'rgba(58, 42, 20, 0.96)' : 'rgba(9, 7, 5, 0.85)'; ctx.fill();
+        ctx.strokeStyle = hov4 ? '#ffd98a' : 'rgba(232, 182, 76, 0.45)';
+        ctx.lineWidth = hov4 ? 2 : 1.2; ctx.stroke();
+        drawUpgradeIcon(g4.icon, gx4, gy4, 0.44, t);
+      });
+      if (!gifts.length) {
+        ctx.font = '10.5px Inter, sans-serif';
+        ctx.fillStyle = UI.dim;
+        ctx.fillText('No gifts yet — level up!', 54, 322);
+      }
+      if (gHover) {
+        // tooltip clamped fully on-screen, drawn on top of everything else here
+        const tw4 = 252, th4 = 84;
+        const tx4 = Math.max(8, Math.min(ROOM_W - tw4 - 8, gHover.x + 26));
+        const ty4 = Math.max(8, Math.min(640 - th4 - 8, gHover.y - th4 / 2));
+        plate(tx4, ty4, tw4, th4, 10);
+        ctx.textAlign = 'left';
+        ctx.font = '700 12.5px Inter, sans-serif';
+        ctx.fillStyle = '#ffd98a';
+        ctx.fillText(gHover.g.name, tx4 + 12, ty4 + 19, tw4 - 24);
+        ctx.font = '700 9.5px Inter, sans-serif';
+        ctx.fillStyle = '#8fd460';
+        ctx.fillText(gHover.g.sub, tx4 + 12, ty4 + 33, tw4 - 24);
+        wrapText(gHover.g.desc, tx4 + 12, ty4 + 49, tw4 - 24, '600 10.5px Inter, sans-serif', '600 9.5px Inter, sans-serif', 13, 3, UI.text);
+      }
+      ctx.textAlign = 'center';
     }
     // ---- the ROYAL ARSENAL: everything installed, and where it leads ----
     if (game.treeOpen) {
@@ -8945,6 +9036,7 @@ function updateHomeStats() {
     game.phase = 'armory';
     game.armoryFrom = 'home';
     game.cursor = 0;
+    game.over = false; game.victory = false; game.armoryInspect = false;
   });
 }
 function activateImageUI() {
@@ -9663,6 +9755,9 @@ document.getElementById('btnSettings').addEventListener('click', () => {
   game.phase = 'armory';
   game.armoryFrom = 'home';
   game.cursor = 0;
+  // a finished round must not haunt the shop: stale victory/over flags hijacked
+  // the controller, and a stuck details overlay would swallow every button
+  game.over = false; game.victory = false; game.armoryInspect = false;
 });
 document.getElementById('btnCredits').addEventListener('click', () => openPanel('credits'));
 document.getElementById('btnPatch').addEventListener('click', e => {
@@ -9766,6 +9861,11 @@ function togglePause() {
   if (game.paused && (game.helpOpen || game.treeOpen)) { game.helpOpen = false; game.treeOpen = false; SFX.pick(); return true; }
   keys.clear();   // no phantom held-keys carrying through the pause
   game.paused = !game.paused;
+  if (game.paused) {
+    // whose hand hit pause? their gifts fill the pause-menu panel.
+    game.pausedBy = (game.pauseReq != null && players[game.pauseReq] && players[game.pauseReq].joined) ? game.pauseReq : 0;
+  }
+  game.pauseReq = null;
   game.pausePick = 0;
   return true;
 }
@@ -10499,7 +10599,15 @@ function pollPads() {
     // Start pauses/unpauses a live run only. During a level-up choice (or on
     // select/select2/map/armory) togglePause() refuses and the synth-Escape
     // used to fall through to showMenu(), yanking the player Home mid-pick.
-    if (tap('start')) { if (game.phase === 'run' && !game.choices) synthKey('Escape'); continue; }
+    if (tap('start')) {
+      if (game.phase === 'run' && !game.choices) {
+        // remember whose controller paused, so the pause panel shows THEIR gifts
+        const who = players.findIndex(q => q.joined && !q.remote && q.padResolved === i);
+        game.pauseReq = who >= 0 ? who : 0;
+        synthKey('Escape');
+      }
+      continue;
+    }
 
     if (game.paused) {
       if (game.netGuest) continue;
@@ -10534,7 +10642,11 @@ function pollPads() {
       if (tap('x') && !game.netGuest) rerollChoices();
       continue;
     }
-    if (game.victory || game.over) {
+    if ((game.victory || game.over) && game.phase === 'run') {
+      // ONLY while the victory/defeat screen is actually showing (phase 'run').
+      // The flags leak when you leave a finished round through the home menu, and
+      // without the phase check this branch silently ate every A/B press in the
+      // SHOP afterwards — buys did nothing and Back warped you around. (Xbox bug)
       if (game.netGuest) continue;                        // the host decides
       const acts = game.victory ? [-20, -21, -22] : [-21, -22];
       if (game.panelPick === undefined || game.panelPick === null) game.panelPick = 0;
@@ -10554,11 +10666,13 @@ function pollPads() {
       // a joining knight's picker belongs to THEIR pad alone — no neighbors confirming
       // for them. Pad joins: only the joining pad steers. Keyboard joins: no pad steers.
       if (game.phase === 'select2') { if (game.joinVia === 'pad' ? (i !== (game.joinPad ?? 0)) : true) continue; }
-      // single-cursor screens (roster, shop, map): only P1's pad drives — a second
-      // controller's stick drift or taps was yanking the cursor and buying things
+      // single-cursor screens (roster, shop, map): P2+'s bound controllers can't
+      // drive — their stick drift and taps were yanking the cursor and buying
+      // things. P1's pad AND any unbound pad still work, so an Xbox controller
+      // that slept and woke at a NEW index is never locked out of the shop.
       if (game.phase === 'select' || game.phase === 'map' || game.phase === 'armory') {
         const p1Pad = players[0].padResolved >= 0 ? players[0].padResolved : 0;
-        if (i !== p1Pad) continue;
+        if (i !== p1Pad && players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i)) continue;
       }
       // canvas menus: d-pad/stick navigates (held = repeat), A confirms, B backs, LB/RB pages
       if (dir('left')) synthKey('ArrowLeft');
