@@ -2410,6 +2410,7 @@ function initRun() {
   game.chestReveal = null; game.hurtFlash = 0; game.vacuumT = 0; game.callT = undefined;
   game.joinAnim = null; game.armoryInspect = false; game.helpOpen = false; game.treeOpen = false;
   game.settingsFromPause = false; game.pausePick = 0; game.padPick = null; game.forgeT = 0;
+  game.giftPick = null; game.giftCount = 0;
   game.kingdomSaved = false;
   game.stompT = 0; game.crownT = 0; game.mendK = 0;
   game.evolved = {};
@@ -6185,7 +6186,7 @@ function drawActionBtn(x, y, w, h, label, style, idx) {
   ctx.beginPath(); ctx.moveTo(x + 10, y + 2); ctx.lineTo(x + w - 10, y + 2); ctx.stroke();
   const padSel = ((game.victory || game.over) && game.panelPick != null &&
     (game.victory ? [-20, -21, -22] : [-21, -22])[game.panelPick] === idx) ||
-    (game.paused && [-30, -34, -33, -35, -31, -32][game.pausePick || 0] === idx);
+    (game.paused && game.giftPick == null && [-30, -34, -33, -35, -31, -32][game.pausePick || 0] === idx);
   const hov = padSel || (mouse.x > x && mouse.x < x + w && mouse.y > y && mouse.y < y + h);
   ctx.strokeStyle = hov ? '#ffd98a' : 'rgba(232, 182, 76, 0.55)';
   ctx.lineWidth = hov ? 2.2 : 1.5;
@@ -8746,7 +8747,10 @@ function render(t) {
       ctx.textAlign = 'left';
       ctx.font = '700 12px Cinzel, Georgia, serif';
       ctx.fillStyle = PLAYER_COLORS[gpx % 4];
-      ctx.fillText('P' + (gpx + 1) + ' — YOUR GIFTS', 54, 300);
+      ctx.fillText('P' + (gpx + 1) + ' — YOUR GIFTS', 54, 296);
+      ctx.font = '600 9px Inter, sans-serif';
+      ctx.fillStyle = UI.dim;
+      ctx.fillText('hover · or d-pad ↓ from ARSENAL', 54, 309);
       const gifts = [];
       const wsig = WEAPON_INFO[gp.wtype];
       if (wsig) gifts.push({ icon: wsig.icon, name: wsig.name, sub: 'Signature · Tier ' + (gp.sigTier || 1), desc: wsig.desc });
@@ -8758,9 +8762,14 @@ function render(t) {
         if (lv4 > 0) gifts.push({ icon: u4.icon, name: u4.name, sub: 'Lv ' + lv4 + ' / ' + u4.max, desc: u4.desc });
       }
       let gHover = null;
-      gifts.slice(0, 30).forEach((g4, gi4) => {
-        const gx4 = 68 + (gi4 % 5) * 36, gy4 = 322 + Math.floor(gi4 / 5) * 36;
-        const hov4 = mouse.x >= gx4 - 16 && mouse.x <= gx4 + 16 && mouse.y >= gy4 - 16 && mouse.y <= gy4 + 16;
+      const shownGifts = gifts.slice(0, 30);
+      game.giftCount = shownGifts.length;   // pollPads reads this to steer the d-pad
+      // the controller's pick owns the highlight while it's active; mouse otherwise
+      const padGift = (game.giftPick != null && game.giftPick < shownGifts.length) ? game.giftPick : null;
+      shownGifts.forEach((g4, gi4) => {
+        const gx4 = 68 + (gi4 % 5) * 36, gy4 = 330 + Math.floor(gi4 / 5) * 36;
+        const hov4 = padGift != null ? padGift === gi4
+          : (mouse.x >= gx4 - 16 && mouse.x <= gx4 + 16 && mouse.y >= gy4 - 16 && mouse.y <= gy4 + 16);
         if (hov4) gHover = { g: g4, x: gx4, y: gy4 };
         ctx.beginPath(); ctx.arc(gx4, gy4, 15, 0, Math.PI * 2);
         ctx.fillStyle = hov4 ? 'rgba(58, 42, 20, 0.96)' : 'rgba(9, 7, 5, 0.85)'; ctx.fill();
@@ -8771,7 +8780,7 @@ function render(t) {
       if (!gifts.length) {
         ctx.font = '10.5px Inter, sans-serif';
         ctx.fillStyle = UI.dim;
-        ctx.fillText('No gifts yet — level up!', 54, 322);
+        ctx.fillText('No gifts yet — level up!', 54, 328);
       }
       if (gHover) {
         // tooltip clamped fully on-screen, drawn on top of everything else here
@@ -9867,6 +9876,7 @@ function togglePause() {
   }
   game.pauseReq = null;
   game.pausePick = 0;
+  game.giftPick = null;   // fresh pause, fresh grid — never resume into a stale pick
   return true;
 }
 function openPauseSettings() {
@@ -10617,10 +10627,32 @@ function pollPads() {
         if (tap('a') || tap('bBtn') || tap('start')) { game.helpOpen = false; game.treeOpen = false; SFX.pick(); }
         continue;
       }
+      if (game.giftPick != null) {
+        // the d-pad is inside the YOUR GIFTS grid: move the pick, tooltip follows.
+        // Up past the top row (or B) climbs back out to the pause buttons.
+        const gn = game.giftCount || 0;
+        if (!gn) { game.giftPick = null; continue; }
+        if (game.giftPick >= gn) game.giftPick = gn - 1;
+        if (dir('left') && game.giftPick % 5 > 0) { game.giftPick--; SFX.tick(); }
+        if (dir('right') && game.giftPick % 5 < 4 && game.giftPick + 1 < gn) { game.giftPick++; SFX.tick(); }
+        if (dir('down') && game.giftPick + 5 < gn) { game.giftPick += 5; SFX.tick(); }
+        if (dir('up')) {
+          if (game.giftPick - 5 >= 0) game.giftPick -= 5;
+          else { game.giftPick = null; game.pausePick = 1; }
+          SFX.tick();
+        }
+        tap('a');   // consume A so a press in the grid can't fire a button on exit
+        if (tap('bBtn')) { game.giftPick = null; SFX.pick(); }
+        continue;
+      }
       if (dir('left')) game.pausePick = (game.pausePick || 0) >= 2 ? Math.min(1, (game.pausePick || 0) - 2) : (game.pausePick || 0);
       if (dir('right')) game.pausePick = (game.pausePick || 0) < 2 ? (game.pausePick || 0) + 2 : (game.pausePick || 0);
       if (dir('up')) game.pausePick = (game.pausePick || 0) < 2 ? Math.max(0,(game.pausePick||0)-1) : Math.max(2,(game.pausePick||0)-1);
-      if (dir('down')) game.pausePick = (game.pausePick || 0) < 2 ? Math.min(1,(game.pausePick||0)+1) : Math.min(5,(game.pausePick||0)+1);
+      if (dir('down')) {
+        // down past ARSENAL drops into the YOUR GIFTS grid (when there are any)
+        if ((game.pausePick || 0) === 1 && (game.giftCount || 0) > 0) { game.giftPick = 0; SFX.tick(); }
+        else game.pausePick = (game.pausePick || 0) < 2 ? Math.min(1,(game.pausePick||0)+1) : Math.min(5,(game.pausePick||0)+1);
+      }
       if (tap('bBtn')) togglePause();
       else if (tap('a')) [togglePause, () => { game.treeOpen = true; SFX.pick(); }, () => { game.helpOpen = true; SFX.pick(); }, openPauseSettings, showMenu, quitRun][(game.pausePick || 0)]();
       continue;
