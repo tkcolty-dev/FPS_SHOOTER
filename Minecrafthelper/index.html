@@ -333,10 +333,11 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
     <div class="panel bevel">
       <h3>YOU ARE HERE</h3>
       <div class="home-row">
-        <label for="homeX">X</label><input id="homeX" type="number" value="0">
-        <label for="homeZ">Z</label><input id="homeZ" type="number" value="0">
+        <label for="homeX">X</label><input id="homeX" type="text" inputmode="numeric" value="0">
+        <label for="homeY">Y</label><input id="homeY" type="text" inputmode="numeric" value="" placeholder="—">
+        <label for="homeZ">Z</label><input id="homeZ" type="text" inputmode="numeric" value="0">
       </div>
-      <div class="home-hint">Press F3 in game to see your X and Z. Or double-click the map.</div>
+      <div class="home-hint">Copy your position from the game (Bedrock: turn on “Show Coordinates”). You can paste all three numbers into the X box — Y is your height, so it doesn't change what's nearby, but it's fine to include.</div>
     </div>
     <div class="panel bevel" id="detailPanel" style="display:none">
       <h3>SELECTED</h3>
@@ -1739,11 +1740,24 @@ document.querySelectorAll('.dim-tab').forEach(tab => {
     buildHotbar(); refreshResults(); draw();
   });
 });
-for (const id of ['homeX', 'homeZ']) $(id).addEventListener('change', () => {
+function readHomeInputs() {
+  // Accept a full "X Y Z" (or "X, Y, Z" / "X / Y / Z") paste in any box
+  for (const id of ['homeX', 'homeY', 'homeZ']) {
+    const nums = ($(id).value.match(/-?\d+(?:\.\d+)?/g) || []).map(n => Math.round(parseFloat(n)));
+    if (nums.length === 3) {
+      $('homeX').value = nums[0]; $('homeY').value = nums[1]; $('homeZ').value = nums[2];
+      break;
+    }
+    if (nums.length === 2 && id === 'homeX') {
+      $('homeX').value = nums[0]; $('homeZ').value = nums[1];
+      break;
+    }
+  }
   ui.home.x = parseInt($('homeX').value, 10) || 0;
   ui.home.z = parseInt($('homeZ').value, 10) || 0;
   refreshResults(); draw();
-});
+}
+for (const id of ['homeX', 'homeY', 'homeZ']) $(id).addEventListener('change', readHomeInputs);
 function applySeed() {
   const parsed = parseSeed($('seedInput').value);
   if (!parsed) { $('seedMeta').textContent = 'Type a seed first — numbers or words both work.'; return; }
