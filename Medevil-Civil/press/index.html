@@ -155,6 +155,15 @@
   .setup p{margin:9px 0 0;font-size:12.5px;color:var(--muted)}
   .setup p b{color:var(--text);font-weight:600}
 
+  .backrow{display:flex;align-items:center;gap:9px;margin-top:11px;padding-top:10px;
+    border-top:1px solid var(--line)}
+  .thumb.sm{width:30px;height:30px;border-radius:5px}
+  .backlbl{flex:1;min-width:0;font-size:12px;color:var(--verdigris)}
+  .backlbl.dim{color:var(--faint)}
+  .chip.wide{width:100%;text-align:center;border-radius:9px;padding:9px 10px}
+  .chip.proof{margin-top:9px;border-color:var(--gold-dim);color:var(--gold)}
+  .chip.proof:hover{background:rgba(220,169,69,.1);border-color:var(--gold)}
+
   .sliver{margin-top:10px;padding:10px 11px;border-radius:9px;background:rgba(200,81,69,.11);
     border:1px solid rgba(200,81,69,.4);font-size:12px;color:#F0C9C4;
     display:flex;flex-direction:column;gap:8px;align-items:flex-start}
@@ -183,6 +192,7 @@
     .win{position:absolute;overflow:hidden}
     .win img{position:absolute}
     .mark{position:absolute;background:#000}
+    .guide{position:absolute;border:0.5pt solid #999;border-radius:2pt}
     .slug{position:absolute;font:8pt ui-monospace,monospace;color:#666}
   }
 </style>
@@ -420,7 +430,7 @@ function addImage(file){
   img.onload = () => {
     const it = { id:'i'+Date.now()+Math.round(performance.now()),
                  name:(file.name.replace(/\.[^.]+$/,'')||'Piece').slice(0,40),
-                 url, img, unit:'in', copies:1, lock:true, include:true,
+                 url, img, unit:'in', copies:1, lock:true, include:true, guide:false,
                  wIn:1.5, hIn:1.5 * (img.naturalHeight/img.naturalWidth) };
     items.push(it); selId = it.id;
     renderItems(); renderPreview();
@@ -522,6 +532,39 @@ function renderItems(){
       };
       warn.appendChild(fix);
       stats.appendChild(warn);
+    }
+
+    /* A lining-up guide on the reverse: hairlines only, almost no toner */
+    const backRow = document.createElement('div'); backRow.className='backrow';
+    const Lg = layout(it);
+    const canGuide = Lg.mode === 'gang' || Lg.sheets === 1;
+    if(canGuide){
+      const lab = document.createElement('label'); lab.className='lockrow'; lab.style.margin='0';
+      lab.innerHTML = '<input type="checkbox"'+(it.guide?' checked':'')+
+        '><span>Lining-up guide on the back</span>';
+      lab.querySelector('input').onchange = e => { it.guide = e.target.checked;
+        renderItems(); renderPreview(); };
+      backRow.appendChild(lab);
+      if(it.guide){
+        const n = document.createElement('span'); n.className='backlbl';
+        n.textContent = 'outlines only';
+        backRow.appendChild(n);
+      }
+    } else {
+      backRow.innerHTML = '<span class="backlbl dim">A piece spread over several sheets cannot have a guide.</span>';
+    }
+    stats.appendChild(backRow);
+
+    /* Print a single one first, before committing the whole run */
+    if(it.copies > 1 || it.guide){
+      const proof = document.createElement('button'); proof.className='chip wide proof';
+      proof.textContent = it.guide ? 'Print just one to check (with guide)' : 'Print just one to check';
+      proof.onclick = () => {
+        const one = { ...it, copies: 1 };
+        if(!$('direct').hidden) sendToPrinter([one], it.name + ' — check copy');
+        else doPrint([one]);
+      };
+      stats.appendChild(proof);
     }
 
     /* Leave a piece out of "Print everything" without deleting it */
@@ -675,24 +718,43 @@ function buildSheets(list, srcFor){
     if(L.mode === 'gang'){
       let left = L.copies;
       while(left > 0){
-        const sheet = document.createElement('div');
-        sheet.className='psheet';
-        sheet.style.width=L.pw+'in'; sheet.style.height=L.ph+'in';
+        // Work out which slots this sheet uses, so the back can mirror them exactly
+        const slots = [];
         for(let r=0;r<L.perCol && left>0;r++)
-          for(let c=0;c<L.perRow && left>0;c++, left--){
-            const im=document.createElement('img'); im.src=srcFor?srcFor(it):it.url;
-            im.style.position='absolute';
-            im.style.width=L.targetW+'in'; im.style.height=L.targetH+'in';
-            im.style.left=(L.m + c*(L.targetW+GAP))+'in';
-            im.style.top =(L.m + r*(L.targetH+GAP))+'in';
-            sheet.appendChild(im);
-          }
+          for(let c=0;c<L.perRow && left>0;c++, left--) slots.push({r,c});
+
+        const sheet=document.createElement('div'); sheet.className='psheet';
+        sheet.style.width=L.pw+'in'; sheet.style.height=L.ph+'in';
+        for(const {r,c} of slots){
+          const im=document.createElement('img'); im.src=srcFor?srcFor(it):it.url;
+          im.style.position='absolute';
+          im.style.width=L.targetW+'in'; im.style.height=L.targetH+'in';
+          im.style.left=(L.m + c*(L.targetW+GAP))+'in';
+          im.style.top =(L.m + r*(L.targetH+GAP))+'in';
+          sheet.appendChild(im);
+        }
         if(showMarks){
           const slug=document.createElement('div'); slug.className='slug';
           slug.textContent=it.name; slug.style.left=L.m+'in'; slug.style.bottom='0.06in';
           sheet.appendChild(slug);
         }
         root.appendChild(sheet);
+
+        // The reverse: just where each piece sits, drawn as hairlines. The sheet
+        // flips left-to-right on its second pass, so the guide mirrors about the
+        // middle of the page to land behind the front.
+        if(it.guide){
+          const back=document.createElement('div'); back.className='psheet';
+          back.style.width=L.pw+'in'; back.style.height=L.ph+'in';
+          for(const {r,c} of slots){
+            const x = L.pw - (L.m + c*(L.targetW+GAP)) - L.targetW;
+            const box=document.createElement('div'); box.className='guide';
+            box.style.left=x+'in'; box.style.top=(L.m + r*(L.targetH+GAP))+'in';
+            box.style.width=L.targetW+'in'; box.style.height=L.targetH+'in';
+            back.appendChild(box);
+          }
+          root.appendChild(back);
+        }
       }
       continue;
     }
@@ -709,6 +771,14 @@ function buildSheets(list, srcFor){
       im.style.width=L.targetW+'in'; im.style.height=L.targetH+'in';
       im.style.left=(-c*L.stepX)+'in'; im.style.top=(-r*L.stepY)+'in';
       win.appendChild(im); sheet.appendChild(win);
+      const backOf = () => {
+        const bs=document.createElement('div'); bs.className='psheet';
+        bs.style.width=L.pw+'in'; bs.style.height=L.ph+'in';
+        const box=document.createElement('div'); box.className='guide';
+        box.style.left=(L.pw - L.m - L.targetW)+'in'; box.style.top=L.m+'in';
+        box.style.width=L.targetW+'in'; box.style.height=L.targetH+'in';
+        bs.appendChild(box); return bs;
+      };
 
       if(showMarks){
         const t=0.02, len=0.22;
@@ -729,6 +799,7 @@ function buildSheets(list, srcFor){
         sheet.appendChild(slug);
       }
       root.appendChild(sheet);
+      if(it.guide && L.sheets === 1) root.appendChild(backOf());
     }
   }
   return root.children.length;
@@ -797,7 +868,7 @@ function standaloneDoc(list){
     '.mark{position:absolute;background:#000}'+
     '.slug{position:absolute;font:8pt ui-monospace,monospace;color:#666}'+
     '</style>' + $('printRoot').innerHTML;
-  return { html, images, pw:p.pw, ph:p.ph };
+  return { html, images, pw:p.pw, ph:p.ph, duplex: list.some(i => i.guide) };
 }
 
 async function sendToPrinter(list, title){

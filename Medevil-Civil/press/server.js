@@ -44,7 +44,8 @@ async function printers(){
 /* ── take the sheets the page built, make a PDF, send it to CUPS ── */
 async function printJob(body){
   if(!CHROME) throw new Error('Google Chrome is needed to make the PDF, and it was not found.');
-  const { html, images = {}, pw, ph, printer, title = 'The Press', copies = 1, gray = false } = body;
+  const { html, images = {}, pw, ph, printer, title = 'The Press', copies = 1, gray = false,
+          duplex = false } = body;
   if(!html)    throw new Error('Nothing to print.');
   if(!printer) throw new Error('No printer chosen.');
 
@@ -66,9 +67,12 @@ async function printJob(body){
     // The PDF already carries the exact page size, so scaling must stay off.
     // Front side only, whatever the printer's own default happens to be.
     // Both spellings are sent: drivers honour one or the other, not always both.
-    const args = ['-d', printer, '-t', title, '-n', String(copies),
-                  '-o','sides=one-sided', '-o','Duplex=None',
-                  '-o','fit-to-page=false'];
+    // Two-sided only when the job actually has backs to print.
+    const args = duplex
+      ? ['-d', printer, '-t', title, '-n', String(copies),
+         '-o','sides=two-sided-long-edge', '-o','Duplex=DuplexNoTumble', '-o','fit-to-page=false']
+      : ['-d', printer, '-t', title, '-n', String(copies),
+         '-o','sides=one-sided', '-o','Duplex=None', '-o','fit-to-page=false'];
     if(gray) args.push('-o','ColorModel=Gray', '-o','print-color-mode=monochrome');
     if(pw > ph) args.push('-o','landscape');
     args.push(pdf);
