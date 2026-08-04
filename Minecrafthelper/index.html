@@ -474,6 +474,11 @@ function biomeSetupFor(dimName) {
 // sunflower-plains villages exist, river-straddling ones don't)
 const BEDROCK_POINT_RULES = {
   village: ['plains', 'sunflower_plains', 'desert', 'savanna', 'taiga', 'snowy_plains', 'snowy_taiga'],
+  // Bedrock has no Java-style 1-in-5 outpost dice roll (cubiomes bakes that in,
+  // which wrongly hid real Bedrock outposts). Cave biomes included because the
+  // sampler reads Y~60 and outposts sit on the surface above.
+  outpost: ['plains', 'sunflower_plains', 'desert', 'savanna', 'savanna_plateau', 'taiga', 'snowy_plains',
+            'snowy_taiga', 'meadow', 'grove', 'cherry_grove', 'snowy_slopes', 'dripstone_caves', 'lush_caves'],
 };
 function structViableXZ(type, x, z) {
   if (!BIOMES.ready || !WORLD) return true;
@@ -858,7 +863,7 @@ const STRUCTS = {
   buried_treasure:{ dim:'overworld', icon:'💰', name:'Buried Treasure', perChunk:true, salt:10387320, chance:0.01, minV:116,
     loot:'An X-marks-the-spot chest with a <b>Heart of the Sea</b> — the key ingredient for a conduit. Dig at the exact block!' },
   ruined_portal:  { dim:'overworld', icon:'🌀', name:'Ruined Portal',   spacing:40, sep:15, salt:34222645, spread:'linear',   minV:116,
-    loot:'Free <b>obsidian and gold loot</b> — often enough to light your way to the Nether early.' },
+    loot:'Free <b>obsidian and gold loot</b> — often enough to light your way to the Nether early. Heads up: about half are <b>buried underground</b> — if the spot looks empty, dig!' },
   outpost:        { dim:'overworld', icon:'🏹', name:'Pillager Outpost',spacing:32, sep:8,  salt:165745296, spread:'linear',  minV:116, outpost:true,
     loot:'Crossbows and loot, but killing the captain gives you <b>Bad Omen</b> — don’t enter a village after, unless you want a raid!' },
   mansion:        { dim:'overworld', icon:'🏰', name:'Woodland Mansion',spacing:80, sep:20, salt:10387319, spread:'triangle', minV:116,
@@ -1438,6 +1443,8 @@ function selectFind(type, x, z, approx) {
     (approx ? '<div class="warn">≈ Approximate — get close, then throw Eyes of Ender to home in.</div>' : '') +
     (isBedrock() && (type === 'fortress' || type === 'bastion')
       ? '<div class="warn">On Bedrock the spot is exact, but whether it\'s a fortress or a bastion is a best guess — it might be the other one.</div>' : '') +
+    (type === 'ruined_portal' || type === 'ruined_portal_n'
+      ? '<div class="warn">⛏ Ruined portals are often <b>buried underground</b> (or underwater) and can sit ~15 blocks off the marker. If the surface looks empty, dig around the spot — watch for netherrack, magma, and crying obsidian.</div>' : '') +
     (STRUCTS[type] && !STRUCTS[type].perChunk && type !== 'stronghold'
       ? '<div class="warn" style="color:var(--text-dim)">If it’s not there, the biome didn’t allow it — try the next-nearest one.</div>' : '') +
     '<div style="margin-top:10px"><button class="mcbtn gray" style="font-size:9px;padding:9px 12px 8px" onclick="copyText(\'' + x + ' ' + z + '\')">COPY COORDS</button></div>';
