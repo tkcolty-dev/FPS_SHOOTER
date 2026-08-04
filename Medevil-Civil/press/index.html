@@ -104,6 +104,7 @@
     cursor:pointer;user-select:none}
   .lockrow input{width:auto;padding:0;margin:0}
   .lockrow em{font-style:normal;color:var(--faint);font-size:12px}
+  .tip{margin:-6px 0 12px;font-size:12px;color:var(--gold);line-height:1.4}
 
   /* stats */
   .stats{border-top:1px solid var(--line);margin-top:13px;padding-top:11px}
@@ -561,7 +562,14 @@ function renderItems(){
     inc.querySelector('input').onchange = e => { it.include = e.target.checked; renderItems(); };
     stats.appendChild(inc);
 
-    el.append(head, chips, sizes, lock, row2, stats);
+    const kids = [head, chips, sizes, lock];
+    if(it.lock){
+      const tip = document.createElement('p'); tip.className='tip';
+      tip.textContent = 'Want an exact width AND height, like 20 × 30? Untick the box above first.';
+      kids.push(tip);
+    }
+    kids.push(row2, stats);
+    el.append(...kids);
     box.appendChild(el);
   }
   /* Say how much paper each button will actually use, before it is pressed */
@@ -609,7 +617,7 @@ function sizeField(labelText, it, which){
 }
 function shown(it, inches){
   const v = inches / IN[it.unit];
-  return it.unit === 'in' ? fmtLen(v) : (Math.round(v*10)/10).toString();
+  return it.unit === 'in' ? fmtLen(v) : String(Math.round(v * 100) / 100);
 }
 
 /* ─────────── preview, with a ruler down the edges ─────────── */
