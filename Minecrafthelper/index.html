@@ -453,7 +453,10 @@ const CB_ID = {
 const NETHER_BIOMES = new Set(['nether_wastes', 'soul_sand_valley', 'crimson_forest', 'warped_forest', 'basalt_deltas']);
 const END_BIOMES = new Set(['the_end', 'end_highlands', 'end_midlands', 'small_end_islands', 'end_barrens']);
 function biomeSeed() {
-  return isBedrock() ? BigInt.asIntN(32, BigInt(WORLD.seed32)) : WORLD.seed;
+  // Bedrock: structures use the LOW 32 bits of the seed, but biomes use the
+  // FULL 64-bit seed (same layout as Java since 1.18). Truncating here made
+  // biome checks wrong for any real (large) Bedrock seed.
+  return WORLD.seed;
 }
 function biomeSetupFor(dimName) {
   if (!BIOMES.ready || !WORLD) return false;
@@ -465,15 +468,27 @@ function biomeSetupFor(dimName) {
   }
   return true;
 }
+// Bedrock decides some structures by the biome at the exact spot, with a
+// different biome list than Java (confirmed vs Chunkbase Bedrock 26.30:
+// sunflower-plains villages exist, river-straddling ones don't)
+const BEDROCK_POINT_RULES = {
+  village: ['plains', 'sunflower_plains', 'desert', 'savanna', 'taiga', 'snowy_plains', 'snowy_taiga'],
+};
 function structViableXZ(type, x, z) {
   if (!BIOMES.ready || !WORLD) return true;
   const key = 'v:' + ui.edition + ':' + type + ':' + x + ':' + z;
   if (cache.has(key)) return cache.get(key);
   const dimName = type === 'stronghold' ? 'overworld' : STRUCTS[type].dim;
   if (!biomeSetupFor(dimName)) return true;
-  const ok = type === 'be_temple'
-    ? [2, 3, 4, 5].some(i => BIOMES.mod._cb_viable(i, x, z))
-    : !!BIOMES.mod._cb_viable(CB_ID[type], x, z);
+  let ok;
+  if (isBedrock() && BEDROCK_POINT_RULES[type]) {
+    const name = BIOMES.names[BIOMES.mod._cb_biomeAt(x, z)];
+    ok = BEDROCK_POINT_RULES[type].includes(name);
+  } else {
+    ok = type === 'be_temple'
+      ? [2, 3, 4, 5].some(i => BIOMES.mod._cb_viable(i, x, z))
+      : !!BIOMES.mod._cb_viable(CB_ID[type], x, z);
+  }
   cache.set(key, ok);
   return ok;
 }
