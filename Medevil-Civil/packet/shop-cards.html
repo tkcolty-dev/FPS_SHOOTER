@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Medieval Civilization — Shop Cards</title>
+<style>
+  @page{ size:8.5in 11in; margin:0 }
+
+  :root{
+    --ink:#15202B; --gray:#5C6672; --rule:#B0B8C1; --hair:#D7DCE2;
+    --gold:#8A6A2F; --wash:#F3F1EB;
+    --display:"Copperplate","Copperplate Gothic Light",Optima,serif;
+    --body:"Iowan Old Style",Palatino,Georgia,serif;
+    --util:ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#fff;color:var(--ink)}
+  body{font-family:var(--body)}
+
+  .sheet{position:relative;width:8.5in;height:11in;page-break-after:always;overflow:hidden}
+  .sheet:last-child{page-break-after:auto}
+
+  /* four 3.5 x 5in cards to a page */
+  .card{position:absolute;width:3.5in;height:5in;border:1.3px solid var(--ink);
+    border-radius:0.09in;padding:0.17in 0.19in;display:flex;flex-direction:column}
+  .card.a{left:0.6in;  top:0.4in}
+  .card.b{left:4.35in; top:0.4in}
+  .card.c{left:0.6in;  top:5.55in}
+  .card.d{left:4.35in; top:5.55in}
+
+  .frame{position:absolute;inset:0.055in;border:0.6px solid var(--gold);
+    border-radius:0.055in;pointer-events:none}
+
+  .crest{width:0.36in;height:0.36in;display:block;margin:0 auto 0.04in}
+  .name{font-family:var(--display);font-size:11.5pt;letter-spacing:.07em;text-align:center;
+    line-height:1.15;margin:0}
+  .unlock{font-family:var(--util);font-size:6.3pt;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--gray);text-align:center;margin:0.045in 0 0.1in}
+  .rule{height:1px;background:var(--ink);margin:0 0 0.07in}
+
+  table{width:100%;border-collapse:collapse;font-size:8.1pt}
+  thead th{font-family:var(--util);font-size:5.9pt;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--gray);font-weight:400;text-align:left;padding:0 0 0.03in;
+    border-bottom:0.6px solid var(--rule)}
+  thead th.c{text-align:right;white-space:nowrap}
+  tbody td{padding:0.052in 0;border-bottom:0.5px solid var(--hair);vertical-align:top;line-height:1.2}
+  tbody tr:last-child td{border-bottom:none}
+  td.item{font-weight:700;padding-right:0.05in}
+  td.cost{font-family:var(--util);font-size:7.2pt;text-align:right;white-space:nowrap;
+    padding-left:0.05in;color:#28394B}
+  .worth{display:block;font-size:7.1pt;font-weight:400;color:var(--gray);line-height:1.25}
+  .worth b{color:var(--ink);font-weight:700}
+
+  .note{margin-top:auto;padding-top:0.07in;border-top:0.6px solid var(--rule);
+    font-size:6.7pt;color:var(--gray);line-height:1.3}
+  .note b{color:var(--ink)}
+
+  .buyline{font-family:var(--util);font-size:6pt;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--gray);text-align:center;margin-top:0.05in}
+
+  @media screen{
+    body{background:#4A4A52;padding:24px 0}
+    .sheet{margin:0 auto 24px;background:#fff;box-shadow:0 6px 26px rgba(0,0,0,.45)}
+    .bar{position:fixed;top:14px;right:14px;z-index:9;background:#15202B;color:#fff;
+      border-radius:8px;padding:8px 10px;font:12px ui-monospace,monospace;display:flex;gap:8px;align-items:center}
+    .bar button{font:12px ui-monospace,monospace;background:#fff;color:#15202B;border:none;
+      border-radius:5px;padding:6px 11px;cursor:pointer}
+  }
+  @media print{ .bar{display:none} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <span>4 cards · one sheet</span>
+  <button onclick="window.print()">Print</button>
+</div>
+
+<div class="sheet">
+
+  <!-- ── 1 · BUILDER'S YARD ── -->
+  <div class="card a">
+    <div class="frame"></div>
+    <svg class="crest" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M8 30h24M12 30V18l8-6 8 6v12" fill="none" stroke="#15202B" stroke-width="2"/>
+      <path d="M17 30v-7h6v7" fill="none" stroke="#8A6A2F" stroke-width="1.6"/>
+    </svg>
+    <h2 class="name">THE BUILDER'S<br>YARD</h2>
+    <p class="unlock">Everyone starts with this</p>
+    <div class="rule"></div>
+    <table>
+      <thead><tr><th>Item</th><th class="c">Price</th></tr></thead>
+      <tbody>
+        <tr><td class="item">Soldier<span class="worth">Damage <b>1</b></span></td>
+            <td class="cost">2 gold</td></tr>
+        <tr><td class="item">Builder<span class="worth">Builds · no damage</span></td>
+            <td class="cost">2 gold</td></tr>
+        <tr><td class="item">Wall<span class="worth"><b>3 blocks</b> · stops ground</span></td>
+            <td class="cost">2 gold</td></tr>
+        <tr><td class="item">Windmill<span class="worth">+1 gold · must touch a farm</span></td>
+            <td class="cost">3 gold</td></tr>
+        <tr><td class="item">Fishing boat<span class="worth">+1 gold each turn</span></td>
+            <td class="cost">2 gold</td></tr>
+        <tr><td class="item">Watchtower<span class="worth">Damage <b>1</b> · hits balloons</span></td>
+            <td class="cost">3 gold</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><b>Income.</b> At the start of your turn the dealer pays you
+      <b>3 gold</b>, plus <b>1 gold for every hex you hold</b>. Gold is the only money —
+      everything in every shop is priced in it.</p>
+    <p class="buyline">Buy on your build token</p>
+  </div>
+
+  <!-- ── 2 · BARRACKS ── -->
+  <div class="card b">
+    <div class="frame"></div>
+    <svg class="crest" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M20 6l7 5v9c0 6-3 10-7 12-4-2-7-6-7-12v-9z" fill="none" stroke="#15202B" stroke-width="2"/>
+      <path d="M20 13v12M15 18h10" stroke="#8A6A2F" stroke-width="1.6"/>
+    </svg>
+    <h2 class="name">THE BARRACKS</h2>
+    <p class="unlock">Unlocks when you build the Barracks</p>
+    <div class="rule"></div>
+    <table>
+      <thead><tr><th>Item</th><th class="c">Price</th></tr></thead>
+      <tbody>
+        <tr><td class="item">Shieldsman<span class="worth">Damage <b>1</b> · Defence <b>2</b></span></td>
+            <td class="cost">3 gold</td></tr>
+        <tr><td class="item">Archer<span class="worth">Damage <b>1</b> · hits balloons</span></td>
+            <td class="cost">3 gold</td></tr>
+        <tr><td class="item">Knight<span class="worth">Damage <b>2</b> · moves 8 hexes</span></td>
+            <td class="cost">4 gold</td></tr>
+        <tr><td class="item">Champion<span class="worth">Damage <b>3</b></span></td>
+            <td class="cost">7 gold</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><b>The shieldsman is not a worse soldier.</b> Same damage, but worth 2 when it is
+      defending — cheap bodies to hold your walls while the knights go out.</p>
+    <p class="buyline">Buy on your build token</p>
+  </div>
+
+  <!-- ── 3 · SIEGE FACTORY ── -->
+  <div class="card c">
+    <div class="frame"></div>
+    <svg class="crest" viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="13" cy="30" r="4" fill="none" stroke="#15202B" stroke-width="2"/>
+      <circle cx="28" cy="30" r="4" fill="none" stroke="#15202B" stroke-width="2"/>
+      <path d="M8 22h25M11 22l3-9h13l3 9" fill="none" stroke="#15202B" stroke-width="2"/>
+      <path d="M20 13V8" stroke="#8A6A2F" stroke-width="1.6"/>
+    </svg>
+    <h2 class="name">THE SIEGE<br>FACTORY</h2>
+    <p class="unlock">Unlocks when you build the Siege Workshop</p>
+    <div class="rule"></div>
+    <table>
+      <thead><tr><th>Item</th><th class="c">Price</th></tr></thead>
+      <tbody>
+        <tr><td class="item">Battering ram<span class="worth">Damage <b>2</b> — walls only</span></td>
+            <td class="cost">5 gold</td></tr>
+        <tr><td class="item">Catapult<span class="worth">Damage <b>2</b> · also hits buildings</span></td>
+            <td class="cost">5 gold</td></tr>
+        <tr><td class="item">Hot air balloon<span class="worth">Flies over walls · carries 1</span></td>
+            <td class="cost">6 gold</td></tr>
+        <tr><td class="item">Transport boat<span class="worth">Carries 5 across water</span></td>
+            <td class="cost">4 gold</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><b>The ram is no use in a fight</b> — 2 against walls, nothing against soldiers.
+      It is a tool, so bringing one is a real choice.</p>
+    <p class="buyline">Buy on your build token</p>
+  </div>
+
+  <!-- ── 4 · ARMOURY ── -->
+  <div class="card d">
+    <div class="frame"></div>
+    <svg class="crest" viewBox="0 0 40 40" aria-hidden="true">
+      <path d="M10 26c0-4 4-6 10-6s10 2 10 6v2H10z" fill="none" stroke="#15202B" stroke-width="2"/>
+      <path d="M20 20v-9M15 14l5-3 5 3" fill="none" stroke="#8A6A2F" stroke-width="1.6"/>
+    </svg>
+    <h2 class="name">THE ARMOURY</h2>
+    <p class="unlock">Unlocks when you build the Armoury</p>
+    <div class="rule"></div>
+    <table>
+      <thead><tr><th>Item</th><th class="c">Price</th></tr></thead>
+      <tbody>
+        <tr><td class="item">Sharpened steel<span class="worth">Every soldier <b>+1 damage</b>, forever</span></td>
+            <td class="cost">12 gold</td></tr>
+        <tr><td class="item">Iron shields<span class="worth">Every soldier <b>+1 defence</b></span></td>
+            <td class="cost">9 gold</td></tr>
+        <tr><td class="item">Siege chains<span class="worth">Rams <b>+1</b> against walls</span></td>
+            <td class="cost">8 gold</td></tr>
+        <tr><td class="item">Reinforced walls<span class="worth">Your walls get <b>4 blocks</b></span></td>
+            <td class="cost">7 gold</td></tr>
+      </tbody>
+    </table>
+    <p class="note"><b>This shop sells no units.</b> Buy once and keep it for the rest of the game —
+      it makes every soldier you already own better.</p>
+    <p class="buyline">Buy on your build token</p>
+  </div>
+
+</div>
+</body>
+</html>

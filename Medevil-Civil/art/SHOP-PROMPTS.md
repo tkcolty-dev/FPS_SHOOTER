@@ -3,6 +3,10 @@
 Four shop cards. Everyone starts with the **Builder's Yard**. The other three are
 handed out by the dealer the moment you finish the building that unlocks them.
 
+**Gold is the only money.** At the start of your turn the dealer pays you
+**3 gold plus 1 for every hex you hold**, and everything in every shop is priced
+in it. No food, wood or stone to count — one pile of coins per player.
+
 Combat is a **damage count** — no range, no line of sight, no arrow rules. Every
 unit is worth a number, you add up both sides, and the dice settle it. A knight
 is not "better at reaching things", it is simply worth more in the count.
@@ -42,12 +46,12 @@ correctly."* Then check every number before you print 4 copies.
 
 | Item | Cost | Worth |
 |---|---|---|
-| Soldier | 2 food | Damage 1 |
-| Builder | 2 food | Builds, no damage |
-| Wall | 2 stone | 3 blocks, stops ground |
-| Windmill | 3 wood | +1 food, must touch a farm |
-| Fishing boat | 2 wood | +1 food a turn |
-| Watchtower | 3 stone | Damage 1 · **can hit balloons** |
+| Soldier | 2 gold | Damage 1 |
+| Builder | 2 gold | Builds, no damage |
+| Wall | 2 gold | 3 blocks, stops ground |
+| Windmill | 3 gold | +1 gold, must touch a farm |
+| Fishing boat | 2 gold | +1 gold a turn |
+| Watchtower | 3 gold | Damage 1 · **can hit balloons** |
 
 # 2 · The Barracks — unlocked by building the Barracks
 
@@ -58,10 +62,10 @@ correctly."* Then check every number before you print 4 copies.
 
 | Item | Cost | Worth |
 |---|---|---|
-| Shieldsman | 3 food | Damage 1 · Defence 2 |
-| Archer | 3 food | Damage 1 · **can hit balloons** |
-| Knight | 4 food | Damage 2 · moves 8 hexes |
-| Champion | 6 food, 2 gold | Damage 3 |
+| Shieldsman | 3 gold | Damage 1 · Defence 2 |
+| Archer | 3 gold | Damage 1 · **can hit balloons** |
+| Knight | 4 gold | Damage 2 · moves 8 hexes |
+| Champion | 7 gold | Damage 3 |
 
 **Why the shieldsman is not just a worse soldier:** damage 1 like everyone, but
 worth 2 when *defending*. Cheap wall of meat to sit behind your ramparts while
@@ -76,10 +80,10 @@ your knights go out.
 
 | Item | Cost | Worth |
 |---|---|---|
-| Battering ram | 3 wood, 3 stone | **Damage 2 against walls only** |
-| Catapult | 4 wood, 2 stone | Damage 2 · also hits buildings |
-| Hot air balloon | 4 gold | **Flies over walls**, carries 1 soldier |
-| Transport boat | 4 wood | Carries 5 soldiers across water |
+| Battering ram | 5 gold | **Damage 2 against walls only** |
+| Catapult | 5 gold | Damage 2 · also hits buildings |
+| Hot air balloon | 6 gold | **Flies over walls**, carries 1 soldier |
+| Transport boat | 4 gold | Carries 5 soldiers across water |
 
 **The ram is deliberately useless in a fight** — damage 2 on walls, nothing
 against soldiers. It is a tool, not a warrior, so bringing one is a real choice.
@@ -95,10 +99,10 @@ The shop that does not sell units. Buy once, keep it all game.
 
 | Item | Cost | Worth |
 |---|---|---|
-| Sharpened steel | 5 gold | Every soldier you own, **+1 damage, forever** |
-| Iron shields | 4 gold | Every soldier, +1 defence |
-| Siege chains | 4 gold | Battering rams, +1 damage on walls |
-| Reinforced walls | 4 stone | Your walls get **4 blocks** instead of 3 |
+| Sharpened steel | 12 gold | Every soldier you own, **+1 damage, forever** |
+| Iron shields | 9 gold | Every soldier, +1 defence |
+| Siege chains | 8 gold | Battering rams, +1 damage on walls |
+| Reinforced walls | 7 gold | Your walls get **4 blocks** instead of 3 |
 
 ---
 
@@ -117,5 +121,6 @@ Drop each finished card into **The Press**, set **Width 3 1/2**, **Height 5**
 (untick "keep the picture's shape"), and **How many: 5** — one each plus a spare
 for the dealer. Four shops comes to about **4 sheets**.
 
-Then say the word and I will lay the item lists on top as crisp printed text, so
-none of the numbers are left to ChatGPT's spelling.
+**The printed cards already exist** — `packet/shop-cards.html`, all four to a
+single sheet with every price laid on as real text. Print that now and play; drop
+the ChatGPT art in later when you have it.
