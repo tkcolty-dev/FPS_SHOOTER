@@ -103,6 +103,7 @@
   .lockrow{display:flex;align-items:center;gap:9px;margin:11px 0 13px;font-size:13px;color:var(--muted);
     cursor:pointer;user-select:none}
   .lockrow input{width:auto;padding:0;margin:0}
+  .lockrow em{font-style:normal;color:var(--faint);font-size:12px}
 
   /* stats */
   .stats{border-top:1px solid var(--line);margin-top:13px;padding-top:11px}
@@ -352,6 +353,10 @@ function parseLen(str){
 /* Nearest sixteenth, written the way you would say it: 1 1/2, not 1.5 */
 function fmtLen(v){
   if(!isFinite(v) || v <= 0) return '';
+  // Not a neat fraction? Show the number as typed rather than rounding it.
+  const sixteenths = v * 16;
+  if(Math.abs(sixteenths - Math.round(sixteenths)) > 1e-6)
+    return String(Math.round(v * 1000) / 1000);
   const whole = Math.floor(v + 1e-9);
   let n = Math.round((v - whole) * 16), d = 16;
   if(n === 0)  return String(whole);
@@ -485,7 +490,8 @@ function renderItems(){
 
     const lock = document.createElement('label'); lock.className='lockrow';
     lock.innerHTML = '<input type="checkbox"'+(it.lock?' checked':'')+
-      '><span>Keep the picture’s shape</span>';
+      '><span>Keep the picture’s shape' +
+      (it.lock ? ' <em>— changing one changes the other</em>' : '') + '</span>';
     lock.querySelector('input').onchange = e => {
       it.lock = e.target.checked;
       if(it.lock) it.hIn = it.wIn * aspect(it);
