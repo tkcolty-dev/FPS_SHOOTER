@@ -26,23 +26,25 @@ If you would rather try the all-in-one version, add this to the end of any promp
 *"Render the item list as readable text exactly as written above, spelled
 correctly."* Then check every number before you print 4 copies.
 
-## The style block — paste into all four
+## How to run them
 
-> Ornate medieval shop sign painted on aged wood and parchment, top-down flat
-> view, hand-painted fantasy style. Deep greens, slate grey, warm stone, antique
-> gold. Portrait card shape, 3.5 to 5 proportions. A decorative gold frame around
-> the outside edge. The **top third** holds the shop's picture and name banner.
-> The **bottom two thirds is empty aged parchment**, clean and unmarked, left
-> blank for a list to be written on. No text anywhere except the shop name. No
-> numbers. Plain pure white background outside the card.
+Each prompt below is complete — copy the whole block, nothing to assemble.
+
+Do **number 1 first**. Once you like it, put *"Match the style of the previous
+image exactly."* at the top of 2, 3 and 4. That single line is what stops them
+looking like four different games.
 
 ---
 
 # 1 · The Builder's Yard — everyone starts with this
 
-> *(style block)*
-> The picture shows a carpenter's yard: sawhorses, stacked timber, stone blocks,
-> a hammer and a set square. Name banner reads "THE BUILDER'S YARD".
+> Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
+>
+> The **top third** of the card shows a carpenter's yard: sawhorses, stacked timber, cut stone blocks, a hammer and a set square, with a carved banner beneath reading **THE BUILDER'S YARD**.
+>
+> The **bottom two thirds is empty aged parchment** — clean, unmarked and completely blank, left empty for a list to be written on later.
+>
+> No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
 
 | Item | Cost | Worth |
 |---|---|---|
@@ -55,10 +57,13 @@ correctly."* Then check every number before you print 4 copies.
 
 # 2 · The Barracks — unlocked by building the Barracks
 
-> *(style block)*
-> The picture shows a training yard: a weapon rack of swords and spears, round
-> shields hung on a timber wall, straw practice dummies. Name banner reads
-> "THE BARRACKS".
+> Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
+>
+> The **top third** of the card shows a training yard: a weapon rack of swords and spears, round shields hung on a timber wall, straw practice dummies, with a carved banner beneath reading **THE BARRACKS**.
+>
+> The **bottom two thirds is empty aged parchment** — clean, unmarked and completely blank, left empty for a list to be written on later.
+>
+> No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
 
 | Item | Cost | Worth |
 |---|---|---|
@@ -73,10 +78,13 @@ your knights go out.
 
 # 3 · The Siege Factory — unlocked by building the Siege Workshop
 
-> *(style block)*
-> The picture shows a war workshop: a half-built battering ram on wheels, coils
-> of rope, a catapult arm, and a folded striped balloon envelope. Name banner
-> reads "THE SIEGE FACTORY".
+> Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
+>
+> The **top third** of the card shows a war workshop: a half-built battering ram on wheels, coils of rope, a catapult arm and a folded striped balloon envelope, with a carved banner beneath reading **THE SIEGE FACTORY**.
+>
+> The **bottom two thirds is empty aged parchment** — clean, unmarked and completely blank, left empty for a list to be written on later.
+>
+> No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
 
 | Item | Cost | Worth |
 |---|---|---|
@@ -92,10 +100,13 @@ against soldiers. It is a tool, not a warrior, so bringing one is a real choice.
 
 The shop that does not sell units. Buy once, keep it all game.
 
-> *(style block)*
-> The picture shows a blacksmith's forge: glowing coals, an anvil, tongs, a
-> finished breastplate and a rack of sharpened blades. Name banner reads
-> "THE ARMOURY".
+> Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
+>
+> The **top third** of the card shows a blacksmith's forge: glowing coals, an anvil, tongs, a finished breastplate and a rack of sharpened blades, with a carved banner beneath reading **THE ARMOURY**.
+>
+> The **bottom two thirds is empty aged parchment** — clean, unmarked and completely blank, left empty for a list to be written on later.
+>
+> No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
 
 | Item | Cost | Worth |
 |---|---|---|
