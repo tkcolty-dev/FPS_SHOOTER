@@ -297,6 +297,7 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
     <button type="button" class="mcbtn gray" id="randomBtn" title="Try a random seed">🎲</button>
   </form>
   <div class="seed-meta" id="seedMeta"></div>
+  <div class="seed-meta" id="biomeStatus"></div>
   <div class="search-row">
     <div class="search-slot bevel-in">
       <span class="mag">🔎</span>
@@ -370,7 +371,7 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
   </details>
   <details class="bevel">
     <summary>I went to a marker and the structure isn't there!</summary>
-    <div class="a">SeedSeeker knows every spot where the game <b>tries</b> to place a structure — that math is exact. But the game also checks the <b>biome</b>: a village can't spawn in the middle of the ocean, and a witch hut needs a swamp. If a spot came up empty, the biome didn't fit — just head to the next-nearest marker. Most of the time the first or second one is real.</div>
+    <div class="a">SeedSeeker knows every spot where the game <b>tries</b> to place a structure — that math is exact — and when the 🌿 biome check is on it also simulates the biomes and hides spots the land wouldn't allow, so markers should almost always be real. If one still isn't there: zoom-out dots skip the biome check for speed, biome simulation for the very latest game updates can drift slightly, and Bedrock nether/end biomes aren't guaranteed to match. When in doubt, check the next-nearest marker.</div>
   </details>
   <details class="bevel">
     <summary>Why can't it show me exact diamond blocks?</summary>
@@ -394,6 +395,7 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
 </div>
 <div class="toast" id="toast">COPIED!</div>
 
+<script src="cubiomes.js"></script>
 <script>
 'use strict';
 /* ================= Java Random (bit-exact) ================= */
@@ -434,6 +436,97 @@ function netherVariant(worldSeed, cx, cz) {
   const a = r0.nextLong(), b = r0.nextLong();
   const r = new JRand(BigInt.asIntN(64, (BigInt(cx) * a) ^ (BigInt(cz) * b) ^ worldSeed));
   return r.nextInt(5) < 2 ? 'fortress' : 'bastion';
+}
+
+/* ================= Biome engine (cubiomes → WASM) =================
+   Real Minecraft biome generation, used to (1) filter structure markers
+   to spots the biome actually allows, and (2) find the nearest biome.
+   Since 1.18, Java and Bedrock generate the same overworld biomes for
+   the same seed, so this covers both editions. */
+const BIOMES = { ready: false, mod: null, names: {}, curKey: '' };
+const CB_ID = {
+  village: 1, desert_pyramid: 2, jungle_temple: 3, swamp_hut: 4, igloo: 5,
+  monument: 6, ocean_ruin: 7, shipwreck: 8, buried_treasure: 9, ruined_portal: 10,
+  outpost: 11, mansion: 12, ancient_city: 13, trial_chambers: 14,
+  fortress: 15, bastion: 16, ruined_portal_n: 17, end_city: 18,
+};
+const NETHER_BIOMES = new Set(['nether_wastes', 'soul_sand_valley', 'crimson_forest', 'warped_forest', 'basalt_deltas']);
+const END_BIOMES = new Set(['the_end', 'end_highlands', 'end_midlands', 'small_end_islands', 'end_barrens']);
+function biomeSeed() {
+  return isBedrock() ? BigInt.asIntN(32, BigInt(WORLD.seed32)) : WORLD.seed;
+}
+function biomeSetupFor(dimName) {
+  if (!BIOMES.ready || !WORLD) return false;
+  const dim = dimName === 'nether' ? -1 : dimName === 'end' ? 1 : 0;
+  const key = biomeSeed() + ':' + dim;
+  if (key !== BIOMES.curKey) {
+    BIOMES.mod._cb_setup(biomeSeed(), dim);
+    BIOMES.curKey = key;
+  }
+  return true;
+}
+function structViableXZ(type, x, z) {
+  if (!BIOMES.ready || !WORLD) return true;
+  const key = 'v:' + ui.edition + ':' + type + ':' + x + ':' + z;
+  if (cache.has(key)) return cache.get(key);
+  const dimName = type === 'stronghold' ? 'overworld' : STRUCTS[type].dim;
+  if (!biomeSetupFor(dimName)) return true;
+  const ok = type === 'be_temple'
+    ? [2, 3, 4, 5].some(i => BIOMES.mod._cb_viable(i, x, z))
+    : !!BIOMES.mod._cb_viable(CB_ID[type], x, z);
+  cache.set(key, ok);
+  return ok;
+}
+function biomeAt(x, z) {
+  if (!biomeSetupFor(ui.dim)) return -1;
+  return BIOMES.mod._cb_biomeAt(x, z);
+}
+function findNearestBiome(targetId) {
+  const hx = ui.home.x, hz = ui.home.z;
+  if (biomeAt(hx, hz) === targetId) return { x: hx, z: hz };
+  const step = 64;
+  for (let r = step; r <= 5120; r += step) {
+    const steps = Math.max(8, Math.floor(2 * Math.PI * r / step));
+    for (let i = 0; i < steps; i++) {
+      const a = i / steps * 2 * Math.PI;
+      const x = Math.round(hx + Math.cos(a) * r), z = Math.round(hz + Math.sin(a) * r);
+      if (biomeAt(x, z) === targetId) return { x, z };
+    }
+  }
+  return null;
+}
+function initBiomes() {
+  if (typeof createCubiomes !== 'function') {
+    $('biomeStatus').innerHTML = '<span style="color:var(--gold)">Biome engine (cubiomes.js) not found next to index.html — markers show every possible spot instead of only real ones.</span>';
+    return;
+  }
+  createCubiomes().then(m => {
+    BIOMES.mod = m;
+    for (let id = 0; id < 256; id++) {
+      const p = m._cb_biomeName(id);
+      if (p) BIOMES.names[id] = m.UTF8ToString(p);
+    }
+    BIOMES.ready = true;
+    cache.clear();
+    // make every biome searchable: "cherry grove" -> nearest one
+    for (const [id, raw] of Object.entries(BIOMES.names)) {
+      const pretty = raw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const names = [raw.replace(/_/g, ' ')];
+      if (raw === 'badlands') names.push('mesa');
+      if (raw === 'mushroom_fields') names.push('mushroom island');
+      if (raw === 'cherry_grove') names.push('cherry blossom');
+      SEARCH_INDEX.push({ names, label: pretty, kind: 'biome', biomeId: +id, raw, icon: '🌍' });
+    }
+    updateBiomeStatus();
+    if (WORLD) { refreshResults(); draw(); }
+  }).catch(e => {
+    $('biomeStatus').textContent = 'Biome engine failed to load (' + e.message + ') — showing all candidate spots.';
+  });
+}
+function updateBiomeStatus() {
+  $('biomeStatus').innerHTML = BIOMES.ready
+    ? '<span style="color:var(--grass)">🌿 Biome check ON</span> — markers are filtered to spots the land actually allows. You can also search a biome, like “cherry grove”.'
+    : '';
 }
 
 /* ================= Bedrock Edition math =================
@@ -643,8 +736,8 @@ const DOTCOLOR = {
 const cache = new Map();
 let WORLD = null; // { seed: BigInt, version: number }
 
-function structAt(type, rx, rz) {
-  const key = ui.edition + ':' + type + ':' + rx + ':' + rz;
+function structAt(type, rx, rz, noFilter) {
+  const key = ui.edition + ':' + (noFilter ? 'u:' : 'f:') + type + ':' + rx + ':' + rz;
   if (cache.has(key)) return cache.get(key);
   const cfg = STRUCTS[type];
   let out = null;
@@ -675,6 +768,7 @@ function structAt(type, rx, rz) {
     if (cfg.outpost && !outpostViable(cx, cz)) out = null;
     if (cfg.endcity && Math.hypot(cx, cz) < 64) out = null; // only outer End islands
   }
+  if (out && !noFilter && !structViableXZ(type, out.x, out.z)) out = null;
   cache.set(key, out);
   return out;
 }
@@ -884,7 +978,9 @@ function draw() {
         const c0z = Math.floor(z0 / 16), c1z = Math.floor(z1 / 16);
         if ((c1x - c0x) * (c1z - c0z) < 30000) {
           for (let cx = c0x; cx <= c1x; cx++) for (let cz = c0z; cz <= c1z; cz++) {
-            if (hasBuriedTreasure(cx, cz)) addMarker(type, cx * 16 + 9, cz * 16 + 9, rect, iconSize);
+            if (hasBuriedTreasure(cx, cz) && structViableXZ('buried_treasure', cx * 16 + 9, cz * 16 + 9)) {
+              addMarker(type, cx * 16 + 9, cz * 16 + 9, rect, iconSize);
+            }
           }
         }
       }
@@ -894,9 +990,11 @@ function draw() {
     const sp = spacingFor(type);
     const r0x = Math.floor(x0 / 16 / sp), r1x = Math.floor(x1 / 16 / sp);
     const r0z = Math.floor(z0 / 16 / sp), r1z = Math.floor(z1 / 16 / sp);
-    if ((r1x - r0x + 1) * (r1z - r0z + 1) > 4000) continue;
+    const nRegions = (r1x - r0x + 1) * (r1z - r0z + 1);
+    if (nRegions > 4000) continue;
+    const noFilter = nRegions > 350; // biome-checking thousands of far-out markers would stall the map
     for (let rx = r0x; rx <= r1x; rx++) for (let rz = r0z; rz <= r1z; rz++) {
-      const s = structAt(type, rx, rz);
+      const s = structAt(type, rx, rz, noFilter);
       if (s) addMarker(type, s.x, s.z, rect, iconSize);
     }
   }
@@ -916,6 +1014,20 @@ function draw() {
     for (const sh of ui.strongholds) {
       if (sh.ring > 2) continue;
       addMarker('stronghold', sh.x, sh.z, rect, iconSize, true);
+    }
+  }
+  // biome search pin
+  if (ui.biomePin && ui.biomePin.dim === ui.dim) {
+    const [bx, by] = blockToPx(ui.biomePin.x, ui.biomePin.z, rect);
+    if (bx > -40 && bx < rect.width + 40 && by > -40 && by < rect.height + 40) {
+      ctx.font = '26px system-ui';
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = 4; ctx.shadowOffsetY = 2;
+      ctx.fillText('📍', bx, by - 10);
+      ctx.restore();
+      ctx.font = '8px "Press Start 2P", monospace';
+      ctx.fillStyle = '#4aedd9';
+      ctx.fillText(ui.biomePin.label.toUpperCase(), bx, by + 14);
     }
   }
   // home
@@ -1063,7 +1175,7 @@ function nearestOfType(type, count) {
     for (let ring = 0; ring <= 80; ring++) {
       for (let cx = hc.x - ring; cx <= hc.x + ring; cx++) for (let cz = hc.z - ring; cz <= hc.z + ring; cz++) {
         if (Math.max(Math.abs(cx - hc.x), Math.abs(cz - hc.z)) !== ring) continue;
-        if (hasBuriedTreasure(cx, cz)) {
+        if (hasBuriedTreasure(cx, cz) && structViableXZ('buried_treasure', cx * 16 + 9, cz * 16 + 9)) {
           const x = cx * 16 + 9, z = cz * 16 + 9;
           found.push({ type, x, z, d: Math.hypot(x - hx, z - hz) });
         }
@@ -1339,6 +1451,27 @@ function pickSearch(e) {
   $('searchDrop').classList.remove('open');
   $('searchInput').value = e.label;
   if (e.kind === 'ore') showOreCard(e);
+  else if (e.kind === 'biome') {
+    if (!WORLD) { flashNeedSeed(); return; }
+    if (!BIOMES.ready) { showInfoCard({ icon: '🌍', label: e.label, html: 'The biome engine is still loading — try again in a second.' }); return; }
+    const wantDim = NETHER_BIOMES.has(e.raw) ? 'nether' : END_BIOMES.has(e.raw) ? 'end' : 'overworld';
+    if (ui.dim !== wantDim) document.querySelector('.dim-tab[data-dim="' + wantDim + '"]').click();
+    const hit = findNearestBiome(e.biomeId);
+    if (!hit) {
+      ui.biomePin = null;
+      showInfoCard({ icon: '🌍', label: e.label, html: 'No <b>' + e.label + '</b> within about 5,000 blocks of you on this seed. Try from a different spot (move the “you are here” X).' });
+      draw();
+      return;
+    }
+    ui.biomePin = { x: hit.x, z: hit.z, label: e.label, dim: ui.dim };
+    ui.view.cx = hit.x; ui.view.cz = hit.z;
+    if (ui.view.scale < 0.25) ui.view.scale = 0.4;
+    const d = Math.round(Math.hypot(hit.x - ui.home.x, hit.z - ui.home.z));
+    showInfoCard({ icon: '📍', label: 'Nearest ' + e.label,
+      html: '<div class="dcoords">X ' + hit.x + ' · Z ' + hit.z + '</div>' + d + ' blocks from you (' + dirArrow(hit.x - ui.home.x, hit.z - ui.home.z) + '). The 📍 pin on the map marks it.' +
+        '<div style="margin-top:10px"><button class="mcbtn gray" style="font-size:9px;padding:9px 12px 8px" onclick="copyText(\'' + hit.x + ' ' + hit.z + '\')">COPY COORDS</button></div>' });
+    draw();
+  }
   else if (e.kind === 'structure') { if ((e.minV || 0) <= versionNum()) goToStructure(e.type); }
   else if (e.kind === 'slime') {
     if (!WORLD) { flashNeedSeed(); return; }
@@ -1361,7 +1494,7 @@ function renderDrop() {
     const div = document.createElement('div');
     div.className = 'search-item' + (i === sHl ? ' hl' : '');
     div.setAttribute('role', 'option');
-    const kindTag = e.kind === 'ore' ? 'ORE' : e.kind === 'structure' ? 'STRUCTURE' : e.kind === 'slime' ? 'MOB' : 'TIP';
+    const kindTag = e.kind === 'ore' ? 'ORE' : e.kind === 'structure' ? 'STRUCTURE' : e.kind === 'slime' ? 'MOB' : e.kind === 'biome' ? 'BIOME' : 'TIP';
     div.innerHTML = (e.tex ? '<img src="' + TEX[e.tex] + '" alt="">' : '<span class="si">' + (e.icon || '🔎') + '</span>') +
       '<span>' + e.label + '</span><span class="k">' + kindTag + '</span>';
     div.addEventListener('mousedown', ev => { ev.preventDefault(); pickSearch(e); });
@@ -1441,6 +1574,9 @@ function applySeed() {
   WORLD = { seed: parsed.seed, seed32, version: versionNum() };
   ui.strongholds = isBedrock() ? computeStrongholdsBedrock(seed32) : computeStrongholds();
   ui.selected = null;
+  ui.biomePin = null;
+  BIOMES.curKey = '';
+  updateBiomeStatus();
   $('detailPanel').style.display = 'none';
   $('seedMeta').innerHTML = (parsed.how === 'text'
     ? 'Text seed → the game turns it into number <b>' + parsed.seed + '</b>. '
@@ -1458,6 +1594,8 @@ function setEdition(ed) {
   $('versionSel').style.display = ed === 'bedrock' ? 'none' : '';
   if (WORLD) ui.strongholds = isBedrock() ? computeStrongholdsBedrock(WORLD.seed32) : computeStrongholds();
   ui.selected = null;
+  ui.biomePin = null;
+  BIOMES.curKey = '';
   $('detailPanel').style.display = 'none';
   buildHotbar(); buildGuide(); buildOres();
   refreshResults(); draw(); saveState();
@@ -1477,6 +1615,7 @@ window.addEventListener('resize', resizeCanvas);
 applyTextures(); buildHotbar(); buildGuide(); buildOres();
 resizeCanvas();
 loadState();
+initBiomes();
 </script>
 </body>
 </html>
