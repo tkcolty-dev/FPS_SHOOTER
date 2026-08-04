@@ -371,7 +371,7 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
   </details>
   <details class="bevel">
     <summary>I went to a marker and the structure isn't there!</summary>
-    <div class="a">SeedSeeker knows every spot where the game <b>tries</b> to place a structure — that math is exact — and when the 🌿 biome check is on it also simulates the biomes and hides spots the land wouldn't allow, so markers should almost always be real. If one still isn't there: zoom-out dots skip the biome check for speed, biome simulation for the very latest game updates can drift slightly, and Bedrock nether/end biomes aren't guaranteed to match. When in doubt, check the next-nearest marker.</div>
+    <div class="a">SeedSeeker knows every spot where the game <b>tries</b> to place a structure — that math is exact — and when the 🌿 biome check is on it also simulates the biomes and hides spots the land wouldn't allow, so markers should almost always be real. If one still isn't there: zoom-out dots skip the biome check for speed, and on Bedrock a structure occasionally spawns in a biome the simulator wouldn't expect. When in doubt, check the next-nearest marker.</div>
   </details>
   <details class="bevel">
     <summary>Why can't it show me exact diamond blocks?</summary>
@@ -443,7 +443,7 @@ function netherVariant(worldSeed, cx, cz) {
    to spots the biome actually allows, and (2) find the nearest biome.
    Since 1.18, Java and Bedrock generate the same overworld biomes for
    the same seed, so this covers both editions. */
-const BIOMES = { ready: false, mod: null, names: {}, curKey: '' };
+const BIOMES = { ready: false, mod: null, names: {}, colors: {}, curKey: '' };
 const CB_ID = {
   village: 1, desert_pyramid: 2, jungle_temple: 3, swamp_hut: 4, igloo: 5,
   monument: 6, ocean_ruin: 7, shipwreck: 8, buried_treasure: 9, ruined_portal: 10,
@@ -495,6 +495,145 @@ function findNearestBiome(targetId) {
   }
   return null;
 }
+/* --- biome-colored map layer --- */
+const biomeLayer = { tiles: new Map(), queue: [], rendering: false };
+const TILE = 32; // samples per tile side
+function clearBiomeTiles() { biomeLayer.tiles.clear(); biomeLayer.queue.length = 0; viaQueue.length = 0; }
+/* zoomed-out markers draw first and get biome-checked in the background,
+   so far-out phantom dots (e.g. villages on ocean) clean themselves up */
+const viaQueue = [];
+let viaPumping = false;
+function pumpViability() {
+  if (viaPumping || !viaQueue.length) return;
+  viaPumping = true;
+  const step = () => {
+    const start = performance.now();
+    let did = 0;
+    while (viaQueue.length && performance.now() - start < 8) {
+      const job = viaQueue.shift();
+      const vkey = 'v:' + ui.edition + ':' + job.type + ':' + job.x + ':' + job.z;
+      if (!cache.has(vkey)) { structViableXZ(job.type, job.x, job.z); did++; }
+    }
+    if (did) draw();
+    if (viaQueue.length) requestAnimationFrame(step);
+    else viaPumping = false;
+  };
+  requestAnimationFrame(step);
+}
+function biomeColor(id) {
+  if (BIOMES.colors[id]) return BIOMES.colors[id];
+  const n = BIOMES.names[id] || '';
+  const T = {
+    plains: [141, 179, 96], sunflower_plains: [181, 219, 136], meadow: [110, 180, 120],
+    forest: [35, 110, 55], flower_forest: [70, 150, 90], birch_forest: [96, 150, 110],
+    dark_forest: [55, 75, 35], old_growth_birch_forest: [96, 150, 110],
+    taiga: [30, 105, 90], snowy_taiga: [110, 140, 130],
+    old_growth_pine_taiga: [89, 112, 91], old_growth_spruce_taiga: [100, 122, 96],
+    jungle: [60, 125, 20], sparse_jungle: [90, 140, 40], bamboo_jungle: [110, 150, 30],
+    swamp: [80, 105, 70], mangrove_swamp: [70, 95, 55],
+    savanna: [189, 178, 95], savanna_plateau: [167, 157, 100], windswept_savanna: [150, 140, 90],
+    desert: [235, 200, 120], badlands: [210, 110, 50], eroded_badlands: [225, 130, 70], wooded_badlands: [180, 120, 60],
+    snowy_plains: [235, 240, 245], ice_spikes: [180, 220, 255], snowy_beach: [230, 225, 200],
+    grove: [160, 190, 170], snowy_slopes: [225, 232, 240],
+    jagged_peaks: [205, 215, 228], frozen_peaks: [190, 216, 232], stony_peaks: [160, 160, 150],
+    windswept_hills: [110, 120, 105], windswept_gravelly_hills: [125, 130, 135], windswept_forest: [90, 115, 90],
+    stony_shore: [140, 140, 120], beach: [240, 220, 140],
+    river: [60, 100, 200], frozen_river: [150, 180, 230],
+    ocean: [40, 70, 160], deep_ocean: [25, 45, 115], warm_ocean: [60, 130, 190],
+    lukewarm_ocean: [50, 105, 180], deep_lukewarm_ocean: [35, 80, 145],
+    cold_ocean: [45, 70, 140], deep_cold_ocean: [30, 55, 110],
+    frozen_ocean: [130, 155, 200], deep_frozen_ocean: [100, 125, 175],
+    mushroom_fields: [200, 105, 180], cherry_grove: [244, 180, 215],
+    dripstone_caves: [140, 100, 80], lush_caves: [95, 165, 95], deep_dark: [25, 35, 60],
+    nether_wastes: [130, 45, 45], crimson_forest: [165, 40, 40], warped_forest: [35, 135, 140],
+    soul_sand_valley: [100, 78, 55], basalt_deltas: [105, 105, 115],
+    the_end: [210, 213, 165], end_highlands: [200, 203, 150], end_midlands: [180, 183, 135],
+    end_barrens: [150, 153, 115], small_end_islands: [110, 112, 85], the_void: [10, 10, 14],
+  };
+  let c = T[n];
+  if (!c) {
+    if (n.includes('ocean')) c = [40, 70, 160];
+    else if (n.includes('frozen') || n.includes('snowy') || n.includes('ice')) c = [220, 230, 240];
+    else if (n.includes('desert') || n.includes('beach')) c = [235, 200, 120];
+    else if (n.includes('badlands')) c = [210, 110, 50];
+    else if (n.includes('jungle')) c = [60, 125, 20];
+    else if (n.includes('forest')) c = [35, 110, 55];
+    else if (n.includes('taiga')) c = [30, 105, 90];
+    else if (n.includes('peak') || n.includes('hills') || n.includes('stony')) c = [140, 140, 130];
+    else if (n.includes('river')) c = [60, 100, 200];
+    else c = [100, 120, 90];
+  }
+  BIOMES.colors[id] = c;
+  return c;
+}
+function biomeResForScale(scale) {
+  let bps = 4; // blocks per sample
+  while (bps * scale < 2.2 && bps < 256) bps *= 2;
+  return bps;
+}
+function renderBiomeTile(job) {
+  if (!biomeSetupFor(job.dim)) return;
+  const c = document.createElement('canvas');
+  c.width = c.height = TILE;
+  const g = c.getContext('2d');
+  const img = g.createImageData(TILE, TILE);
+  for (let sz = 0; sz < TILE; sz++) for (let sx = 0; sx < TILE; sx++) {
+    const bx = (job.tx * TILE + sx) * job.bps + (job.bps >> 1);
+    const bz = (job.tz * TILE + sz) * job.bps + (job.bps >> 1);
+    const col = biomeColor(BIOMES.mod._cb_biomeAt(bx, bz));
+    const i = (sz * TILE + sx) * 4;
+    img.data[i] = col[0]; img.data[i + 1] = col[1]; img.data[i + 2] = col[2]; img.data[i + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  biomeLayer.tiles.set(job.key, c);
+  if (biomeLayer.tiles.size > 900) {
+    biomeLayer.tiles.delete(biomeLayer.tiles.keys().next().value);
+  }
+}
+function pumpBiomeTiles() {
+  if (biomeLayer.rendering || !biomeLayer.queue.length) return;
+  biomeLayer.rendering = true;
+  const step = () => {
+    const start = performance.now();
+    let did = 0;
+    while (biomeLayer.queue.length && performance.now() - start < 9) {
+      const job = biomeLayer.queue.shift();
+      if (!biomeLayer.tiles.has(job.key)) { renderBiomeTile(job); did++; }
+    }
+    if (did) draw();
+    if (biomeLayer.queue.length) requestAnimationFrame(step);
+    else biomeLayer.rendering = false;
+  };
+  requestAnimationFrame(step);
+}
+function drawBiomeLayer(rect, x0, z0, x1, z1) {
+  const scale = ui.view.scale;
+  const bps = biomeResForScale(scale);
+  const span = TILE * bps; // blocks per tile
+  const t0x = Math.floor(x0 / span), t1x = Math.floor(x1 / span);
+  const t0z = Math.floor(z0 / span), t1z = Math.floor(z1 / span);
+  if ((t1x - t0x + 1) * (t1z - t0z + 1) > 700) return;
+  const seedKey = biomeSeed() + ':' + ui.edition;
+  ctx.imageSmoothingEnabled = false;
+  const pending = [];
+  for (let tx = t0x; tx <= t1x; tx++) for (let tz = t0z; tz <= t1z; tz++) {
+    const key = seedKey + ':' + ui.dim + ':' + bps + ':' + tx + ':' + tz;
+    const tile = biomeLayer.tiles.get(key);
+    const [px, py] = blockToPx(tx * span, tz * span, rect);
+    if (tile) ctx.drawImage(tile, px, py, span * scale + 0.5, span * scale + 0.5);
+    else pending.push({ key, tx, tz, bps, dim: ui.dim, cx: tx * span + span / 2, cz: tz * span + span / 2 });
+  }
+  // darken so grid/markers stay readable
+  ctx.fillStyle = 'rgba(13,14,17,0.38)';
+  ctx.fillRect(0, 0, rect.width, rect.height);
+  if (pending.length) {
+    const vx = ui.view.cx, vz = ui.view.cz;
+    pending.sort((a, b) => Math.hypot(a.cx - vx, a.cz - vz) - Math.hypot(b.cx - vx, b.cz - vz));
+    for (const p of pending) if (!biomeLayer.queue.some(q => q.key === p.key)) biomeLayer.queue.push(p);
+    pumpBiomeTiles();
+  }
+}
+
 function initBiomes() {
   if (typeof createCubiomes !== 'function') {
     $('biomeStatus').innerHTML = '<span style="color:var(--gold)">Biome engine (cubiomes.js) not found next to index.html — markers show every possible spot instead of only real ones.</span>';
@@ -525,7 +664,7 @@ function initBiomes() {
 }
 function updateBiomeStatus() {
   $('biomeStatus').innerHTML = BIOMES.ready
-    ? '<span style="color:var(--grass)">🌿 Biome check ON</span> — markers are filtered to spots the land actually allows. You can also search a biome, like “cherry grove”.'
+    ? '<span style="color:var(--grass)">🌿 Biome check ON</span> — the map shows real terrain colors, markers are filtered to spots the land allows, and you can search a biome like “cherry grove”.'
     : '';
 }
 
@@ -882,6 +1021,12 @@ function buildHotbar() {
     });
     bar.appendChild(div);
   }
+  const bm = document.createElement('button');
+  bm.type = 'button';
+  bm.className = 'slot' + (ui.showBiomeMap !== false ? ' on' : '');
+  bm.innerHTML = '🗺️<span class="tip">Biome colors on the map</span>';
+  bm.addEventListener('click', () => { ui.showBiomeMap = ui.showBiomeMap === false; buildHotbar(); draw(); });
+  bar.appendChild(bm);
   if (ui.dim === 'overworld') {
     const s = document.createElement('button');
     s.type = 'button';
@@ -939,15 +1084,20 @@ function draw() {
   const [x1, z1] = pxToBlock(rect.width, rect.height, rect);
   const scale = ui.view.scale;
 
+  // biome-colored terrain
+  if (ui.showBiomeMap !== false && BIOMES.ready && WORLD) drawBiomeLayer(rect, x0, z0, x1, z1);
+
   // slime chunks
   if (ui.dim === 'overworld' && ui.showSlime && scale >= 0.5) {
     const c0x = Math.floor(x0 / 16), c1x = Math.floor(x1 / 16);
     const c0z = Math.floor(z0 / 16), c1z = Math.floor(z1 / 16);
-    ctx.fillStyle = 'rgba(107,201,76,0.28)';
+    ctx.fillStyle = 'rgba(120,255,80,0.42)';
+    ctx.strokeStyle = 'rgba(20,60,10,0.8)';
     for (let cx = c0x; cx <= c1x; cx++) for (let cz = c0z; cz <= c1z; cz++) {
       if (isSlimeChunk(cx, cz)) {
         const [px, py] = blockToPx(cx * 16, cz * 16, rect);
         ctx.fillRect(px, py, 16 * scale, 16 * scale);
+        ctx.strokeRect(px, py, 16 * scale, 16 * scale);
       }
     }
   }
@@ -992,12 +1142,20 @@ function draw() {
     const r0z = Math.floor(z0 / 16 / sp), r1z = Math.floor(z1 / 16 / sp);
     const nRegions = (r1x - r0x + 1) * (r1z - r0z + 1);
     if (nRegions > 4000) continue;
-    const noFilter = nRegions > 350; // biome-checking thousands of far-out markers would stall the map
+    const noFilter = nRegions > 350; // sync-checking thousands of markers would stall — check async below
     for (let rx = r0x; rx <= r1x; rx++) for (let rz = r0z; rz <= r1z; rz++) {
       const s = structAt(type, rx, rz, noFilter);
-      if (s) addMarker(type, s.x, s.z, rect, iconSize);
+      if (!s) continue;
+      if (noFilter && BIOMES.ready && WORLD) {
+        const vkey = 'v:' + ui.edition + ':' + type + ':' + s.x + ':' + s.z;
+        if (cache.has(vkey)) { if (!cache.get(vkey)) continue; }
+        else viaQueue.push({ type, x: s.x, z: s.z });
+      }
+      addMarker(type, s.x, s.z, rect, iconSize);
     }
   }
+  if (viaQueue.length > 25000) viaQueue.length = 25000;
+  pumpViability();
   // strongholds
   if (ui.dim === 'overworld' && ui.toggles.stronghold !== false) {
     ctx.save();
@@ -1102,7 +1260,12 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   const r = canvas.getBoundingClientRect();
   const [bx, bz] = pxToBlock(e.clientX - r.left, e.clientY - r.top, r);
-  $('mapHud').textContent = 'X ' + Math.round(bx) + ' · Z ' + Math.round(bz) +
+  let biomeName = '';
+  if (BIOMES.ready && WORLD) {
+    const raw = BIOMES.names[biomeAt(Math.round(bx), Math.round(bz))];
+    if (raw) biomeName = ' · ' + raw.replace(/_/g, ' ').toUpperCase();
+  }
+  $('mapHud').textContent = 'X ' + Math.round(bx) + ' · Z ' + Math.round(bz) + biomeName +
     (ui.dim === 'nether' ? '  (×8 = ' + Math.round(bx * 8) + ', ' + Math.round(bz * 8) + ' overworld)' : '');
   if (!drag) return;
   const dx = e.clientX - drag.px, dy = e.clientY - drag.py;
@@ -1576,6 +1739,7 @@ function applySeed() {
   ui.selected = null;
   ui.biomePin = null;
   BIOMES.curKey = '';
+  clearBiomeTiles();
   updateBiomeStatus();
   $('detailPanel').style.display = 'none';
   $('seedMeta').innerHTML = (parsed.how === 'text'
@@ -1596,6 +1760,8 @@ function setEdition(ed) {
   ui.selected = null;
   ui.biomePin = null;
   BIOMES.curKey = '';
+  clearBiomeTiles();
+  updateBiomeStatus();
   $('detailPanel').style.display = 'none';
   buildHotbar(); buildGuide(); buildOres();
   refreshResults(); draw(); saveState();
