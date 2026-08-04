@@ -36,7 +36,9 @@ looking like four different games.
 
 ---
 
-# 1 · The Builder's Yard — everyone starts with this
+# 1 · The Builder's Yard
+
+Everyone starts with this. It sells the buildings that open every other shop.
 
 > Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
 >
@@ -46,38 +48,65 @@ looking like four different games.
 >
 > No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
 
-| Item | Cost | Worth |
+| Item | Price | Worth |
 |---|---|---|
-| Soldier | 2 gold | Damage 1 |
-| Builder | 2 gold | Builds, no damage |
-| Wall | 2 gold | 3 blocks, stops ground |
-| Windmill | 3 gold | +1 gold, must touch a farm |
-| Fishing boat | 2 gold | +1 gold a turn |
-| Watchtower | 3 gold | Damage 1 · **can hit balloons** |
+| Windmill | 4 gold | +2 gold every turn |
+| Tower | 5 gold | Power 3 · hits balloons |
+| Barracks | 7 gold | Opens **The Armoury** |
+| Dock | 7 gold | Opens **The Docks** |
+| Siege Factory | 9 gold | Opens **The Siege Factory** |
 
-# 2 · The Barracks — unlocked by building the Barracks
+**This is the shop that grows your game.** Three of the five items are doors to other shops, so what you build first decides what you can buy at all.
 
+# 2 · The Armoury
+
+Opens when you build the Barracks. Soldiers, ranked by power.
+
+> Match the style of the previous image exactly.
 > Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
 >
-> The **top third** of the card shows a training yard: a weapon rack of swords and spears, round shields hung on a timber wall, straw practice dummies, with a carved banner beneath reading **THE BARRACKS**.
+> The **top third** of the card shows a training yard: a weapon rack of swords and spears, round shields hung on a timber wall, straw practice dummies, with a carved banner beneath reading **THE ARMOURY**.
 >
 > The **bottom two thirds is empty aged parchment** — clean, unmarked and completely blank, left empty for a list to be written on later.
 >
 > No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
 
-| Item | Cost | Worth |
+| Item | Price | Worth |
 |---|---|---|
-| Shieldsman | 3 gold | Damage 1 · Defence 2 |
-| Archer | 3 gold | Damage 1 · **can hit balloons** |
-| Knight | 4 gold | Damage 2 · moves 8 hexes |
-| Champion | 7 gold | Damage 3 |
+| Shieldman | 2 gold | Power 1 · worth **2** defending |
+| Spearman | 3 gold | Power 2 |
+| Knight | 5 gold | Power 3 · moves 8 hexes |
+| Crossbowman | 7 gold | Power 4 |
+| Archer | 9 gold | Power 5 · hits balloons |
 
-**Why the shieldsman is not just a worse soldier:** damage 1 like everyone, but
-worth 2 when *defending*. Cheap wall of meat to sit behind your ramparts while
-your knights go out.
+**Power is the whole fight.** Add both sides up, roll, higher total wins. The shieldman is cheap but worth double defending, so a wall of them behind ramparts beats its price.
 
-# 3 · The Siege Factory — unlocked by building the Siege Workshop
+# 3 · The Docks
 
+Opens when you build the Dock.
+
+> Match the style of the previous image exactly.
+> Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
+>
+> The **top third** of the card shows a working harbour: a stone quay, coils of rope and barrels, a moored ship's hull and a raised anchor, with a carved banner beneath reading **THE DOCKS**.
+>
+> The **bottom two thirds is empty aged parchment** — clean, unmarked and completely blank, left empty for a list to be written on later.
+>
+> No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
+
+| Item | Price | Worth |
+|---|---|---|
+| Transport ship | 6 gold | Carries **5 soldiers** · cannot fight |
+| Attack ship | 8 gold | Power 3 · fast raider |
+| Battleship | 14 gold | Power 6 · rules the water |
+
+**Ships move 10 hexes** on one move token. Sink a loaded transport and all 5 aboard are lost — which is exactly what makes a battleship worth 14 gold.
+
+# 4 · The Siege Factory
+
+Opens when you build the Siege Factory.
+
+> Match the style of the previous image exactly.
 > Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
 >
 > The **top third** of the card shows a war workshop: a half-built battering ram on wheels, coils of rope, a catapult arm and a folded striped balloon envelope, with a carved banner beneath reading **THE SIEGE FACTORY**.
@@ -86,36 +115,13 @@ your knights go out.
 >
 > No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
 
-| Item | Cost | Worth |
+| Item | Price | Worth |
 |---|---|---|
-| Battering ram | 5 gold | **Damage 2 against walls only** |
-| Catapult | 5 gold | Damage 2 · also hits buildings |
-| Hot air balloon | 6 gold | **Flies over walls**, carries 1 soldier |
-| Transport boat | 4 gold | Carries 5 soldiers across water |
+| Battering ram | 6 gold | Breaks **2 wall blocks** · useless in a fight |
+| Catapult | 8 gold | Power 2 · also smashes buildings |
+| Hot air balloon | 10 gold | **Flies over walls** · carries 1 |
 
-**The ram is deliberately useless in a fight** — damage 2 on walls, nothing
-against soldiers. It is a tool, not a warrior, so bringing one is a real choice.
-
-# 4 · The Armoury — unlocked by building the Armoury
-
-The shop that does not sell units. Buy once, keep it all game.
-
-> Ornate medieval shop sign painted on aged wood and parchment, top-down flat view, hand-painted fantasy style. Muted palette of deep greens, slate grey, warm stone and antique gold. Portrait card shape, 3.5 to 5 proportions, with a decorative gold frame around the outside edge.
->
-> The **top third** of the card shows a blacksmith's forge: glowing coals, an anvil, tongs, a finished breastplate and a rack of sharpened blades, with a carved banner beneath reading **THE ARMOURY**.
->
-> The **bottom two thirds is empty aged parchment** — clean, unmarked and completely blank, left empty for a list to be written on later.
->
-> No other text anywhere. No numbers, no letters, no item list, no writing on the parchment. No drop shadow. Plain pure white background outside the card.
-
-| Item | Cost | Worth |
-|---|---|---|
-| Sharpened steel | 12 gold | Every soldier you own, **+1 damage, forever** |
-| Iron shields | 9 gold | Every soldier, +1 defence |
-| Siege chains | 8 gold | Battering rams, +1 damage on walls |
-| Reinforced walls | 7 gold | Your walls get **4 blocks** instead of 3 |
-
----
+**A wall has 3 blocks.** Soldiers barely scratch it, a ram takes it down in two turns.
 
 ## How the shops work at the table
 
@@ -132,6 +138,6 @@ Drop each finished card into **The Press**, set **Width 3 1/2**, **Height 5**
 (untick "keep the picture's shape"), and **How many: 5** — one each plus a spare
 for the dealer. Four shops comes to about **4 sheets**.
 
-**The printed cards already exist** — `packet/shop-cards.html`, all four to a
-single sheet with every price laid on as real text. Print that now and play; drop
-the ChatGPT art in later when you have it.
+**The printed cards already exist** — `packet/shop-cards.html` → `shop-cards.pdf`,
+all four to a single sheet with every price laid on as real text. Print that now
+and play; drop the ChatGPT art in later when you have it.
