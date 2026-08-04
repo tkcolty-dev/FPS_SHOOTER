@@ -36,7 +36,7 @@ body {
     var(--deepslate);
   min-height: 100vh;
 }
-.wrap { max-width: 1280px; margin: 0 auto; padding: 0 20px 80px; }
+.wrap { margin: 0 auto; padding: 0 24px 80px; }
 
 /* ===== Minecraft-style bevel helpers ===== */
 .bevel {
@@ -166,8 +166,10 @@ img.tex { width: 26px; height: 26px; image-rendering: pixelated; vertical-align:
 .workbench { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
 @media (max-width: 900px) { .workbench { grid-template-columns: 1fr; } }
 .map-panel { position: relative; padding: 4px; }
-#map { display: block; width: 100%; height: 620px; cursor: grab; background: #101216; touch-action: none; }
+#map { display: block; width: 100%; height: calc(100vh - 180px); min-height: 480px; cursor: grab; background: #101216; touch-action: none; }
 #map.dragging { cursor: grabbing; }
+.map-panel:fullscreen { padding: 0; border: none; }
+.map-panel:fullscreen #map { height: 100vh; min-height: 0; }
 .map-hud {
   position: absolute; left: 16px; bottom: 16px;
   font-family: var(--pixel); font-size: 9px; color: var(--text);
@@ -275,17 +277,21 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
   <div class="title-row">
     <h1>SEED<span class="seek">SEEKER</span></h1>
     <span class="tagline">Type your world's seed. See where the good stuff hides.</span>
-    <span class="java-badge">JAVA EDITION</span>
+    <span class="java-badge" id="editionBadge">BEDROCK EDITION</span>
   </div>
   <form class="seed-form" id="seedForm">
     <div class="seed-slot bevel-in">
       <input id="seedInput" type="text" placeholder="Enter your seed…" autocomplete="off" spellcheck="false" aria-label="World seed">
     </div>
+    <div class="dim-tabs" role="group" aria-label="Edition">
+      <button type="button" class="dim-tab" id="edBedrock">BEDROCK</button>
+      <button type="button" class="dim-tab" id="edJava">JAVA</button>
+    </div>
     <select class="mc-select" id="versionSel" aria-label="Minecraft version">
       <option value="121">1.21+</option>
       <option value="119">1.19 – 1.20</option>
-      <option value="118">1.18</option>
-      <option value="116">1.16 – 1.17</option>
+      <option value="118">1.18.2</option>
+      <option value="116">1.16 – 1.18.1</option>
     </select>
     <button type="submit" class="mcbtn">EXPLORE!</button>
     <button type="button" class="mcbtn gray" id="randomBtn" title="Try a random seed">🎲</button>
@@ -319,6 +325,7 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
       <button id="zoomIn" aria-label="Zoom in">+</button>
       <button id="zoomOut" aria-label="Zoom out">−</button>
       <button id="goHome" aria-label="Center on you" title="Center on you">⌂</button>
+      <button id="fsBtn" aria-label="Fullscreen map" title="Fullscreen map">⛶</button>
     </div>
   </div>
   <div class="sidebar">
@@ -371,7 +378,7 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
   </details>
   <details class="bevel">
     <summary>Does this work for Bedrock / PE / console?</summary>
-    <div class="a">No — this tool speaks <b>Java Edition</b> math. Bedrock places structures with different rules, so the markers won't line up. (Fun fact: slime chunks on Bedrock don't even use your seed!)</div>
+    <div class="a">Yes! Pick <b>BEDROCK</b> next to the seed box (phones, tablets, consoles, and Windows 10/11 all run Bedrock). Bedrock uses totally different placement math than Java — this tool speaks both. A few Bedrock quirks: <b>slime chunks are the same in every world</b> (they ignore the seed), desert/jungle temples + witch huts + igloos all share one set of spots (the biome picks which), fortress-vs-bastion is a best guess, and trial chambers aren't supported yet.</div>
   </details>
   <details class="bevel">
     <summary>How accurate is the stronghold marker?</summary>
@@ -380,7 +387,8 @@ footer { margin-top: 60px; color: #62646b; font-size: 12px; line-height: 1.6; }
 </section>
 
 <footer>
-  SeedSeeker runs Minecraft's real placement math (Java Edition, 1.16+) in your browser — nothing is uploaded anywhere.<br>
+  SeedSeeker runs Minecraft's real placement math in your browser — nothing is uploaded anywhere.<br>
+  Java math verified against a real 1.21.11 server; Bedrock math verified against Chunkbase (villages + slime chunks).<br>
   Structure spots are exact; biome checks aren't simulated, so a marker means "the game will build it here if the land allows."
 </footer>
 </div>
@@ -403,11 +411,97 @@ class JRand {
     return val;
   }
   nextIntU() { return this.next(32); }
+  nextLong() { const hi = BigInt(this.next(32)); const lo = BigInt(this.next(32)); return BigInt.asIntN(64, (hi << 32n) + lo); }
   nextFloat() { return this.next(24) / (1 << 24); }
   nextDouble() { return (this.next(26) * 134217728 + this.next(27)) / 9007199254740992; }
 }
 function regionSeed(worldSeed, rx, rz, salt) {
   return BigInt.asIntN(64, BigInt(rx) * 341873128712n + BigInt(rz) * 132897987541n + worldSeed + BigInt(salt));
+}
+// Village spacing changed 32 -> 34 in 1.18.2 (verified against a real 1.21.11 server)
+function effSpacing(type, cfg) {
+  return type === 'village' && versionNum() >= 118 ? 34 : cfg.spacing;
+}
+// Region spacing for the active edition
+function spacingFor(type) {
+  if (isBedrock()) return BEDROCK_CFG[type].sp;
+  if (type === 'fortress' || type === 'bastion') return 27;
+  return effSpacing(type, STRUCTS[type]);
+}
+// Fortress vs bastion: chunk-seeded weighted pick, fortress weight 2 of 5 (verified vs real server)
+function netherVariant(worldSeed, cx, cz) {
+  const r0 = new JRand(worldSeed);
+  const a = r0.nextLong(), b = r0.nextLong();
+  const r = new JRand(BigInt.asIntN(64, (BigInt(cx) * a) ^ (BigInt(cz) * b) ^ worldSeed));
+  return r.nextInt(5) < 2 ? 'fortress' : 'bastion';
+}
+
+/* ================= Bedrock Edition math =================
+   Bedrock uses 32-bit seeds + MT19937. Verified against Chunkbase
+   (villages + slime chunks, Bedrock 1.21). This computes the first n
+   MT outputs directly — same result as full MT19937. */
+function mtN(seed, n) {
+  const head = new Array(n + 1);
+  head[0] = seed >>> 0;
+  for (let i = 1; i <= n; i++) head[i] = (Math.imul(0x6c078965, head[i - 1] ^ (head[i - 1] >>> 30)) + i) >>> 0;
+  let temp = head[n];
+  for (let i = n; i < 397; i++) temp = (Math.imul(0x6c078965, temp ^ (temp >>> 30)) + i + 1) >>> 0;
+  const last = new Array(n + 1);
+  last[0] = temp;
+  for (let i = 1; i <= n; i++) last[i] = (Math.imul(0x6c078965, last[i - 1] ^ (last[i - 1] >>> 30)) + i + 397) >>> 0;
+  const out = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const t = (((head[i] & 0x80000000) >>> 0) + (head[i + 1] & 0x7fffffff)) >>> 0;
+    let v = ((t >>> 1) ^ last[i]) >>> 0;
+    if (t & 1) v = (v ^ 0x9908b0df) >>> 0;
+    v = (v ^ (v >>> 11)) >>> 0;
+    v = (v ^ ((v << 7) & 0x9d2c5680)) >>> 0;
+    v = (v ^ ((v << 15) & 0xefc60000)) >>> 0;
+    out[i] = (v ^ (v >>> 18)) >>> 0;
+  }
+  return out;
+}
+const BE_A = -1724254968 | 0, BE_B = -245998635 | 0;
+const BEDROCK_CFG = {
+  village:        { sp: 34, rng: 26, salt: 10387312, tri: 1 },
+  be_temple:      { sp: 32, rng: 24, salt: 14357617 },
+  monument:       { sp: 32, rng: 27, salt: 10387313, tri: 1 },
+  ocean_ruin:     { sp: 20, rng: 12, salt: 14357621 },
+  shipwreck:      { sp: 24, rng: 20, salt: 165745295 },
+  buried_treasure:{ sp: 4,  rng: 2,  salt: 16842397, tri: 1 },
+  ruined_portal:  { sp: 40, rng: 25, salt: 40552231 },
+  outpost:        { sp: 80, rng: 56, salt: 165745296, tri: 1 },
+  mansion:        { sp: 80, rng: 60, salt: 10387319, tri: 1 },
+  ancient_city:   { sp: 24, rng: 16, salt: 20083232, tri: 1 },
+  fortress:       { sp: 30, rng: 26, salt: 30084232, nether: 1 },
+  bastion:        { sp: 30, rng: 26, salt: 30084232, nether: 1 },
+  ruined_portal_n:{ sp: 25, rng: 15, salt: 40552231 },
+  end_city:       { sp: 20, rng: 9,  salt: 10387313, tri: 1 },
+};
+function beCandidate(seed32, type, rx, rz) {
+  const cfg = BEDROCK_CFG[type];
+  const r = ((seed32 >>> 0) + (Math.imul(rx, BE_A) >>> 0) + (Math.imul(rz, BE_B) >>> 0) + cfg.salt) >>> 0;
+  const m = mtN(r, cfg.tri ? 4 : 3);
+  const ox = cfg.tri ? Math.floor((m[0] % cfg.rng + m[1] % cfg.rng) / 2) : m[0] % cfg.rng;
+  const oz = cfg.tri ? Math.floor((m[2] % cfg.rng + m[3] % cfg.rng) / 2) : m[1] % cfg.rng;
+  return { cx: rx * cfg.sp + ox, cz: rz * cfg.sp + oz, extra: cfg.tri ? 0 : m[2] };
+}
+function beSlimeChunk(cx, cz) {
+  // Bedrock slime chunks ignore the seed — same pattern in every world
+  return mtN((Math.imul(cx, 0x1f1f1f1f) ^ cz) >>> 0, 1)[0] % 10 === 0;
+}
+function computeStrongholdsBedrock(seed32) {
+  const m = mtN(seed32 >>> 0, 2);
+  let angle = 2 * Math.PI * (m[0] * 2.328306436538696e-10);
+  let dist = m[1] % 16 + 40;
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const cx = Math.floor(Math.cos(angle) * dist), cz = Math.floor(Math.sin(angle) * dist);
+    out.push({ x: cx * 16 + 8, z: cz * 16 + 8, ring: 0 });
+    angle += 1.8849558;
+    dist += 8;
+  }
+  return out;
 }
 
 /* ================= Procedural Minecraft-style textures =================
@@ -474,9 +568,11 @@ const TEX = (() => {
 })();
 function applyTextures() {
   const tabs = { overworld: TEX.grass, nether: TEX.netherrack, end: TEX.endstone };
-  document.querySelectorAll('.dim-tab').forEach(t => {
+  document.querySelectorAll('.dim-tab[data-dim]').forEach(t => {
     t.style.backgroundImage = 'url(' + tabs[t.dataset.dim] + ')';
   });
+  $('edBedrock').style.backgroundImage = 'url(' + TEX.deepslate + ')';
+  $('edJava').style.backgroundImage = 'url(' + TEX.grass + ')';
   const g = document.getElementById('groundStrip');
   g.style.backgroundImage = 'url(' + TEX.grass + ')';
 }
@@ -519,10 +615,12 @@ const STRUCTS = {
     loot:'Crossbows and loot, but killing the captain gives you <b>Bad Omen</b> — don’t enter a village after, unless you want a raid!' },
   mansion:        { dim:'overworld', icon:'🏰', name:'Woodland Mansion',spacing:80, sep:20, salt:10387319, spread:'triangle', minV:116,
     loot:'Huge and dangerous. Evokers inside drop the <b>Totem of Undying</b> — it saves you from death. Endgame trip!' },
-  ancient_city:   { dim:'overworld', icon:'💀', name:'Ancient City',    spacing:24, sep:8,  salt:20083232, spread:'triangle', minV:119, deep:true,
+  ancient_city:   { dim:'overworld', icon:'💀', name:'Ancient City',    spacing:24, sep:8,  salt:20083232, spread:'linear',   minV:119, deep:true,
     loot:'Deep at Y -51. <b>SNEAK. EVERYWHERE.</b> The Warden hears you. Best enchanted books in the game if you survive.' },
-  trial_chambers: { dim:'overworld', icon:'⚔️', name:'Trial Chambers',  spacing:34, sep:12, salt:94251327, spread:'linear',   minV:121, deep:true,
+  trial_chambers: { dim:'overworld', icon:'⚔️', name:'Trial Chambers',  spacing:34, sep:12, salt:94251327, spread:'linear',   minV:121, deep:true, javaOnly:true,
     loot:'Underground battle rooms (about Y -30). Fight waves of mobs for <b>trial keys and ominous vaults</b>.' },
+  be_temple:      { dim:'overworld', icon:'🗿', name:'Temple / Hut / Igloo', minV:116, bedrockOnly:true,
+    loot:'On Bedrock, desert temples, jungle temples, witch huts, and igloos all share the same spots — <b>the biome decides which one</b> you get (or none, if the biome fits none of them).' },
   fortress:       { dim:'nether',    icon:'🔥', name:'Nether Fortress', nether:true, minV:116,
     loot:'Blazes drop <b>blaze rods</b> — you need them for potions and for reaching the End. Also wither skeletons!' },
   bastion:        { dim:'nether',    icon:'🐷', name:'Bastion Remnant', nether:true, minV:116,
@@ -538,7 +636,7 @@ const DOTCOLOR = {
   igloo:'#cfe8f0', monument:'#3fd4c0', ocean_ruin:'#c98d5a', shipwreck:'#b8b29a',
   buried_treasure:'#fcdc5f', ruined_portal:'#b06fd8', outpost:'#c05a48', mansion:'#a8784a',
   ancient_city:'#7a8ba0', trial_chambers:'#e0803a', fortress:'#e04438', bastion:'#d8a050',
-  ruined_portal_n:'#b06fd8', end_city:'#d8a0f0', stronghold:'#fcdc5f',
+  ruined_portal_n:'#b06fd8', end_city:'#d8a0f0', stronghold:'#fcdc5f', be_temple:'#e8d29a',
 };
 
 /* ================= Placement math ================= */
@@ -546,23 +644,33 @@ const cache = new Map();
 let WORLD = null; // { seed: BigInt, version: number }
 
 function structAt(type, rx, rz) {
-  const key = type + ':' + rx + ':' + rz;
+  const key = ui.edition + ':' + type + ':' + rx + ':' + rz;
   if (cache.has(key)) return cache.get(key);
   const cfg = STRUCTS[type];
   let out = null;
-  if (type === 'fortress' || type === 'bastion') {
-    // 1.16+ shared nether placement: spacing 27, sep 4, salt 30084232; nextInt(6)<2 => fortress
+  if (isBedrock()) {
+    const cfgB = BEDROCK_CFG[type];
+    const c = beCandidate(WORLD.seed32, type, rx, rz);
+    out = { x: c.cx * 16 + 8, z: c.cz * 16 + 8, cx: c.cx, cz: c.cz };
+    if (cfgB.nether) {
+      const isFortress = c.extra % 6 < 2;
+      if (isFortress !== (type === 'fortress')) out = null;
+    }
+    if (type === 'end_city' && Math.hypot(c.cx, c.cz) < 64) out = null;
+  } else if (type === 'fortress' || type === 'bastion') {
+    // 1.16+ shared nether placement: spacing 27, sep 4, salt 30084232
     const r = new JRand(regionSeed(WORLD.seed, rx, rz, 30084232));
     const cx = rx * 27 + r.nextInt(23);
     const cz = rz * 27 + r.nextInt(23);
-    const isFortress = r.nextInt(6) < 2;
+    const isFortress = netherVariant(WORLD.seed, cx, cz) === 'fortress';
     out = (isFortress === (type === 'fortress')) ? { x: cx * 16 + 8, z: cz * 16 + 8, cx, cz } : null;
   } else {
-    const d = cfg.spacing - cfg.sep;
+    const spacing = effSpacing(type, cfg);
+    const d = spacing - cfg.sep;
     const r = new JRand(regionSeed(WORLD.seed, rx, rz, cfg.salt));
     const pick = () => cfg.spread === 'triangle' ? ((r.nextInt(d) + r.nextInt(d)) / 2) | 0 : r.nextInt(d);
-    const cx = rx * cfg.spacing + pick();
-    const cz = rz * cfg.spacing + pick();
+    const cx = rx * spacing + pick();
+    const cz = rz * spacing + pick();
     out = { x: cx * 16 + 8, z: cz * 16 + 8, cx, cz };
     if (cfg.outpost && !outpostViable(cx, cz)) out = null;
     if (cfg.endcity && Math.hypot(cx, cz) < 64) out = null; // only outer End islands
@@ -577,11 +685,12 @@ function outpostViable(cx, cz) {
   r.nextIntU();
   if (r.nextInt(5) !== 0) return false;
   const v = STRUCTS.village;
-  const r0x = Math.floor((cx - 10) / v.spacing), r1x = Math.floor((cx + 10) / v.spacing);
-  const r0z = Math.floor((cz - 10) / v.spacing), r1z = Math.floor((cz + 10) / v.spacing);
+  const vsp = effSpacing('village', v), vd = vsp - v.sep;
+  const r0x = Math.floor((cx - 10) / vsp), r1x = Math.floor((cx + 10) / vsp);
+  const r0z = Math.floor((cz - 10) / vsp), r1z = Math.floor((cz + 10) / vsp);
   for (let rx = r0x; rx <= r1x; rx++) for (let rz = r0z; rz <= r1z; rz++) {
     const rr = new JRand(regionSeed(WORLD.seed, rx, rz, v.salt));
-    const vx = rx * v.spacing + rr.nextInt(24), vz = rz * v.spacing + rr.nextInt(24);
+    const vx = rx * vsp + rr.nextInt(vd), vz = rz * vsp + rr.nextInt(vd);
     if (Math.max(Math.abs(vx - cx), Math.abs(vz - cz)) <= 10) return false;
   }
   return true;
@@ -595,6 +704,7 @@ function hasBuriedTreasure(cx, cz) {
   return yes;
 }
 function isSlimeChunk(cx, cz) {
+  if (isBedrock()) return beSlimeChunk(cx, cz);
   const key = 'sl:' + cx + ':' + cz;
   if (cache.has(key)) return cache.get(key);
   const t1 = BigInt(Math.imul(Math.imul(cx, cx), 4987142));
@@ -628,6 +738,7 @@ function computeStrongholds() {
 
 /* ================= App state ================= */
 const ui = {
+  edition: 'bedrock',
   dim: 'overworld',
   // start with the essentials on; tap hotbar slots to add more
   toggles: Object.fromEntries(ORDER.map(k =>
@@ -641,16 +752,26 @@ const ui = {
 const $ = id => document.getElementById(id);
 const canvas = $('map'), ctx = canvas.getContext('2d');
 
-function versionNum() { return parseInt($('versionSel').value, 10); }
+function isBedrock() { return ui.edition === 'bedrock'; }
+function versionNum() { return isBedrock() ? 121 : parseInt($('versionSel').value, 10); }
+function availableInEdition(k) {
+  return isBedrock() ? (k in BEDROCK_CFG) : !STRUCTS[k].bedrockOnly;
+}
 function typesForDim(dim) {
-  return ORDER.filter(k => STRUCTS[k].dim === dim && STRUCTS[k].minV <= versionNum());
+  return ORDER.filter(k => STRUCTS[k].dim === dim && STRUCTS[k].minV <= versionNum() && availableInEdition(k));
+}
+// On Bedrock the four scattered structures share one placement ("be_temple")
+function resolveType(k) {
+  if (!isBedrock()) return k === 'be_temple' ? 'desert_pyramid' : k;
+  if (['desert_pyramid', 'jungle_temple', 'swamp_hut', 'igloo'].includes(k)) return 'be_temple';
+  return (k === 'stronghold' || k in BEDROCK_CFG) ? k : null;
 }
 
 /* ================= Hotbar ================= */
 function buildHotbar() {
   const bar = $('hotbar');
   bar.innerHTML = '';
-  const types = ORDER.filter(k => STRUCTS[k].dim === ui.dim);
+  const types = ORDER.filter(k => STRUCTS[k].dim === ui.dim && availableInEdition(k));
   for (const k of types) {
     const cfg = STRUCTS[k];
     const locked = cfg.minV > versionNum();
@@ -757,7 +878,7 @@ function draw() {
   for (const type of typesForDim(ui.dim)) {
     if (!ui.toggles[type]) continue;
     const cfg = STRUCTS[type];
-    if (cfg.perChunk) {
+    if (cfg.perChunk && !isBedrock()) {
       if (scale >= 0.5) {
         const c0x = Math.floor(x0 / 16), c1x = Math.floor(x1 / 16);
         const c0z = Math.floor(z0 / 16), c1z = Math.floor(z1 / 16);
@@ -769,7 +890,8 @@ function draw() {
       }
       continue;
     }
-    const sp = (type === 'fortress' || type === 'bastion') ? 27 : cfg.spacing;
+    if (isBedrock() && type === 'buried_treasure' && scale < 0.5) continue; // too dense zoomed out
+    const sp = spacingFor(type);
     const r0x = Math.floor(x0 / 16 / sp), r1x = Math.floor(x1 / 16 / sp);
     const r0z = Math.floor(z0 / 16 / sp), r1z = Math.floor(z1 / 16 / sp);
     if ((r1x - r0x + 1) * (r1z - r0z + 1) > 4000) continue;
@@ -783,7 +905,8 @@ function draw() {
     ctx.save();
     ctx.strokeStyle = 'rgba(252,220,95,0.25)';
     ctx.setLineDash([6, 6]);
-    for (const ringDist of [ (128+192*0)*16, (128+192*1)*16, (128+192*2)*16 ]) {
+    const rings = isBedrock() ? [640, 1024] : [(128+192*0)*16, (128+192*1)*16, (128+192*2)*16];
+    for (const ringDist of rings) {
       ctx.beginPath();
       ctx.arc(ox, oy, ringDist * scale, 0, Math.PI * 2);
       ctx.stroke();
@@ -913,6 +1036,17 @@ canvas.addEventListener('wheel', e => {
 $('zoomIn').addEventListener('click', () => { ui.view.scale = Math.min(4, ui.view.scale * 1.6); draw(); });
 $('zoomOut').addEventListener('click', () => { ui.view.scale = Math.max(0.02, ui.view.scale / 1.6); draw(); });
 $('goHome').addEventListener('click', () => { ui.view.cx = ui.home.x; ui.view.cz = ui.home.z; draw(); });
+$('fsBtn').addEventListener('click', () => {
+  const panel = document.querySelector('.map-panel');
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    (panel.requestFullscreen || panel.webkitRequestFullscreen).call(panel);
+  }
+});
+for (const ev of ['fullscreenchange', 'webkitfullscreenchange']) {
+  document.addEventListener(ev, () => setTimeout(resizeCanvas, 50));
+}
 
 /* ================= Nearest-finds search ================= */
 function nearestOfType(type, count) {
@@ -924,7 +1058,7 @@ function nearestOfType(type, count) {
       .map(s => ({ type, x: s.x, z: s.z, d: Math.hypot(s.x - hx, s.z - hz), approx: true }))
       .sort((a, b) => a.d - b.d).slice(0, count);
   }
-  if (cfg.perChunk) {
+  if (cfg.perChunk && !isBedrock()) {
     const hc = { x: Math.floor(hx / 16), z: Math.floor(hz / 16) };
     for (let ring = 0; ring <= 80; ring++) {
       for (let cx = hc.x - ring; cx <= hc.x + ring; cx++) for (let cz = hc.z - ring; cz <= hc.z + ring; cz++) {
@@ -938,7 +1072,7 @@ function nearestOfType(type, count) {
     }
     return found.sort((a, b) => a.d - b.d).slice(0, count);
   }
-  const sp = (type === 'fortress' || type === 'bastion') ? 27 : cfg.spacing;
+  const sp = spacingFor(type);
   const hr = { x: Math.floor(hx / 16 / sp), z: Math.floor(hz / 16 / sp) };
   const maxRing = Math.max(4, Math.ceil(8000 / (sp * 16)));
   for (let ring = 0; ring <= maxRing; ring++) {
@@ -1011,6 +1145,8 @@ function selectFind(type, x, z, approx) {
     '<div style="margin-top:8px">' + cfg.loot + '</div>' +
     (cfg.deep ? '<div class="warn">⚠ This one is deep underground — dig down carefully at these coordinates.</div>' : '') +
     (approx ? '<div class="warn">≈ Approximate — get close, then throw Eyes of Ender to home in.</div>' : '') +
+    (isBedrock() && (type === 'fortress' || type === 'bastion')
+      ? '<div class="warn">On Bedrock the spot is exact, but whether it\'s a fortress or a bastion is a best guess — it might be the other one.</div>' : '') +
     (STRUCTS[type] && !STRUCTS[type].perChunk && type !== 'stronghold'
       ? '<div class="warn" style="color:var(--text-dim)">If it’s not there, the biome didn’t allow it — try the next-nearest one.</div>' : '') +
     '<div style="margin-top:10px"><button class="mcbtn gray" style="font-size:9px;padding:9px 12px 8px" onclick="copyText(\'' + x + ' ' + z + '\')">COPY COORDS</button></div>';
@@ -1031,7 +1167,7 @@ window.copyText = copyText;
 function buildGuide() {
   const grid = $('guideGrid');
   grid.innerHTML = '';
-  const list = ORDER.filter(k => STRUCTS[k].minV <= versionNum());
+  const list = ORDER.filter(k => STRUCTS[k].minV <= versionNum() && availableInEdition(k));
   const cards = [...list.map(k => STRUCTS[k]),
     { icon: '👁️', name: 'Stronghold', loot: 'Hidden underground: the <b>End Portal room</b>. This is how you reach the Ender Dragon and beat the game.' },
     { icon: '🟩', name: 'Slime Chunks', loot: 'Slimes spawn below Y 40 in these chunks. Build a <b>slime farm</b> for sticky pistons and leads.' }];
@@ -1146,6 +1282,8 @@ SEARCH_INDEX.push({ names: ['stronghold', 'end portal', 'eye of ender', 'ender d
 
 function goToStructure(type) {
   if (!WORLD) { flashNeedSeed(); return; }
+  type = resolveType(type);
+  if (!type) return;
   const dim = type === 'stronghold' ? 'overworld' : STRUCTS[type].dim;
   if (ui.dim !== dim) document.querySelector('.dim-tab[data-dim="' + dim + '"]').click();
   if (type === 'stronghold') ui.toggles.stronghold = true; else ui.toggles[type] = true;
@@ -1164,7 +1302,7 @@ function flashNeedSeed() {
   $('seedInput').focus();
 }
 function chestLinksHtml(types) {
-  const avail = types.filter(t => t === 'stronghold' || STRUCTS[t].minV <= versionNum());
+  const avail = [...new Set(types.map(resolveType))].filter(t => t && (t === 'stronghold' || STRUCTS[t].minV <= versionNum()));
   if (!avail.length) return '';
   const items = avail.map(t => {
     const cfg = t === 'stronghold' ? { icon: '👁️', name: 'Stronghold' } : STRUCTS[t];
@@ -1235,7 +1373,7 @@ $('searchInput').addEventListener('input', () => {
   const q = $('searchInput').value.trim().toLowerCase();
   if (q.length < 2) { $('searchDrop').classList.remove('open'); sMatches = []; return; }
   sMatches = SEARCH_INDEX
-    .filter(e => (e.minV || 0) <= versionNum() || e.kind !== 'structure')
+    .filter(e => e.kind !== 'structure' || ((e.minV || 0) <= versionNum() && resolveType(e.type)))
     .map(e => {
       let score = -1;
       for (const n of e.names) {
@@ -1268,6 +1406,7 @@ $('randomBtn').addEventListener('click', () => {
   applySeed();
 });
 $('versionSel').addEventListener('change', () => {
+  cache.clear();
   buildHotbar(); buildGuide(); buildOres();
   if (WORLD) { WORLD.version = versionNum(); refreshResults(); draw(); saveState(); }
 });
@@ -1298,24 +1437,41 @@ function applySeed() {
   const parsed = parseSeed($('seedInput').value);
   if (!parsed) { $('seedMeta').textContent = 'Type a seed first — numbers or words both work.'; return; }
   cache.clear();
-  WORLD = { seed: parsed.seed, version: versionNum() };
-  ui.strongholds = computeStrongholds();
+  const seed32 = Number(BigInt.asUintN(32, parsed.seed));
+  WORLD = { seed: parsed.seed, seed32, version: versionNum() };
+  ui.strongholds = isBedrock() ? computeStrongholdsBedrock(seed32) : computeStrongholds();
   ui.selected = null;
   $('detailPanel').style.display = 'none';
   $('seedMeta').innerHTML = (parsed.how === 'text'
     ? 'Text seed → the game turns it into number <b>' + parsed.seed + '</b>. '
     : 'Seed <b>' + parsed.seed + '</b>. ') +
+    (isBedrock() ? '<span style="color:var(--gold)">Bedrock mode.</span> ' : '') +
     'Markers are exact placement spots — biome permitting (see Questions below).';
   refreshResults(); draw(); saveState();
 }
+function setEdition(ed) {
+  ui.edition = ed;
+  cache.clear();
+  $('editionBadge').textContent = ed === 'bedrock' ? 'BEDROCK EDITION' : 'JAVA EDITION';
+  $('edBedrock').classList.toggle('active', ed === 'bedrock');
+  $('edJava').classList.toggle('active', ed === 'java');
+  $('versionSel').style.display = ed === 'bedrock' ? 'none' : '';
+  if (WORLD) ui.strongholds = isBedrock() ? computeStrongholdsBedrock(WORLD.seed32) : computeStrongholds();
+  ui.selected = null;
+  $('detailPanel').style.display = 'none';
+  buildHotbar(); buildGuide(); buildOres();
+  refreshResults(); draw(); saveState();
+}
+$('edBedrock').addEventListener('click', () => setEdition('bedrock'));
+$('edJava').addEventListener('click', () => setEdition('java'));
 function saveState() {
-  try { localStorage.setItem('seedseeker', JSON.stringify({ seed: $('seedInput').value, v: $('versionSel').value })); } catch (e) {}
+  try { localStorage.setItem('seedseeker', JSON.stringify({ seed: $('seedInput').value, v: $('versionSel').value, ed: ui.edition })); } catch (e) {}
 }
 function loadState() {
-  try {
-    const s = JSON.parse(localStorage.getItem('seedseeker'));
-    if (s && s.seed) { $('seedInput').value = s.seed; $('versionSel').value = s.v || '121'; applySeed(); }
-  } catch (e) {}
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('seedseeker')); } catch (e) {}
+  setEdition((s && s.ed) || 'bedrock');
+  if (s && s.seed) { $('seedInput').value = s.seed; $('versionSel').value = s.v || '121'; applySeed(); }
 }
 window.addEventListener('resize', resizeCanvas);
 applyTextures(); buildHotbar(); buildGuide(); buildOres();
