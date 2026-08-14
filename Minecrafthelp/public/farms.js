@@ -555,24 +555,127 @@ function buildGround(xLo, xHi, zLo, zHi, y) {
 
 const world = new THREE.Group();
 scene.add(world);
+scene.add(points);
 
-// tiny WebAudio "block place" thock
-let actx = null, soundOn = true;
-function placeSound() {
-  if (!soundOn) return;
+// ---------- sound engine: per-material synthesized block sounds ----------
+let actx = null, soundOn = true, lastSoundAt = 0;
+function ctx() {
+  actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+  return actx;
+}
+function blip({ f0 = 200, f1 = 90, dur = 0.1, wave = 'triangle', vol = 0.1 } = {}) {
   try {
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    const t = actx.currentTime;
-    const o = actx.createOscillator();
-    const g = actx.createGain();
-    o.type = 'triangle';
-    o.frequency.setValueAtTime(170 + Math.random() * 90, t);
-    o.frequency.exponentialRampToValueAtTime(75, t + 0.09);
-    g.gain.setValueAtTime(0.13, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
-    o.connect(g); g.connect(actx.destination);
-    o.start(t); o.stop(t + 0.14);
+    const a = ctx(), t = a.currentTime;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = wave;
+    o.frequency.setValueAtTime(f0 * (0.92 + Math.random() * 0.16), t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30, f1), t + dur * 0.8);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t); o.stop(t + dur + 0.02);
   } catch {}
+}
+function noiseBurst({ dur = 0.08, freq = 900, vol = 0.08 } = {}) {
+  try {
+    const a = ctx(), t = a.currentTime;
+    const n = Math.floor(a.sampleRate * dur);
+    const buf = a.createBuffer(1, n, a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = a.createBufferSource();
+    src.buffer = buf;
+    const f = a.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = freq * (0.8 + Math.random() * 0.4);
+    const g = a.createGain();
+    g.gain.value = vol;
+    src.connect(f); f.connect(g); g.connect(a.destination);
+    src.start(t);
+  } catch {}
+}
+function soundCat(type) {
+  const b = type.split('|')[0];
+  if (/water/.test(b)) return 'water';
+  if (/lava/.test(b)) return 'lava';
+  if (/(wheat|sugar_cane|torch|lever|redstone_wire|marker)/.test(b)) return 'plant';
+  if (/(dirt|grass_block|sand|farmland|bed_)/.test(b)) return 'soft';
+  if (/(piston|observer|hopper|trapdoor)/.test(b)) return 'metal';
+  if (/(planks|log|chest|glass)/.test(b)) return 'wood';
+  return 'stone';
+}
+function blockSound(type) {
+  if (!soundOn) return;
+  const now = performance.now();
+  if (now - lastSoundAt < 45) return; // rate limit: rapid steps become a build-arpeggio
+  lastSoundAt = now;
+  switch (soundCat(type)) {
+    case 'stone': blip({ f0: 150, f1: 65, dur: 0.11, vol: 0.11 }); noiseBurst({ freq: 650, dur: 0.06, vol: 0.05 }); break;
+    case 'wood': blip({ f0: 240, f1: 120, dur: 0.09, vol: 0.1 }); break;
+    case 'soft': noiseBurst({ freq: 480, dur: 0.09, vol: 0.09 }); break;
+    case 'metal': blip({ f0: 700, f1: 380, dur: 0.06, wave: 'square', vol: 0.045 }); break;
+    case 'water': blip({ f0: 280, f1: 520, dur: 0.12, wave: 'sine', vol: 0.08 }); noiseBurst({ freq: 1100, dur: 0.1, vol: 0.05 }); break;
+    case 'lava': noiseBurst({ freq: 260, dur: 0.2, vol: 0.1 }); break;
+    case 'plant': noiseBurst({ freq: 2100, dur: 0.05, vol: 0.05 }); break;
+  }
+}
+function placeSound() { blockSound('stone'); } // used by the sound-toggle preview
+
+// ---------- particle system: block-place dust puffs (pixel points) ----------
+const MAXP = 700;
+const pPos = new Float32Array(MAXP * 3);
+const pCol = new Float32Array(MAXP * 3);
+const pVel = new Float32Array(MAXP * 3);
+const pLife = new Float32Array(MAXP);
+pPos.fill(-999);
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+const pMat = new THREE.PointsMaterial({ size: 0.16, vertexColors: true });
+const points = new THREE.Points(pGeo, pMat);
+points.frustumCulled = false;
+let pNext = 0;
+
+const PARTICLE_COLORS = {
+  dirt: 0x79553a, grass_block: 0x6aa84f, farmland: 0x6b4a2f, sand: 0xdbd3a0,
+  stone: 0x7d7d7d, cobblestone: 0x767676, smooth_stone: 0x9a9a9a,
+  oak_planks: 0xb8945f, oak_log: 0x9a7d4d, chest: 0xa87e43, glass: 0xd6f0f5,
+  water: 0x3f76e4, lava: 0xe59026, redstone_wire: 0xcc0000,
+  piston: 0x8a8a8a, sticky_piston: 0x8a9a6a, observer: 0x666666, hopper: 0x4a4a4a,
+  wheat: 0xd5b45a, wheat_young: 0x7bb24a, sugar_cane: 0x71b755, torch: 0xffd84d,
+  trapdoor_top: 0xa07a45, bed_foot: 0xb02e26, bed_head: 0xe8e8e8, lever: 0x7d7d7d,
+};
+const _pc = new THREE.Color();
+function spawnBurst(x, y, z, type, count = 7) {
+  const hex = PARTICLE_COLORS[type.split('|')[0]] ?? 0x9a9a9a;
+  for (let k = 0; k < count; k++) {
+    const i = pNext; pNext = (pNext + 1) % MAXP;
+    pPos[i * 3] = x + (Math.random() - 0.5) * 0.8;
+    pPos[i * 3 + 1] = y + Math.random() * 0.5;
+    pPos[i * 3 + 2] = z + (Math.random() - 0.5) * 0.8;
+    pVel[i * 3] = (Math.random() - 0.5) * 3;
+    pVel[i * 3 + 1] = 1.5 + Math.random() * 2.5;
+    pVel[i * 3 + 2] = (Math.random() - 0.5) * 3;
+    _pc.setHex(hex);
+    _pc.offsetHSL(0, 0, (Math.random() - 0.5) * 0.15);
+    pCol[i * 3] = _pc.r; pCol[i * 3 + 1] = _pc.g; pCol[i * 3 + 2] = _pc.b;
+    pLife[i] = 0.45 + Math.random() * 0.3;
+  }
+  pGeo.attributes.color.needsUpdate = true;
+}
+function updateParticles(dt) {
+  let any = false;
+  for (let i = 0; i < MAXP; i++) {
+    if (pLife[i] <= 0) continue;
+    any = true;
+    pLife[i] -= dt;
+    if (pLife[i] <= 0) { pPos[i * 3 + 1] = -999; continue; }
+    pVel[i * 3 + 1] -= 9.5 * dt;
+    pPos[i * 3] += pVel[i * 3] * dt;
+    pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt;
+    pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt;
+  }
+  if (any) pGeo.attributes.position.needsUpdate = true;
 }
 
 // camera orbit
@@ -648,7 +751,7 @@ function applyStep(step, animate) {
     if (animate) {
       const base = mesh.scale.clone();
       mesh.scale.setScalar(0.001);
-      popping.push({ mesh, base, t: -i * 0.02 });
+      popping.push({ mesh, base, t: -i * 0.02, type, burst: false });
     }
   });
 }
@@ -663,7 +766,6 @@ function goToStep(n, animate = true) {
     for (let i = stepIndex + 1; i <= n; i++) applyStep(current.steps[i], animate);
   }
   stepIndex = n;
-  if (animate) placeSound();
   const st = current.steps[n];
   captionEl.innerHTML = `<span class="stepno">Step ${n + 1}/${current.steps.length}</span>${st.caption}` +
     (st.ed ? `<span class="ed">◆ ${st.ed}</span>` : '');
@@ -739,6 +841,9 @@ function loadTutorial(idx) {
   sun.target.updateMatrixWorld();
   updateCam();
   document.querySelectorAll('#tut-bar button').forEach((b, i) => b.classList.toggle('active', i === idx));
+  // link to real YouTube tutorials for this exact build
+  const q = encodeURIComponent('minecraft bedrock ' + current.name.replace(/[^\w\s]/g, '').trim() + ' tutorial');
+  document.getElementById('tut-yt').href = 'https://www.youtube.com/results?search_query=' + q;
   goToStep(0);
   setPlaying(true);
 }
@@ -786,14 +891,20 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.1);
 
-  // pop-in animation
+  // pop-in animation + dust burst + sound the moment each block appears
   for (const p of popping) {
     p.t += dt * 3;
+    if (!p.burst && p.t >= 0) {
+      p.burst = true;
+      spawnBurst(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, p.type);
+      blockSound(p.type);
+    }
     const s = Math.min(1, Math.max(0.001, p.t));
     const ease = 1 - Math.pow(1 - s, 3);
     p.mesh.scale.set(p.base.x * ease, p.base.y * ease, p.base.z * ease);
   }
   popping = popping.filter(p => p.t < 1);
+  updateParticles(dt);
 
   // animated water / lava frames
   waterFrame += dt * 8;

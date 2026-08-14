@@ -36,6 +36,12 @@ Rules:
 - For crafting recipes, show the 3x3 grid as a small ascii layout, e.g.:
   [plank][plank]
   [plank][plank]  -> Crafting Table
+- COMMANDS: when the player asks how to do something with commands or command blocks, give the EXACT
+  Bedrock edition syntax. Put every command in a fenced code block, ONE command per line, ready to
+  paste into Minecraft chat. Bedrock has NO NBT in commands (no curly braces) — never give Java NBT
+  syntax unless they ask for Java. Use current /execute syntax (execute as @a at @s run ...).
+  For command blocks, always say which type (impulse/chain/repeat), the condition setting
+  (conditional or not), and redstone setting (needs redstone / always active), plus how to wire it.
 - Stay on Minecraft topics. Be encouraging and fun, never use bad language.`;
 
 app.post('/api/chat', async (req, res) => {

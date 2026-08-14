@@ -316,6 +316,16 @@ function renderGuide(containerId, sections) {
         }));
         body.appendChild(icons);
       }
+      if (st.cmd) {
+        for (const c of (Array.isArray(st.cmd) ? st.cmd : [st.cmd])) {
+          const line = document.createElement('div');
+          line.className = 'cmdline';
+          line.innerHTML = `<code></code>`;
+          line.querySelector('code').textContent = c;
+          line.appendChild(makeCopyBtn(c));
+          body.appendChild(line);
+        }
+      }
       if (st.ed) { const e = document.createElement('span'); e.className = 'ednote'; e.textContent = '◆ ' + st.ed; body.appendChild(e); }
       if (st.tip) { const t = document.createElement('span'); t.className = 'tipnote'; t.textContent = '★ Tip: ' + st.tip; body.appendChild(t); }
       row.appendChild(num); row.appendChild(body);
@@ -324,8 +334,27 @@ function renderGuide(containerId, sections) {
     el.appendChild(s);
   });
 }
+function makeCopyBtn(text) {
+  const b = document.createElement('button');
+  b.className = 'copybtn';
+  b.textContent = '📋 Copy';
+  b.onclick = (e) => {
+    e.stopPropagation();
+    const done = () => { b.textContent = '✓ Copied!'; setTimeout(() => b.textContent = '📋 Copy', 1200); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, done);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove(); done();
+    }
+  };
+  return b;
+}
+
 renderGuide('tab-survival', window.SURVIVAL_GUIDE);
 renderGuide('tab-redstone', window.REDSTONE_GUIDE);
+renderGuide('tab-commands', window.COMMANDS_GUIDE);
 
 // ---------- chat ----------
 const chatLog = document.getElementById('chat-log');
@@ -414,6 +443,7 @@ async function askAI(question) {
       }
     }
     history.push({ role: 'assistant', content: full || '...' });
+    enhanceBubble(bubble);
   } catch (e) {
     if (e.name === 'AbortError') {
       bubble.innerHTML = mdLite((full || '') + '\n*(stopped)*');
@@ -426,6 +456,26 @@ async function askAI(question) {
   if (pendingQuestions.length) askAI(pendingQuestions.shift());
 }
 window.askAI = askAI;
+
+// add copy buttons to command/code blocks in AI answers
+function enhanceBubble(bubble) {
+  bubble.querySelectorAll('pre').forEach(pre => {
+    if (pre.querySelector('.copybtn')) return;
+    pre.appendChild(makeCopyBtn(pre.textContent.trim()));
+  });
+  bubble.querySelectorAll('code').forEach(c => {
+    const t = c.textContent.trim();
+    if (!t.startsWith('/') || c.closest('pre')) return;
+    c.style.cursor = 'pointer';
+    c.title = 'Click to copy';
+    c.onclick = () => {
+      navigator.clipboard && navigator.clipboard.writeText(t);
+      const old = c.style.background;
+      c.style.background = '#2f6b2f';
+      setTimeout(() => c.style.background = old, 600);
+    };
+  });
+}
 
 chatForm.onsubmit = (e) => {
   e.preventDefault();

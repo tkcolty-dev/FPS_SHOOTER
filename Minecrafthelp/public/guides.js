@@ -143,11 +143,79 @@ window.REDSTONE_GUIDE = [
   },
 ];
 
+// Commands guide — Bedrock syntax first (no NBT on Bedrock!), Java notes where different.
+window.COMMANDS_GUIDE = [
+  {
+    title: 'Command Basics',
+    icon: 'command_block',
+    steps: [
+      { text: 'Turn on cheats first: Settings → Game → **Activate Cheats**. (Heads up: this turns off achievements for that world — make a copy of your world if you care!)', icons: ['command_block'] },
+      { text: 'Open chat and start with **/**. The game suggests commands as you type — use the suggestions, they show you every option.', cmd: ['/help'] },
+      { text: '**Target selectors** — who the command hits: @s = yourself, @p = nearest player, @a = ALL players, @e = all entities, @r = random player. Add filters in brackets.', cmd: ['/kill @e[type=creeper,r=20]', '/tp @a[r=10] @s'] },
+      { text: '**Coordinates**: real numbers (100 65 -200), ~ means "relative to me" (~ ~5 ~ = 5 blocks above you), ^ means "in the direction I am looking" (^ ^ ^10 = 10 blocks ahead).', cmd: ['/tp @s ~ ~20 ~', '/setblock ^ ^ ^3 glass'] },
+      { text: 'Bedrock vs Java: Bedrock commands have **no NBT data** (no {Item:...} stuff). If a YouTube command has curly braces { } in it, that is Java-only.', ed: 'Everything on this page is Bedrock-tested syntax.' },
+    ],
+  },
+  {
+    title: 'Essential Commands',
+    icon: 'diamond',
+    steps: [
+      { text: '**Give yourself anything** (item name, amount):', cmd: ['/give @s diamond 64', '/give @s netherite_sword', '/give @s golden_apple 10'], icons: ['diamond', 'netherite_sword', 'golden_apple'] },
+      { text: '**Game modes** (0/s = survival, 1/c = creative):', cmd: ['/gamemode creative', '/gamemode survival'] },
+      { text: '**Teleport** — to coordinates, straight up, or to a friend:', cmd: ['/tp @s 100 80 -200', '/tp @s ~ ~50 ~', '/tp @s PlayerName'] },
+      { text: '**Time and weather**:', cmd: ['/time set day', '/time set night', '/weather clear', '/weather thunder'] },
+      { text: '**Effects** (effect, seconds, level, hide-particles). Level 255 = crazy:', cmd: ['/effect @s speed 600 3 true', '/effect @s jump_boost 60 5', '/effect @s clear'], icons: ['potion'] },
+      { text: '**Enchant** what you are holding:', cmd: ['/enchant @s sharpness 5', '/enchant @s mending 1'], icons: ['enchanted_book'] },
+      { text: '**Summon mobs** — yes, even the dragon:', cmd: ['/summon creeper', '/summon lightning_bolt', '/summon ender_dragon'], icons: ['creeper_spawn_egg', 'dragon_egg'] },
+      { text: '**Find structures**, then teleport to the coordinates it prints:', cmd: ['/locate structure village', '/locate structure stronghold', '/locate structure bastion_remnant', '/locate biome cherry_grove'] },
+      { text: '**Keep your stuff when you die** (do this in every world!):', cmd: ['/gamerule keepinventory true'], tip: 'Also great: /gamerule mobgriefing false stops creepers breaking your builds.' },
+      { text: '**XP**: L = levels:', cmd: ['/xp 30L @s', '/xp 500 @s'], icons: ['experience_bottle'] },
+    ],
+  },
+  {
+    title: 'Building Commands',
+    icon: 'bricks',
+    steps: [
+      { text: '**Place one block** anywhere:', cmd: ['/setblock ~ ~ ~ gold_block', '/setblock ~ ~-1 ~ water'] },
+      { text: '**Fill a whole area** (two corners). Max ~32,000 blocks per fill:', cmd: ['/fill ~ ~ ~ ~10 ~5 ~10 glass', '/fill ~ ~-1 ~ ~20 ~-1 ~20 grass_block'], icons: ['glass', 'grass_block'] },
+      { text: '**Hollow box** (instant house shell!) and **replace** mode:', cmd: ['/fill ~ ~ ~ ~10 ~6 ~10 stone hollow', '/fill ~-20 ~-5 ~-20 ~20 ~5 ~20 air replace stone'] },
+      { text: '**Copy-paste builds** — copy the box between two corners to a new spot:', cmd: ['/clone 0 64 0 20 80 20 100 64 100'] },
+      { text: '**Save a build forever** and paste it in any world location:', cmd: ['/structure save mybase 0 64 0 20 80 20', '/structure load mybase ~ ~ ~'], ed: 'Bedrock: /structure. Java uses structure blocks instead.' },
+    ],
+  },
+  {
+    title: 'Command Blocks',
+    icon: 'command_block',
+    steps: [
+      { text: 'Get one (creative/cheats only), place it, and put a command inside. Power it with a button, lever, or pressure plate.', cmd: ['/give @s command_block'], icons: ['command_block', 'stone_button', 'lever'] },
+      { text: '**3 types**: IMPULSE (orange) runs once when powered. CHAIN (green) runs after the block behind it. REPEAT (purple) runs every tick, forever.', icons: ['command_block', 'chain_command_block', 'repeating_command_block'] },
+      { text: 'In the command block screen: **Needs Redstone** = waits for power. **Always Active** = runs without wiring (use this for repeat blocks).', icons: ['redstone', 'repeating_command_block'] },
+      { text: '**Teleporter pad**: command block + pressure plate on top. Step on it, get teleported!', cmd: ['/tp @p 100 65 -200'], icons: ['stone_pressure_plate', 'command_block'] },
+      { text: '**Welcome sign in the sky**: impulse block + button. Shows a big title to everyone:', cmd: ['/title @a title Welcome to my base!', '/title @a subtitle No stealing.'], icons: ['oak_sign'] },
+      { text: '**Healing zone**: REPEAT + Always Active near your base — everyone close gets regeneration:', cmd: ['/execute as @a[r=10] at @s run effect @s regeneration 2 1 true'], ed: 'Bedrock uses the new /execute syntax (as ... at ... run) since 1.19.50 — same as Java now!' },
+      { text: '**Mob-proof yard**: REPEAT + Always Active, kills every monster within 30 blocks:', cmd: ['/execute at @s run kill @e[family=monster,r=30]'], tip: 'family=monster is a Bedrock superpower — one selector for all hostile mobs.' },
+      { text: '**Chain them**: point a CHAIN block into the back of another block — it fires right after. Build sequences: teleport → title → sound:', cmd: ['/playsound random.levelup @a'], icons: ['chain_command_block'] },
+    ],
+  },
+  {
+    title: 'Fun One-Liners',
+    icon: 'tnt',
+    steps: [
+      { text: 'Ride anything — spawn a mob then use this while looking at it... or just spawn a rideable strider with a saddle:', cmd: ['/summon strider ~ ~ ~', '/replaceitem entity @e[type=strider,c=1] slot.saddle 0 saddle'], icons: ['saddle'] },
+      { text: 'Rain TNT (careful!!):', cmd: ['/summon tnt ~ ~20 ~'], icons: ['tnt'] },
+      { text: 'Super jump + no fall damage:', cmd: ['/effect @s jump_boost 600 20 true', '/effect @s slow_falling 600 1 true'] },
+      { text: 'Instant pet army:', cmd: ['/summon wolf ~ ~ ~', '/summon cat ~ ~ ~'], icons: ['bone', 'cod'] },
+      { text: 'X-ray legally — hollow out stone around you to spot ores (undo with the second command):', cmd: ['/fill ~-15 ~-15 ~-15 ~15 ~15 ~15 glass replace stone', '/fill ~-15 ~-15 ~-15 ~15 ~15 ~15 stone replace glass'], icons: ['diamond_ore'] },
+      { text: 'The floor is lava (30 second warning included):', cmd: ['/title @a title THE FLOOR IS LAVA', '/fill ~-10 ~-1 ~-10 ~10 ~-1 ~10 lava'], tip: 'Test scary commands in a COPY of your world!' },
+    ],
+  },
+];
+
 window.CHAT_SUGGESTIONS = [
   'How do I make a beacon?',
   'Best enchantments for a sword?',
-  'How do I find a woodland mansion?',
+  'Give me the commands for a teleport hub with command blocks',
   'How do I cure a zombie villager?',
+  'Commands to make a parkour checkpoint system',
   'Make me an item sorter tutorial',
-  'What does a conduit do?',
 ];

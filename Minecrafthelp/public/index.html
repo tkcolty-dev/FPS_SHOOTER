@@ -188,6 +188,25 @@ main { flex: 1; overflow: hidden; position: relative; }
 .step .icons .slot { width: 40px; height: 40px; }
 .step .icons .slot img { width: 32px; height: 32px; }
 .ednote { color: #7a3fbf; font-size: 13.5px; display: block; margin-top: 4px; }
+/* copyable command lines */
+.cmdline {
+  display: flex; align-items: center; gap: 8px;
+  background: #111; color: #7fff7f;
+  border: 2px solid #444;
+  padding: 7px 10px; margin: 5px 0;
+  font-size: 14px;
+  max-width: 640px;
+  overflow-x: auto;
+}
+.cmdline code { flex: 1; white-space: nowrap; }
+.copybtn {
+  font-family: inherit; font-size: 12px; cursor: pointer; flex-shrink: 0;
+  background: #4c7f36; color: #fff; padding: 4px 8px;
+  border: 2px solid; border-color: #71b755 #2c4c1e #2c4c1e #71b755;
+}
+.copybtn:active { border-color: #2c4c1e #71b755 #71b755 #2c4c1e; }
+.bubble pre { position: relative; padding-right: 62px; }
+.bubble pre .copybtn { position: absolute; top: 6px; right: 6px; }
 .tipnote { color: #1f6b1f; font-size: 13.5px; display: block; margin-top: 4px; }
 
 /* ------- tutorials ("videos") ------- */
@@ -311,6 +330,7 @@ main { flex: 1; overflow: hidden; position: relative; }
     <button data-tab="recipes" class="active">⛏ Recipes</button>
     <button data-tab="survival">🧭 Survival Guide</button>
     <button data-tab="redstone">🟥 Redstone</button>
+    <button data-tab="commands">⌨ Commands</button>
     <button data-tab="tutorials">▶ Build Tutorials</button>
     <button data-tab="chat">🤖 Ask AI</button>
   </nav>
@@ -329,6 +349,7 @@ main { flex: 1; overflow: hidden; position: relative; }
   </div>
   <div class="tab" id="tab-survival"></div>
   <div class="tab" id="tab-redstone"></div>
+  <div class="tab" id="tab-commands"></div>
   <div class="tab" id="tab-tutorials">
     <div id="tut-bar"></div>
     <div id="tut-materials"></div>
@@ -343,6 +364,8 @@ main { flex: 1; overflow: hidden; position: relative; }
       <button id="tut-speed" title="Playback speed" style="width:auto;padding:0 10px;font-size:14px">1x</button>
       <button id="tut-view" title="Reset camera" style="font-size:15px">🎥</button>
       <button id="tut-sound" title="Sound on/off" style="font-size:15px">🔊</button>
+      <a id="tut-yt" target="_blank" title="Watch real video tutorials on YouTube"
+         style="font-family:inherit;font-size:14px;padding:10px 12px;cursor:pointer;background:#a12d2d;color:#fff;border:3px solid;border-color:#d05353 #5e1717 #5e1717 #d05353;text-decoration:none;text-shadow:1px 1px 0 #5e1717;white-space:nowrap">🎬 Real Videos</a>
       <input id="tut-scrub" type="range" min="0" max="10" value="0" step="1">
       <div id="tut-progress">0 / 0</div>
     </div>
