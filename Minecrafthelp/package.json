@@ -1,0 +1,20 @@
+{
+  "name": "minecrafthelp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "express": "^5.2.1",
+    "minecraft-assets": "^1.17.0",
+    "minecraft-data": "^3.113.1",
+    "three": "^0.185.1"
+  }
+}
