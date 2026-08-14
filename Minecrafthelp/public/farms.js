@@ -577,9 +577,57 @@ function goToStep(n, animate = true) {
   playTimer = 0;
 }
 
+// what item each schematic block type costs the player
+const MATERIAL_MAP = {
+  farmland: 'dirt', wheat_young: 'wheat_seeds', wheat: 'wheat_seeds',
+  water: 'water_bucket', lava: 'lava_bucket', redstone_wire: 'redstone',
+  trapdoor_top: 'oak_trapdoor', bed_foot: 'red_bed', bed_head: null,
+};
+function materialFor(type) {
+  if (type.startsWith('marker|')) return null;
+  const base = type.split('|')[0];
+  return base in MATERIAL_MAP ? MATERIAL_MAP[base] : base;
+}
+function computeMaterials(t) {
+  const state = new Map();
+  const counts = {};
+  const inc = (ty) => { const m = materialFor(ty); if (m) counts[m] = (counts[m] || 0) + 1; };
+  for (const st of t.steps) {
+    for (const list of [st.remove || [], st.replace || []]) {
+      for (const [x, y, z] of list) {
+        const k = `${x},${y},${z}`;
+        if (state.has(k)) { inc(state.get(k)); state.delete(k); } // was placed, so it was needed
+      }
+    }
+    for (const [x, y, z, ty] of st.blocks || []) state.set(`${x},${y},${z}`, ty);
+  }
+  for (const ty of state.values()) inc(ty);
+  // water/lava buckets: you only need one bucket, you can re-scoop
+  if (counts.water_bucket) counts.water_bucket = Math.min(counts.water_bucket, 2);
+  if (counts.lava_bucket) counts.lava_bucket = 1;
+  return counts;
+}
+function renderMaterials(t) {
+  const el = document.getElementById('tut-materials');
+  el.innerHTML = '<span class="mat-label">📦 You need:</span>';
+  const counts = computeMaterials(t);
+  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  for (const [name, n] of entries) {
+    const d = document.createElement('div');
+    d.className = 'mat';
+    const texUrl = (window.MC_TEX && window.MC_TEX[name]) || null;
+    const disp = name.replace(/_/g, ' ');
+    d.title = n + ' × ' + disp;
+    d.innerHTML = (texUrl ? `<img src="${texUrl}" alt="">` : `<span style="font-size:10px;color:#fff">${disp.slice(0, 3)}</span>`) +
+      (n > 1 ? `<span class="cnt">${n}</span>` : '');
+    el.appendChild(d);
+  }
+}
+
 function loadTutorial(idx) {
   current = TUTORIALS[idx];
   stepIndex = -1;
+  renderMaterials(current);
   // center camera on schematic bounds
   let min = [1e9, 1e9, 1e9], max = [-1e9, -1e9, -1e9];
   for (const st of current.steps) for (const [x, y, z] of (st.blocks || [])) {
@@ -605,6 +653,18 @@ playBtn.onclick = () => setPlaying(!playing);
 document.getElementById('tut-prev').onclick = () => { setPlaying(false); goToStep(stepIndex - 1); };
 document.getElementById('tut-next').onclick = () => { setPlaying(false); goToStep(stepIndex + 1); };
 scrub.oninput = () => { setPlaying(false); goToStep(Number(scrub.value)); };
+
+// playback speed + camera reset
+let playSpeed = 1;
+document.getElementById('tut-speed').onclick = (e) => {
+  playSpeed = playSpeed === 1 ? 2 : playSpeed === 2 ? 0.5 : 1;
+  e.target.textContent = playSpeed + 'x';
+};
+document.getElementById('tut-view').onclick = () => {
+  camTheta = 0.7; camPhi = 0.42; camDist = current ? (current.cam || 14) : 14;
+  autoSpin = true;
+  updateCam();
+};
 
 const bar = document.getElementById('tut-bar');
 TUTORIALS.forEach((t, i) => {
@@ -641,7 +701,7 @@ function animate() {
   // auto play: advance steps every ~4.5s
   if (playing && current) {
     playTimer += dt;
-    const dur = 4.5;
+    const dur = 4.5 / playSpeed;
     if (playTimer > dur) {
       if (stepIndex < current.steps.length - 1) goToStep(stepIndex + 1);
       else setPlaying(false);

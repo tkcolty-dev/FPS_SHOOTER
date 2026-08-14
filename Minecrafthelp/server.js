@@ -90,6 +90,7 @@ function chatViaCli(messages, send, res) {
   let sentText = false;
   let buf = '';
   const killer = setTimeout(() => child.kill(), 120000);
+  res.on('close', () => child.kill()); // user hit Stop / closed the tab
   child.stdout.on('data', (chunk) => {
     buf += chunk.toString();
     const lines = buf.split('\n');

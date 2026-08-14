@@ -50,10 +50,41 @@ const viewEl = document.getElementById('recipe-view');
 const craftable = RECIPES.map(r => r.r).filter(id => ITEMS[id]).sort((a, b) => dispById(a).localeCompare(dispById(b)));
 const allIds = Object.keys(ITEMS).map(Number).filter(id => ITEMS[id].n !== 'air').sort((a, b) => dispById(a).localeCompare(dispById(b)));
 
+// reverse index: ingredient id -> result ids ("used to craft")
+const usedIn = {};
+for (const r of RECIPES) {
+  const ings = r.s ? r.s.flat() : (r.i || []);
+  for (const id of new Set(ings.filter(x => x != null))) {
+    (usedIn[id] = usedIn[id] || []).push(r.r);
+  }
+}
+
+// item categories (heuristic by name + block/food flags from game data)
+function catOf(it) {
+  const n = it.n;
+  if (/(_pickaxe|_axe|_shovel|_hoe)$/.test(n) || ['shears', 'flint_and_steel', 'fishing_rod', 'brush', 'spyglass', 'compass', 'clock', 'bucket', 'lead', 'name_tag'].includes(n)) return 'tools';
+  if (/(sword$|^bow$|crossbow|^arrow$|trident|^mace$|tipped_arrow|spectral_arrow)/.test(n) || n === 'shield') return 'weapons';
+  if (/(_helmet$|_chestplate$|_leggings$|_boots$|horse_armor|wolf_armor)/.test(n) || n === 'elytra' || n === 'turtle_helmet') return 'armor';
+  if (it.f || /(^cooked_|bread|cake|cookie|pie$|stew$|soup$|golden_apple|berries|melon_slice)/.test(n)) return 'food';
+  if (/(redstone|piston|repeater|comparator|observer|hopper|dropper|dispenser|rail$|minecart|lever|button$|pressure_plate|tnt|daylight|sculk_sensor|^target$|copper_bulb|crafter|tripwire)/.test(n)) return 'redstone';
+  if (/(_ore$|^raw_|ingot$|nugget$|netherite_scrap|^diamond$|^emerald$|^coal$|^charcoal$|^quartz$|amethyst_shard|lapis_lazuli|ancient_debris)/.test(n)) return 'ores';
+  if (/(_log$|_wood$|_planks$|_sapling$|^stripped_|_leaves$)/.test(n)) return 'wood';
+  if (it.b) return 'blocks';
+  return 'other';
+}
+const CATS = [
+  ['all', '✳ All'], ['tools', '⛏ Tools'], ['weapons', '⚔ Weapons'], ['armor', '🛡 Armor'],
+  ['food', '🍖 Food'], ['redstone', '🟥 Redstone'], ['ores', '💎 Ores'], ['wood', '🪵 Wood'],
+  ['blocks', '🧱 Blocks'], ['other', '✨ Other'],
+];
+let currentCat = 'all';
+
 function renderGrid(filter) {
   gridEl.innerHTML = '';
   const q = (filter || '').toLowerCase();
-  const ids = q ? allIds.filter(id => dispById(id).toLowerCase().includes(q)) : allIds;
+  let ids = q ? allIds.filter(id => dispById(id).toLowerCase().includes(q)) : allIds;
+  if (currentCat !== 'all') ids = ids.filter(id => catOf(ITEMS[id]) === currentCat);
+  document.getElementById('recipe-count').textContent = ids.length + ' items';
   for (const id of ids) {
     const it = ITEMS[id];
     const known = recipeByResult[id] || window.howToGet(it.n);
@@ -61,6 +92,30 @@ function renderGrid(filter) {
     if (!known) d.style.opacity = 0.55;
     gridEl.appendChild(d);
   }
+}
+
+// "used to craft" section for the recipe panel
+function usesSection(id) {
+  const uses = (usedIn[id] || []).filter(r => ITEMS[r]);
+  if (!uses.length) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'ing-legend';
+  wrap.innerHTML = `<b>Used to craft (${uses.length}):</b>`;
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:3px;flex-wrap:wrap;margin-top:5px';
+  for (const rid of uses.slice(0, 16)) {
+    const s = slotEl(ITEMS[rid].n, dispById(rid), () => showRecipe(rid));
+    s.style.width = s.style.height = '40px';
+    row.appendChild(s);
+  }
+  if (uses.length > 16) {
+    const more = document.createElement('span');
+    more.textContent = `+${uses.length - 16} more`;
+    more.style.cssText = 'align-self:center;font-size:13px;color:#555;margin-left:6px';
+    row.appendChild(more);
+  }
+  wrap.appendChild(row);
+  return wrap;
 }
 
 let recipeHistory = [];
@@ -126,9 +181,11 @@ function showRecipe(id, push = true) {
       panel.innerHTML = `<h2>${iconHTML(it.n, 32)} ${it.d}</h2>
         <p style="margin:8px 0;color:#3f3f3f">This item has no crafting recipe — you find it, smelt it, trade for it, or get it from mobs.</p>`;
     }
+    const usesN = usesSection(id);
+    if (usesN) panel.appendChild(usesN);
     const b = document.createElement('button');
     b.textContent = '🤖 Ask AI more about it';
-    b.style.cssText = 'font-family:inherit;font-size:15px;padding:8px 14px;cursor:pointer;background:#4c7f36;color:#fff;border:3px solid;border-color:#71b755 #2c4c1e #2c4c1e #71b755';
+    b.style.cssText = 'font-family:inherit;font-size:15px;padding:8px 14px;margin-top:10px;cursor:pointer;background:#4c7f36;color:#fff;border:3px solid;border-color:#71b755 #2c4c1e #2c4c1e #71b755';
     b.onclick = () => { showTab('chat'); askAI(`How do I get ${it.d} in Minecraft Bedrock edition?`); };
     panel.appendChild(b);
     viewEl.appendChild(panel);
@@ -198,11 +255,25 @@ function showRecipe(id, push = true) {
     legend.appendChild(row);
   }
   panel.appendChild(legend);
+  const usesN = usesSection(id);
+  if (usesN) panel.appendChild(usesN);
   viewEl.appendChild(panel);
   viewEl.scrollIntoView({ behavior: 'smooth' });
 }
 
 searchBox.oninput = () => renderGrid(searchBox.value);
+const catsEl = document.getElementById('recipe-cats');
+for (const [key, label] of CATS) {
+  const b = document.createElement('button');
+  b.textContent = label;
+  if (key === 'all') b.classList.add('active');
+  b.onclick = () => {
+    currentCat = key;
+    catsEl.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    renderGrid(searchBox.value);
+  };
+  catsEl.appendChild(b);
+}
 renderGrid('');
 showRecipe(byName['crafting_table'].id);
 
@@ -268,6 +339,7 @@ function mdLite(text) {
   t = t.replace(/```([\s\S]*?)```/g, (_, c) => `<pre>${c.trim()}</pre>`);
   t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
   t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  t = t.replace(/(^|\s)\*([^*\n]+)\*/g, '$1<i>$2</i>');
   t = t.replace(/^#{1,4} (.*)$/gm, '<b style="color:#5b3a1e">$1</b>');
   // lists
   const lines = t.split('\n');
@@ -302,10 +374,18 @@ function addMsg(role, html) {
 }
 
 const pendingQuestions = [];
+let chatAbort = null;
+function setChatBusy(b) {
+  chatBusy = b;
+  const btn = document.getElementById('chat-send');
+  btn.textContent = b ? 'Stop' : 'Send';
+  btn.style.background = b ? '#8f3a2e' : '#4c7f36';
+}
 async function askAI(question) {
   if (!question.trim()) return;
   if (chatBusy) { pendingQuestions.push(question); return; }
-  chatBusy = true;
+  setChatBusy(true);
+  chatAbort = new AbortController();
   addMsg('user', mdLite(question));
   history.push({ role: 'user', content: question });
   const bubble = addMsg('ai', '<i>thinking...</i>');
@@ -315,6 +395,7 @@ async function askAI(question) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: history }),
+      signal: chatAbort.signal,
     });
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -334,9 +415,14 @@ async function askAI(question) {
     }
     history.push({ role: 'assistant', content: full || '...' });
   } catch (e) {
-    bubble.innerHTML = mdLite('Could not reach the AI: ' + e.message);
+    if (e.name === 'AbortError') {
+      bubble.innerHTML = mdLite((full || '') + '\n*(stopped)*');
+      history.push({ role: 'assistant', content: full || '(stopped)' });
+    } else {
+      bubble.innerHTML = mdLite('Could not reach the AI: ' + e.message);
+    }
   }
-  chatBusy = false;
+  setChatBusy(false);
   if (pendingQuestions.length) askAI(pendingQuestions.shift());
 }
 window.askAI = askAI;
@@ -344,9 +430,13 @@ window.askAI = askAI;
 chatForm.onsubmit = (e) => {
   e.preventDefault();
   const q = chatInput.value;
+  if (chatBusy && !q.trim()) { chatAbort && chatAbort.abort(); return; }
   chatInput.value = '';
   askAI(q);
 };
+document.getElementById('chat-send').addEventListener('click', (e) => {
+  if (chatBusy) { e.preventDefault(); chatAbort && chatAbort.abort(); }
+});
 
 const sugEl = document.getElementById('chat-suggestions');
 for (const s of window.CHAT_SUGGESTIONS) {

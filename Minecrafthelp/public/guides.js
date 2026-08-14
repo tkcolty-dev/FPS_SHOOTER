@@ -69,6 +69,39 @@ window.SURVIVAL_GUIDE = [
       { text: 'After the win: grab the egg with a piston or torch trick, then explore End Cities for **Elytra** wings!', icons: ['dragon_egg','elytra','firework_rocket'] },
     ],
   },
+  {
+    title: 'Villagers & Trading',
+    icon: 'emerald',
+    steps: [
+      { text: 'Villagers trade items for **emeralds** — often the fastest way to get diamonds gear, enchanted books, and rare stuff. Find a village or cure a zombie villager for HUGE discounts.', icons: ['emerald','golden_apple','potion'] },
+      { text: 'A jobless villager + a job block = a working villager. Best jobs: **Librarian** (lectern) sells enchanted books, **Farmer** (composter) buys crops, **Cleric** (brewing stand) buys rotten flesh!, **Armorer** (blast furnace) sells diamond armor.', icons: ['lectern','composter','brewing_stand','blast_furnace'] },
+      { text: 'Librarian trick: place the lectern, check the book trade, and if it is bad, BREAK the lectern and place it again — the trade rerolls until you lock it in by trading once.', icons: ['lectern','enchanted_book'] },
+      { text: 'Trade with a villager enough and it levels up (novice → master) and unlocks better trades. Emerald farming: grow a big crop farm and sell to farmers.', icons: ['wheat','carrot','emerald'] },
+      { text: 'Cure a zombie villager: weakness potion (splash) + golden apple. Takes a few minutes. Cured villagers give you near-1-emerald prices forever!', icons: ['splash_potion','golden_apple'], ed: 'Bedrock: discounts from curing are permanent and stack — cure the same villager twice for even better prices.' },
+    ],
+  },
+  {
+    title: 'Bosses: Wither & Warden',
+    icon: 'nether_star',
+    steps: [
+      { text: 'Summon the **WITHER**: 4 soul sand in a T shape + 3 wither skeleton skulls on top. Build it far from your base — the explosion is huge!', icons: ['soul_sand','wither_skeleton_skull'] },
+      { text: 'Wither strategy: fight it underground or at bedrock so it cannot fly away. Bring milk buckets (cures the Wither effect), golden apples, and a Smite sword.', icons: ['milk_bucket','golden_apple','diamond_sword'], ed: 'Bedrock: the Wither is MUCH harder — it has more health and a charge attack. Bring extra everything.' },
+      { text: 'It drops a **Nether Star** — craft a BEACON (glass + obsidian + star) for superpowers like Haste and Speed near your base!', icons: ['nether_star','beacon','glass','obsidian'] },
+      { text: 'The **WARDEN** lives in the Deep Dark. It is blind — it hunts by SOUND and smell. You are not supposed to fight it (it does 15 hearts per hit!). Sneak, throw snowballs to distract it, and loot the Ancient City.', icons: ['sculk_sensor','snowball','echo_shard'] },
+      { text: 'Warden survival rules: crouch-walk everywhere, place wool over sculk sensors (wool blocks sound), never trigger 3 shrieker screams, and if it spawns... RUN.', icons: ['white_wool','sculk_shrieker'], tip: 'Ancient City loot is worth it: enchanted golden apples, echo shards for the Recovery Compass, and Swift Sneak books!' },
+    ],
+  },
+  {
+    title: 'Trial Chambers',
+    icon: 'trial_key',
+    steps: [
+      { text: 'Trial Chambers are copper-and-tuff dungeons underground full of **Trial Spawners** — they spawn waves of mobs scaled to your party size, then give out loot!', icons: ['copper_block','tuff_bricks','trial_key'] },
+      { text: 'Beat a trial spawner to get **Trial Keys** — use them on Vaults (the block with the keyhole) for rewards. Each player can loot each vault ONCE.', icons: ['trial_key','emerald','diamond'] },
+      { text: 'Drink an **Ominous Bottle** (dropped by raid captains) to start harder OMINOUS trials — better loot, including Heavy Cores.', icons: ['ominous_bottle','heavy_core'] },
+      { text: 'The **MACE** is crafted from a Heavy Core + Breeze Rod. Smash attack: the further you FALL before hitting, the more damage — you can one-shot anything and take no fall damage!', icons: ['mace','heavy_core','breeze_rod'] },
+      { text: 'Breezes shoot wind charges that knock you around. Kill them for **Breeze Rods** and craft Wind Charges to jump-boost yourself!', icons: ['breeze_rod','wind_charge'], ed: 'Same on Bedrock and Java. Find chambers with a Trial Explorer map from cartographer villagers.' },
+    ],
+  },
 ];
 
 window.REDSTONE_GUIDE = [

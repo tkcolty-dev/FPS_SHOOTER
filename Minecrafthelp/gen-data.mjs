@@ -8,7 +8,11 @@ const mcData = require('minecraft-data')('26.1.2');
 const items = {};
 for (let id = 0; id < 2000; id++) {
   const it = mcData.items[id];
-  if (it) items[id] = { n: it.name, d: it.displayName };
+  if (it) {
+    items[id] = { n: it.name, d: it.displayName };
+    if (mcData.blocksByName && mcData.blocksByName[it.name]) items[id].b = 1;
+    if (mcData.foodsByName && mcData.foodsByName[it.name]) items[id].f = 1;
+  }
 }
 
 // Map item name -> real texture URL first, so recipe-variant picking can prefer textured items.
