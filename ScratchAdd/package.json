@@ -1,0 +1,20 @@
+{
+  "name": "scratchplus-studio",
+  "version": "1.0.0",
+  "description": "Multi-user Scratch-style studio with file uploads, paint tools, recipes, and .sb3 export",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "blockly": "^13.2.1",
+    "express": "^5.2.1",
+    "jszip": "^3.10.1",
+    "spark-md5": "^3.0.2",
+    "ws": "^8.21.3"
+  }
+}

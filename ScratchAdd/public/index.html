@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scratch+ Studio</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>🐱</text></svg>">
+</head>
+<body>
+<header id="topbar">
+  <div class="logo"><i class="dot d1"></i><i class="dot d2"></i><i class="dot d3"></i> Scratch<span>+</span> Studio</div>
+  <button id="btnFlag" class="btn flag" title="Run (everyone sees it)">⚑ Run</button>
+  <button id="btnStop" class="btn stop" title="Stop all">⬤ Stop</button>
+  <span class="sep"></span>
+  <div class="dropdown">
+    <button class="btn" id="btnRecipes">✨ Recipes ▾</button>
+    <div class="dropdown-menu" id="recipeMenu"></div>
+  </div>
+  <button class="btn" id="btnPaint">🎨 Paint</button>
+  <button class="btn" id="btnUpload" title="Add image/sound file to the selected sprite">📤 Upload</button>
+  <input type="file" id="fileInput" accept="image/*,audio/*" multiple hidden>
+  <span class="sep"></span>
+  <button class="btn primary" id="btnExport" title="Download a .sb3 you can upload to scratch.mit.edu">⬇ Export to Scratch</button>
+  <button class="btn danger" id="btnNew" title="Start over (for everyone!)">🗑 New</button>
+  <div class="spacer"></div>
+  <div id="userBar"></div>
+  <input id="nameInput" placeholder="your name" maxlength="20" title="Your name — other people see it">
+  <span id="connDot" title="connection">●</span>
+</header>
+
+<main>
+  <div id="blocklyDiv"></div>
+  <div id="rightPanel">
+    <div id="stageWrap">
+      <canvas id="stage" width="480" height="360"></canvas>
+      <div id="askBar" style="display:none">
+        <span id="askQuestion"></span>
+        <input id="askInput" placeholder="type your answer, press Enter">
+      </div>
+    </div>
+
+    <div id="propsPanel">
+      <div id="propsRow">
+        <label>x <input id="propX" type="number" step="1"></label>
+        <label>y <input id="propY" type="number" step="1"></label>
+        <label>size <input id="propSize" type="number" step="5" min="5"></label>
+        <label>dir <input id="propDir" type="number" step="15"></label>
+        <label class="chk"><input id="propVisible" type="checkbox"> show</label>
+        <select id="propRotStyle" title="rotation style">
+          <option value="all around">all around</option>
+          <option value="left-right">left–right</option>
+          <option value="don't rotate">don't rotate</option>
+        </select>
+      </div>
+      <div id="costumeRow"></div>
+      <div id="soundRow"></div>
+    </div>
+
+    <div id="spritePanel">
+      <div id="spriteList"></div>
+      <div id="spriteActions">
+        <button class="btn small" id="btnAddSprite" title="New random creature sprite">➕ Sprite</button>
+        <button class="btn small" id="btnAddSpriteFile" title="New sprite from an image file">🖼 From file</button>
+        <div id="stageChip" class="sprite-chip">
+          <img id="stageThumb" alt="stage">
+          <div>Stage</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="paintModal" class="modal" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">🎨 Draw a costume
+      <button class="btn small" id="paintClose">✕</button>
+    </div>
+    <div class="paint-tools">
+      <button class="btn small active" data-tool="brush">🖌 Brush</button>
+      <button class="btn small" data-tool="eraser">🧽 Eraser</button>
+      <button class="btn small" data-tool="line">╱ Line</button>
+      <button class="btn small" data-tool="rect">▮ Rect</button>
+      <button class="btn small" data-tool="ellipse">⬤ Circle</button>
+      <button class="btn small" data-tool="fill">🪣 Fill</button>
+      <input id="paintSize" type="range" min="2" max="60" value="12" title="brush size">
+      <button class="btn small" id="paintUndo">↩ Undo</button>
+      <button class="btn small" id="paintClear">🗑 Clear</button>
+    </div>
+    <div id="paintColors"></div>
+    <canvas id="paintCanvas" width="400" height="400"></canvas>
+    <div class="modal-actions">
+      <button class="btn primary" id="paintSave">✔ Add as costume</button>
+    </div>
+  </div>
+</div>
+
+<script src="/vendor/blockly.min.js"></script>
+<script src="/vendor/jszip.min.js"></script>
+<script src="blocks.js"></script>
+<script src="runtime.js"></script>
+<script src="export.js"></script>
+<script src="paint.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
