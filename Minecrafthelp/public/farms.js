@@ -480,20 +480,9 @@ if (renderer) {
 }
 const scene = new THREE.Scene();
 
-// gradient sky
-const skyCanvas = document.createElement('canvas');
-skyCanvas.width = 2; skyCanvas.height = 256;
-const skyCtx = skyCanvas.getContext('2d');
-const skyGrad = skyCtx.createLinearGradient(0, 0, 0, 256);
-skyGrad.addColorStop(0, '#5c9dff');
-skyGrad.addColorStop(0.72, '#a8ccff');
-skyGrad.addColorStop(1, '#d8ecff');
-skyCtx.fillStyle = skyGrad;
-skyCtx.fillRect(0, 0, 2, 256);
-const skyTex = new THREE.CanvasTexture(skyCanvas);
-skyTex.colorSpace = THREE.SRGBColorSpace;
-scene.background = skyTex;
-scene.fog = new THREE.Fog('#bcd8ff', 55, 110);
+// black night sky
+scene.background = new THREE.Color('#000000');
+scene.fog = new THREE.Fog('#000000', 55, 110);
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 300);
 scene.add(new THREE.AmbientLight(0xffffff, 0.75));
@@ -510,16 +499,25 @@ const sun2 = new THREE.DirectionalLight(0xbcd4ff, 0.5);
 sun2.position.set(-10, 12, -14);
 scene.add(sun2);
 
-// drifting clouds
+// stars instead of clouds on the black sky (clouds group kept for the drift animation)
 const clouds = new THREE.Group();
-const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
-for (let i = 0; i < 9; i++) {
-  const c = new THREE.Mesh(boxGeo, cloudMat);
-  c.scale.set(6 + Math.sin(i * 7) * 4 + 6, 0.8, 4 + Math.cos(i * 13) * 3 + 3);
-  c.position.set((i * 17 % 120) - 60, 26 + (i % 3) * 3, (i * 29 % 100) - 50);
-  clouds.add(c);
-}
 scene.add(clouds);
+{
+  const starPos = new Float32Array(350 * 3);
+  for (let i = 0; i < 350; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const b = Math.random() * Math.PI * 0.45 + 0.08; // keep stars above the horizon
+    const r = 130;
+    starPos[i * 3] = Math.cos(a) * Math.cos(b) * r;
+    starPos[i * 3 + 1] = Math.sin(b) * r;
+    starPos[i * 3 + 2] = Math.sin(a) * Math.cos(b) * r;
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.9, fog: false }));
+  stars.frustumCulled = false;
+  scene.add(stars);
+}
 
 // grass ground built as 4 rectangles around the build's footprint (so digs below ground stay visible)
 const groundGroup = new THREE.Group();
