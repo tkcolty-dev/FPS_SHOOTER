@@ -42,7 +42,7 @@ function showTab(name) {
 window.showTab = showTab;
 
 // ---------- recipes tab ----------
-const S = 3; // GUI pixel scale
+const S = window.innerWidth < 760 ? 2 : 3; // GUI pixel scale (smaller on phones)
 const searchBox = document.getElementById('recipe-search');
 const gridEl = document.getElementById('recipe-grid');
 const viewEl = document.getElementById('recipe-view');
@@ -201,7 +201,7 @@ function showRecipe(id, push = true) {
   const gui = document.createElement('div');
   gui.className = 'craft-gui';
   gui.style.width = 176 * S + 'px';
-  gui.style.height = 166 * S + 'px';
+  gui.style.height = 80 * S + 'px'; // crop to the crafting area (skip the empty inventory half)
   gui.style.backgroundSize = 256 * S + 'px ' + 256 * S + 'px';
 
   // 3x3 grid cells: interior starts at (31,18), pitch 18px. Result interior at (124,35).
@@ -388,7 +388,7 @@ async function askAI(question) {
   chatAbort = new AbortController();
   addMsg('user', mdLite(question));
   history.push({ role: 'user', content: question });
-  const bubble = addMsg('ai', '<i>thinking...</i>');
+  const bubble = addMsg('ai', '<span class="thinking">⛏ mining an answer<span class="dots"></span></span>');
   let full = '';
   try {
     const res = await fetch('/api/chat', {

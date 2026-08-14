@@ -47,7 +47,8 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.flushHeaders();
   const send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
-  if (USE_CLI) return chatViaCli(messages, send, res);
+  const recent = messages.slice(-12); // keep the AI fast: only recent history
+  if (USE_CLI) return chatViaCli(recent, send, res);
   try {
     const stream = client.beta.messages.stream({
       model: 'claude-opus-5',
@@ -56,7 +57,7 @@ app.post('/api/chat', async (req, res) => {
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
       system: SYSTEM,
-      messages: messages.map(m => ({ role: m.role, content: m.content })),
+      messages: recent.map(m => ({ role: m.role, content: m.content })),
     });
     stream.on('text', (t) => send({ t }));
     const final = await stream.finalMessage();

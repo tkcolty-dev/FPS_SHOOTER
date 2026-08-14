@@ -165,6 +165,7 @@ function blockMesh(type) {
   const mesh = new THREE.Mesh(boxGeo, materials);
   if (type === 'chest' || type === 'hopper') mesh.scale.set(0.92, 0.92, 0.92);
   if (type === 'water' || type === 'lava') mesh.scale.set(1, 0.88, 1);
+  else { mesh.castShadow = true; mesh.receiveShadow = true; }
   return mesh;
 }
 
@@ -463,23 +464,116 @@ const TUTORIALS = [];
 
 // ---------- three.js scene ----------
 const holder = document.getElementById('tut-canvas-holder');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-holder.appendChild(renderer.domElement);
+let renderer = null;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  holder.innerHTML = `<div style="display:flex;height:100%;align-items:center;justify-content:center;text-align:center;padding:30px;background:#1c1c1c">
+    <div style="max-width:520px;color:#fff;font-size:16px;line-height:1.7">🎮 The 3D viewer could not start because your browser turned off graphics (WebGL).<br><br>
+    <b style="color:#ffff55">Fix: fully quit and reopen your browser</b>, then come back — the tutorials will work again. Everything else in the app still works!</div></div>`;
+}
+if (renderer) {
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  holder.appendChild(renderer.domElement);
+}
 const scene = new THREE.Scene();
-scene.background = new THREE.Color('#78a7ff');
-scene.fog = new THREE.Fog('#78a7ff', 40, 90);
-const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
+
+// gradient sky
+const skyCanvas = document.createElement('canvas');
+skyCanvas.width = 2; skyCanvas.height = 256;
+const skyCtx = skyCanvas.getContext('2d');
+const skyGrad = skyCtx.createLinearGradient(0, 0, 0, 256);
+skyGrad.addColorStop(0, '#5c9dff');
+skyGrad.addColorStop(0.72, '#a8ccff');
+skyGrad.addColorStop(1, '#d8ecff');
+skyCtx.fillStyle = skyGrad;
+skyCtx.fillRect(0, 0, 2, 256);
+const skyTex = new THREE.CanvasTexture(skyCanvas);
+skyTex.colorSpace = THREE.SRGBColorSpace;
+scene.background = skyTex;
+scene.fog = new THREE.Fog('#bcd8ff', 55, 110);
+
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 300);
 scene.add(new THREE.AmbientLight(0xffffff, 0.75));
 const sun = new THREE.DirectionalLight(0xffffff, 1.6);
-sun.position.set(12, 20, 8);
+sun.position.set(18, 30, 12);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 100;
+sun.shadow.bias = -0.002;
 scene.add(sun);
 const sun2 = new THREE.DirectionalLight(0xbcd4ff, 0.5);
 sun2.position.set(-10, 12, -14);
 scene.add(sun2);
 
+// drifting clouds
+const clouds = new THREE.Group();
+const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 });
+for (let i = 0; i < 9; i++) {
+  const c = new THREE.Mesh(boxGeo, cloudMat);
+  c.scale.set(6 + Math.sin(i * 7) * 4 + 6, 0.8, 4 + Math.cos(i * 13) * 3 + 3);
+  c.position.set((i * 17 % 120) - 60, 26 + (i % 3) * 3, (i * 29 % 100) - 50);
+  clouds.add(c);
+}
+scene.add(clouds);
+
+// grass ground built as 4 rectangles around the build's footprint (so digs below ground stay visible)
+const groundGroup = new THREE.Group();
+scene.add(groundGroup);
+function makeGroundMat() {
+  const t = tex('grass_block_top');
+  const g = t.clone();
+  g.wrapS = g.wrapT = THREE.RepeatWrapping;
+  g.magFilter = THREE.NearestFilter;
+  g.minFilter = THREE.NearestFilter;
+  g.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.MeshLambertMaterial({ map: g, color: new THREE.Color(GRASS) });
+}
+function buildGround(xLo, xHi, zLo, zHi, y) {
+  groundGroup.clear();
+  const E = 60;
+  const rects = [
+    [-E, xLo, -E, E], [xHi, E, -E, E],   // west / east strips
+    [xLo, xHi, -E, zLo], [xLo, xHi, zHi, E], // front / back strips
+  ];
+  for (const [x0, x1, z0, z1] of rects) {
+    const w = x1 - x0, h = z1 - z0;
+    if (w <= 0 || h <= 0) continue;
+    const mat = makeGroundMat();
+    mat.map.repeat.set(w, h);
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+    p.rotation.x = -Math.PI / 2;
+    p.position.set(x0 + w / 2, y + 0.01, z0 + h / 2);
+    p.receiveShadow = true;
+    groundGroup.add(p);
+  }
+}
+
 const world = new THREE.Group();
 scene.add(world);
+
+// tiny WebAudio "block place" thock
+let actx = null, soundOn = true;
+function placeSound() {
+  if (!soundOn) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = actx.currentTime;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(170 + Math.random() * 90, t);
+    o.frequency.exponentialRampToValueAtTime(75, t + 0.09);
+    g.gain.setValueAtTime(0.13, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+    o.connect(g); g.connect(actx.destination);
+    o.start(t); o.stop(t + 0.14);
+  } catch {}
+}
 
 // camera orbit
 let camTheta = 0.7, camPhi = 0.42, camDist = 16, camTarget = new THREE.Vector3(4, 2, 3);
@@ -505,6 +599,7 @@ window.addEventListener('pointermove', e => {
 holder.addEventListener('wheel', e => { e.preventDefault(); camDist = Math.min(50, Math.max(5, camDist + e.deltaY * 0.02)); updateCam(); }, { passive: false });
 
 function resize() {
+  if (!renderer) return;
   const w = holder.clientWidth, h = holder.clientHeight;
   if (!w || !h) return;
   renderer.setSize(w, h);
@@ -568,6 +663,7 @@ function goToStep(n, animate = true) {
     for (let i = stepIndex + 1; i <= n; i++) applyStep(current.steps[i], animate);
   }
   stepIndex = n;
+  if (animate) placeSound();
   const st = current.steps[n];
   captionEl.innerHTML = `<span class="stepno">Step ${n + 1}/${current.steps.length}</span>${st.caption}` +
     (st.ed ? `<span class="ed">◆ ${st.ed}</span>` : '');
@@ -637,6 +733,10 @@ function loadTutorial(idx) {
   camTarget.set((min[0] + max[0]) / 2 + 0.5, (min[1] + max[1]) / 2 + 0.5, (min[2] + max[2]) / 2 + 0.5);
   camDist = current.cam || 14;
   autoSpin = true;
+  // grass field around the build, at the build's lowest level
+  buildGround(min[0] - 0.5, max[0] + 1.5, min[2] - 0.5, max[2] + 1.5, Math.min(0, min[1]));
+  sun.target.position.copy(camTarget);
+  sun.target.updateMatrixWorld();
   updateCam();
   document.querySelectorAll('#tut-bar button').forEach((b, i) => b.classList.toggle('active', i === idx));
   goToStep(0);
@@ -664,6 +764,11 @@ document.getElementById('tut-view').onclick = () => {
   camTheta = 0.7; camPhi = 0.42; camDist = current ? (current.cam || 14) : 14;
   autoSpin = true;
   updateCam();
+};
+document.getElementById('tut-sound').onclick = (e) => {
+  soundOn = !soundOn;
+  e.target.textContent = soundOn ? '🔊' : '🔇';
+  if (soundOn) placeSound();
 };
 
 const bar = document.getElementById('tut-bar');
@@ -710,10 +815,16 @@ function animate() {
 
   if (autoSpin) { camTheta += dt * 0.12; updateCam(); }
 
+  // clouds drift and wrap
+  for (const c of clouds.children) {
+    c.position.x += dt * 0.8;
+    if (c.position.x > 70) c.position.x = -70;
+  }
+
   resize();
   renderer.render(scene, camera);
 }
 loadTutorial(0);
 setPlaying(false);
 updateCam();
-animate();
+if (renderer) animate();
