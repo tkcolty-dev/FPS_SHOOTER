@@ -16,7 +16,7 @@ function initialsFor(name) {
 }
 // icon as HTML: real texture img, or a "missing texture" initials tile
 function iconHTML(name, px) {
-  if (TEX[name]) return `<img src="${TEX[name]}"${px ? ` style="width:${px}px;height:${px}px;vertical-align:-6px"` : ''} alt="">`;
+  if (TEX[name]) return `<img loading="lazy" src="${TEX[name]}"${px ? ` style="width:${px}px;height:${px}px;vertical-align:-6px"` : ''} alt="">`;
   const style = px ? ` style="width:${px}px;height:${px}px;font-size:${Math.max(8, Math.floor(px * 0.3))}px;vertical-align:-6px"` : '';
   return `<span class="noicon"${style}>${initialsFor(name)}</span>`;
 }
@@ -53,11 +53,12 @@ const allIds = Object.keys(ITEMS).map(Number).filter(id => ITEMS[id].n !== 'air'
 function renderGrid(filter) {
   gridEl.innerHTML = '';
   const q = (filter || '').toLowerCase();
-  const ids = q ? allIds.filter(id => dispById(id).toLowerCase().includes(q)) : craftable;
-  for (const id of ids.slice(0, 400)) {
+  const ids = q ? allIds.filter(id => dispById(id).toLowerCase().includes(q)) : allIds;
+  for (const id of ids) {
     const it = ITEMS[id];
-    const d = slotEl(it.n, it.d + (recipeByResult[id] ? '' : ' (no crafting recipe)'), () => showRecipe(id));
-    if (!recipeByResult[id]) d.style.opacity = 0.45;
+    const known = recipeByResult[id] || window.howToGet(it.n);
+    const d = slotEl(it.n, it.d + (known ? '' : ' (ask the AI about this one)'), () => showRecipe(id));
+    if (!known) d.style.opacity = 0.55;
     gridEl.appendChild(d);
   }
 }
@@ -82,10 +83,51 @@ function showRecipe(id, push = true) {
   panel.style.display = 'inline-block';
 
   if (!rec) {
-    panel.innerHTML = `<h2>${iconHTML(it.n, 32)} ${it.d}</h2>
-      <p style="margin:8px 0;color:#3f3f3f">This item has no crafting recipe — you find it, smelt it, trade for it, or get it from mobs.</p>`;
+    const how = window.howToGet(it.n);
+    if (how && how.type === 'smelt') {
+      // real furnace GUI with input -> output
+      panel.innerHTML = `<h2>${iconHTML(it.n, 32)} ${it.d} <span class="badge">smelting</span></h2>`;
+      const gui = document.createElement('div');
+      gui.className = 'craft-gui';
+      gui.style.backgroundImage = "url('tex/gui/furnace.png')";
+      gui.style.width = 176 * S + 'px';
+      gui.style.height = 88 * S + 'px';
+      gui.style.backgroundSize = 256 * S + 'px ' + 256 * S + 'px';
+      const addSlot = (name, x, y, click) => {
+        const el = document.createElement(TEX[name] ? 'img' : 'div');
+        el.className = TEX[name] ? 'slot-item' : 'slot-item noicon';
+        if (TEX[name]) el.src = TEX[name]; else el.textContent = initialsFor(name);
+        el.title = byName[name] ? byName[name].d : name;
+        el.style.cssText = `position:absolute;left:${x * S}px;top:${y * S}px;width:${16 * S}px;height:${16 * S}px;font-size:${5 * S}px${click ? ';cursor:pointer' : ''}`;
+        if (click) el.onclick = click;
+        gui.appendChild(el);
+      };
+      const input = byName[how.input];
+      addSlot(how.input, 57, 18, input ? () => showRecipe(input.id) : null);
+      addSlot('coal', 57, 54, byName['coal'] ? () => showRecipe(byName['coal'].id) : null);
+      addSlot(it.n, 117, 36);
+      panel.appendChild(gui);
+      const legend = document.createElement('div');
+      legend.className = 'ing-legend';
+      legend.innerHTML = `<b>Smelt in a furnace:</b><div style="cursor:pointer">${iconHTML(how.input, 24)} 1 × ${input ? input.d : how.input} → ${iconHTML(it.n, 24)} 1 × ${it.d}</div>
+        <div style="opacity:.8">Any fuel works: coal, charcoal, wood, lava bucket...</div>`;
+      if (input) legend.children[0].onclick = () => showRecipe(input.id);
+      panel.appendChild(legend);
+    } else if (how && how.type === 'info') {
+      panel.innerHTML = `<h2>${iconHTML(it.n, 32)} ${it.d} <span class="badge">how to get it</span></h2>
+        <p style="margin:10px 0;color:#3f3f3f;font-size:15px;line-height:1.6;max-width:520px">${how.text}</p>`;
+      if (how.icons && how.icons.length) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 12px';
+        for (const n of how.icons) row.appendChild(slotEl(n, null, byName[n] ? () => showRecipe(byName[n].id) : null));
+        panel.appendChild(row);
+      }
+    } else {
+      panel.innerHTML = `<h2>${iconHTML(it.n, 32)} ${it.d}</h2>
+        <p style="margin:8px 0;color:#3f3f3f">This item has no crafting recipe — you find it, smelt it, trade for it, or get it from mobs.</p>`;
+    }
     const b = document.createElement('button');
-    b.textContent = '🤖 Ask AI how to get it';
+    b.textContent = '🤖 Ask AI more about it';
     b.style.cssText = 'font-family:inherit;font-size:15px;padding:8px 14px;cursor:pointer;background:#4c7f36;color:#fff;border:3px solid;border-color:#71b755 #2c4c1e #2c4c1e #71b755';
     b.onclick = () => { showTab('chat'); askAI(`How do I get ${it.d} in Minecraft Bedrock edition?`); };
     panel.appendChild(b);
