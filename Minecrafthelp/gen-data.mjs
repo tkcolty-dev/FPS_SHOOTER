@@ -61,6 +61,25 @@ for (const t of texJson) {
   const file = `public/tex/item/${t.name}.png`;
   if (fs.existsSync(file)) texByName[t.name] = `tex/item/${t.name}.png`;
 }
+// Second pass for items the (older) mapping file doesn't know: match texture files
+// directly by name, trying face-variants and un-waxed base names.
+function findTexFile(name) {
+  const tryNames = [name, name + '_side', name + '_top', name + '_front', name + '_still'];
+  if (name.startsWith('waxed_')) tryNames.push(name.slice(6), name.slice(6) + '_side', name.slice(6) + '_top');
+  const base = name.replace(/_(slab|stairs|wall|fence|fence_gate|pressure_plate|button)$/, '');
+  if (base !== name) tryNames.push(base, base + '_planks', base + '_block', base + 's');
+  for (const n of tryNames) {
+    if (fs.existsSync(`public/tex/item/${n}.png`)) return `tex/item/${n}.png`;
+    if (fs.existsSync(`public/tex/block/${n}.png`)) return `tex/block/${n}.png`;
+  }
+  return null;
+}
+for (const it of Object.values(items)) {
+  if (!texByName[it.n]) {
+    const f = findTexFile(it.n);
+    if (f) texByName[it.n] = f;
+  }
+}
 
 const out = `// Auto-generated from minecraft-data (Java 26.1.2) + real game textures (1.21.8 assets).
 window.MC_ITEMS = ${JSON.stringify(items)};

@@ -10,11 +10,21 @@ for (const r of RECIPES) recipeByResult[r.r] = r;
 function iconUrl(name) { return TEX[name] || 'tex/item/barrier.png'; }
 function iconById(id) { return ITEMS[id] ? iconUrl(ITEMS[id].n) : 'tex/item/barrier.png'; }
 function dispById(id) { return ITEMS[id] ? ITEMS[id].d : '?'; }
+function initialsFor(name) {
+  const d = byName[name] ? byName[name].d : name;
+  return d.split(' ').map(w => w[0]).join('').slice(0, 3).toUpperCase();
+}
+// icon as HTML: real texture img, or a "missing texture" initials tile
+function iconHTML(name, px) {
+  if (TEX[name]) return `<img src="${TEX[name]}"${px ? ` style="width:${px}px;height:${px}px;vertical-align:-6px"` : ''} alt="">`;
+  const style = px ? ` style="width:${px}px;height:${px}px;font-size:${Math.max(8, Math.floor(px * 0.3))}px;vertical-align:-6px"` : '';
+  return `<span class="noicon"${style}>${initialsFor(name)}</span>`;
+}
 function slotEl(name, title, onclick) {
   const d = document.createElement('div');
   d.className = 'slot';
   d.title = title || (byName[name] ? byName[name].d : name);
-  d.innerHTML = `<img src="${iconUrl(name)}" alt="">`;
+  d.innerHTML = iconHTML(name);
   if (onclick) d.onclick = onclick;
   return d;
 }
@@ -37,9 +47,8 @@ const searchBox = document.getElementById('recipe-search');
 const gridEl = document.getElementById('recipe-grid');
 const viewEl = document.getElementById('recipe-view');
 
-const hasTexId = (id) => ITEMS[id] && TEX[ITEMS[id].n];
-const craftable = RECIPES.map(r => r.r).filter(hasTexId).sort((a, b) => dispById(a).localeCompare(dispById(b)));
-const allIds = Object.keys(ITEMS).map(Number).filter(hasTexId).sort((a, b) => dispById(a).localeCompare(dispById(b)));
+const craftable = RECIPES.map(r => r.r).filter(id => ITEMS[id]).sort((a, b) => dispById(a).localeCompare(dispById(b)));
+const allIds = Object.keys(ITEMS).map(Number).filter(id => ITEMS[id].n !== 'air').sort((a, b) => dispById(a).localeCompare(dispById(b)));
 
 function renderGrid(filter) {
   gridEl.innerHTML = '';
@@ -73,7 +82,7 @@ function showRecipe(id, push = true) {
   panel.style.display = 'inline-block';
 
   if (!rec) {
-    panel.innerHTML = `<h2><img src="${iconUrl(it.n)}" style="width:32px;height:32px;vertical-align:-6px"> ${it.d}</h2>
+    panel.innerHTML = `<h2>${iconHTML(it.n, 32)} ${it.d}</h2>
       <p style="margin:8px 0;color:#3f3f3f">This item has no crafting recipe — you find it, smelt it, trade for it, or get it from mobs.</p>`;
     const b = document.createElement('button');
     b.textContent = '🤖 Ask AI how to get it';
@@ -86,7 +95,7 @@ function showRecipe(id, push = true) {
   }
 
   const shapeless = !rec.s;
-  panel.innerHTML = `<h2><img src="${iconUrl(it.n)}" style="width:32px;height:32px;vertical-align:-6px"> ${it.d}
+  panel.innerHTML = `<h2>${iconHTML(it.n, 32)} ${it.d}
     ${shapeless ? '<span class="badge">shapeless</span>' : ''}${rec.c > 1 ? `<span class="badge">makes ${rec.c}</span>` : ''}</h2>`;
 
   // The real crafting table GUI, scaled up
@@ -112,19 +121,20 @@ function showRecipe(id, push = true) {
   const counts = {};
   for (const cell of cells) {
     counts[cell.id] = (counts[cell.id] || 0) + 1;
-    const img = document.createElement('img');
-    img.className = 'slot-item';
-    img.src = iconById(cell.id);
+    const cname = ITEMS[cell.id] ? ITEMS[cell.id].n : '?';
+    const img = document.createElement(TEX[cname] ? 'img' : 'div');
+    img.className = TEX[cname] ? 'slot-item' : 'slot-item noicon';
+    if (TEX[cname]) img.src = TEX[cname]; else img.textContent = initialsFor(cname);
     img.title = dispById(cell.id);
-    img.style.cssText = `left:${(31 + cell.col * 18) * S}px;top:${(18 + cell.row * 18) * S}px;width:${16 * S}px;height:${16 * S}px;cursor:pointer`;
+    img.style.cssText = `position:absolute;left:${(31 + cell.col * 18) * S}px;top:${(18 + cell.row * 18) * S}px;width:${16 * S}px;height:${16 * S}px;cursor:pointer;font-size:${5 * S}px`;
     img.onclick = () => showRecipe(cell.id);
     gui.appendChild(img);
   }
-  const out = document.createElement('img');
-  out.className = 'slot-item';
-  out.src = iconById(id);
+  const out = document.createElement(TEX[it.n] ? 'img' : 'div');
+  out.className = TEX[it.n] ? 'slot-item' : 'slot-item noicon';
+  if (TEX[it.n]) out.src = TEX[it.n]; else out.textContent = initialsFor(it.n);
   out.title = it.d;
-  out.style.cssText = `left:${124 * S}px;top:${35 * S}px;width:${16 * S}px;height:${16 * S}px`;
+  out.style.cssText = `position:absolute;left:${124 * S}px;top:${35 * S}px;width:${16 * S}px;height:${16 * S}px;font-size:${5 * S}px`;
   gui.appendChild(out);
   if (rec.c > 1) {
     const cnt = document.createElement('div');
@@ -140,7 +150,7 @@ function showRecipe(id, push = true) {
   legend.innerHTML = '<b>You need:</b>';
   for (const [iid, n] of Object.entries(counts)) {
     const row = document.createElement('div');
-    row.innerHTML = `<img src="${iconById(iid)}"> ${n} × ${dispById(iid)}`;
+    row.innerHTML = `${iconHTML(ITEMS[iid] ? ITEMS[iid].n : '?', 24)} ${n} × ${dispById(iid)}`;
     row.style.cursor = 'pointer';
     row.onclick = () => showRecipe(Number(iid));
     legend.appendChild(row);

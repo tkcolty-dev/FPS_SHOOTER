@@ -96,6 +96,15 @@ main { flex: 1; overflow: hidden; position: relative; }
 }
 .slot img { width: 40px; height: 40px; }
 .slot:hover { background: #a0a0a0; }
+/* "missing texture" fallback tile (magenta/black checker, like in-game) */
+.noicon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px;
+  background: repeating-conic-gradient(#f800f8 0% 25%, #000 0% 50%) 0 0 / 50% 50%;
+  color: #fff; font-size: 12px; text-shadow: 1px 1px 0 #000;
+  overflow: hidden;
+}
+.icons .slot .noicon { width: 32px; height: 32px; font-size: 10px; }
 .slot .cnt {
   position: absolute; right: 1px; bottom: 0;
   font-size: 14px; color: #fff;
