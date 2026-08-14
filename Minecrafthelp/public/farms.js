@@ -555,7 +555,6 @@ function buildGround(xLo, xHi, zLo, zHi, y) {
 
 const world = new THREE.Group();
 scene.add(world);
-scene.add(points);
 
 // ---------- sound engine: per-material synthesized block sounds ----------
 let actx = null, soundOn = true, lastSoundAt = 0;
@@ -634,6 +633,7 @@ pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
 const pMat = new THREE.PointsMaterial({ size: 0.16, vertexColors: true });
 const points = new THREE.Points(pGeo, pMat);
 points.frustumCulled = false;
+scene.add(points);
 let pNext = 0;
 
 const PARTICLE_COLORS = {
@@ -836,7 +836,7 @@ function loadTutorial(idx) {
   camDist = current.cam || 14;
   autoSpin = true;
   // grass field around the build, at the build's lowest level
-  buildGround(min[0] - 0.5, max[0] + 1.5, min[2] - 0.5, max[2] + 1.5, Math.min(0, min[1]));
+  buildGround(min[0], max[0] + 1, min[2], max[2] + 1, Math.min(0, min[1]));
   sun.target.position.copy(camTarget);
   sun.target.updateMatrixWorld();
   updateCam();
