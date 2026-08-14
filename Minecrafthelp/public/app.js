@@ -417,6 +417,7 @@ async function askAI(question) {
   chatAbort = new AbortController();
   addMsg('user', mdLite(question));
   history.push({ role: 'user', content: question });
+  saveChat();
   const bubble = addMsg('ai', '<span class="thinking">⛏ mining an answer<span class="dots"></span></span>');
   let full = '';
   try {
@@ -452,6 +453,7 @@ async function askAI(question) {
       bubble.innerHTML = mdLite('Could not reach the AI: ' + e.message);
     }
   }
+  saveChat();
   setChatBusy(false);
   if (pendingQuestions.length) askAI(pendingQuestions.shift());
 }
@@ -495,4 +497,40 @@ for (const s of window.CHAT_SUGGESTIONS) {
   b.onclick = () => askAI(s);
   sugEl.appendChild(b);
 }
-addMsg('ai', mdLite("Hi! I'm your **Minecraft Help AI**. Ask me anything — recipes, builds, redstone, bosses, seeds, whatever! I know you play Bedrock, so my answers work for your game. ⛏"));
+const clearBtn = document.createElement('button');
+clearBtn.textContent = '🗑 New chat';
+clearBtn.onclick = () => {
+  if (!confirm('Start a fresh chat? Your current one will be erased.')) return;
+  try { localStorage.setItem(CHAT_KEY, '[]'); } catch {}
+  location.reload();
+};
+sugEl.appendChild(clearBtn);
+
+// ---- chat persistence: auto-save to this browser, restore on load ----
+const CHAT_KEY = 'mc-help-chat';
+function saveChat() {
+  try { localStorage.setItem(CHAT_KEY, JSON.stringify(history.slice(-60))); } catch {}
+}
+const WELCOME = "Hi! I'm your **Minecraft Help AI**. Ask me anything — recipes, builds, redstone, commands, bosses, whatever! I know you play Bedrock, so my answers work for your game. ⛏";
+(async function initChat() {
+  let saved = null;
+  try { saved = localStorage.getItem(CHAT_KEY); } catch {}
+  let msgs = [];
+  if (saved !== null) {
+    try { msgs = JSON.parse(saved) || []; } catch {}
+  } else {
+    // first load since auto-save existed: pull the rescued conversation from the server
+    try { msgs = await (await fetch('/api/restored')).json(); } catch {}
+  }
+  if (msgs.length) {
+    for (const m of msgs) {
+      const b = addMsg(m.role === 'user' ? 'user' : 'ai', mdLite(m.content));
+      if (m.role !== 'user') enhanceBubble(b);
+    }
+    history.push(...msgs);
+    saveChat();
+    addMsg('ai', mdLite('*Your chat was restored — pick up right where you left off! (Chats auto-save now.)*'));
+  } else {
+    addMsg('ai', mdLite(WELCOME));
+  }
+})();

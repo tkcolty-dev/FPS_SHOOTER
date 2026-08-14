@@ -44,6 +44,12 @@ Rules:
   (conditional or not), and redstone setting (needs redstone / always active), plus how to wire it.
 - Stay on Minecraft topics. Be encouraging and fun, never use bad language.`;
 
+// one-time recovery of a chat that was lost before auto-save existed
+app.get('/api/restored', (req, res) => {
+  try { res.json(JSON.parse(fs.readFileSync(__dirname + '/data/restored-chat.json', 'utf8'))); }
+  catch { res.json([]); }
+});
+
 app.post('/api/chat', async (req, res) => {
   const { messages } = req.body;
   if (!Array.isArray(messages) || messages.length === 0) {
