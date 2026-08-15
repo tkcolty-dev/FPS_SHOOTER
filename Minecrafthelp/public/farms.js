@@ -768,10 +768,16 @@ function updateParticles(dt) {
   if (any) pGeo.attributes.position.needsUpdate = true;
 }
 
-// camera orbit
+// camera orbit + smooth fly-to + first-person walk mode
 let camTheta = 0.7, camPhi = 0.42, camDist = 16, camTarget = new THREE.Vector3(4, 2, 3);
 let autoSpin = true;
+let flyTo = null;            // {target: Vector3, dist} — camera glides there
+let buildCenter = new THREE.Vector3(4, 2, 3), buildDist = 16;
+let walkMode = false, walkYaw = 0, walkPitch = -0.1;
+const walkPos = new THREE.Vector3(0, 3, 10);
+const keys = {};
 function updateCam() {
+  if (walkMode) return;
   camera.position.set(
     camTarget.x + camDist * Math.cos(camPhi) * Math.sin(camTheta),
     camTarget.y + camDist * Math.sin(camPhi),
@@ -780,16 +786,101 @@ function updateCam() {
   camera.lookAt(camTarget);
 }
 let dragging = false, lastX = 0, lastY = 0;
-holder.addEventListener('pointerdown', e => { dragging = true; autoSpin = false; lastX = e.clientX; lastY = e.clientY; });
+holder.addEventListener('pointerdown', e => { dragging = true; if (!walkMode) { autoSpin = false; flyTo = null; } lastX = e.clientX; lastY = e.clientY; });
 window.addEventListener('pointerup', () => dragging = false);
 window.addEventListener('pointermove', e => {
   if (!dragging) return;
-  camTheta -= (e.clientX - lastX) * 0.008;
-  camPhi = Math.min(1.4, Math.max(0.05, camPhi + (e.clientY - lastY) * 0.006));
+  if (walkMode) {
+    walkYaw -= (e.clientX - lastX) * 0.005;
+    walkPitch = Math.min(1.45, Math.max(-1.45, walkPitch - (e.clientY - lastY) * 0.004));
+  } else {
+    camTheta -= (e.clientX - lastX) * 0.008;
+    camPhi = Math.min(1.4, Math.max(0.05, camPhi + (e.clientY - lastY) * 0.006));
+    updateCam();
+  }
   lastX = e.clientX; lastY = e.clientY;
-  updateCam();
 });
-holder.addEventListener('wheel', e => { e.preventDefault(); camDist = Math.min(50, Math.max(5, camDist + e.deltaY * 0.02)); updateCam(); }, { passive: false });
+holder.addEventListener('wheel', e => { e.preventDefault(); if (walkMode) return; flyTo = null; camDist = Math.min(50, Math.max(5, camDist + e.deltaY * 0.02)); updateCam(); }, { passive: false });
+
+window.addEventListener('keydown', e => {
+  if (!walkMode) return;
+  const tag = (document.activeElement || {}).tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  keys[e.code] = true;
+  if (['Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyC'].includes(e.code)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+function setWalkMode(on) {
+  walkMode = on;
+  document.getElementById('tut-walkhint').style.display = on ? 'block' : 'none';
+  document.getElementById('tut-walk').style.background = on ? '#4c7f36' : '';
+  if (on) {
+    // start at the edge of the build, facing it, at eye height
+    walkPos.set(buildCenter.x, Math.max(1.7, buildCenter.y - 1), buildCenter.z + buildDist * 0.7);
+    walkYaw = 0; // yaw 0 faces -z, toward the build
+    walkPitch = -0.15;
+  } else {
+    autoSpin = true;
+    flyTo = { target: buildCenter.clone(), dist: buildDist };
+    updateCam();
+  }
+}
+document.getElementById('tut-walk').onclick = () => setWalkMode(!walkMode);
+
+// hover inspector: name + coordinates of the block under the cursor
+const raycaster = new THREE.Raycaster();
+const pointerNdc = new THREE.Vector2();
+const tipEl = document.getElementById('tut-tip');
+holder.addEventListener('pointermove', e => {
+  if (dragging || walkMode || !renderer) { tipEl.style.display = 'none'; return; }
+  const rect = holder.getBoundingClientRect();
+  pointerNdc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+  raycaster.setFromCamera(pointerNdc, camera);
+  const hits = raycaster.intersectObjects(world.children, true);
+  let info = null;
+  for (const h of hits) {
+    let o = h.object;
+    while (o && o !== world && !o.userData.blockType) o = o.parent;
+    if (o && o.userData.blockType) { info = o.userData; break; }
+  }
+  if (info) {
+    tipEl.textContent = `${info.blockType.split('|')[0].replace(/_/g, ' ')}  (${info.bx}, ${info.by}, ${info.bz})`;
+    tipEl.style.display = 'block';
+    tipEl.style.left = (e.clientX - rect.left + 14) + 'px';
+    tipEl.style.top = (e.clientY - rect.top + 10) + 'px';
+  } else {
+    tipEl.style.display = 'none';
+  }
+});
+holder.addEventListener('pointerleave', () => tipEl.style.display = 'none');
+
+// ghost preview of the NEXT step's blocks while paused
+const ghostGroup = new THREE.Group();
+scene.add(ghostGroup);
+const ghostMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false });
+function updateGhosts() {
+  ghostGroup.clear();
+  if (playing || !current) return;
+  const next = current.steps[stepIndex + 1];
+  if (!next) return;
+  for (const [x, y, z] of (next.blocks || []).slice(0, 400)) {
+    const g = new THREE.Mesh(boxGeo, ghostMat);
+    g.scale.setScalar(0.95);
+    g.position.set(x + 0.5, y + 0.5, z + 0.5);
+    ghostGroup.add(g);
+  }
+}
+
+// white flash when a block lands
+let flashes = [];
+function addFlash(x, y, z) {
+  const m = new THREE.Mesh(boxGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false }));
+  m.scale.setScalar(1.06);
+  m.position.set(x, y, z);
+  scene.add(m);
+  flashes.push({ m, t: 0 });
+}
 
 function resize() {
   if (!renderer) return;
@@ -836,6 +927,8 @@ function applyStep(step, animate) {
     if (placed.has(k)) { world.remove(placed.get(k)); placed.delete(k); }
     const mesh = blockMesh(type);
     mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+    mesh.userData.blockType = type;
+    mesh.userData.bx = x; mesh.userData.by = y; mesh.userData.bz = z;
     world.add(mesh);
     placed.set(k, mesh);
     if (animate) {
@@ -863,6 +956,26 @@ function goToStep(n, animate = true) {
   scrub.value = n;
   progressEl.textContent = `${n + 1} / ${current.steps.length}`;
   playTimer = 0;
+  // cinematic: glide the camera to frame this step's new blocks
+  if (!walkMode) {
+    const blocks = st.blocks || [];
+    if (blocks.length) {
+      let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+      for (const [x, y, z] of blocks) {
+        mn = [Math.min(mn[0], x), Math.min(mn[1], y), Math.min(mn[2], z)];
+        mx = [Math.max(mx[0], x), Math.max(mx[1], y), Math.max(mx[2], z)];
+      }
+      const c = new THREE.Vector3((mn[0] + mx[0]) / 2 + 0.5, (mn[1] + mx[1]) / 2 + 0.5, (mn[2] + mx[2]) / 2 + 0.5);
+      const extent = Math.max(mx[0] - mn[0], mx[1] - mn[1], mx[2] - mn[2]) + 1;
+      // blend step focus with the whole build so we never lose context
+      const target = c.lerp(buildCenter, 0.35);
+      const dist = Math.min(buildDist + 4, Math.max(8, extent * 2.2 + 5, buildDist * 0.55));
+      flyTo = { target, dist };
+    } else {
+      flyTo = { target: buildCenter.clone(), dist: buildDist }; // caption-only step: show it all
+    }
+  }
+  updateGhosts();
 }
 
 // what item each schematic block type costs the player
@@ -925,6 +1038,9 @@ function loadTutorial(idx) {
   }
   camTarget.set((min[0] + max[0]) / 2 + 0.5, (min[1] + max[1]) / 2 + 0.5, (min[2] + max[2]) / 2 + 0.5);
   camDist = current.cam || 14;
+  buildCenter.copy(camTarget);
+  buildDist = camDist;
+  flyTo = null;
   autoSpin = true;
   // grass field around the build, at the build's lowest level
   buildGround(min[0], max[0] + 1, min[2], max[2] + 1, Math.min(0, min[1]));
@@ -943,6 +1059,7 @@ function setPlaying(p) {
   playing = p;
   playBtn.textContent = p ? '⏸' : '▶';
   if (p && current && stepIndex >= current.steps.length - 1) goToStep(0);
+  updateGhosts();
 }
 
 playBtn.onclick = () => setPlaying(!playing);
@@ -957,7 +1074,9 @@ document.getElementById('tut-speed').onclick = (e) => {
   e.target.textContent = playSpeed + 'x';
 };
 document.getElementById('tut-view').onclick = () => {
-  camTheta = 0.7; camPhi = 0.42; camDist = current ? (current.cam || 14) : 14;
+  if (walkMode) setWalkMode(false);
+  camTheta = 0.7; camPhi = 0.42;
+  flyTo = { target: buildCenter.clone(), dist: buildDist };
   autoSpin = true;
   updateCam();
 };
@@ -1041,6 +1160,7 @@ function animate() {
     if (!p.burst && p.t >= 0) {
       p.burst = true;
       spawnBurst(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z, p.type);
+      addFlash(p.mesh.position.x, p.mesh.position.y, p.mesh.position.z);
       blockSound(p.type);
     }
     const s = Math.min(1, Math.max(0.001, p.t));
@@ -1068,7 +1188,41 @@ function animate() {
     }
   }
 
-  if (autoSpin) { camTheta += dt * 0.12; updateCam(); }
+  // flash overlays fade out
+  for (const f of flashes) {
+    f.t += dt;
+    f.m.material.opacity = Math.max(0, 0.75 * (1 - f.t / 0.4));
+    f.m.scale.setScalar(1.06 + f.t * 0.25);
+    if (f.t >= 0.4) { scene.remove(f.m); f.m.material.dispose(); }
+  }
+  flashes = flashes.filter(f => f.t < 0.4);
+
+  if (walkMode) {
+    // first-person: WASD relative to look direction, SPACE up, C down
+    const speed = (keys.ShiftLeft || keys.ShiftRight) ? 9 : 4.5;
+    const fx = -Math.sin(walkYaw), fz = -Math.cos(walkYaw);
+    const rx = Math.cos(walkYaw), rz = -Math.sin(walkYaw);
+    if (keys.KeyW) { walkPos.x += fx * speed * dt; walkPos.z += fz * speed * dt; }
+    if (keys.KeyS) { walkPos.x -= fx * speed * dt; walkPos.z -= fz * speed * dt; }
+    if (keys.KeyA) { walkPos.x -= rx * speed * dt; walkPos.z -= rz * speed * dt; }
+    if (keys.KeyD) { walkPos.x += rx * speed * dt; walkPos.z += rz * speed * dt; }
+    if (keys.Space) walkPos.y += speed * dt;
+    if (keys.KeyC) walkPos.y -= speed * dt;
+    walkPos.y = Math.max(0.6, walkPos.y);
+    camera.position.copy(walkPos);
+    camera.rotation.order = 'YXZ';
+    camera.rotation.set(walkPitch, walkYaw, 0);
+  } else {
+    if (flyTo) {
+      // glide toward the step's framing
+      const k = Math.min(1, dt * 2.6);
+      camTarget.lerp(flyTo.target, k);
+      camDist += (flyTo.dist - camDist) * k;
+      if (camTarget.distanceTo(flyTo.target) < 0.05 && Math.abs(camDist - flyTo.dist) < 0.1) flyTo = null;
+      updateCam();
+    }
+    if (autoSpin) { camTheta += dt * 0.12; updateCam(); }
+  }
 
   // clouds drift and wrap
   for (const c of clouds.children) {

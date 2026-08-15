@@ -38,6 +38,10 @@ function showTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
   if (name === 'tutorials' && window.tutResize) window.tutResize();
   if (name === 'chat') setTimeout(() => document.getElementById('chat-input').focus(), 50);
+  if (name === 'seeds') {
+    const f = document.getElementById('seeds-frame');
+    if (!f.src) f.src = 'seeds/index.html'; // lazy-load the seed finder (WASM is heavy)
+  }
 }
 window.showTab = showTab;
 
