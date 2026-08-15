@@ -97,13 +97,24 @@ Format rules:
 - "fill" entries are ["type",x1,y1,z1,x2,y2,z2] — use for platforms, walls, big areas.
   "blocks" entries are [x,y,z,"type"] for single blocks.
   A block placed at the same spot as an earlier one replaces it. Optional "remove":[[x,y,z]] deletes.
-- ONLY these block types exist (anything else renders as stone):
-  dirt, grass_block, sand, stone, cobblestone, smooth_stone, oak_planks, oak_log, glass, farmland,
-  chest, hopper, water, lava, redstone_wire, torch, lever, wheat, wheat_young, sugar_cane,
-  trapdoor_top, bed_foot, bed_head,
-  piston|DIR, sticky_piston|DIR, observer|DIR where DIR is +x -x +y -y +z -z (the way it faces),
-  marker|ITEM_NAME = a floating item icon (e.g. marker|villager_spawn_egg to show where a mob goes,
-  marker|cat_spawn_egg, marker|iron_ingot).
+- Block types: you can use ANY real Minecraft full-cube block name in snake_case and it renders with
+  its real textures — every wool/concrete/terracotta color, planks, logs, ores, copper blocks,
+  crafting_table, furnace, bookshelf, pumpkin, melon, hay_block, tnt, target, slime_block,
+  redstone_lamp, redstone_block, note_block, obsidian, netherrack, glass and stained glass,
+  leaves, and so on. Non-cube plants/items you don't see below render as stone — avoid them.
+- SPECIAL types with real shapes/behavior:
+  farmland, water, lava, chest, hopper, redstone_wire (flat dust), torch, redstone_torch, lever,
+  wheat, wheat_young, sugar_cane, trapdoor_top, iron_trapdoor_top (flaps on the ceiling of their
+  cell), bed_foot, bed_head, repeater, comparator, daylight_detector, stone_button, oak_button,
+  stone_pressure_plate, oak_pressure_plate, rail, powered_rail,
+  iron_door, oak_door (ONE cell = the whole 2-tall door),
+  piston|DIR, sticky_piston|DIR, observer|DIR, dropper|DIR, dispenser|DIR,
+  command_block|DIR, chain_command_block|DIR, repeating_command_block|DIR
+  where DIR is +x -x +y -y +z -z (the way it faces),
+  marker|ITEM_NAME = a floating item icon (e.g. marker|villager_spawn_egg to show where a mob goes).
+- COMMAND BLOCK BUILDS: you can now build command-block contraptions in 3D! Place the command
+  blocks with the right type and facing, and put the EXACT command for each block in that step's
+  caption (or a code block right after the tutorial) so the player can copy it in.
 - The build must be mechanically CORRECT for Bedrock — real observer/piston placement, real water
   flow, no made-up mechanics. If the player asks to change a build you already made ("make it
   bigger"), send the full updated tutorial with the SAME "name" so it replaces the old one.

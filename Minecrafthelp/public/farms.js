@@ -8,7 +8,15 @@ const texCache = {};
 function tex(name, { animFrames, folder } = {}) {
   const key = (folder || 'block') + name + (animFrames || '');
   if (texCache[key]) return texCache[key];
-  const t = loader.load('tex/' + (folder || 'block') + '/' + name + '.png');
+  const url = name.includes('/') ? name : 'tex/' + (folder || 'block') + '/' + name + '.png';
+  const t = loader.load(url, (tt) => {
+    // tall strips are animated textures — crop to the first frame
+    const img = tt.image;
+    if (img && img.height > img.width && !animFrames) {
+      tt.repeat.set(1, img.width / img.height);
+      tt.offset.set(0, 1 - img.width / img.height);
+    }
+  });
   t.magFilter = THREE.NearestFilter;
   t.minFilter = THREE.NearestFilter;
   t.colorSpace = THREE.SRGBColorSpace;
@@ -76,6 +84,12 @@ function pistonDef(facing, sticky) {
 function observerDef(facing) {
   return cubeMats({ face: mat('observer_front'), back: mat('observer_back'), side: mat('observer_side'), top: mat('observer_top'), bottom: mat('observer_top'), facing });
 }
+function commandDef(base, facing) {
+  return cubeMats({ face: mat(base + '_front'), back: mat(base + '_back'), side: mat(base + '_side'), facing: facing || '+z' });
+}
+function frontBoxDef(front, facing) {
+  return cubeMats({ face: mat(front), side: mat('furnace_side'), top: mat('furnace_top'), bottom: mat('furnace_top'), facing: facing || '+z' });
+}
 
 const boxGeo = new THREE.BoxGeometry(1, 1, 1);
 const matsCache = {};
@@ -86,6 +100,7 @@ function blockMesh(type) {
     wheat_young: ['wheat_stage3', 1],
     sugar_cane: ['sugar_cane', 1, '#71b755'],
     torch: ['torch', 0.7],
+    redstone_torch: ['redstone_torch', 0.7],
     lever: ['lever', 0.6],
   };
   if (cross[type]) {
@@ -129,12 +144,64 @@ function blockMesh(type) {
     return g;
   }
   // trapdoor flap hanging from the ceiling of its cell
-  if (type === 'trapdoor_top') {
+  if (type === 'trapdoor_top' || type === 'iron_trapdoor_top') {
     const g = new THREE.Group();
-    const m = new THREE.Mesh(boxGeo, cubeMats({ all: mat('oak_trapdoor', { transparent: true }) }));
+    const texName = type === 'iron_trapdoor_top' ? 'iron_trapdoor' : 'oak_trapdoor';
+    const m = new THREE.Mesh(boxGeo, cubeMats({ all: mat(texName, { transparent: true }) }));
     m.scale.set(1, 0.12, 1);
     m.position.y = 0.44;
     g.add(m);
+    return g;
+  }
+  // repeater / comparator / daylight detector: flat slabs with their real top texture
+  if (type === 'repeater' || type === 'comparator' || type === 'daylight_detector') {
+    const g = new THREE.Group();
+    const h = type === 'daylight_detector' ? 0.38 : 0.14;
+    const sideTex = type === 'daylight_detector' ? 'daylight_detector_side' : 'smooth_stone';
+    const m = new THREE.Mesh(boxGeo, cubeMats({ top: mat(type === 'daylight_detector' ? 'daylight_detector_top' : type, { transparent: true }), side: mat(sideTex) }));
+    m.scale.set(1, h, 1);
+    m.position.y = -(1 - h) / 2;
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+    return g;
+  }
+  // buttons + pressure plates
+  if (type === 'stone_button' || type === 'oak_button') {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(boxGeo, cubeMats({ all: mat(type === 'stone_button' ? 'stone' : 'oak_planks') }));
+    m.scale.set(0.38, 0.14, 0.26);
+    m.position.y = -0.43;
+    g.add(m);
+    return g;
+  }
+  if (type === 'stone_pressure_plate' || type === 'oak_pressure_plate') {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(boxGeo, cubeMats({ all: mat(type === 'stone_pressure_plate' ? 'stone' : 'oak_planks') }));
+    m.scale.set(0.88, 0.07, 0.88);
+    m.position.y = -0.465;
+    g.add(m);
+    return g;
+  }
+  // rails: flat on the ground
+  if (type === 'rail' || type === 'powered_rail') {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat(type === 'rail' ? 'rail' : 'powered_rail_on', { transparent: true }));
+    m.rotation.x = -Math.PI / 2;
+    m.position.y = -0.48;
+    const holder = new THREE.Group();
+    holder.add(m);
+    return holder;
+  }
+  // doors: one cell = the whole 2-tall door panel
+  if (type === 'iron_door' || type === 'oak_door') {
+    const g = new THREE.Group();
+    const base = type;
+    for (const [texName, dy] of [[base + '_bottom', 0], [base + '_top', 1]]) {
+      const m = new THREE.Mesh(boxGeo, cubeMats({ all: mat(texName, { transparent: true }) }));
+      m.scale.set(0.94, 1, 0.12);
+      m.position.set(0, dy, -0.42);
+      m.castShadow = true;
+      g.add(m);
+    }
     return g;
   }
   if (type === 'redstone_wire') {
@@ -155,8 +222,27 @@ function blockMesh(type) {
       materials = pistonDef(type.split('|')[1] || '+z', true);
     } else if (type.startsWith('observer')) {
       materials = observerDef(type.split('|')[1] || '+z');
+    } else if (type.startsWith('command_block') || type.startsWith('chain_command_block') || type.startsWith('repeating_command_block')) {
+      materials = commandDef(type.split('|')[0], type.split('|')[1]);
+    } else if (type.startsWith('dropper') || type.startsWith('dispenser')) {
+      materials = frontBoxDef(type.split('|')[0] + '_front', type.split('|')[1]);
     } else if (BLOCK_DEFS[type]) {
       materials = BLOCK_DEFS[type]();
+    } else if ((window.MC_BLOCKTEX || {})[type]) {
+      // ANY Minecraft block: real face textures generated from the game assets
+      const bt = window.MC_BLOCKTEX[type];
+      const isGlass = type.includes('glass');
+      const isLeaves = type.endsWith('_leaves');
+      const opts = isGlass ? { transparent: true }
+        : isLeaves ? { transparent: true, tint: FOLIAGE }
+        : (type === 'slime_block' || type === 'honey_block') ? { transparent: true, opacity: 0.82 }
+        : {};
+      const mk = (p) => (p ? mat(p, opts) : undefined);
+      materials = cubeMats({
+        all: mk(bt.all), top: mk(bt.top), bottom: mk(bt.bottom),
+        side: mk(bt.side || bt.all || bt.top),
+        face: mk(bt.front), back: mk(bt.side || bt.all || bt.top), facing: bt.front ? '+z' : undefined,
+      });
     } else {
       materials = cubeMats({ all: mat('stone') });
     }
@@ -595,10 +681,10 @@ function soundCat(type) {
   const b = type.split('|')[0];
   if (/water/.test(b)) return 'water';
   if (/lava/.test(b)) return 'lava';
-  if (/(wheat|sugar_cane|torch|lever|redstone_wire|marker)/.test(b)) return 'plant';
-  if (/(dirt|grass_block|sand|farmland|bed_)/.test(b)) return 'soft';
-  if (/(piston|observer|hopper|trapdoor)/.test(b)) return 'metal';
-  if (/(planks|log|chest|glass)/.test(b)) return 'wood';
+  if (/(wheat|sugar_cane|torch|lever|redstone_wire|marker|_leaves$|_sapling$|flower)/.test(b)) return 'plant';
+  if (/(dirt|grass_block|sand|gravel|farmland|bed_|wool|carpet|hay|slime|honey|snow|moss|mud)/.test(b)) return 'soft';
+  if (/(piston|observer|hopper|trapdoor|command_block|dropper|dispenser|repeater|comparator|daylight|rail|iron_|target|lamp|anvil|cauldron|chain)/.test(b)) return 'metal';
+  if (/(planks|log|chest|glass|_wood$|bookshelf|barrel|crafting|door|fence|shelf|sign)/.test(b)) return 'wood';
   return 'stone';
 }
 function blockSound(type) {
@@ -642,6 +728,11 @@ const PARTICLE_COLORS = {
   piston: 0x8a8a8a, sticky_piston: 0x8a9a6a, observer: 0x666666, hopper: 0x4a4a4a,
   wheat: 0xd5b45a, wheat_young: 0x7bb24a, sugar_cane: 0x71b755, torch: 0xffd84d,
   trapdoor_top: 0xa07a45, bed_foot: 0xb02e26, bed_head: 0xe8e8e8, lever: 0x7d7d7d,
+  command_block: 0xc77e4f, chain_command_block: 0x86b3a2, repeating_command_block: 0x9061c2,
+  repeater: 0x9a9a9a, comparator: 0x9a9a9a, redstone_torch: 0xff2a00, redstone_block: 0xcc0000,
+  redstone_lamp: 0x8a5a2a, tnt: 0xd0563e, slime_block: 0x84c873, target: 0xd8c0a8,
+  dropper: 0x7d7d7d, dispenser: 0x7d7d7d, rail: 0x8c7853, powered_rail: 0xb08040,
+  iron_door: 0xc8c8c8, oak_door: 0xb8945f, daylight_detector: 0x3a4a6a, note_block: 0x8a5a3a,
 };
 const _pc = new THREE.Color();
 function spawnBurst(x, y, z, type, count = 7) {
@@ -778,6 +869,7 @@ const MATERIAL_MAP = {
   farmland: 'dirt', wheat_young: 'wheat_seeds', wheat: 'wheat_seeds',
   water: 'water_bucket', lava: 'lava_bucket', redstone_wire: 'redstone',
   trapdoor_top: 'oak_trapdoor', bed_foot: 'red_bed', bed_head: null,
+  iron_trapdoor_top: 'iron_trapdoor', powered_rail: 'powered_rail',
 };
 function materialFor(type) {
   if (type.startsWith('marker|')) return null;

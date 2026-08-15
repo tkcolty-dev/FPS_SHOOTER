@@ -85,10 +85,37 @@ for (const it of Object.values(items)) {
   }
 }
 
+// Per-block face textures for the 3D builder: any block item gets a cube face map when we can find files.
+const blockTex = {};
+const bfile = (n) => fs.existsSync(`public/tex/block/${n}.png`) ? `tex/block/${n}.png` : null;
+for (const it of Object.values(items)) {
+  if (!it.b) continue;
+  const n = it.n;
+  const entry = {};
+  const all = bfile(n);
+  const top = bfile(n + '_top') || bfile(n + '_end');
+  const side = bfile(n + '_side') || all;
+  const front = bfile(n + '_front');
+  const bottom = bfile(n + '_bottom');
+  if (all) entry.all = all;
+  if (top) entry.top = top;
+  if (side && (top || front)) entry.side = side;
+  if (front) entry.front = front;
+  if (bottom) entry.bottom = bottom;
+  if (!entry.all && !entry.top && !entry.front) {
+    // derived blocks (slabs/stairs/waxed/...) borrow their base block's texture
+    let base = n.replace(/^waxed_/, '').replace(/_(slab|stairs|wall|fence|fence_gate|pressure_plate|button|carpet)$/, '');
+    const f = bfile(base) || bfile(base + '_planks') || bfile(base + 's') || bfile(base + '_block') || bfile(base + '_side');
+    if (f) entry.all = f;
+  }
+  if (Object.keys(entry).length) blockTex[n] = entry;
+}
+
 const out = `// Auto-generated from minecraft-data (Java 26.1.2) + real game textures (1.21.8 assets).
 window.MC_ITEMS = ${JSON.stringify(items)};
 window.MC_RECIPES = ${JSON.stringify(recipes)};
 window.MC_TEX = ${JSON.stringify(texByName)};
+window.MC_BLOCKTEX = ${JSON.stringify(blockTex)};
 `;
 fs.mkdirSync('public', { recursive: true });
 fs.writeFileSync('public/data.js', out);
