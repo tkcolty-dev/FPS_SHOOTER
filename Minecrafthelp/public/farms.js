@@ -72,6 +72,8 @@ const BLOCK_DEFS = {
   hopper: () => cubeMats({ top: mat('hopper_inside'), side: mat('hopper_outside') }),
   water: () => cubeMats({ all: mat('water_still', { tint: '#3f76e4', opacity: 0.75, transparent: true, animFrames: 32 }) }),
   lava: () => cubeMats({ all: mat('lava_still', { animFrames: 20 }) }),
+  trial_spawner: () => cubeMats({ top: mat('trial_spawner_top_inactive'), side: mat('trial_spawner_side_inactive'), bottom: mat('trial_spawner_side_inactive') }),
+  vault: () => cubeMats({ face: mat('vault_front_off'), side: mat('vault_side_off'), top: mat('vault_top'), bottom: mat('vault_top'), back: mat('vault_side_off'), facing: '+z' }),
 };
 function pistonDef(facing, sticky) {
   return cubeMats({
@@ -123,8 +125,10 @@ function blockMesh(type) {
   // floating spawn-egg marker: shows where a mob goes ("marker|villager_spawn_egg")
   if (type.startsWith('marker|')) {
     const icon = type.split('|')[1];
+    const known = (window.MC_TEX || {})[icon]; // resolved item texture path when the app knows one
     const m = new THREE.MeshBasicMaterial({
-      map: tex(icon, { folder: 'item' }), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide,
+      map: known ? tex(known) : tex(icon, { folder: 'item' }),
+      transparent: true, alphaTest: 0.5, side: THREE.DoubleSide,
     });
     const g = new THREE.Group();
     const plane = new THREE.PlaneGeometry(0.85, 0.85);
@@ -160,7 +164,7 @@ function blockMesh(type) {
     if (!bt) return null;
     const isGlass = name.includes('glass');
     const isLeaves = name.endsWith('_leaves');
-    const opts = extraOpts || (isGlass || name === 'spawner' ? { transparent: true }
+    const opts = extraOpts || (isGlass || name === 'spawner' || name.includes('grate') ? { transparent: true }
       : isLeaves ? { transparent: true, tint: FOLIAGE }
       : (name === 'slime_block' || name === 'honey_block') ? { transparent: true, opacity: 0.82 }
       : {});
@@ -228,12 +232,19 @@ function blockMesh(type) {
     g.add(m);
     return g;
   }
-  // repeater / comparator / daylight detector: flat slabs with their real top texture
-  if (type === 'repeater' || type === 'comparator' || type === 'daylight_detector') {
+  // repeater / comparator / daylight detector / sculk sensor & shrieker: flat slabs with real top textures
+  if (['repeater', 'comparator', 'daylight_detector', 'sculk_sensor', 'sculk_shrieker'].includes(type)) {
+    const cfgMap = {
+      repeater: { h: 0.14, top: 'repeater', side: 'smooth_stone' },
+      comparator: { h: 0.14, top: 'comparator', side: 'smooth_stone' },
+      daylight_detector: { h: 0.38, top: 'daylight_detector_top', side: 'daylight_detector_side' },
+      sculk_sensor: { h: 0.5, top: 'sculk_sensor_top', side: 'sculk_sensor_side' },
+      sculk_shrieker: { h: 0.5, top: 'sculk_shrieker_top', side: 'sculk_shrieker_side' },
+    };
+    const cfg = cfgMap[type];
     const g = new THREE.Group();
-    const h = type === 'daylight_detector' ? 0.38 : 0.14;
-    const sideTex = type === 'daylight_detector' ? 'daylight_detector_side' : 'smooth_stone';
-    const m = new THREE.Mesh(boxGeo, cubeMats({ top: mat(type === 'daylight_detector' ? 'daylight_detector_top' : type, { transparent: true }), side: mat(sideTex) }));
+    const h = cfg.h;
+    const m = new THREE.Mesh(boxGeo, cubeMats({ top: mat(cfg.top, { transparent: true }), side: mat(cfg.side) }));
     m.scale.set(1, h, 1);
     m.position.y = -(1 - h) / 2;
     m.castShadow = m.receiveShadow = true;
@@ -942,6 +953,201 @@ const TUTORIALS = [];
     ed: 'Raids: on Bedrock, Bad Omen turns into Raid Omen when you enter a village. Win the raid for the Hero of the Village discount!',
   });
   TUTORIALS.push({ name: '🗼 Pillager Outpost', steps, cam: 15, kind: 'structure' });
+}
+
+// S9. Ancient city
+{
+  const steps = [];
+  steps.push({
+    caption: 'Ancient Cities generate in the DEEP DARK, around Y -52. A huge deepslate walkway runs down the middle of the city.',
+    blocks: (() => {
+      let l = fill([], 'deepslate_tiles', 0, 0, 2, 14, 0, 6);
+      fill(l, 'cobbled_deepslate', 0, 0, 1, 14, 0, 1);
+      fill(l, 'cobbled_deepslate', 0, 0, 7, 14, 0, 7);
+      fill(l, 'deepslate_bricks', 0, 1, 1, 0, 1, 7);
+      fill(l, 'deepslate_bricks', 14, 1, 1, 14, 1, 7);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'At the center stands a giant frame of REINFORCED DEEPSLATE — it looks like a portal, but nobody has ever opened it. Unbreakable in survival!',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'reinforced_deepslate', 5, 1, 4, 9, 1, 4);
+      fill(l, 'reinforced_deepslate', 5, 2, 4, 5, 5, 4);
+      fill(l, 'reinforced_deepslate', 9, 2, 4, 9, 5, 4);
+      fill(l, 'reinforced_deepslate', 5, 6, 4, 9, 6, 4);
+      fill(l, 'chiseled_deepslate', 6, 1, 4, 8, 1, 4);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'SCULK grows everywhere. Sensors hear your footsteps, and SHRIEKERS scream when caught — 3 screams summons THE WARDEN. Sneak. Always sneak.',
+    blocks: (() => {
+      let l = [];
+      put(l, 'sculk', 2, 0, 3, 3, 0, 5, 11, 0, 4, 12, 0, 2, 4, 0, 6, 10, 0, 6);
+      put(l, 'sculk_sensor', 3, 1, 4, 11, 1, 5);
+      put(l, 'sculk_shrieker', 7, 1, 2);
+      put(l, 'sculk_catalyst', 12, 1, 6);
+      put(l, 'marker|warden_spawn_egg', 7, 3, 2);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Gray wool paths let you walk SILENTLY (wool muffles vibrations). Loot chests hold Echo Shards, Swift Sneak books and enchanted golden apples!',
+    blocks: (() => {
+      let l = fill([], 'gray_wool', 1, 1, 5, 4, 1, 5);
+      put(l, 'chest', 2, 1, 2, 12, 1, 3);
+      put(l, 'soul_lantern', 4, 3, 1, 10, 3, 1);
+      fill(l, 'dark_oak_fence', 4, 1, 1, 4, 2, 1);
+      fill(l, 'dark_oak_fence', 10, 1, 1, 10, 2, 1);
+      put(l, 'marker|echo_shard', 2, 2, 2);
+      put(l, 'marker|enchanted_golden_apple', 12, 2, 3);
+      return l;
+    })(),
+    ed: 'Same on Bedrock and Java. NEVER light candles near shriekers, and bring wool blocks to plug them.',
+  });
+  TUTORIALS.push({ name: '🏙 Ancient City', steps, cam: 17, kind: 'structure' });
+}
+
+// S10. Ocean monument
+{
+  const steps = [];
+  steps.push({
+    caption: 'Ocean Monuments rise from deep ocean floors — giant prismarine temples. This is one wing; real ones are 58x58!',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'prismarine', 0, 0, 0, 12, 0, 8);
+      fill(l, 'prismarine', 0, 1, 0, 12, 4, 0);
+      fill(l, 'prismarine', 0, 1, 8, 12, 4, 8);
+      fill(l, 'prismarine', 0, 1, 1, 0, 4, 7);
+      fill(l, 'prismarine', 12, 1, 1, 12, 4, 7);
+      fill(l, 'prismarine_bricks', 0, 5, 0, 12, 5, 8);
+      l = l.filter(b => !(b[2] === 0 && b[0] >= 5 && b[0] <= 7 && b[1] >= 1 && b[1] <= 3)); // entrance
+      for (const [x, z] of [[0, 0], [12, 0], [0, 8], [12, 8]]) fill(l, 'dark_prismarine', x, 1, z, x, 5, z);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'SEA LANTERNS light the halls — mine them with Silk Touch, they are the prettiest light source in the game.',
+    blocks: put([], 'sea_lantern', 3, 5, 2, 9, 5, 2, 3, 5, 6, 9, 5, 6, 6, 4, 4),
+  });
+  steps.push({
+    caption: 'The treasure core: 8 GOLD BLOCKS sealed inside dark prismarine, right in the center of the monument. Shown cut open here!',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'dark_prismarine', 4, 1, 3, 8, 3, 5);
+      let l2 = l.filter(b => b[2] !== 3); // cutaway: open the front face
+      fill(l2, 'gold_block', 5, 1, 4, 7, 2, 4);
+      return l2;
+    })(),
+  });
+  steps.push({
+    caption: 'GUARDIANS patrol everywhere, and 3 ELDER GUARDIANS curse you with Mining Fatigue. Drink milk to clear it, and bring Water Breathing potions + a conduit if you can!',
+    blocks: (() => {
+      let l = fill([], 'water', 0, 6, 0, 12, 6, 8);
+      put(l, 'wet_sponge', 10, 1, 6, 11, 1, 6, 10, 1, 7);
+      put(l, 'marker|guardian_spawn_egg', 2, 3, 4, 10, 4, 3);
+      put(l, 'marker|elder_guardian_spawn_egg', 6, 6, 4);
+      put(l, 'marker|sponge', 10, 2, 6);
+      return l;
+    })(),
+    ed: 'Bedrock: elder guardians drop wet sponges when killed. The sponge room (shown in the corner) is the fastest way to dry out the monument.',
+  });
+  TUTORIALS.push({ name: '🌊 Ocean Monument', steps, cam: 17, kind: 'structure' });
+}
+
+// S11. Bastion remnant
+{
+  const steps = [];
+  steps.push({
+    caption: 'Bastion Remnants are ruined blackstone castles in the Nether — home of the piglins. Four types generate; this is a treasure room bastion.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'blackstone', 0, 0, 0, 10, 0, 8);
+      fill(l, 'polished_blackstone_bricks', 0, 1, 0, 10, 5, 0);
+      fill(l, 'polished_blackstone_bricks', 0, 1, 8, 2, 5, 8);
+      fill(l, 'polished_blackstone_bricks', 0, 1, 1, 0, 5, 7);
+      fill(l, 'polished_blackstone_bricks', 10, 1, 1, 10, 3, 7);
+      // ruined: knock holes in the walls
+      return l.filter(b => !((b[0] === 4 && b[1] >= 3 && b[2] === 0) || (b[0] === 7 && b[1] >= 4 && b[2] === 0) || (b[0] === 10 && b[1] === 3 && b[2] >= 4)));
+    })(),
+  });
+  steps.push({
+    caption: 'A lava moat guards the center. Basalt pillars hold up what is left of the roof, with chains hanging from the ruins.',
+    blocks: (() => {
+      let l = fill([], 'lava', 2, 1, 2, 8, 1, 6);
+      fill(l, 'blackstone', 4, 1, 3, 6, 1, 5); // island in the moat
+      for (const [x, z] of [[2, 2], [8, 2], [2, 6], [8, 6]]) fill(l, 'basalt', x, 1, z, x, 5, z);
+      fill(l, 'chain', 5, 4, 4, 5, 5, 4);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'The treasure: GOLD BLOCKS and GILDED BLACKSTONE around a loot chest — netherite scraps, ancient debris, even a Netherite Upgrade template!',
+    blocks: (() => {
+      let l = [];
+      put(l, 'gold_block', 4, 2, 4, 6, 2, 4);
+      put(l, 'gilded_blackstone', 5, 2, 3, 5, 2, 5, 4, 2, 3, 6, 2, 5);
+      put(l, 'chest', 5, 3, 4);
+      put(l, 'marker|netherite_upgrade_smithing_template', 5, 4, 4);
+      put(l, 'magma_block', 1, 1, 1, 9, 1, 7);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'PIGLINS attack unless you wear at least one piece of GOLD armor. Piglin BRUTES attack no matter what — and never forget: do not mine the gold in front of them!',
+    blocks: put([], 'marker|piglin_spawn_egg', 2, 2, 1, 8, 2, 7).concat(put([], 'marker|piglin_brute_spawn_egg', 5, 2, 6)).concat(put([], 'marker|golden_boots', 5, 6, 4)),
+    ed: 'Same rules both editions. Gold armor stops piglin aggro but NOT brutes — fight or run.',
+  });
+  TUTORIALS.push({ name: '⚫ Bastion Remnant', steps, cam: 15, kind: 'structure' });
+}
+
+// S12. Trial chamber
+{
+  const steps = [];
+  steps.push({
+    caption: 'Trial Chambers generate underground in copper and tuff. Find them with a Trial Explorer map from cartographer villagers.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'tuff_bricks', 0, 0, 0, 10, 0, 8);
+      fill(l, 'tuff_bricks', 0, 1, 0, 10, 5, 0);
+      fill(l, 'tuff_bricks', 0, 1, 8, 10, 5, 8);
+      fill(l, 'tuff_bricks', 0, 1, 1, 0, 5, 7);
+      fill(l, 'tuff_bricks', 10, 1, 1, 10, 5, 7);
+      fill(l, 'tuff_bricks', 0, 6, 0, 10, 6, 8);
+      for (const [x, z] of [[1, 1], [9, 1], [1, 7], [9, 7]]) fill(l, 'copper_block', x, 1, z, x, 5, z);
+      l = l.filter(b => !(b[2] === 0 && b[0] >= 4 && b[0] <= 6 && b[1] >= 1 && b[1] <= 3)); // entrance
+      fill(l, 'chiseled_tuff', 0, 1, 0, 10, 1, 0);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'COPPER GRATES for windows and COPPER BULBS for light — they toggle with redstone and oxidize green over time.',
+    blocks: (() => {
+      let l = [];
+      put(l, 'copper_grate', 2, 3, 0, 8, 3, 0, 0, 3, 4, 10, 3, 4);
+      put(l, 'copper_bulb', 3, 4, 1, 7, 4, 1, 3, 4, 7, 7, 4, 7);
+      put(l, 'oxidized_copper', 9, 5, 1, 1, 5, 7);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'The TRIAL SPAWNER: walk close and it spawns WAVES of mobs — more mobs for more players! Beat the wave and it spits out loot and a TRIAL KEY.',
+    blocks: (() => {
+      let l = fill([], 'chiseled_tuff', 4, 1, 3, 6, 1, 5);
+      put(l, 'trial_spawner', 5, 2, 4);
+      put(l, 'marker|breeze_spawn_egg', 3, 2, 5, 5, 4, 4);
+      put(l, 'marker|zombie_spawn_egg', 7, 2, 3);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Use your Trial Key on the VAULT — every player can open each vault ONCE for their own loot. Drink an Ominous Bottle for harder trials and better rewards (Heavy Cores for the MACE!).',
+    blocks: put([], 'vault', 5, 1, 7).concat(put([], 'marker|trial_key', 5, 2, 6)).concat(put([], 'marker|ominous_bottle', 3, 2, 7)).concat(put([], 'marker|heavy_core', 7, 2, 7)),
+    ed: 'Bedrock and Java both have Trial Chambers since 1.21. Vault loot is per-player — everyone in your group gets their own!',
+  });
+  TUTORIALS.push({ name: '⚔️ Trial Chamber', steps, cam: 15, kind: 'structure' });
 }
 
 // ---------- three.js scene ----------
