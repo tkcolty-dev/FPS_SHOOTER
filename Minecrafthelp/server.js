@@ -108,6 +108,9 @@ Format rules:
   cell), bed_foot, bed_head, repeater, comparator, daylight_detector, stone_button, oak_button,
   stone_pressure_plate, oak_pressure_plate, rail, powered_rail,
   iron_door, oak_door (ONE cell = the whole 2-tall door),
+  ANY *_slab (half-height), ANY *_stairs|DIR (DIR = the HIGH side), ANY *_fence or *_wall (post),
+  ANY *_carpet, ladder, iron_bars, cobweb, vine, chain, lantern, spawner, end_portal_frame,
+  cauldron, snow_block, magma_block,
   piston|DIR, sticky_piston|DIR, observer|DIR, dropper|DIR, dispenser|DIR,
   command_block|DIR, chain_command_block|DIR, repeating_command_block|DIR
   where DIR is +x -x +y -y +z -z (the way it faces),

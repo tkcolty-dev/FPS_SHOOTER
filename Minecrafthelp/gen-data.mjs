@@ -103,9 +103,10 @@ for (const it of Object.values(items)) {
   if (front) entry.front = front;
   if (bottom) entry.bottom = bottom;
   if (!entry.all && !entry.top && !entry.front) {
-    // derived blocks (slabs/stairs/waxed/...) borrow their base block's texture
-    let base = n.replace(/^waxed_/, '').replace(/_(slab|stairs|wall|fence|fence_gate|pressure_plate|button|carpet)$/, '');
-    const f = bfile(base) || bfile(base + '_planks') || bfile(base + 's') || bfile(base + '_block') || bfile(base + '_side');
+    // derived blocks (slabs/stairs/waxed/carpets/..._block) borrow their base texture
+    let base = n.replace(/^waxed_/, '').replace(/_(slab|stairs|wall|fence|fence_gate|pressure_plate|button|carpet|block)$/, '');
+    const f = bfile(base) || bfile(base + '_planks') || bfile(base + 's') || bfile(base + '_block') ||
+      bfile(base + '_side') || bfile(base + '_wool') || bfile(base + '_top');
     if (f) entry.all = f;
   }
   if (Object.keys(entry).length) blockTex[n] = entry;

@@ -154,6 +154,80 @@ function blockMesh(type) {
     g.add(m);
     return g;
   }
+  // generic cube face materials from the game-asset map (used by cubes, slabs, stairs)
+  function genericMats(name, extraOpts) {
+    const bt = (window.MC_BLOCKTEX || {})[name];
+    if (!bt) return null;
+    const isGlass = name.includes('glass');
+    const isLeaves = name.endsWith('_leaves');
+    const opts = extraOpts || (isGlass || name === 'spawner' ? { transparent: true }
+      : isLeaves ? { transparent: true, tint: FOLIAGE }
+      : (name === 'slime_block' || name === 'honey_block') ? { transparent: true, opacity: 0.82 }
+      : {});
+    const mk = (p) => (p ? mat(p, opts) : undefined);
+    return cubeMats({
+      all: mk(bt.all), top: mk(bt.top), bottom: mk(bt.bottom),
+      side: mk(bt.side || bt.all || bt.top),
+      face: mk(bt.front), back: mk(bt.side || bt.all || bt.top), facing: bt.front ? '+z' : undefined,
+    });
+  }
+  // slabs: half-height block
+  if (type.endsWith('_slab')) {
+    const mats = genericMats(type) || cubeMats({ all: mat('stone') });
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(boxGeo, mats);
+    m.scale.set(1, 0.5, 1);
+    m.position.y = -0.25;
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+    return g;
+  }
+  // stairs: half + step, DIR = the high side ("oak_stairs|+z")
+  if (type.split('|')[0].endsWith('_stairs')) {
+    const [base, dir] = type.split('|');
+    const mats = genericMats(base) || cubeMats({ all: mat('oak_planks') });
+    const g = new THREE.Group();
+    const lower = new THREE.Mesh(boxGeo, mats);
+    lower.scale.set(1, 0.5, 1);
+    lower.position.y = -0.25;
+    const upper = new THREE.Mesh(boxGeo, mats);
+    upper.scale.set(1, 0.5, 0.5);
+    upper.position.set(0, 0.25, 0.25);
+    for (const m of [lower, upper]) { m.castShadow = m.receiveShadow = true; g.add(m); }
+    g.rotation.y = { '+z': 0, '+x': Math.PI / 2, '-z': Math.PI, '-x': -Math.PI / 2 }[dir] || 0;
+    return g;
+  }
+  // fences and walls: a thick center post
+  if (type.endsWith('_fence') || type.endsWith('_wall')) {
+    const mats = genericMats(type) || cubeMats({ all: mat('oak_planks') });
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(boxGeo, mats);
+    m.scale.set(0.35, 1, 0.35);
+    m.castShadow = true;
+    g.add(m);
+    return g;
+  }
+  // flat/cross transparents
+  if (['ladder', 'iron_bars', 'cobweb', 'vine', 'end_rod', 'chain'].includes(type)) {
+    const g = new THREE.Group();
+    const m = mat(type, { transparent: true });
+    const plane = new THREE.PlaneGeometry(1, 1);
+    for (const rot of [Math.PI / 4, -Math.PI / 4]) {
+      const p = new THREE.Mesh(plane, m);
+      p.rotation.y = rot;
+      g.add(p);
+    }
+    return g;
+  }
+  // lanterns: small glowing box
+  if (type === 'lantern' || type === 'soul_lantern') {
+    const g = new THREE.Group();
+    const m = new THREE.Mesh(boxGeo, new THREE.MeshBasicMaterial({ map: tex(type), transparent: true, alphaTest: 0.4 }));
+    m.scale.set(0.4, 0.55, 0.4);
+    m.position.y = -0.22;
+    g.add(m);
+    return g;
+  }
   // repeater / comparator / daylight detector: flat slabs with their real top texture
   if (type === 'repeater' || type === 'comparator' || type === 'daylight_detector') {
     const g = new THREE.Group();
@@ -231,19 +305,7 @@ function blockMesh(type) {
       materials = BLOCK_DEFS[type]();
     } else if ((window.MC_BLOCKTEX || {})[type]) {
       // ANY Minecraft block: real face textures generated from the game assets
-      const bt = window.MC_BLOCKTEX[type];
-      const isGlass = type.includes('glass');
-      const isLeaves = type.endsWith('_leaves');
-      const opts = isGlass ? { transparent: true }
-        : isLeaves ? { transparent: true, tint: FOLIAGE }
-        : (type === 'slime_block' || type === 'honey_block') ? { transparent: true, opacity: 0.82 }
-        : {};
-      const mk = (p) => (p ? mat(p, opts) : undefined);
-      materials = cubeMats({
-        all: mk(bt.all), top: mk(bt.top), bottom: mk(bt.bottom),
-        side: mk(bt.side || bt.all || bt.top),
-        face: mk(bt.front), back: mk(bt.side || bt.all || bt.top), facing: bt.front ? '+z' : undefined,
-      });
+      materials = genericMats(type);
     } else {
       materials = cubeMats({ all: mat('stone') });
     }
@@ -549,6 +611,339 @@ const TUTORIALS = [];
   TUTORIALS.push({ name: '💥 Creeper Farm', steps, cam: 16 });
 }
 
+/* ================= STRUCTURE GALLERY =================
+   Famous generated structures, built step by step. */
+
+// S1. Village house
+{
+  const steps = [];
+  steps.push({
+    caption: 'Villages generate in plains, savanna, desert, taiga and snowy biomes. A small house starts with a cobblestone foundation.',
+    blocks: fill([], 'cobblestone', 0, 0, 0, 4, 0, 4),
+  });
+  steps.push({
+    caption: 'Oak plank walls with log corners, a doorway in front, and glass windows on the sides.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'oak_planks', 0, 1, 0, 4, 3, 0); fill(l, 'oak_planks', 0, 1, 4, 4, 3, 4);
+      fill(l, 'oak_planks', 0, 1, 1, 0, 3, 3); fill(l, 'oak_planks', 4, 1, 1, 4, 3, 3);
+      for (const [x, z] of [[0, 0], [4, 0], [0, 4], [4, 4]]) fill(l, 'oak_log', x, 1, z, x, 3, z);
+      l = l.filter(b => !(b[0] === 2 && b[2] === 0 && b[1] <= 2));
+      put(l, 'oak_door', 2, 1, 0);
+      put(l, 'glass', 0, 2, 2, 4, 2, 2);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'A gable roof out of oak stairs, closed with a slab ridge on top.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'oak_stairs|+z', -1, 4, -1, 5, 4, -1);
+      fill(l, 'oak_stairs|-z', -1, 4, 5, 5, 4, 5);
+      fill(l, 'oak_planks', -1, 4, 0, 5, 4, 4);
+      fill(l, 'oak_stairs|+z', -1, 5, 0, 5, 5, 0);
+      fill(l, 'oak_stairs|-z', -1, 5, 4, 5, 5, 4);
+      fill(l, 'oak_planks', -1, 5, 1, 5, 5, 3);
+      fill(l, 'oak_slab', -1, 6, 1, 5, 6, 3);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Inside: a bed, a crafting table and a torch — and a villager to trade with! Job blocks nearby give villagers professions.',
+    blocks: put([], 'bed_head', 3, 1, 3).concat(put([], 'bed_foot', 3, 1, 2))
+      .concat(put([], 'crafting_table', 1, 1, 3)).concat(put([], 'torch', 1, 2, 1))
+      .concat(put([], 'marker|villager_spawn_egg', 2, 1, 2)),
+    ed: 'Bedrock and Java villages look slightly different, but the houses and villagers work the same.',
+  });
+  TUTORIALS.push({ name: '🏠 Village House', steps, cam: 12, kind: 'structure' });
+}
+
+// S2. Desert temple
+{
+  const steps = [];
+  steps.push({
+    caption: 'Desert temples (pyramids) generate in deserts, often half-buried in sand. This is a mini version — real ones are 21x21!',
+    blocks: (() => {
+      let l = fill([], 'sandstone', 0, 0, 0, 8, 0, 8);
+      fill(l, 'sandstone', 1, 1, 1, 7, 1, 7);
+      fill(l, 'sandstone', 2, 2, 2, 6, 2, 6);
+      fill(l, 'sandstone', 3, 3, 3, 5, 3, 5);
+      put(l, 'chiseled_sandstone', 4, 4, 4);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'The floor in the center has an orange and blue pattern — that marks THE SECRET. Never dig straight down onto blue!',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'orange_terracotta', 3, 3, 3, 5, 3, 5);
+      put(l, 'blue_terracotta', 4, 3, 4);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Below the pattern hides a treasure room: 4 chests full of loot... and a STONE PRESSURE PLATE in the middle wired to 9 TNT!',
+    blocks: (() => {
+      let l = [];
+      // open the shaft
+      // treasure chamber
+      fill(l, 'sandstone', 2, -5, 2, 6, -5, 6);          // chamber floor
+      fill(l, 'cut_sandstone', 2, -4, 2, 6, -1, 2);      // walls
+      fill(l, 'cut_sandstone', 2, -4, 6, 6, -1, 6);
+      fill(l, 'cut_sandstone', 2, -4, 3, 2, -1, 5);
+      fill(l, 'cut_sandstone', 6, -4, 3, 6, -1, 5);
+      put(l, 'chest', 3, -4, 3, 5, -4, 3, 3, -4, 5, 5, -4, 5);
+      put(l, 'stone_pressure_plate', 4, -4, 4);
+      fill(l, 'tnt', 3, -6, 3, 5, -6, 5);                // the trap!
+      return l;
+    })(),
+    remove: [[4, 3, 4], [4, 2, 4], [4, 1, 4], [4, 0, 4], [3, 3, 3], [5, 3, 3], [3, 3, 5], [5, 3, 5], [3, 3, 4], [5, 3, 4], [4, 3, 3], [4, 3, 5]],
+  });
+  steps.push({
+    caption: 'Loot: diamonds, emeralds, enchanted books, golden apples. Dig down a CORNER, break the pressure plate first, then loot safely!',
+    blocks: put([], 'marker|diamond', 3, -3, 4).concat(put([], 'marker|emerald', 5, -3, 4)).concat(put([], 'marker|enchanted_book', 4, -3, 3)),
+    ed: 'Same trap on Bedrock and Java. The TNT destroys ALL the loot if it blows — be careful.',
+  });
+  TUTORIALS.push({ name: '🏜 Desert Temple', steps, cam: 15, kind: 'structure' });
+}
+
+// S3. End portal room
+{
+  const steps = [];
+  steps.push({
+    caption: 'Deep in a stronghold hides the portal room — stone bricks, some mossy and cracked with age.',
+    blocks: (() => {
+      let l = fill([], 'stone_bricks', 0, 0, 0, 8, 0, 6);
+      fill(l, 'stone_bricks', 0, 1, 0, 8, 4, 0);
+      fill(l, 'stone_bricks', 0, 1, 6, 8, 4, 6);
+      fill(l, 'stone_bricks', 0, 1, 1, 0, 4, 5);
+      fill(l, 'stone_bricks', 8, 1, 1, 8, 4, 5);
+      put(l, 'mossy_cobblestone', 1, 1, 0, 7, 2, 6, 0, 3, 2);
+      put(l, 'cracked_stone_bricks', 3, 1, 0, 8, 2, 3, 5, 4, 6);
+      return l.filter(b => !(b[2] === 0 && b[0] >= 3 && b[0] <= 5 && b[1] >= 1 && b[1] <= 2)); // entrance
+    })(),
+  });
+  steps.push({
+    caption: 'The portal sits above a pool of LAVA. Watch your step — a dropped Eye of Ender is gone forever.',
+    blocks: fill([], 'lava', 3, 0, 2, 5, 0, 4),
+  });
+  steps.push({
+    caption: '12 End Portal Frames in a ring. Each needs an EYE OF ENDER — some generate already filled (about 1 in 10).',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'end_portal_frame', 3, 1, 1, 5, 1, 1);
+      fill(l, 'end_portal_frame', 3, 1, 5, 5, 1, 5);
+      fill(l, 'end_portal_frame', 2, 1, 2, 2, 1, 4);
+      fill(l, 'end_portal_frame', 6, 1, 2, 6, 1, 4);
+      put(l, 'marker|ender_eye', 3, 2, 1, 6, 2, 3);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'A SILVERFISH SPAWNER guards the stairs — break it fast or cover it with torches. Fill all 12 frames and jump in to fight the dragon!',
+    blocks: put([], 'spawner', 4, 1, 0).concat(put([], 'marker|silverfish_spawn_egg', 4, 2, 0)),
+    ed: 'Exactly the same on Bedrock and Java. Bring 12+ Eyes of Ender.',
+  });
+  TUTORIALS.push({ name: '👁 End Portal Room', steps, cam: 13, kind: 'structure' });
+}
+
+// S4. Nether fortress
+{
+  const steps = [];
+  steps.push({
+    caption: 'Nether fortresses are giant nether brick castles with long bridges over lava. Find them by exploring along the X axis.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'nether_bricks', 1, 0, 2, 2, 3, 3);
+      fill(l, 'nether_bricks', 8, 0, 2, 9, 3, 3);
+      fill(l, 'nether_bricks', 0, 4, 1, 10, 4, 4);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Nether brick fence railings keep you from falling into the lava ocean below.',
+    blocks: fill(fill([], 'nether_brick_fence', 0, 5, 1, 10, 5, 1), 'nether_brick_fence', 0, 5, 4, 10, 5, 4),
+  });
+  steps.push({
+    caption: 'The prize: a BLAZE SPAWNER on an open platform. Blaze rods are the only way to brew potions and reach the End!',
+    blocks: (() => {
+      let l = fill([], 'nether_bricks', 3, 5, 6, 7, 5, 10);
+      fill(l, 'nether_bricks', 4, 4, 5, 6, 4, 5);
+      put(l, 'spawner', 5, 6, 8);
+      put(l, 'marker|blaze_spawn_egg', 5, 7, 8, 3, 6, 7, 7, 6, 9);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Also look for NETHER WART growing on soul sand near stairwells — grab some, you need it for every potion!',
+    blocks: fill([], 'soul_sand', 0, 4, 5, 1, 4, 6).concat(put([], 'marker|nether_wart', 0, 5, 5, 1, 5, 6)),
+    ed: 'Bedrock tip: build a small safe room near the spawner with a 1-block gap to hit blazes through.',
+  });
+  TUTORIALS.push({ name: '🏰 Nether Fortress', steps, cam: 15, kind: 'structure' });
+}
+
+// S5. Ruined portal
+{
+  const steps = [];
+  steps.push({
+    caption: 'Ruined portals generate EVERYWHERE — broken pieces of ancient nether portals, often with crying obsidian you cannot light.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'obsidian', 2, 0, 2, 5, 0, 2);
+      fill(l, 'obsidian', 2, 1, 2, 2, 4, 2);
+      put(l, 'crying_obsidian', 5, 1, 2, 5, 2, 2, 3, 5, 2);
+      put(l, 'obsidian', 2, 5, 2, 4, 5, 2, 5, 4, 2);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Netherrack and magma blocks splash around it — like the Nether leaked through.',
+    blocks: (() => {
+      let l = [];
+      put(l, 'netherrack', 0, 0, 1, 1, 0, 3, 6, 0, 2, 4, 0, 4, 1, 1, 2);
+      put(l, 'magma_block', 0, 0, 3, 6, 0, 1, 3, 0, 4);
+      put(l, 'gold_block', 6, 0, 3, 1, 0, 0);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'The chest has GOLD gear, obsidian, and sometimes flint and steel — replace the missing obsidian, light it, and you have a free portal to the Nether!',
+    blocks: put([], 'chest', 6, 1, 2).concat(put([], 'marker|golden_apple', 6, 2, 2)).concat(put([], 'marker|flint_and_steel', 3, 3, 2)),
+    ed: 'Crying obsidian does NOT count for the portal frame — swap it for regular obsidian.',
+  });
+  TUTORIALS.push({ name: '🌀 Ruined Portal', steps, cam: 12, kind: 'structure' });
+}
+
+// S6. Witch hut
+{
+  const steps = [];
+  steps.push({
+    caption: 'Swamp huts stand on stilts over the water in swamp biomes.',
+    blocks: (() => {
+      let l = [];
+      for (const [x, z] of [[1, 1], [5, 1], [1, 6], [5, 6]]) fill(l, 'oak_log', x, 0, z, x, 2, z);
+      fill(l, 'spruce_planks', 0, 3, 0, 6, 3, 7);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Spruce walls and a stair roof with a little porch out front.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'spruce_planks', 0, 4, 2, 6, 6, 2);
+      fill(l, 'spruce_planks', 0, 4, 7, 6, 6, 7);
+      fill(l, 'spruce_planks', 0, 4, 3, 0, 6, 6);
+      fill(l, 'spruce_planks', 6, 4, 3, 6, 6, 6);
+      l = l.filter(b => !(b[0] === 3 && b[2] === 2 && b[1] <= 5));
+      fill(l, 'spruce_stairs|+z', -1, 7, 1, 7, 7, 1);
+      fill(l, 'spruce_planks', -1, 7, 2, 7, 7, 7);
+      fill(l, 'spruce_stairs|-z', -1, 7, 8, 7, 7, 8);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Inside: a CAULDRON (sometimes with a potion on Bedrock!), a crafting table — and the WITCH. Her black cat protects her from... nothing. Loot the cat? No! It is a free pet.',
+    blocks: put([], 'cauldron', 1, 4, 6).concat(put([], 'crafting_table', 5, 4, 6))
+      .concat(put([], 'marker|witch_spawn_egg', 3, 4, 5)).concat(put([], 'marker|cat_spawn_egg', 5, 4, 3)),
+    ed: 'Bedrock: the cauldron can contain a random potion — scoop it with bottles! Witches always respawn near the hut.',
+  });
+  TUTORIALS.push({ name: '🧙 Witch Hut', steps, cam: 13, kind: 'structure' });
+}
+
+// S7. Igloo
+{
+  const steps = [];
+  steps.push({
+    caption: 'Igloos generate in snowy biomes — a cozy snow dome.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'snow_block', 0, 0, 0, 6, 0, 6);
+      fill(l, 'snow_block', 0, 1, 0, 6, 2, 0);
+      fill(l, 'snow_block', 0, 1, 6, 6, 2, 6);
+      fill(l, 'snow_block', 0, 1, 1, 0, 2, 5);
+      fill(l, 'snow_block', 6, 1, 1, 6, 2, 5);
+      fill(l, 'snow_block', 1, 3, 1, 5, 3, 5);
+      l = l.filter(b => !(b[0] === 3 && b[2] === 0 && b[1] >= 1 && b[1] <= 2));
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Inside: a bed, a furnace, and a torch. Cozy! But HALF of all igloos hide something under the carpet...',
+    blocks: put([], 'bed_head', 1, 1, 4).concat(put([], 'bed_foot', 1, 1, 3))
+      .concat(put([], 'furnace', 5, 1, 4)).concat(put([], 'torch', 3, 2, 5))
+      .concat(put([], 'white_carpet', 3, 1, 3)),
+  });
+  steps.push({
+    caption: 'THE SECRET: under the carpet, a ladder shaft drops into a hidden lab — with a caged ZOMBIE VILLAGER, a regular villager, a brewing stand and a chest with a golden apple!',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'ladder', 3, -4, 3, 3, 0, 3);
+      fill(l, 'stone_bricks', 1, -5, 1, 5, -5, 5);
+      fill(l, 'stone_bricks', 1, -4, 1, 5, -2, 1);
+      fill(l, 'stone_bricks', 1, -4, 5, 5, -2, 5);
+      fill(l, 'stone_bricks', 1, -4, 2, 1, -2, 4);
+      fill(l, 'stone_bricks', 5, -4, 2, 5, -2, 4);
+      put(l, 'iron_bars', 4, -4, 4, 4, -3, 4);
+      put(l, 'marker|zombie_villager_spawn_egg', 4, -4, 4);
+      put(l, 'marker|villager_spawn_egg', 2, -4, 4);
+      put(l, 'chest', 2, -4, 2);
+      put(l, 'cauldron', 4, -4, 2);
+      put(l, 'marker|golden_apple', 2, -3, 2);
+      put(l, 'cobweb', 1, -2, 2, 5, -2, 4);
+      return l;
+    })(),
+    remove: [[3, 1, 3]],
+    ed: 'The basement chest has a golden apple + the brewing stand holds a Weakness potion — everything you need to CURE the zombie villager for discount trades!',
+  });
+  TUTORIALS.push({ name: '❄️ Igloo Secret', steps, cam: 13, kind: 'structure' });
+}
+
+// S8. Pillager outpost
+{
+  const steps = [];
+  steps.push({
+    caption: 'Pillager outposts are tall watchtowers that generate near villages. Dangerous — pillagers shoot on sight!',
+    blocks: (() => {
+      let l = [];
+      for (const [x, z] of [[0, 0], [4, 0], [0, 4], [4, 4]]) fill(l, 'dark_oak_log', x, 0, z, x, 1, z);
+      fill(l, 'cobblestone', 0, 2, 0, 4, 2, 4);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'The tower body: dark oak and cobblestone, floors connected by ladders.',
+    blocks: (() => {
+      let l = [];
+      fill(l, 'dark_oak_planks', 0, 3, 0, 4, 7, 0);
+      fill(l, 'dark_oak_planks', 0, 3, 4, 4, 7, 4);
+      fill(l, 'dark_oak_planks', 0, 3, 1, 0, 7, 3);
+      fill(l, 'dark_oak_planks', 4, 3, 1, 4, 7, 3);
+      l = l.filter(b => !((b[1] === 5) && ((b[0] === 2 && (b[2] === 0 || b[2] === 4)) || (b[2] === 2 && (b[0] === 0 || b[0] === 4)))));
+      fill(l, 'ladder', 2, 3, 3, 2, 7, 3);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'The top deck hangs over the edges — that is where the CAPTAIN stands with his banner. Killing him gives you BAD OMEN... enter a village with it and a RAID starts!',
+    blocks: (() => {
+      let l = fill([], 'cobblestone', -1, 8, -1, 5, 8, 5);
+      fill(l, 'cobblestone_wall', -1, 9, -1, 5, 9, -1);
+      fill(l, 'cobblestone_wall', -1, 9, 5, 5, 9, 5);
+      fill(l, 'cobblestone_wall', -1, 9, 0, -1, 9, 4);
+      fill(l, 'cobblestone_wall', 5, 9, 0, 5, 9, 4);
+      put(l, 'marker|pillager_spawn_egg', 1, 9, 2, 3, 9, 1);
+      put(l, 'marker|crossbow', 2, 10, 2);
+      return l;
+    })(),
+  });
+  steps.push({
+    caption: 'Loot the chest at the top: crossbows, arrows, dark oak logs — and check the cages around the outpost, sometimes an IRON GOLEM is trapped inside. Free it for a friend!',
+    blocks: put([], 'chest', 2, 9, 3).concat(put([], 'marker|iron_ingot', 2, 10, 3)),
+    ed: 'Raids: on Bedrock, Bad Omen turns into Raid Omen when you enter a village. Win the raid for the Hero of the Village discount!',
+  });
+  TUTORIALS.push({ name: '🗼 Pillager Outpost', steps, cam: 15, kind: 'structure' });
+}
+
 // ---------- three.js scene ----------
 const holder = document.getElementById('tut-canvas-holder');
 let renderer = null;
@@ -563,17 +958,35 @@ if (renderer) {
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.18;
   holder.appendChild(renderer.domElement);
 }
 const scene = new THREE.Scene();
 
-// black night sky
-scene.background = new THREE.Color('#000000');
-scene.fog = new THREE.Fog('#000000', 55, 110);
+// day/night sky system (day = vibrant gradient + clouds, night = black + stars)
+function makeSkyTex(stops) {
+  const c = document.createElement('canvas');
+  c.width = 2; c.height = 256;
+  const g = c.getContext('2d');
+  const grad = g.createLinearGradient(0, 0, 0, 256);
+  for (const [p, col] of stops) grad.addColorStop(p, col);
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 2, 256);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const daySky = makeSkyTex([[0, '#2f8fff'], [0.6, '#7fc4ff'], [1, '#dff2ff']]);
+scene.background = daySky;
+scene.fog = new THREE.Fog('#bfe0ff', 55, 115);
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 300);
-scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+scene.add(ambient);
+const hemi = new THREE.HemisphereLight(0xcfe8ff, 0x9a8a60, 0.55);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff2dd, 1.7);
 sun.position.set(18, 30, 12);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -586,9 +999,17 @@ const sun2 = new THREE.DirectionalLight(0xbcd4ff, 0.5);
 sun2.position.set(-10, 12, -14);
 scene.add(sun2);
 
-// stars instead of clouds on the black sky (clouds group kept for the drift animation)
+// clouds (day) + stars (night)
 const clouds = new THREE.Group();
 scene.add(clouds);
+const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.88, fog: false });
+for (let i = 0; i < 10; i++) {
+  const c = new THREE.Mesh(boxGeo, cloudMat);
+  c.scale.set(7 + ((i * 37) % 9), 0.8, 4 + ((i * 23) % 6));
+  c.position.set(((i * 29) % 140) - 70, 27 + (i % 4) * 3, ((i * 47) % 120) - 60);
+  clouds.add(c);
+}
+let stars;
 {
   const starPos = new Float32Array(350 * 3);
   for (let i = 0; i < 350; i++) {
@@ -601,10 +1022,30 @@ scene.add(clouds);
   }
   const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.9, fog: false }));
+  stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.9, fog: false }));
   stars.frustumCulled = false;
   scene.add(stars);
 }
+let isDay = true;
+function setDaylight(day) {
+  isDay = day;
+  if (day) {
+    scene.background = daySky;
+    scene.fog.color.set('#bfe0ff');
+    ambient.intensity = 0.55; hemi.intensity = 0.55;
+    sun.intensity = 1.7; sun.color.set(0xfff2dd);
+  } else {
+    scene.background = new THREE.Color('#000000');
+    scene.fog.color.set('#000000');
+    ambient.intensity = 0.6; hemi.intensity = 0.2;
+    sun.intensity = 1.1; sun.color.set(0xcfd8ff);
+  }
+  clouds.visible = day;
+  stars.visible = !day;
+  const btn = document.getElementById('tut-day');
+  if (btn) btn.textContent = day ? '🌞' : '🌙';
+}
+setDaylight(true);
 
 // grass ground built as 4 rectangles around the build's footprint (so digs below ground stay visible)
 const groundGroup = new THREE.Group();
@@ -795,7 +1236,7 @@ window.addEventListener('pointermove', e => {
     walkPitch = Math.min(1.45, Math.max(-1.45, walkPitch - (e.clientY - lastY) * 0.004));
   } else {
     camTheta -= (e.clientX - lastX) * 0.008;
-    camPhi = Math.min(1.4, Math.max(0.05, camPhi + (e.clientY - lastY) * 0.006));
+    camPhi = Math.min(1.4, Math.max(-1.1, camPhi + (e.clientY - lastY) * 0.006));
     updateCam();
   }
   lastX = e.clientX; lastY = e.clientY;
@@ -827,6 +1268,7 @@ function setWalkMode(on) {
   }
 }
 document.getElementById('tut-walk').onclick = () => setWalkMode(!walkMode);
+document.getElementById('tut-day').onclick = () => setDaylight(!isDay);
 
 // hover inspector: name + coordinates of the block under the cursor
 const raycaster = new THREE.Raycaster();
@@ -1043,7 +1485,8 @@ function loadTutorial(idx) {
   flyTo = null;
   autoSpin = true;
   // grass field around the build, at the build's lowest level
-  buildGround(min[0], max[0] + 1, min[2], max[2] + 1, Math.min(0, min[1]));
+  // ground stays at the surface (y=0); underground rooms show through the cutout like a cutaway
+  buildGround(min[0], max[0] + 1, min[2], max[2] + 1, 0);
   sun.target.position.copy(camTarget);
   sun.target.updateMatrixWorld();
   updateCam();
@@ -1089,7 +1532,19 @@ document.getElementById('tut-sound').onclick = (e) => {
 const bar = document.getElementById('tut-bar');
 function renderBar() {
   bar.innerHTML = '';
+  const addLabel = (text) => {
+    const s = document.createElement('span');
+    s.className = 'tut-group-label';
+    s.textContent = text;
+    bar.appendChild(s);
+  };
+  let lastKind = null;
   TUTORIALS.forEach((t, i) => {
+    const kind = t.custom ? 'ai' : (t.kind || 'farm');
+    if (kind !== lastKind) {
+      addLabel(kind === 'farm' ? '🌾 Farms & Machines' : kind === 'structure' ? '🏛 Structures' : '🤖 Your AI Builds');
+      lastKind = kind;
+    }
     const b = document.createElement('button');
     b.textContent = t.name;
     b.onclick = () => loadTutorial(i);
@@ -1208,7 +1663,7 @@ function animate() {
     if (keys.KeyD) { walkPos.x += rx * speed * dt; walkPos.z += rz * speed * dt; }
     if (keys.Space) walkPos.y += speed * dt;
     if (keys.KeyC) walkPos.y -= speed * dt;
-    walkPos.y = Math.max(0.6, walkPos.y);
+    walkPos.y = Math.max(-9, walkPos.y);
     camera.position.copy(walkPos);
     camera.rotation.order = 'YXZ';
     camera.rotation.set(walkPitch, walkYaw, 0);
