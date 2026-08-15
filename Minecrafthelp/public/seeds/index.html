@@ -1315,7 +1315,7 @@ canvas.addEventListener('dblclick', e => {
   const [bx, bz] = pxToBlock(e.clientX - r.left, e.clientY - r.top, r);
   ui.home.x = Math.round(bx); ui.home.z = Math.round(bz);
   $('homeX').value = ui.home.x; $('homeZ').value = ui.home.z;
-  refreshResults(); draw();
+  refreshResults(); draw(); saveState();
 });
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
@@ -1729,9 +1729,9 @@ $('versionSel').addEventListener('change', () => {
   buildHotbar(); buildGuide(); buildOres();
   if (WORLD) { WORLD.version = versionNum(); refreshResults(); draw(); saveState(); }
 });
-document.querySelectorAll('.dim-tab').forEach(tab => {
+document.querySelectorAll('.dim-tab[data-dim]').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.dim-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.dim-tab[data-dim]').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     ui.dim = tab.dataset.dim;
     ui.selected = null;
@@ -1762,7 +1762,7 @@ function readHomeInputs() {
   }
   ui.home.x = parseInt($('homeX').value, 10) || 0;
   ui.home.z = parseInt($('homeZ').value, 10) || 0;
-  refreshResults(); draw();
+  refreshResults(); draw(); saveState();
 }
 for (const id of ['homeX', 'homeY', 'homeZ']) $(id).addEventListener('change', readHomeInputs);
 function applySeed() {
@@ -1805,12 +1805,22 @@ function setEdition(ed) {
 $('edBedrock').addEventListener('click', () => setEdition('bedrock'));
 $('edJava').addEventListener('click', () => setEdition('java'));
 function saveState() {
-  try { localStorage.setItem('seedseeker', JSON.stringify({ seed: $('seedInput').value, v: $('versionSel').value, ed: ui.edition })); } catch (e) {}
+  try {
+    localStorage.setItem('seedseeker', JSON.stringify({
+      seed: $('seedInput').value, v: $('versionSel').value, ed: ui.edition,
+      hx: $('homeX').value, hy: $('homeY').value, hz: $('homeZ').value,
+    }));
+  } catch (e) {}
 }
 function loadState() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem('seedseeker')); } catch (e) {}
   setEdition((s && s.ed) || 'bedrock');
+  if (s && (s.hx !== undefined || s.hz !== undefined)) {
+    $('homeX').value = s.hx || 0; $('homeY').value = s.hy || ''; $('homeZ').value = s.hz || 0;
+    ui.home.x = parseInt(s.hx, 10) || 0;
+    ui.home.z = parseInt(s.hz, 10) || 0;
+  }
   if (s && s.seed) { $('seedInput').value = s.seed; $('versionSel').value = s.v || '121'; applySeed(); }
 }
 window.addEventListener('resize', resizeCanvas);
