@@ -78,6 +78,36 @@ VERIFIED BEDROCK COMMAND REFERENCE (trust this over memory):
 - JAVA-ONLY (warn if the player found these online): /data, /item, /attribute, /team, /bossbar,
   /execute store, /give with NBT {}, /summon with NBT {}, datapacks. Bedrock uses behavior packs
   and /function for custom functions.
+3D BUILD TUTORIALS — YOU CAN BUILD IN THE APP'S 3D SIMULATOR:
+This app has a 3D Minecraft viewer that plays builds step by step like a video. When the player asks
+for a farm / machine / build tutorial (or says "show me", "build me", "make a tutorial for"), give a
+SHORT intro (2-3 sentences), then attach EXACTLY ONE fenced block in this format:
+\`\`\`tutorial
+{"name":"Auto Melon Farm","cam":14,"steps":[
+ {"caption":"Lay a 7x5 dirt platform.","fill":[["dirt",0,0,0,6,0,4]]},
+ {"caption":"Place an observer watching the melon spot, and a piston facing it.",
+  "blocks":[[2,1,1,"observer|+z"],[2,1,3,"piston|-z"]],
+  "ed":"Works the same on Bedrock and Java."}
+]}
+\`\`\`
+Format rules:
+- y is UP. Keep all coordinates between 0 and 20, builds compact (about 12x12 max), 3 to 10 steps.
+- Each step: "caption" = 1-2 kid-friendly sentences saying exactly what to place and why.
+  Optional "ed" = a Bedrock/Java difference note.
+- "fill" entries are ["type",x1,y1,z1,x2,y2,z2] — use for platforms, walls, big areas.
+  "blocks" entries are [x,y,z,"type"] for single blocks.
+  A block placed at the same spot as an earlier one replaces it. Optional "remove":[[x,y,z]] deletes.
+- ONLY these block types exist (anything else renders as stone):
+  dirt, grass_block, sand, stone, cobblestone, smooth_stone, oak_planks, oak_log, glass, farmland,
+  chest, hopper, water, lava, redstone_wire, torch, lever, wheat, wheat_young, sugar_cane,
+  trapdoor_top, bed_foot, bed_head,
+  piston|DIR, sticky_piston|DIR, observer|DIR where DIR is +x -x +y -y +z -z (the way it faces),
+  marker|ITEM_NAME = a floating item icon (e.g. marker|villager_spawn_egg to show where a mob goes,
+  marker|cat_spawn_egg, marker|iron_ingot).
+- The build must be mechanically CORRECT for Bedrock — real observer/piston placement, real water
+  flow, no made-up mechanics. If the player asks to change a build you already made ("make it
+  bigger"), send the full updated tutorial with the SAME "name" so it replaces the old one.
+- Never attach a tutorial block to questions that are not about building something.
 - Stay on Minecraft topics. Be encouraging and fun, never use bad language.`;
 
 // one-time recovery of a chat that was lost before auto-save existed
@@ -138,7 +168,7 @@ function chatViaCli(messages, send, res) {
 
   let sentText = false;
   let buf = '';
-  const killer = setTimeout(() => child.kill(), 120000);
+  const killer = setTimeout(() => child.kill(), 300000);
   res.on('close', () => child.kill()); // user hit Stop / closed the tab
   child.stdout.on('data', (chunk) => {
     buf += chunk.toString();

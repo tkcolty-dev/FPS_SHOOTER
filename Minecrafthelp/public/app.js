@@ -445,6 +445,7 @@ async function askAI(question) {
     }
     history.push({ role: 'assistant', content: full || '...' });
     enhanceBubble(bubble);
+    attachTutorial(bubble, full);
   } catch (e) {
     if (e.name === 'AbortError') {
       bubble.innerHTML = mdLite((full || '') + '\n*(stopped)*');
@@ -458,6 +459,27 @@ async function askAI(question) {
   if (pendingQuestions.length) askAI(pendingQuestions.shift());
 }
 window.askAI = askAI;
+
+// detect a ```tutorial JSON block in an AI answer and turn it into a playable 3D build
+function attachTutorial(bubble, content, tries = 0) {
+  const m = content.match(/```tutorial\s*\n([\s\S]*?)```/);
+  if (!m) return;
+  if (!window.addCustomTutorial) {
+    if (tries < 20) setTimeout(() => attachTutorial(bubble, content, tries + 1), 300);
+    return;
+  }
+  let def;
+  try { def = JSON.parse(m[1]); } catch { return; }
+  const idx = window.addCustomTutorial(def);
+  if (idx < 0) return;
+  // swap the raw JSON <pre> for a friendly play button
+  const pre = [...bubble.querySelectorAll('pre')].find(p => p.textContent.includes('"steps"'));
+  const btn = document.createElement('button');
+  btn.textContent = '▶ Watch "' + (def.name || 'this build') + '" build itself in 3D!';
+  btn.style.cssText = 'display:block;font-family:inherit;font-size:15px;padding:12px 16px;margin:8px 0;cursor:pointer;background:#4c7f36;color:#fff;border:3px solid;border-color:#71b755 #2c4c1e #2c4c1e #71b755;text-shadow:1px 1px 0 #2c4c1e';
+  btn.onclick = () => window.playTutorial(idx);
+  if (pre) pre.replaceWith(btn); else bubble.appendChild(btn);
+}
 
 // add copy buttons to command/code blocks in AI answers
 function enhanceBubble(bubble) {
@@ -525,7 +547,7 @@ const WELCOME = "Hi! I'm your **Minecraft Help AI**. Ask me anything — recipes
   if (msgs.length) {
     for (const m of msgs) {
       const b = addMsg(m.role === 'user' ? 'user' : 'ai', mdLite(m.content));
-      if (m.role !== 'user') enhanceBubble(b);
+      if (m.role !== 'user') { enhanceBubble(b); attachTutorial(b, m.content); }
     }
     history.push(...msgs);
     saveChat();

@@ -875,12 +875,65 @@ document.getElementById('tut-sound').onclick = (e) => {
 };
 
 const bar = document.getElementById('tut-bar');
-TUTORIALS.forEach((t, i) => {
-  const b = document.createElement('button');
-  b.textContent = t.name;
-  b.onclick = () => loadTutorial(i);
-  bar.appendChild(b);
-});
+function renderBar() {
+  bar.innerHTML = '';
+  TUTORIALS.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.textContent = t.name;
+    b.onclick = () => loadTutorial(i);
+    if (current === t) b.classList.add('active');
+    bar.appendChild(b);
+  });
+}
+renderBar();
+
+// ---------- AI-built tutorials: the chat AI emits build JSON, we play it ----------
+// def: {name, cam?, steps:[{caption, ed?, blocks?:[[x,y,z,type]], fill?:[[type,x1,y1,z1,x2,y2,z2]], remove?:[[x,y,z]]}]}
+const MAX_BLOCKS = 6000;
+function normalizeCustom(def) {
+  const clamp = (v) => Math.max(-40, Math.min(40, Math.round(Number(v) || 0)));
+  let total = 0;
+  const steps = (def.steps || []).slice(0, 14).map(st => {
+    const blocks = [];
+    for (const b of (st.blocks || [])) {
+      if (total > MAX_BLOCKS) break;
+      blocks.push([clamp(b[0]), clamp(b[1]), clamp(b[2]), String(b[3] || 'stone')]);
+      total++;
+    }
+    for (const f of (st.fill || [])) {
+      const type = String(f[0] || 'stone');
+      const [x1, y1, z1, x2, y2, z2] = [1, 2, 3, 4, 5, 6].map(i => clamp(f[i]));
+      for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++)
+        for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++)
+          for (let z = Math.min(z1, z2); z <= Math.max(z1, z2); z++) {
+            if (total > MAX_BLOCKS) break;
+            blocks.push([x, y, z, type]);
+            total++;
+          }
+    }
+    const out = { caption: String(st.caption || '...'), blocks };
+    if (st.ed) out.ed = String(st.ed);
+    if (Array.isArray(st.remove)) out.remove = st.remove.map(r => [clamp(r[0]), clamp(r[1]), clamp(r[2])]);
+    return out;
+  }).filter(st => st.blocks.length || st.remove || st.caption);
+  if (!steps.length) return null;
+  return { name: '🤖 ' + String(def.name || 'AI Build').slice(0, 26), steps, cam: Math.max(6, Math.min(30, Number(def.cam) || 14)), custom: true };
+}
+window.addCustomTutorial = function (def) {
+  const tut = normalizeCustom(def);
+  if (!tut) return -1;
+  // same-name AI build replaces the old version (so "make it bigger" edits update in place)
+  const existing = TUTORIALS.findIndex(t => t.custom && t.name === tut.name);
+  if (existing >= 0) TUTORIALS[existing] = tut; else TUTORIALS.push(tut);
+  renderBar();
+  return existing >= 0 ? existing : TUTORIALS.length - 1;
+};
+window.playTutorial = function (idx) {
+  if (!TUTORIALS[idx]) return;
+  window.showTab('tutorials');
+  loadTutorial(idx);
+  renderBar();
+};
 
 // ---------- render loop ----------
 const clock = new THREE.Clock();
