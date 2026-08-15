@@ -85,7 +85,8 @@ function observerDef(facing) {
   return cubeMats({ face: mat('observer_front'), back: mat('observer_back'), side: mat('observer_side'), top: mat('observer_top'), bottom: mat('observer_top'), facing });
 }
 function commandDef(base, facing) {
-  return cubeMats({ face: mat(base + '_front'), back: mat(base + '_back'), side: mat(base + '_side'), facing: facing || '+z' });
+  const side = mat(base + '_side');
+  return cubeMats({ face: mat(base + '_front'), back: mat(base + '_back'), side, top: side, bottom: side, facing: facing || '+z' });
 }
 function frontBoxDef(front, facing) {
   return cubeMats({ face: mat(front), side: mat('furnace_side'), top: mat('furnace_top'), bottom: mat('furnace_top'), facing: facing || '+z' });
