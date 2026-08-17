@@ -4,3 +4,4 @@ node_modules/
 !public/**/*.png
 .playwright-mcp/
 data/
+server.log
