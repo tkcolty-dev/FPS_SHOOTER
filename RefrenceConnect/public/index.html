@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>RefConnect</title>
+<style>
+  :root { --bg:#111; --panel:#1c1c1f; --line:#2b2b30; --fg:#eee; --mute:#8b8b95; --acc:#ffb63a; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:15px/1.4 -apple-system, system-ui, Segoe UI, Roboto, sans-serif; }
+  button, input { font:inherit; }
+  button { cursor:pointer; border:1px solid var(--line); background:var(--panel); color:var(--fg); border-radius:8px; padding:8px 14px; }
+  button.acc { background:var(--acc); color:#111; border-color:var(--acc); font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  input[type=text] { background:#0c0c0e; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:9px 12px; outline:none; }
+  input[type=text]:focus { border-color:var(--acc); }
+  .hidden { display:none !important; }
+
+  /* lobby */
+  #lobby { min-height:100%; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:28px; width:min(420px,100%); }
+  .card h1 { margin:0 0 4px; font-size:26px; }
+  .card p { margin:0 0 20px; color:var(--mute); }
+  .row { display:flex; gap:8px; margin-bottom:12px; }
+  .row input { flex:1; min-width:0; }
+  #code { text-transform:uppercase; letter-spacing:.3em; font-weight:700; text-align:center; font-size:20px; }
+  .or { text-align:center; color:var(--mute); margin:16px 0; font-size:13px; }
+  #lobbyErr { color:#ff7b7b; min-height:1.2em; font-size:13px; }
+
+  /* room */
+  #room { height:100%; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  header .code { font-weight:800; letter-spacing:.25em; font-size:18px; color:var(--acc); cursor:pointer; }
+  header .cnt { color:var(--mute); font-size:13px; }
+  header .sp { flex:1; }
+  header .link { color:var(--mute); font-size:12px; word-break:break-all; cursor:pointer; }
+  main { flex:1; display:flex; min-height:0; }
+  #stage { flex:1; position:relative; display:flex; align-items:center; justify-content:center; background:#000; min-width:0; }
+  #stage img { max-width:100%; max-height:100%; object-fit:contain; display:block; user-select:none; -webkit-user-select:none; }
+  #stage .empty { color:var(--mute); text-align:center; padding:20px; }
+  #stage .cap { position:absolute; left:10px; bottom:10px; background:rgba(0,0,0,.55); padding:4px 8px; border-radius:6px; font-size:12px; color:#ddd; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #fsBtn { position:absolute; right:10px; top:10px; }
+  #stage:fullscreen, #stage.pseudo-fs { position:fixed; inset:0; z-index:100; width:100vw; height:100vh; }
+  #stage:fullscreen img, #stage.pseudo-fs img { max-width:100vw; max-height:100vh; }
+  #stage.pseudo-fs #fsBtn { top: calc(10px + env(safe-area-inset-top)); }
+
+  aside { width:320px; border-left:1px solid var(--line); display:flex; flex-direction:column; min-height:0; }
+  aside .sec { padding:10px 12px; border-bottom:1px solid var(--line); }
+  aside h3 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--mute); }
+  #drop { border:2px dashed var(--line); border-radius:10px; padding:12px; text-align:center; color:var(--mute); font-size:13px; cursor:pointer; }
+  #drop.over { border-color:var(--acc); color:var(--fg); }
+  #results { flex:1; overflow:auto; padding:8px; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; align-content:start; }
+  #results img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:6px; cursor:pointer; background:#222; border:2px solid transparent; }
+  #results img:hover { border-color:var(--acc); }
+  #results .msg { grid-column:1/-1; color:var(--mute); font-size:13px; text-align:center; padding:12px; }
+  #history { display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; }
+  #history img { height:52px; width:52px; object-fit:cover; border-radius:6px; cursor:pointer; border:2px solid transparent; flex:none; background:#222; }
+  #history img.cur { border-color:var(--acc); }
+  #toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%); background:#333; padding:8px 14px; border-radius:8px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:200; }
+  #toast.show { opacity:1; }
+  #sideToggle { display:none; }
+  @media (max-width:760px) {
+    main { flex-direction:column; }
+    aside { width:100%; border-left:0; border-top:1px solid var(--line); max-height:48vh; }
+    aside.collapsed { max-height:0; overflow:hidden; border:0; }
+    #results { grid-template-columns:repeat(4,1fr); }
+    #sideToggle { display:inline-block; }
+  }
+</style>
+</head>
+<body>
+
+<div id="lobby">
+  <div class="card">
+    <h1>RefConnect</h1>
+    <p>Share a reference picture with your party — live.</p>
+    <div class="row"><input id="name" type="text" placeholder="Your name (optional)" maxlength="24"></div>
+    <div class="row"><input id="code" type="text" placeholder="CODE" maxlength="4" autocapitalize="characters" autocomplete="off"><button id="joinBtn" class="acc">Join</button></div>
+    <div id="lobbyErr"></div>
+    <div class="or">— or —</div>
+    <button id="createBtn" style="width:100%">Start a new party</button>
+  </div>
+</div>
+
+<div id="room" class="hidden">
+  <header>
+    <span class="code" id="codeLbl" title="Copy invite link">----</span>
+    <span class="cnt" id="cnt">1 here</span>
+    <span class="link" id="linkLbl" title="Copy invite link"></span>
+    <span class="sp"></span>
+    <button id="sideToggle">Tools</button>
+    <button id="leaveBtn">Leave</button>
+  </header>
+  <main>
+    <div id="stage">
+      <div class="empty" id="empty">No picture yet.<br><small>Paste (⌘V), drop, upload, or search on the right.</small></div>
+      <img id="pic" class="hidden" alt="">
+      <div class="cap hidden" id="cap"></div>
+      <button id="fsBtn" title="Fullscreen (or double-tap picture)">⛶ Fullscreen</button>
+    </div>
+    <aside id="side">
+      <div class="sec">
+        <h3>Search images</h3>
+        <div class="row" style="margin:0"><input id="q" type="text" placeholder="e.g. red fox running"><button id="qBtn" class="acc">Go</button></div>
+      </div>
+      <div class="sec">
+        <h3>Or share your own</h3>
+        <div class="row" style="margin-bottom:8px"><input id="url" type="text" placeholder="Paste an image URL…"><button id="urlBtn">Share</button></div>
+        <div id="drop">Drop / click to upload · or just ⌘V paste an image anywhere</div>
+        <input id="file" type="file" accept="image/*" class="hidden">
+      </div>
+      <div class="sec">
+        <h3>Recent in this party</h3>
+        <div id="history"></div>
+      </div>
+      <div id="results"><div class="msg">Search results show up here.</div></div>
+    </aside>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let ws, code = null, current = null, wantJoin = null;
+const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+
+function toast(t){ $('toast').textContent=t; $('toast').classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>$('toast').classList.remove('show'),1800); }
+function myName(){ return ($('name').value||localStorage.rcName||'').trim(); }
+
+function connect(){
+  ws = new WebSocket(proto + location.host);
+  ws.onopen = () => { if (wantJoin) { ws.send(JSON.stringify(wantJoin)); } };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type==='joined'){ code=m.code; enterRoom(); }
+    else if (m.type==='state'){ setImage(m.image); setHistory(m.history); setCount(m.count); }
+    else if (m.type==='image'){ setImage(m.image); setHistory(m.history); }
+    else if (m.type==='count'){ setCount(m.count); }
+    else if (m.type==='error'){ $('lobbyErr').textContent=m.msg; }
+  };
+  ws.onclose = () => { if (code) { wantJoin={type:'join',code,name:myName()}; toast('Reconnecting…'); } setTimeout(connect,1500); };
+}
+function sendMsg(o){ if (ws && ws.readyState===1) ws.send(JSON.stringify(o)); else toast('Not connected'); }
+
+function enterRoom(){
+  $('lobby').classList.add('hidden'); $('room').classList.remove('hidden');
+  $('codeLbl').textContent = code;
+  const link = location.origin + '/' + code;
+  $('linkLbl').textContent = link;
+  history.replaceState(null,'', '/' + code);
+  if (myName()) localStorage.rcName = myName();
+}
+function setCount(n){ $('cnt').textContent = n + (n===1?' here':' here'); }
+function srcOf(img){ return /^https?:/i.test(img.src) ? '/img?u=' + encodeURIComponent(img.src) : img.src; }
+function setImage(img){
+  current = img;
+  if (!img){ $('pic').classList.add('hidden'); $('empty').classList.remove('hidden'); $('cap').classList.add('hidden'); return; }
+  $('pic').src = srcOf(img);
+  $('pic').classList.remove('hidden'); $('empty').classList.add('hidden');
+  $('cap').textContent = (img.name? img.name+' · ':'') + 'by ' + img.by; $('cap').classList.remove('hidden');
+  document.querySelectorAll('#history img').forEach(i => i.classList.toggle('cur', i.dataset.id===img.id));
+}
+function setHistory(h){
+  const el=$('history'); el.innerHTML='';
+  for (const img of h){ const i=document.createElement('img'); i.src=srcOf(img); i.dataset.id=img.id; i.title=img.name||''; if(current&&img.id===current.id) i.classList.add('cur'); i.onclick=()=>sendMsg({type:'show',id:img.id}); el.appendChild(i); }
+}
+
+// ---- lobby ----
+$('createBtn').onclick = () => { wantJoin={type:'create',name:myName()}; if (ws.readyState===1) ws.send(JSON.stringify(wantJoin)); };
+$('joinBtn').onclick = () => { const c=$('code').value.trim().toUpperCase(); if(c.length!==4) return $('lobbyErr').textContent='Enter the 4-letter code'; wantJoin={type:'join',code:c,name:myName()}; if (ws.readyState===1) ws.send(JSON.stringify(wantJoin)); };
+$('code').addEventListener('keydown', e => { if (e.key==='Enter') $('joinBtn').click(); });
+$('code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g,''); });
+$('name').value = localStorage.rcName || '';
+$('leaveBtn').onclick = () => location.href = '/';
+$('codeLbl').onclick = $('linkLbl').onclick = () => { navigator.clipboard?.writeText(location.origin+'/'+code).then(()=>toast('Invite link copied')); };
+
+// ---- sharing ----
+function shareUrl(u, name){ sendMsg({type:'image', src:u, name:name||''}); }
+$('urlBtn').onclick = () => { const u=$('url').value.trim(); if(!u) return; shareUrl(u, ''); $('url').value=''; };
+$('url').addEventListener('keydown', e => { if (e.key==='Enter') $('urlBtn').click(); });
+
+function shareFile(file){
+  if (!file || !file.type.startsWith('image/')) return toast('Not an image');
+  const fr = new FileReader();
+  fr.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      // downscale to keep it quick over the wire
+      const MAX=1800; let w=im.width, h=im.height, s=Math.min(1, MAX/Math.max(w,h));
+      const c=document.createElement('canvas'); c.width=Math.round(w*s); c.height=Math.round(h*s);
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+      const isPng = file.type==='image/png' && file.size < 1.5e6;
+      const data = isPng ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.86);
+      shareUrl(data, file.name && file.name!=='image.png' ? file.name : '');
+    };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+$('drop').onclick = () => $('file').click();
+$('file').onchange = e => { shareFile(e.target.files[0]); e.target.value=''; };
+['dragenter','dragover'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.add('over'); }));
+['dragleave','drop'].forEach(ev => document.addEventListener(ev, e => { e.preventDefault(); $('drop').classList.remove('over'); }));
+document.addEventListener('drop', e => {
+  if (!code) return;
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (f) return shareFile(f);
+  const u = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+  if (u && /^https?:/i.test(u)) shareUrl(u.trim(), '');
+});
+document.addEventListener('paste', e => {
+  if (!code) return;
+  if (document.activeElement && document.activeElement.tagName==='INPUT' && document.activeElement.id!=='url' && !e.clipboardData.files.length) return;
+  for (const it of e.clipboardData.items){ if (it.type.startsWith('image/')) { e.preventDefault(); return shareFile(it.getAsFile()); } }
+  const t = e.clipboardData.getData('text');
+  if (t && /^https?:\/\/\S+$/i.test(t.trim()) && document.activeElement.id!=='url' && document.activeElement.id!=='q') { e.preventDefault(); shareUrl(t.trim(), ''); }
+});
+
+// ---- search ----
+async function search(){
+  const q=$('q').value.trim(); if(!q) return;
+  const res=$('results'); res.innerHTML='<div class="msg">Searching…</div>';
+  try {
+    const r = await fetch('/search?q='+encodeURIComponent(q)); const j = await r.json();
+    res.innerHTML='';
+    if (!j.results.length) { res.innerHTML='<div class="msg">No results'+(j.error?' ('+j.error+')':'')+'. Try pasting an image URL instead.</div>'; return; }
+    for (const it of j.results){
+      const i=document.createElement('img'); i.src=it.thumb; i.title=it.title; i.loading='lazy';
+      i.onclick=()=>{ shareUrl(it.image, it.title); toast('Shared'); };
+      i.onerror=()=>i.remove();
+      res.appendChild(i);
+    }
+  } catch(e){ res.innerHTML='<div class="msg">Search failed.</div>'; }
+}
+$('qBtn').onclick = search;
+$('q').addEventListener('keydown', e => { if (e.key==='Enter') search(); });
+
+// ---- fullscreen ----
+const stage=$('stage');
+function toggleFs(){
+  if (document.fullscreenElement || document.webkitFullscreenElement) { (document.exitFullscreen||document.webkitExitFullscreen).call(document); return; }
+  if (stage.classList.contains('pseudo-fs')) { stage.classList.remove('pseudo-fs'); return; }
+  const rf = stage.requestFullscreen || stage.webkitRequestFullscreen;
+  if (rf) { try { const p = rf.call(stage); if (p && p.catch) p.catch(()=>stage.classList.add('pseudo-fs')); } catch { stage.classList.add('pseudo-fs'); } }
+  else stage.classList.add('pseudo-fs');
+}
+$('fsBtn').onclick = toggleFs;
+$('pic').addEventListener('dblclick', toggleFs);
+let lastTap=0; $('pic').addEventListener('touchend', () => { const n=Date.now(); if (n-lastTap<300) toggleFs(); lastTap=n; });
+document.addEventListener('keydown', e => { if (e.key==='Escape') stage.classList.remove('pseudo-fs'); if (e.key==='f' && code && document.activeElement.tagName!=='INPUT') toggleFs(); });
+$('sideToggle').onclick = () => $('side').classList.toggle('collapsed');
+
+// auto-join from /CODE link
+const pathCode = location.pathname.replace(/\//g,'').toUpperCase();
+if (/^[A-Z]{4}$/.test(pathCode)) { $('code').value = pathCode; wantJoin = {type:'join', code:pathCode, name:myName()}; }
+connect();
+</script>
+</body>
+</html>
