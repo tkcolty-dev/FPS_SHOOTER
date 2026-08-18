@@ -372,7 +372,8 @@ function mdLite(text) {
   t = t.replace(/```([\s\S]*?)```/g, (_, c) => `<pre>${c.trim()}</pre>`);
   t = t.replace(/`([^`\n]+)`/g, '<code>$1</code>');
   t = t.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-  t = t.replace(/(^|\s)\*([^*\n]+)\*/g, '$1<i>$2</i>');
+  // italic — but never eat math like "3 * 4" (content must not start/end with a space)
+  t = t.replace(/(^|\s)\*(\S(?:[^*\n]*\S)?)\*(?=$|[\s.,!?:;)])/gm, '$1<i>$2</i>');
   t = t.replace(/^#{1,4} (.*)$/gm, '<b style="color:#5b3a1e">$1</b>');
   // lists
   const lines = t.split('\n');
