@@ -49,6 +49,8 @@ function lanIP() {
   return null;
 }
 
+const imgCache = new Map(); let imgCacheBytes = 0;
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   if (u.pathname === '/whoami') {
@@ -72,12 +74,17 @@ const server = http.createServer(async (req, res) => {
     // proxy a remote image so hotlink protection / CORS don't break sharing
     const target = u.searchParams.get('u');
     if (!/^https?:\/\//i.test(target || '')) return res.writeHead(400).end('bad url');
+    const hit = imgCache.get(target);
+    if (hit) { res.writeHead(200, { 'Content-Type': hit.ct, 'Cache-Control': 'public, max-age=86400' }); return res.end(hit.buf); }
     try {
       const r = await fetch(target, { headers: { 'User-Agent': UA, 'Referer': new URL(target).origin + '/' }, redirect: 'follow' });
       if (!r.ok) throw new Error('upstream ' + r.status);
       const ct = r.headers.get('content-type') || 'image/jpeg';
       const buf = Buffer.from(await r.arrayBuffer());
       if (buf.length > 20 * 1024 * 1024) throw new Error('too big');
+      if (!/^image\//.test(ct)) throw new Error('not an image (' + ct + ')');
+      imgCache.set(target, { ct, buf }); imgCacheBytes += buf.length;
+      while (imgCacheBytes > 200 * 1024 * 1024) { const [k, v] = imgCache.entries().next().value; imgCache.delete(k); imgCacheBytes -= v.buf.length; }
       res.writeHead(200, { 'Content-Type': ct, 'Cache-Control': 'public, max-age=86400' });
       res.end(buf);
     } catch (e) {
