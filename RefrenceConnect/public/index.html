@@ -122,7 +122,9 @@
 
 <script>
 const $ = id => document.getElementById(id);
-let ws, code = null, current = null, wantJoin = null;
+let ws, code = null, current = null, wantJoin = null, shareBase = location.origin;
+// when running on the host Mac, invite others with the LAN address instead of localhost
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) fetch('/whoami').then(r=>r.json()).then(j=>{ if (j.lan) { shareBase = location.protocol + '//' + j.lan + ':' + j.port; if (code) $('linkLbl').textContent = shareBase + '/' + code; } }).catch(()=>{});
 const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
 
 function toast(t){ $('toast').textContent=t; $('toast').classList.add('show'); clearTimeout(toast.t); toast.t=setTimeout(()=>$('toast').classList.remove('show'),1800); }
@@ -146,8 +148,7 @@ function sendMsg(o){ if (ws && ws.readyState===1) ws.send(JSON.stringify(o)); el
 function enterRoom(){
   $('lobby').classList.add('hidden'); $('room').classList.remove('hidden');
   $('codeLbl').textContent = code;
-  const link = location.origin + '/' + code;
-  $('linkLbl').textContent = link;
+  $('linkLbl').textContent = shareBase + '/' + code;
   history.replaceState(null,'', '/' + code);
   if (myName()) localStorage.rcName = myName();
 }
@@ -173,7 +174,7 @@ $('code').addEventListener('keydown', e => { if (e.key==='Enter') $('joinBtn').c
 $('code').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z]/g,''); });
 $('name').value = localStorage.rcName || '';
 $('leaveBtn').onclick = () => location.href = '/';
-$('codeLbl').onclick = $('linkLbl').onclick = () => { navigator.clipboard?.writeText(location.origin+'/'+code).then(()=>toast('Invite link copied')); };
+$('codeLbl').onclick = $('linkLbl').onclick = () => { navigator.clipboard?.writeText(shareBase+'/'+code).then(()=>toast('Invite link copied')); };
 
 // ---- sharing ----
 function shareUrl(u, name){ sendMsg({type:'image', src:u, name:name||''}); }

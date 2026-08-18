@@ -42,8 +42,19 @@ async function ddgSearch(q) {
   return (j.results || []).slice(0, 40).map(x => ({ image: x.image, thumb: x.thumbnail, title: x.title, w: x.width, h: x.height }));
 }
 
+function lanIP() {
+  const os = require('os');
+  for (const [name, addrs] of Object.entries(os.networkInterfaces()))
+    for (const a of addrs) if (a.family === 'IPv4' && !a.internal && !/^169\.254/.test(a.address)) return a.address;
+  return null;
+}
+
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
+  if (u.pathname === '/whoami') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ lan: lanIP(), port: PORT }));
+  }
   if (u.pathname === '/search') {
     const q = (u.searchParams.get('q') || '').trim();
     if (!q) return res.writeHead(400).end('q?');
@@ -145,4 +156,7 @@ function leave(ws) {
   ws.room = null; ws.code = null;
 }
 
-server.listen(PORT, () => console.log('RefConnect → http://localhost:' + PORT));
+server.listen(PORT, () => {
+  console.log('RefConnect → http://localhost:' + PORT);
+  const ip = lanIP(); if (ip) console.log('Other devices on this wifi → http://' + ip + ':' + PORT);
+});
