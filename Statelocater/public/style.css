@@ -155,3 +155,13 @@ p{margin:6px 0;line-height:1.45}
 .shape input{width:100%;padding:8px 10px;border:2px solid var(--line);border-radius:10px;font-size:15px;font-weight:800;background:#fff;outline:none}
 .shape input:focus{border-color:var(--accent)}
 .shape input.good{border-color:var(--good);background:var(--good-soft)}.shape input.bad{border-color:var(--bad);background:var(--bad-soft)}
+/* capital stars + match game */
+.mapwrap text.starglyph{font-size:11px;fill:#ffcf33;stroke:#6b4a00;stroke-width:.6px;text-anchor:middle;dominant-baseline:middle;pointer-events:none;paint-order:stroke}
+.mapwrap text.lbl.cap{fill:#6b4a00;font-weight:900}
+.matchgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.matchcol{display:flex;flex-direction:column;gap:8px}
+.matchcol button{padding:12px 8px;border-radius:12px;border:2px solid var(--line);background:#fffdf8;font-weight:800;font-size:15px;transition:transform .08s}
+.matchcol button:hover{border-color:var(--accent)}
+.matchcol button.sel{border-color:var(--accent);background:#fff0e0}
+.matchcol button.bad{border-color:var(--bad);background:var(--bad-soft);transform:translateX(-3px)}
+.matchcol button.done{border-color:var(--good);background:var(--good-soft);color:#1b7a47;opacity:.85}

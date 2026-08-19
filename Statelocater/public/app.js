@@ -12,13 +12,15 @@ const keyToDate = (k) => { const [y, m, d] = k.split('-').map(Number); return ne
 const fmtDate = (d) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
 // ---------------- data ----------------
-const DATA = await fetch('states.json?v=2').then(r => r.json());
+const DATA = await fetch('states.json?v=3').then(r => r.json());
 const STATES = DATA.states;
 const BY = {}; STATES.forEach(s => BY[s.abbr] = s);
 const REGION_NAME = { PW: 'Pacific', MT: 'Mountain', GP: 'Plains & South Central', MW: 'Midwest', SE: 'Southeast', MA: 'Mid-Atlantic', NE: 'New England' };
 const ORDER = ['CA', 'WA', 'OR', 'AK', 'HI', 'NV', 'ID', 'MT', 'WY', 'UT', 'CO', 'AZ', 'NM', 'TX', 'OK', 'KS', 'NE', 'SD', 'ND', 'AR', 'LA', 'MN', 'IA', 'MO', 'WI', 'IL', 'MI', 'IN', 'OH', 'KY', 'TN', 'MS', 'AL', 'GA', 'FL', 'SC', 'NC', 'VA', 'WV', 'PA', 'NY', 'NJ', 'DE', 'MD', 'CT', 'RI', 'MA', 'VT', 'NH', 'ME'];
 const MNEMO = {
 AL:'Montgomery — where Rosa Parks rode the bus. Ala-BAMA drama, Mont-GOMERY.', AK:'"Do you know (Juneau) Alaska\'s capital?" Yes — Juneau!', AZ:'A Phoenix rises from the hot Arizona desert sun.', AR:'Arkansas ROCKS… just a Little Rock.', CA:'A SACK of California tomatoes — SACramento.', CO:'Denver, the Mile-High City in the Colorado Rockies.', CT:'Connecticut connects to your HEART — Hartford.', DE:'Delaware: drive over to DOVER.', FL:'TALL Florida palm trees in Tallahassee.', GA:'Georgia peach → Atlanta, the world\'s busiest airport.', HI:'Hawaii: do the hula in Honolulu.', ID:'Idaho potatoes — "BOY-see" those spuds! Boise.', IL:'Illinois: Abraham Lincoln\'s Springfield.', IN:'Indiana + polis (city) = Indianapolis.', IA:'Iowa: "Des Moines" = day-MOYN, out in the corn.', KS:'Kansas: Toto PEEKED out of the basket — ToPEKA.', KY:'Kentucky: be FRANK, it\'s Frankfort (not Louisville!).', LA:'Louisiana: "Baton Rouge" is French for red stick.', ME:'Maine: August is the month to visit Augusta.', MD:'Maryland: Anna at the Naval Academy — Annapolis.', MA:'Massachusetts: the Boston Tea Party.', MI:'Michigan is a mitten — Lansing sits in the palm.', MN:'Minnesota: Saint Paul, the twin of Minneapolis.', MS:'Mississippi: Jackson — say it with rhythm: Missis-sippi Jack-son.', MO:'Missouri: Jefferson City, right on the Missouri River.', MT:'Montana: HELEN-a of the mountains.', NE:'Nebraska: Abe Lincoln standing in the cornfields.', NV:'Nevada: NOT Las Vegas — Carson City, near Lake Tahoe.', NH:'New Hampshire: Concord grapes.', NJ:'New Jersey: Washington crossed the Delaware to Trenton.', NM:'New Mexico: Santa Fe ("holy faith"), the oldest US capital.', NY:'New York: NOT NYC — Albany, up the Hudson River.', NC:'North Carolina: Sir Walter Raleigh.', ND:'North Dakota: Bismarck, like the German chancellor.', OH:'Ohio: Columbus sailed to O-hi-o.', OK:'Oklahoma → just add "City": Oklahoma City.', OR:'Oregon: Salem (not the witch-trial one — that\'s Massachusetts).', PA:'Pennsylvania: NOT Philly — Harrisburg.', RI:'Rhode Island: Providence, the tiny state\'s big city.', SC:'South Carolina: Columbia (Columbus + -ia).', SD:'South Dakota: Pierre — said like "peer".', TN:'Tennessee: country music capital, Nashville.', TX:'Texas: Austin — keep it weird.', UT:'Utah: the Great Salt Lake → Salt Lake City.', VT:'Vermont = Green MOUNTain → MONTpelier, the smallest capital.', VA:'Virginia: Richmond, rich in history.', WA:'Washington: Mount Olympus → Olympia.', WV:'West Virginia: Charleston (the other Charleston is in SC, but it\'s not SC\'s capital).', WI:'Wisconsin: James MADISON loves cheese. Madison.', WY:'Wyoming: Cheyenne, home of the big rodeo.' };
+const PICTURE = {
+AL:'Picture a sweet-tea stand in Alabama run by a fellow named Mont Gomery.', AK:'Picture a moose in a parka asking "Did JUNEAU it\'s cold up here?"', AZ:'Picture a flaming PHOENIX bird rising out of the Grand Canyon.', AR:'Picture one tiny pebble — a LITTLE ROCK — sitting in the middle of Arkansas.', CA:'Picture a giant SACK of tomatoes dumped in California\'s valley — SACK-ramento.', CO:'Picture a bear DEN a mile high in the Rockies — DEN-ver.', CT:'Picture a big red HEART floating across a river FORD in Connecticut.', DE:'Picture a white DOVE flying OVER tiny Delaware — DOVE-r.', FL:'Picture a TALL palm tree at the top of Florida waving "HASS-ee!"', GA:'Picture a peach so huge it needs the world\'s busiest airport — Atlanta.', HI:'Picture hula dancers HONKing ukuleles — HONO-lulu.', ID:'Picture a BOY SEEing a potato the size of a truck — BOY-see.', IL:'Picture Abe Lincoln bouncing on a SPRING in a FIELD of Illinois corn.', IN:'Picture Indy race cars circling a city named after the state — India-napolis.', IA:'Picture an Iowa farmer sighing "DAY-MOYN, that\'s a lot of corn."', KS:'Picture Toto PEEKing out of the basket over Kansas — To-PEEK-a.', KY:'Picture a FRANK (hot dog) guarding a FORT of Kentucky bourbon barrels.', LA:'Picture a RED STICK (baton rouge) poking out of the Louisiana bayou.', ME:'Picture a GUST of August wind blowing Maine\'s lobster traps around.', MD:'Picture ANNA saluting at the Naval Academy in Maryland — ANNA-polis.', MA:'Picture tea crates splashing into BOSTON harbor.', MI:'Picture a LANCE stuck in the palm of Michigan\'s mitten — LANCE-ing.', MN:'Picture SAINT PAUL ice-fishing next to his twin, Minneapolis.', MS:'Picture Michael JACKSON moonwalking down the Mississippi River.', MO:'Picture Thomas JEFFERSON\'s face carved in the Missouri river bluffs.', MT:'Picture HELEN-a yodeling from the top of a Montana mountain.', NE:'Picture Abe LINCOLN\'s top hat poking up out of a Nebraska cornfield.', NV:'Picture Johnny CARSON hosting a talk show in a tiny Nevada town (NOT Vegas).', NH:'Picture purple CONCORD grapes rolling down a New Hampshire mountain.', NJ:'Picture Washington\'s boat crunching onto the snowy bank at TRENTON.', NM:'Picture SANTA in an adobe house in New Mexico — SANTA FE.', NY:'Picture a sleepy ALBANY far up the Hudson, giggling at the skyscrapers downstream.', NC:'Picture Sir Walter RALEIGH laying his cloak over a North Carolina puddle.', ND:'Picture stern old BISMARCK shivering on the North Dakota prairie.', OH:'Picture COLUMBUS\'s ship sailing down the O-hi-o River.', OK:'Picture a road sign: "Oklahoma → City, this way." That\'s it: Oklahoma City.', OR:'Picture a "SALE \'EM!" sign nailed to Oregon pine trees — SALE-M.', PA:'Picture a HARRY bear (HARRIS-burg) eating a cheesesteak far from Philly.', RI:'Picture PROVIDENCE — a guardian angel hovering over the tiniest state.', SC:'Picture COLUMBIA, the movie-logo lady, holding her torch over South Carolina.', SD:'Picture a PIER (peer) sticking into the Missouri River in South Dakota — PIERRE.', TN:'Picture a cowboy hat and a guitar — NASHVILLE, Music City.', TX:'Picture AUSTIN Powers riding a longhorn across Texas. Yeah baby.', UT:'Picture a SALTy LAKE with a CITY sparkling on its shore — Utah.', VT:'Picture a green MOUNTain (Ver-MONT) with a tiny capital perched on top — MONT-pelier.', VA:'Picture a RICH MAN (RICH-mond) in a powdered wig in colonial Virginia.', WA:'Picture the OLYMPIC rings hanging on Mount Olympus in Washington.', WV:'Picture CHARLES dancing the Charleston in the West Virginia hills.', WI:'Picture James MADISON biting into a giant wheel of Wisconsin cheese.', WY:'Picture a rodeo rider named SHY ANNE bucking across Wyoming — CHEY-ENNE.' };
 const INTERVALS = [0, 1, 2, 4, 7, 14, 30]; // days by box
 const PLAN_DAYS = 28;
 
@@ -46,15 +48,15 @@ function adoptServer(sp) {
 const card = (abbr, kind) => P.cards[abbr + ':' + kind] || (P.cards[abbr + ':' + kind] = { box: 0, due: 0, seen: 0, right: 0, wrong: 0 });
 const introduced = (abbr) => P.intro[abbr] != null;
 const learnedList = () => ORDER.filter(introduced);
-const CAP_DELAY = 2; // days after meeting a state before its capital is introduced
-const capReady = (abbr) => introduced(abbr) && (card(abbr, 'cap').unlock || 0) <= dayStart() + DAY - 1;
+const capDelay = () => (P.settings.capDelay == null ? 2 : P.settings.capDelay); // days after meeting a state before its capital is introduced
+const capReady = (abbr) => { if (!introduced(abbr)) return false; const c = card(abbr, 'cap'); const at = c.introAt != null ? c.introAt + capDelay() * DAY : (c.unlock || 0); return at <= dayStart() + DAY - 1; };
 const capLearned = (abbr) => card(abbr, 'cap').box >= 1;
 const knownList = () => ORDER.filter(a => introduced(a) && card(a, 'loc').box >= 1);
 const mastery = (abbr) => { if (!introduced(abbr)) return 0; const l = card(abbr, 'loc').box, c = card(abbr, 'cap'); const b = capReady(abbr) ? Math.min(l, c.box) : Math.min(l, 2); return Math.min(5, b); };
 const CHECKPOINTS = [10, 20, 30, 40, 50];
 function nextCheckpoint() { const n = knownList().length; P.checkpoints = P.checkpoints || {}; for (const k of CHECKPOINTS) { const c = P.checkpoints[k]; if (n >= k && !(c && (c.done || c.skipped))) return k; } return null; }
 const pendingNew = () => ORDER.filter(a => introduced(a) && card(a, 'loc').box === 0);
-function introduce(a) { P.intro[a] = dayNum(); card(a, 'loc'); const c = card(a, 'cap'); if (c.unlock == null) c.unlock = dayStart(CAP_DELAY); }
+function introduce(a) { P.intro[a] = dayNum(); card(a, 'loc'); const c = card(a, 'cap'); if (c.introAt == null) c.introAt = dayStart(); }
 const stars = (n) => '★'.repeat(n) + '☆'.repeat(5 - n);
 const dayNum = () => Math.max(1, Math.floor((dayStart() - keyToDate(P.startDate).getTime()) / DAY) + 1);
 const levelOf = (xp) => Math.floor(Math.sqrt(xp / 40)) + 1;
@@ -114,6 +116,8 @@ function makeMap(host, opts = {}) {
     clear() { for (const a in paths) paths[a].setAttribute('class', 'st'); },
     label(abbr, text) { const s = BY[abbr]; if (labels[abbr]) { labels[abbr].remove(); delete labels[abbr]; } if (!text) return; const fs = Math.max(6.5, Math.min(15, Math.sqrt(s.area) / 7)); const t = el('text', { x: s.cx, y: s.cy, class: 'lbl', 'font-size': fs }); t.textContent = text; labels[abbr] = t; gL.append(t); },
     clearLabels() { for (const a in labels) labels[a].remove(); for (const a in labels) delete labels[a]; },
+    star(abbr, text) { const s = BY[abbr]; const k = 'star:' + abbr; if (labels[k]) { labels[k].remove(); delete labels[k]; } const g = el('g', { class: 'capstar' }); const st = el('text', { x: s.cap[0], y: s.cap[1], class: 'starglyph' }); st.textContent = '★'; g.append(st); if (text) { const fs = Math.max(7, Math.min(11, Math.sqrt(s.area) / 9)); const t = el('text', { x: s.cap[0] + 4, y: s.cap[1] + 1, class: 'lbl cap', 'font-size': fs, 'text-anchor': 'start' }); t.textContent = text; g.append(t); } labels[k] = g; gL.append(g); },
+    unstar(abbr) { const k = 'star:' + abbr; if (labels[k]) { labels[k].remove(); delete labels[k]; } },
     reset() { vb = { x: 0, y: 0, w: W, h: H }; apply(); },
     zoomTo(abbr, pad = 2.2) { const b = BY[abbr].bbox; const bw = b[2] - b[0], bh = b[3] - b[1]; let w = Math.max(bw * pad, 140); let hh = w * H / W; if (bh * pad > hh) { hh = bh * pad; w = hh * W / H; } vb = { x: (b[0] + b[2]) / 2 - w / 2, y: (b[1] + b[3]) / 2 - hh / 2, w, h: hh }; clamp(); },
     zoomRegion(abbrs) { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; abbrs.forEach(a => { const b = BY[a].bbox; x0 = Math.min(x0, b[0]); y0 = Math.min(y0, b[1]); x1 = Math.max(x1, b[2]); y1 = Math.max(y1, b[3]); }); let w = (x1 - x0) * 1.4, hh = w * H / W; if ((y1 - y0) * 1.4 > hh) { hh = (y1 - y0) * 1.4; w = hh * W / H; } vb = { x: (x0 + x1) / 2 - w / 2, y: (y0 + y1) / 2 - hh / 2, w, h: hh }; clamp(); },
@@ -147,9 +151,9 @@ function buildSession(extraNew = false) {
   session = { queue: q, i: 0, total: q.length, answered: 0, correct: 0, xp: 0, newAbbrs, capNew, day: today };
   save();
 }
-function buildPractice(abbrs, label) {
+function buildPractice(abbrs, label, types) {
   const q = [];
-  for (const a of shuffle(abbrs)) { const kinds = [{ type: 'find', kind: 'loc' }, { type: 'name', kind: 'loc' }]; if (!introduced(a) || !capLearned(a)) { q.push({ type: 'learn', abbr: a, full: true }); kinds.push({ type: 'capmc', kind: 'cap' }); } else kinds.push({ type: 'capmc', kind: 'cap' }, { type: 'cap', kind: 'cap' }); q.push({ ...pick(kinds), abbr: a, practice: true }); }
+  for (const a of shuffle(abbrs)) { let kinds = [{ type: 'find', kind: 'loc' }, { type: 'name', kind: 'loc' }]; if (!introduced(a) || !capLearned(a)) { q.push({ type: 'learn', abbr: a, full: true }); kinds.push({ type: 'capmc', kind: 'cap' }); } else kinds.push({ type: 'capmc', kind: 'cap' }, { type: 'cap', kind: 'cap' }, { type: 'rev', kind: 'cap' }); if (types) kinds = types.map(t => ({ type: t, kind: t === 'find' || t === 'name' ? 'loc' : 'cap' })); q.push({ ...pick(kinds), abbr: a, practice: true }); }
   session = { queue: q, i: 0, total: q.length, answered: 0, correct: 0, xp: 0, newAbbrs: [], day: dayKey(), practice: true, label };
 }
 function grade(abbr, kind, ok, { practice, hint } = {}) {
@@ -167,8 +171,8 @@ function finishSession() {
 
 // ---------------- views ----------------
 const view = $('#view'); let tab = 'today'; let currentMap = null;
-function render(t) { if (t) tab = t; document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab)); view.innerHTML = ''; window.scrollTo(0, 0); ({ today: renderToday, map: renderMap, test: renderTest, plan: renderPlan })[tab](); refreshHeader(); }
-document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { session = null; if (b.dataset.tab !== 'test') { if (test && !test.checked && !confirm('Leave the test? Progress on it will be lost.')) return; test = null; } render(b.dataset.tab); });
+function render(t) { if (t) tab = t; document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab)); view.innerHTML = ''; window.scrollTo(0, 0); if (session) renderQuestion(); else ({ today: renderToday, map: renderMap, test: renderTest, plan: renderPlan })[tab](); refreshHeader(); }
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { session = null; matchGame = null; if (b.dataset.tab !== 'test') { if (test && !test.checked && !confirm('Leave the test? Progress on it will be lost.')) return; test = null; } render(b.dataset.tab); });
 
 // ---- onboarding ----
 function renderOnboard() {
@@ -178,6 +182,8 @@ function renderOnboard() {
     h('h3', {}, 'How many new states per day?'),
     h('div', { class: 'row', id: 'pace' }, [3, 4, 5].map(n => h('button', { class: 'btn sec small', 'data-n': n, onclick: (e) => { P.settings.newPerDay = n; document.querySelectorAll('#pace .btn').forEach(b => b.classList.toggle('good', +b.dataset.n === n)); $('#pace-note').textContent = `All 50 learned by day ${Math.ceil(50 / n)}, then ${28 - Math.ceil(50 / n)} days of review + map tests.`; } }, `${n} / day`))),
     h('p', { class: 'muted', id: 'pace-note' }, ''),
+    h('h3', {}, 'When do you want capitals?'),
+    h('div', { class: 'row', id: 'capw' }, [[0, 'Together with each state'], [2, 'A couple of days after (recommended)']].map(([k, lab]) => h('button', { class: 'btn sec small' + (capDelay() === k ? ' good' : ''), onclick: (e) => { P.settings.capDelay = k; [...e.target.parentNode.children].forEach(b => b.classList.remove('good')); e.target.classList.add('good'); } }, lab))),
     h('p', {}, h('b', {}, 'Each day: '), 'review what\'s due (5–10 min) → meet today\'s new states → quick quiz. Miss a day? No problem, it just piles up a bit.'),
     h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { P.onboarded = true; P.startDate = dayKey(); save(); render('today'); } }, 'Start Day 1 →'), h('button', { class: 'btn sec', onclick: accountModal }, user ? `Signed in as ${user}` : 'Sign in to save to cloud')),
   );
@@ -199,7 +205,7 @@ function renderToday() {
   const nQ = newToday.length * 3 + capNew.length * 2 + due.length;
   const caughtUp = !nQ && !cp;
   if (cp) {
-    view.append(h('div', { class: 'card learn' }, h('h3', {}, 'Checkpoint'), h('h1', {}, `🏁 ${cp} states known!`), h('p', {}, `Time to prove it. Part 1: a sheet of state shapes — write each name${ORDER.filter(capLearned).length ? ' (and capital where you\'ve learned it)' : ''}. Part 2: fill all ${knownList().length} in on the blank map. New states pause until you've taken it — reviews still run.`),
+    view.append(h('div', { class: 'card learn' }, h('h3', {}, 'Checkpoint'), h('h1', {}, `🏁 ${cp} states known!`), h('p', {}, `Time to prove it. Part 1: a sheet of mini-maps, one state highlighted on each — write its name${ORDER.filter(capLearned).length ? ' (and capital where you\'ve learned it)' : ''}. Part 2: fill all ${knownList().length} in on the blank map. New states pause until you've taken it — reviews still run.`),
       h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { checkpoint = { k: cp, stage: 'sheet' }; render(); } }, 'Start checkpoint →'), h('button', { class: 'btn sec', onclick: () => { P.checkpoints[cp] = { skipped: true }; save(); render(); toast('Skipped — you can still test any time on the Test tab.'); } }, 'Skip for now'))));
   }
   const box = h('div', { class: 'card' },
@@ -275,6 +281,8 @@ function renderQuestion() {
   wrap.append(h('div', {}, mapHost), qcard); view.append(prog, wrap);
   const next = () => { session.i++; renderQuestion(); };
   const nextBtn = (label = 'Next →') => h('div', { class: 'row', style: 'margin-top:12px' }, h('button', { class: 'btn', onclick: next }, label));
+  // after a miss: type the right answer once before moving on (locks it in)
+  const lockIn = (answer) => { const inp = h('input', { type: 'text', autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', placeholder: `Type "${answer}" to continue`, enterkeyhint: 'done' }); const go = h('button', { class: 'btn', disabled: true, onclick: next }, 'Next →'); inp.addEventListener('input', () => { if (matches(inp.value, answer)) { inp.classList.add('good'); inp.disabled = true; go.disabled = false; go.focus(); beep('good'); } }); inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !go.disabled) next(); }); setTimeout(() => inp.focus(), 50); return h('div', { style: 'margin-top:12px' }, h('div', { class: 'kbd', style: 'margin-bottom:6px' }, '✍️ Lock it in — type the answer once:'), h('div', { class: 'ans' }, inp, go)); };
   const requeue = () => { const again = { ...q, practice: !!session.practice, retry: true }; session.queue.push(again); };
   const fb = h('div', { class: 'feedback' });
   const showFb = (ok, text, mn) => { fb.className = 'feedback ' + (ok ? 'good' : 'bad'); fb.innerHTML = ''; fb.append(text); if (mn) fb.append(h('span', { class: 'mn' }, '💡 ' + mn)); beep(ok ? 'good' : 'bad'); };
@@ -285,35 +293,42 @@ function renderQuestion() {
     s.nb.forEach(a => map.label(a, BY[a].abbr));
     qcard.classList.add('learn');
     const showCap = q.full || capLearned(q.abbr);
+    if (showCap) map.star(q.abbr, s.capital);
     const nbNames = s.nb.map(a => BY[a].name);
     qcard.append(h('small', { class: 'muted' }, `${session.practice ? 'MEET' : 'NEW STATE'} · ${REGION_NAME[s.region]}`), h('div', { class: 'big' }, s.name, ' ', h('span', { class: 'muted', style: 'font-size:18px' }, s.abbr)),
-      showCap ? h('div', { class: 'cap' }, `★ Capital: ${s.capital}`) : h('div', { class: 'muted' }, `★ Capital: comes in ${CAP_DELAY} days — learn where it is first.`),
-      h('div', { class: 'mn' }, showCap ? '💡 ' + MNEMO[s.abbr] : (nbNames.length ? `📍 Touches ${nbNames.join(', ')}.` : `📍 Out on its own — no land neighbors.`)),
+      showCap ? h('div', { class: 'cap' }, `★ Capital: ${s.capital}`) : h('div', { class: 'muted' }, `★ Capital: comes in ${capDelay()} day${capDelay() === 1 ? '' : 's'} — learn where it is first.`),
+      h('div', { class: 'mn' }, showCap ? ['💡 ' + MNEMO[s.abbr], h('br'), h('span', { class: 'muted' }, '🎨 ' + PICTURE[s.abbr])] : (nbNames.length ? `📍 Touches ${nbNames.join(', ')}.` : `📍 Out on its own — no land neighbors.`)),
       h('p', { class: 'muted', style: 'margin-top:10px' }, 'Look at its shape and what\'s around it. Say the name out loud once.'), nextBtn('Got it →'));
     return;
   }
   if (q.type === 'learncap') {
-    map = makeMap(mapHost); map.add(q.abbr, 'hl'); map.label(q.abbr, s.abbr); if (BY[q.abbr].bbox[2] - BY[q.abbr].bbox[0] < 110) map.zoomTo(q.abbr, 4);
+    map = makeMap(mapHost); map.add(q.abbr, 'hl'); map.label(q.abbr, s.abbr); map.star(q.abbr, s.capital); map.zoomTo(q.abbr, s.bbox[2] - s.bbox[0] < 110 ? 4 : 2.4);
     qcard.classList.add('learn');
-    qcard.append(h('small', { class: 'muted' }, `NEW CAPITAL · ${s.name}`), h('div', { class: 'big' }, s.capital), h('div', { class: 'cap' }, `is the capital of ${s.name}`), h('div', { class: 'mn' }, '💡 ' + MNEMO[s.abbr]), h('p', { class: 'muted', style: 'margin-top:10px' }, `Say it out loud: "${s.capital}, ${s.name}."`), nextBtn('Got it →'));
+    const inp = h('input', { type: 'text', autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', placeholder: `Type "${s.capital}" to lock it in`, enterkeyhint: 'done' });
+    const go = h('button', { class: 'btn', disabled: true, onclick: next }, 'Got it →');
+    const ok = h('div', { class: 'feedback' });
+    inp.addEventListener('input', () => { if (matches(inp.value, s.capital)) { inp.classList.add('good'); inp.disabled = true; go.disabled = false; ok.className = 'feedback good'; ok.textContent = `${s.capital}, ${s.name}. ★ marks the city on the map.`; beep('good'); go.focus(); } });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !go.disabled) next(); });
+    qcard.append(h('small', { class: 'muted' }, `NEW CAPITAL · ${s.name}`), h('div', { class: 'big' }, s.capital), h('div', { class: 'cap' }, `is the capital of ${s.name}`), h('div', { class: 'mn' }, '💡 ' + MNEMO[s.abbr], h('br'), h('span', { class: 'muted' }, '🎨 ' + PICTURE[s.abbr])), h('p', { class: 'muted', style: 'margin-top:10px' }, `Say it out loud — "${s.capital}, ${s.name}" — then type it once:`), h('div', { class: 'ans' }, inp), ok, h('div', { class: 'row', style: 'margin-top:12px' }, go));
+    setTimeout(() => inp.focus(), 50);
     return;
   }
   const finish = (ok, opts = {}) => { grade(q.abbr, q.kind, ok, { practice: q.practice, hint: opts.hint }); if (!ok) requeue(); };
   if (q.type === 'find') {
     let done = false;
-    map = makeMap(mapHost, { onTap: (a) => { if (done || !a) return; done = true; const ok = a === q.abbr; map.add(q.abbr, 'good'); if (!ok) map.add(a, 'bad'); map.label(q.abbr, s.abbr); finish(ok); showFb(ok, ok ? `Yes! That's ${s.name}.` : `Not quite — that was ${BY[a].name}. ${s.name} is highlighted in green.`); qcard.append(nextBtn()); if (ok) advanceTimer = setTimeout(next, 1100); } });
+    map = makeMap(mapHost, { onTap: (a) => { if (done || !a) return; done = true; const ok = a === q.abbr; map.add(q.abbr, 'good'); if (!ok) map.add(a, 'bad'); map.label(q.abbr, s.abbr); finish(ok); showFb(ok, ok ? `Yes! That's ${s.name}.` : `Not quite — that was ${BY[a].name}. ${s.name} is highlighted in green.`); qcard.append(ok ? nextBtn() : lockIn(s.name)); if (ok) advanceTimer = setTimeout(next, 1100); } });
     qcard.append(h('div', { class: 'prompt' }, h('small', {}, q.practice ? 'Practice · Find it' : 'Find it'), `Tap ${s.name} on the map`), h('p', { class: 'kbd' }, 'Pinch or scroll to zoom in on small states.'), fb);
     return;
   }
   if (q.type === 'capmc') {
-    map = makeMap(mapHost); map.add(q.abbr, 'hl'); map.label(q.abbr, s.abbr); if (s.bbox[2] - s.bbox[0] < 110) map.zoomTo(q.abbr, 4);
+    map = makeMap(mapHost); map.add(q.abbr, 'hl'); map.label(q.abbr, s.abbr); map.star(q.abbr); if (s.bbox[2] - s.bbox[0] < 110) map.zoomTo(q.abbr, 4);
     const sameRegion = STATES.filter(x => x.region === s.region && x.abbr !== s.abbr).map(x => x.capital);
     const others = shuffle(STATES.filter(x => x.abbr !== s.abbr).map(x => x.capital));
     const distract = shuffle(shuffle(sameRegion).slice(0, 2).concat(others).filter((v, i, a) => a.indexOf(v) === i)).slice(0, 3);
     // ensure at least 3
     const choices = shuffle([s.capital, ...distract]);
     let done = false; const grid = h('div', { class: 'choices' });
-    choices.forEach(c => grid.append(h('button', { onclick: (e) => { if (done) return; done = true; const ok = c === s.capital; e.target.classList.add(ok ? 'good' : 'bad'); [...grid.children].forEach(b => { if (b.textContent === s.capital) b.classList.add('good'); }); finish(ok); showFb(ok, ok ? `Right — ${s.capital}, ${s.abbr}.` : `It's ${s.capital}.`, MNEMO[s.abbr]); qcard.append(nextBtn()); if (ok) advanceTimer = setTimeout(next, 1300); } }, c)));
+    choices.forEach(c => grid.append(h('button', { onclick: (e) => { if (done) return; done = true; const ok = c === s.capital; e.target.classList.add(ok ? 'good' : 'bad'); [...grid.children].forEach(b => { if (b.textContent === s.capital) b.classList.add('good'); }); map.star(q.abbr, s.capital); finish(ok); showFb(ok, ok ? `Right — ${s.capital}, ${s.abbr}.` : `It's ${s.capital}.`, MNEMO[s.abbr] + (ok ? '' : ' 🎨 ' + PICTURE[s.abbr])); qcard.append(ok ? nextBtn() : lockIn(s.capital)); if (ok) advanceTimer = setTimeout(next, 1300); } }, c)));
     qcard.append(h('div', { class: 'prompt' }, h('small', {}, 'Capital'), `What is the capital of ${s.name}?`), grid, fb);
     return;
   }
@@ -322,11 +337,11 @@ function renderQuestion() {
   const otherAnswers = q.type === 'cap' ? STATES.map(x => x.capital) : STATES.map(x => x.name);
   map = makeMap(mapHost);
   if (q.type !== 'rev') { map.add(q.abbr, 'hl'); if (s.bbox[2] - s.bbox[0] < 110) map.zoomTo(q.abbr, 4); }
-  if (q.type === 'cap') map.label(q.abbr, s.abbr);
+  if (q.type === 'cap') { map.label(q.abbr, s.abbr); map.star(q.abbr); }
   const input = h('input', { type: 'text', autocomplete: 'off', autocapitalize: 'words', spellcheck: 'false', placeholder: q.type === 'cap' ? 'Type the capital…' : 'Type the state…', enterkeyhint: 'done' });
   let hints = 0; const hintBtn = h('button', { class: 'btn sec small', onclick: () => { hints++; input.value = answer.slice(0, hints); input.focus(); if (hints >= 2) hintBtn.disabled = true; } }, '💡 Hint');
   let done = false;
-  const check = () => { if (done) return; const v = input.value.trim(); if (!v) return; done = true; const m = matches(v, answer, otherAnswers.filter(o => o !== answer)); const ok = !!m; input.classList.add(ok ? 'good' : 'bad'); input.disabled = true; if (q.type === 'rev') { map.add(q.abbr, 'good'); map.zoomTo(q.abbr, 4); } else map.set(q.abbr, ok ? 'good' : 'bad'); map.label(q.abbr, s.abbr); finish(ok, { hint: hints > 0 }); showFb(ok, ok ? (m === 'close' ? `Close enough — it's spelled "${answer}".` : `Correct! ${answer}.`) : `It's ${answer}.`, q.type !== 'name' ? MNEMO[s.abbr] : null); qcard.append(nextBtn()); if (ok && m === 'exact') advanceTimer = setTimeout(next, 1000); };
+  const check = () => { if (done) return; const v = input.value.trim(); if (!v) return; done = true; const m = matches(v, answer, otherAnswers.filter(o => o !== answer)); const ok = !!m; input.classList.add(ok ? 'good' : 'bad'); input.disabled = true; if (q.type === 'rev') { map.add(q.abbr, 'good'); map.zoomTo(q.abbr, 4); } else map.set(q.abbr, ok ? 'good' : 'bad'); map.label(q.abbr, s.abbr); if (q.type !== 'name') map.star(q.abbr, s.capital); finish(ok, { hint: hints > 0 }); showFb(ok, ok ? (m === 'close' ? `Close enough — it's spelled "${answer}".` : `Correct! ${answer}.`) : `It's ${answer}.`, q.type !== 'name' ? MNEMO[s.abbr] + (ok ? '' : ' 🎨 ' + PICTURE[s.abbr]) : null); qcard.append(ok ? nextBtn() : lockIn(answer)); if (ok && m === 'exact') advanceTimer = setTimeout(next, 1000); };
   input.addEventListener('keydown', e => { if (e.key === 'Enter') check(); });
   const prompt = q.type === 'name' ? ['Name it', 'Which state is highlighted?'] : q.type === 'cap' ? ['Capital', `What is the capital of ${s.name}?`] : ['Reverse', `${s.capital} is the capital of which state?`];
   qcard.append(h('div', { class: 'prompt' }, h('small', {}, (q.retry ? 'Try again · ' : '') + prompt[0]), prompt[1]), h('div', { class: 'ans' }, input, h('button', { class: 'btn', onclick: check }, 'Check')), h('div', { class: 'row', style: 'margin-top:8px' }, hintBtn, h('span', { class: 'kbd' }, 'Spelling close counts · hints = half XP')), fb);
@@ -342,8 +357,28 @@ function renderSummary() {
 }
 
 // ---- Map tab ----
-let labelMode = 'learned';
+let labelMode = 'learned'; let matchGame = null;
+function renderMatch() {
+  const G = matchGame; const PAIRS = 6;
+  if (!G.order) G.order = shuffle(G.pool);
+  const chunk = G.order.slice(G.round * PAIRS, G.round * PAIRS + PAIRS);
+  if (!chunk.length) { // done
+    const t = Date.now() - G.t0; P.xp += 0; save(); beep('win'); confetti();
+    view.append(h('div', { class: 'card summary' }, h('h3', {}, 'Match game complete'), h('div', { class: 'big' }, `+${G.xp} XP`), h('p', {}, `${G.order.length} pairs in ${fmtTime(t)} · ${G.misses} miss${G.misses === 1 ? '' : 'es'}.`), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { matchGame = null; render('map'); } }, 'Done'), h('button', { class: 'btn sec', onclick: () => { matchGame = { pool: G.pool, round: 0, t0: Date.now(), xp: 0, misses: 0, label: G.label }; render(); } }, 'Play again'))));
+    matchGame = null; return;
+  }
+  const wrap = h('div', { class: 'quiz' }); const mapHost = h('div'); const qcard = h('div', { class: 'card qcard' }); wrap.append(h('div', {}, mapHost), qcard);
+  view.append(h('div', { class: 'progress-top' }, h('span', {}, `Round ${G.round + 1} / ${Math.ceil(G.order.length / PAIRS)}`), h('div', { class: 'bar' }, h('i', { style: `width:${G.round / Math.ceil(G.order.length / PAIRS) * 100}%` })), h('span', {}, `+${G.xp} XP`), h('button', { class: 'pill ghost', onclick: () => { matchGame = null; render('map'); } }, 'Exit')), wrap);
+  const map = makeMap(mapHost); chunk.forEach(a => map.add(a, 'hl')); map.zoomRegion(chunk); chunk.forEach(a => map.label(a, BY[a].abbr));
+  const left = h('div', { class: 'matchcol' }), right = h('div', { class: 'matchcol' }); let selL = null, selR = null, matched = 0;
+  const lb = {}, rb = {};
+  const tryMatch = () => { if (!selL || !selR) return; const okm = selL === selR; if (okm) { lb[selL].classList.add('done'); rb[selR].classList.add('done'); lb[selL].disabled = rb[selR].disabled = true; map.set(selL, 'good'); map.star(selL, BY[selL].capital); G.xp += 3; P.xp += 3; beep('good'); matched++; if (matched === chunk.length) { save(); G.round++; setTimeout(() => { view.innerHTML = ''; renderMatch(); }, 900); } } else { G.misses++; const a = lb[selL], b = rb[selR]; a.classList.add('bad'); b.classList.add('bad'); beep('bad'); setTimeout(() => { a.classList.remove('bad'); b.classList.remove('bad'); }, 500); } lb[selL].classList.remove('sel'); rb[selR].classList.remove('sel'); selL = selR = null; };
+  shuffle(chunk).forEach(a => { const b = h('button', { onclick: () => { if (selL) lb[selL].classList.remove('sel'); selL = a; b.classList.add('sel'); map.zoomRegion(chunk); tryMatch(); } }, BY[a].name); lb[a] = b; left.append(b); });
+  shuffle(chunk).forEach(a => { const b = h('button', { onclick: () => { if (selR) rb[selR].classList.remove('sel'); selR = a; b.classList.add('sel'); tryMatch(); } }, BY[a].capital); rb[a] = b; right.append(b); });
+  qcard.append(h('div', { class: 'prompt' }, h('small', {}, 'Match game · ' + G.label), 'Tap a state, then its capital'), h('div', { class: 'matchgrid' }, left, right), h('p', { class: 'kbd', style: 'margin-top:10px' }, 'Matched pairs light up green on the map with a ★ on the capital city.'));
+}
 function renderMap() {
+  if (matchGame) return renderMatch();
   const learned = learnedList();
   const top = h('div', { class: 'card' }, h('div', { class: 'row' }, h('div', { class: 'grow' }, h('h1', {}, 'Progress map'), h('p', { class: 'muted' }, `${learned.length}/50 met · ${ORDER.filter(a => mastery(a) >= 4).length} mastered. Tap any state.`)),
     h('div', { class: 'seg' }, ['none', 'learned', 'all'].map(m => h('button', { class: labelMode === m ? 'on' : '', onclick: () => { labelMode = m; render(); } }, m === 'none' ? 'No labels' : m === 'learned' ? 'Label learned' : 'Label all')))),
@@ -357,6 +392,14 @@ function renderMap() {
       h('button', { class: 'btn small', onclick: () => { if (!learned2.length) return toast('Meet a few states first — or pick a region!'); buildPractice(learned2, 'Everything learned'); render(); } }, `All learned (${learned2.length})`),
       h('button', { class: 'btn small', onclick: () => { buildPractice(ORDER, 'All 50'); render(); } }, 'All 50 🇺🇸')));
   view.append(prac);
+  const capPool = ORDER.filter(capLearned); const capAny = capPool.length >= 4 ? capPool : learned2.length >= 4 ? learned2 : ORDER;
+  const capCard = h('div', { class: 'card' }, h('h2', {}, 'Capitals drill 🏛️'), h('p', { class: 'muted' }, `Extra reps just for capitals. ${capPool.length} capital${capPool.length === 1 ? '' : 's'} learned so far${capPool.length < 4 ? ' — drills use your learned states (or all 50) until you have more' : ''}.`),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn small', onclick: () => { matchGame = { pool: capAny, round: 0, t0: Date.now(), xp: 0, misses: 0, label: capPool.length >= 4 ? 'learned capitals' : 'states' }; render(); } }, '🧩 Match game'),
+      h('button', { class: 'btn sec small', onclick: () => { buildPractice(capAny, 'Capital → State', ['rev']); render(); } }, 'Capital → State'),
+      h('button', { class: 'btn sec small', onclick: () => { buildPractice(capAny, 'Type the capitals', ['cap']); render(); } }, '⌨️ Type the capitals'),
+      h('button', { class: 'btn sec small', onclick: () => { buildPractice(ORDER, 'All 50 capitals', ['capmc', 'cap']); render(); } }, 'All 50 capitals')));
+  view.append(capCard);
   const list = h('div', { class: 'slist' });
   ORDER.forEach(a => { const s = BY[a]; const k = mastery(a); list.append(h('div', { class: 's m' + k, onclick: () => stateModal(a) }, h('span', {}, h('b', {}, s.name), h('br'), h('span', { class: 'muted' }, s.capital)), h('span', { class: 'stars' }, introduced(a) ? stars(k) : '·'))); });
   view.append(h('div', { class: 'card' }, h('h2', {}, 'All 50 states (learning order)'), h('p', { class: 'muted' }, 'Grouped by region so neighbors are learned together. Tap any state for its memory hook — or to pull it into today\'s lesson early.'), list));
@@ -365,11 +408,11 @@ function stateModal(a) {
   const s = BY[a]; const k = mastery(a); const loc = card(a, 'loc'), cap = card(a, 'cap');
   const m = $('#modal'); m.classList.remove('hidden'); m.innerHTML = '';
   const mini = h('div', { style: 'margin:8px 0' });
-  const box = h('div', { class: 'box' }, h('h2', {}, s.name, ' ', h('span', { class: 'muted' }, s.abbr)), h('p', {}, h('b', {}, 'Capital: '), s.capital, h('span', { class: 'muted' }, ` · ${REGION_NAME[s.region]}`)), mini, h('p', { class: 'muted' }, '💡 ' + MNEMO[a]),
+  const box = h('div', { class: 'box' }, h('h2', {}, s.name, ' ', h('span', { class: 'muted' }, s.abbr)), h('p', {}, h('b', {}, 'Capital: '), s.capital, h('span', { class: 'muted' }, ` · ${REGION_NAME[s.region]}`)), mini, h('p', { class: 'muted' }, '💡 ' + MNEMO[a]), h('p', { class: 'muted' }, '🎨 ' + PICTURE[a]),
     introduced(a) ? [h('p', {}, h('span', { class: 'stars' }, stars(k)), ` · location ${loc.right}/${loc.seen} · capital ${cap.right}/${cap.seen}`), h('p', { class: 'muted' }, `Next review: ${Math.min(loc.due, cap.due) <= dayStart() ? 'today' : fmtDate(new Date(Math.min(loc.due, cap.due)))}`)] : h('p', { class: 'muted' }, `Not in your lessons yet — it's scheduled around day ${Math.ceil((ORDER.indexOf(a) + 1) / P.settings.newPerDay)}.`),
     h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn', onclick: closeModal }, 'Close'),
       introduced(a) ? h('button', { class: 'btn sec', onclick: () => { closeModal(); buildPractice([a], s.name); render(); } }, 'Quiz me on it') : h('button', { class: 'btn sec', onclick: () => { const d = ensureDay(dayKey()); introduce(a); d.newIntro.push(a); d.done = false; save(); closeModal(); toast(`${s.name} added to today's lesson`); render('today'); } }, "Add to today's lesson")));
-  const mm = makeMap(mini, { tools: false }); mm.add(a, 'hl'); mm.label(a, s.abbr); mm.zoomTo(a, 3); mini.querySelector('.hint').remove();
+  const mm = makeMap(mini, { tools: false }); mm.add(a, 'hl'); mm.label(a, s.abbr); mm.star(a, s.capital); mm.zoomTo(a, 3); mini.querySelector('.hint').remove();
   m.append(box); m.onclick = (e) => { if (e.target === m) closeModal(); };
 }
 function closeModal() { $('#modal').classList.add('hidden'); }
@@ -431,9 +474,10 @@ function renderPlan() {
   const weeks = box.lastChild; const labels = ['Week 1 · Meet the West & Mountains', 'Week 2 · Plains, Midwest & South', 'Week 3 · East coast + lock it in', 'Week 4 · Full-map tests'];
   for (let w = 0; w < 4; w++) { weeks.append(h('div', { class: 'wk-label' }, labels[w])); const row = h('div', { class: 'week' }); for (let i = 0; i < 7; i++) { const d = w * 7 + i + 1; const k = dayKey(new Date(start + (d - 1) * DAY)); const rec = P.days[k]; const cls = ['day', d === today ? 'today' : '', rec?.done ? 'done' : '', d < today ? 'past' : ''].join(' '); const abbrs = byDay[d] || (rec ? [] : null); let lab = ''; if (d < today && !rec?.done) lab = abbrs?.length ? '' : 'skipped'; if (d >= today && !abbrs) { const todayAssigned = !!(P.days[dayKey()]?.newIntro?.length); const before = Object.keys(P.intro).length + (d - today - (todayAssigned ? 1 : 0)) * n; lab = before < 50 ? `+${Math.min(n, 50 - before)} new` : d >= 22 ? 'test day' : 'review'; } const cpMark = (abbrs?.length && Object.values(P.checkpoints || {}).some(c => c.done && c.date === k)) || (d >= today && !abbrs && lab.startsWith('+') && Math.floor((Object.keys(P.intro).length + (d - today - (P.days[dayKey()]?.newIntro?.length ? 1 : 0) + 1) * n) / 10) > Math.floor((Object.keys(P.intro).length + (d - today - (P.days[dayKey()]?.newIntro?.length ? 1 : 0)) * n) / 10)); row.append(h('div', { class: cls }, h('span', { class: 'n' }, `${rec?.done ? '✓ ' : ''}${d}${cpMark ? ' 🏁' : ''}`), h('span', { class: 'lab' }, fmtDate(new Date(start + (d - 1) * DAY))), abbrs?.length ? h('div', { class: 'abbr' }, abbrs.map(a => h('i', {}, a))) : h('span', { class: 'lab' }, lab))); } weeks.append(row); }
   view.append(box);
-  view.append(h('div', { class: 'card' }, h('h2', {}, 'How it works'), h('p', {}, h('b', {}, '1. Meet: '), 'each new state is shown on the map with its neighbors. You find it, then type its name from memory.'), h('p', {}, h('b', {}, '2. Space it out: '), 'every state has a "box" (1–6). Get it right → it moves up and comes back later (1, 2, 4, 7, 14, 30 days). Miss it → it drops back and shows up tomorrow.'), h('p', {}, h('b', {}, '3. Recall, don\'t recognize: '), 'as a state gets stronger, questions switch from tap-it / multiple choice to writing the name and capital from memory — exactly what the test asks.'), h('p', {}, h('b', {}, '4. Capitals come second: '), `each state's capital is introduced ${CAP_DELAY} days after you meet the state, so you anchor the shape and place first, then hang the capital on it.`), h('p', {}, h('b', {}, '5. Checkpoints 🏁: '), 'every 10 states known, you take a checkpoint: a sheet of state shapes to name, then fill every state you know in on the blank map. Then the next batch unlocks.'), h('p', {}, h('b', {}, '6. Test: '), 'from week 3, take the full Fill-in-the-map test a few times a week. Your best full score is saved.')));
+  view.append(h('div', { class: 'card' }, h('h2', {}, 'How it works'), h('p', {}, h('b', {}, '1. Meet: '), 'each new state is shown on the map with its neighbors. You find it, then type its name from memory.'), h('p', {}, h('b', {}, '2. Space it out: '), 'every state has a "box" (1–6). Get it right → it moves up and comes back later (1, 2, 4, 7, 14, 30 days). Miss it → it drops back and shows up tomorrow.'), h('p', {}, h('b', {}, '3. Recall, don\'t recognize: '), 'as a state gets stronger, questions switch from tap-it / multiple choice to writing the name and capital from memory — exactly what the test asks.'), h('p', {}, h('b', {}, '4. Capitals come second: '), `by default each state's capital arrives ${capDelay()} day(s) after you meet the state, so you anchor the shape and place first, then hang the capital on it. Change this in Settings below (same day = learn both together).`), h('p', {}, h('b', {}, '5. Checkpoints 🏁: '), 'every 10 states known, you take a checkpoint: a sheet of mini-maps (one state lit up on each) to name, then fill every state you know in on the blank map. Then the next batch unlocks.'), h('p', {}, h('b', {}, '6. Test: '), 'from week 3, take the full Fill-in-the-map test a few times a week. Your best full score is saved.')));
   const sBox = h('div', { class: 'card' }, h('h2', {}, 'Settings'),
     h('div', { class: 'row' }, h('span', {}, 'New states per day:'), h('div', { class: 'seg' }, [3, 4, 5, 6].map(k => h('button', { class: k === n ? 'on' : '', onclick: () => { P.settings.newPerDay = k; save(); render(); } }, String(k))))),
+    h('div', { class: 'row', style: 'margin-top:10px' }, h('span', {}, 'Capitals arrive:'), h('div', { class: 'seg' }, [[0, 'Same day as the state'], [1, '1 day later'], [2, '2 days later'], [4, '4 days later']].map(([k, lab]) => h('button', { class: k === capDelay() ? 'on' : '', onclick: () => { P.settings.capDelay = k; save(); render(); } }, lab)))),
     h('div', { class: 'row', style: 'margin-top:10px' }, h('label', { class: 'sw' }, h('input', { type: 'checkbox', checked: P.settings.sound ? true : null, onchange: (e) => { P.settings.sound = e.target.checked; save(); } }), 'Sounds')),
     h('div', { class: 'row', style: 'margin-top:14px' }, h('button', { class: 'btn sec small', onclick: accountModal }, user ? `Account: ${user}` : 'Sign in / create account'), h('button', { class: 'btn sec small', onclick: () => { if (confirm('Reset ALL progress and start over from Day 1?')) { P = defaultP(); save(); if (user) pushProgress(); render('today'); } } }, 'Reset progress')),
     h('p', { class: 'muted', style: 'margin-top:8px' }, user ? '☁️ Progress is saved to the cloud and on this device.' : '💾 Progress is saved on this device only. Sign in to sync across your phone and laptop.'));
