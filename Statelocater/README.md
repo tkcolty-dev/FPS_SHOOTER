@@ -8,7 +8,12 @@ A map game with a daily spaced-repetition plan, cloud save, and fill-in-the-map 
 - **Spaced repetition** (Leitner boxes 1–6 → 1, 2, 4, 7, 14, 30 days). Questions move from tap-it / multiple choice to typing from memory as a state gets stronger. Spelling close counts.
 - **Checkpoints every 10 states**: a sheet of mini-maps (state highlighted in place → write name + capital), then fill every state you know in on the blank map. New states pause until you take it (or skip).
 - **Capitals mode**: choose when capitals arrive (same day / 1 / 2 / 4 days later). Every capital is pinned as a ★ on the map at the real city location; new capitals must be typed once to lock in; misses require typing the right answer before moving on; each has a short hook + a vivid "picture this" image. **Capitals drill** on the Map tab: match game (state ↔ capital, pairs light up on the map), capital → state, type-the-capitals, all 50.
-- **Free practice** any region / all 50 any time; **Test** tab = blank map, tap a state, write it in, check at the end (best full score saved).
+- **Play tab** gathers every game in one place:
+  - **⚔️ Race a friend (multiplayer)** — create a room, share the 4-letter code, up to 8 players race on the same prompts over WebSockets; first correct tap wins the round (+speed bonus), live scoreboard, rematch.
+  - **⚡ Blitz** — 60-second solo speed run with combo multipliers and a saved best score.
+  - **🎯 Free practice** any region / all 50; **🏛️ Capitals drill** (match game, capital→state, typed).
+- **Test** tab = blank map, tap a state, write it in, check at the end (best full score saved).
+- **The science** card on the Plan tab explains the method (retrieval practice + spacing — the two "high-utility" techniques — plus keyword mnemonics and on-map spatial learning).
 - 28-day plan view, streaks, XP, mastery-colored progress map.
 
 **Run locally**: `npm install && npm start` → http://localhost:4990 (progress in `data/` files).

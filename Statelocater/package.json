@@ -3,11 +3,16 @@
   "version": "1.0.0",
   "description": "Learn all 50 US states and capitals in 4 weeks — map game with cloud save",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
   "license": "MIT",
   "dependencies": {
     "express": "^5.1.0",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "ws": "^8.21.3"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }
