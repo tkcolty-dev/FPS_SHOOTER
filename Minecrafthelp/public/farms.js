@@ -5,10 +5,11 @@ import * as THREE from './vendor/three.module.js';
 // ---------- texture loading ----------
 const loader = new THREE.TextureLoader();
 const texCache = {};
-function tex(name, { animFrames, folder } = {}) {
-  const key = (folder || 'block') + name + (animFrames || '');
+function tex(name, { animFrames, folder, rot } = {}) {
+  const key = (folder || 'block') + name + (animFrames || '') + (rot ? '@' + rot : '');
   if (texCache[key]) return texCache[key];
   const url = name.includes('/') ? name : 'tex/' + (folder || 'block') + '/' + name + '.png';
+  const applyRot = (tt) => { if (rot) { tt.center.set(0.5, tt.repeat.y / 2); tt.rotation = rot * Math.PI / 180; tt.needsUpdate = true; } };
   const t = loader.load(url, (tt) => {
     // tall strips are animated textures — crop to the first frame
     const img = tt.image;
@@ -16,6 +17,7 @@ function tex(name, { animFrames, folder } = {}) {
       tt.repeat.set(1, img.width / img.height);
       tt.offset.set(0, 1 - img.width / img.height);
     }
+    applyRot(tt);
   });
   t.magFilter = THREE.NearestFilter;
   t.minFilter = THREE.NearestFilter;
@@ -26,14 +28,15 @@ function tex(name, { animFrames, folder } = {}) {
     t.userData.animFrames = animFrames;
     animatedTextures.push(t);
   }
+  applyRot(t);
   texCache[key] = t;
   return t;
 }
 const animatedTextures = [];
 
-function mat(name, { tint, transparent, opacity, animFrames } = {}) {
+function mat(name, { tint, transparent, opacity, animFrames, rot } = {}) {
   return new THREE.MeshLambertMaterial({
-    map: tex(name, { animFrames }),
+    map: tex(name, { animFrames, rot }),
     color: tint ? new THREE.Color(tint) : 0xffffff,
     transparent: !!transparent || !!opacity,
     opacity: opacity ?? 1,
@@ -43,12 +46,44 @@ function mat(name, { tint, transparent, opacity, animFrames } = {}) {
 }
 
 // face order: +x, -x, +y(top), -y(bottom), +z, -z
-function cubeMats({ all, top, bottom, side, face, back, facing }) {
+// Per-face texture axes of THREE.BoxGeometry: which world direction the texture's "right" and "up" point.
+const FACE_AXES = [
+  { r: [0, 0, -1], u: [0, 1, 0] },  // +x
+  { r: [0, 0, 1], u: [0, 1, 0] },   // -x
+  { r: [1, 0, 0], u: [0, 0, -1] },  // +y (top)
+  { r: [1, 0, 0], u: [0, 0, 1] },   // -y (bottom)
+  { r: [1, 0, 0], u: [0, 1, 0] },   // +z
+  { r: [-1, 0, 0], u: [0, 1, 0] },  // -z
+];
+// Accept Minecraft compass names too: north=-z, south=+z, east=+x, west=-x, up=+y, down=-y
+const DIR_ALIAS = { north: '-z', south: '+z', east: '+x', west: '-x', up: '+y', down: '-y', n: '-z', s: '+z', e: '+x', w: '-x', u: '+y', d: '-y', 'x': '+x', 'y': '+y', 'z': '+z' };
+function normDir(d) { if (!d) return d; const k = String(d).trim().toLowerCase(); return DIR_ALIAS[k] || (['+x', '-x', '+y', '-y', '+z', '-z'].includes(k) ? k : d); }
+const DIRV = { '+x': [1, 0, 0], '-x': [-1, 0, 0], '+y': [0, 1, 0], '-y': [0, -1, 0], '+z': [0, 0, 1], '-z': [0, 0, -1] };
+// Rotation (degrees) to apply to a texture whose arrow points "up" so that it points toward `facing` on face `idx`.
+function rotFor(idx, facing) {
+  const d = DIRV[facing]; if (!d) return 0;
+  const { r, u } = FACE_AXES[idx];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  if (dot(d, u) > 0.5) return 0;
+  if (dot(d, u) < -0.5) return 180;
+  if (dot(d, r) > 0.5) return -90;   // arrow should point right → rotate texture clockwise
+  if (dot(d, r) < -0.5) return 90;   // arrow should point left → rotate counter-clockwise
+  return 0;
+}
+// dirSide / dirTop: texture NAMES with an arrow/shaft that must point toward `facing` (command blocks, pistons, observers).
+function cubeMats({ all, top, bottom, side, face, back, facing, dirSide, dirTop, dirOpts }) {
   const s = side || all, t = top || all, b = bottom || side || all;
   let m = [s, s, t, b, s, s].map(x => x);
   if (face && facing) {
     const idx = { '+x': 0, '-x': 1, '+y': 2, '-y': 3, '+z': 4, '-z': 5 }[facing];
     const opp = { 0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4 }[idx];
+    if (dirSide) {
+      for (let i = 0; i < 6; i++) {
+        if (i === idx || i === opp) continue;
+        const name = (dirTop && (i === 2 || i === 3)) ? dirTop : dirSide;
+        m[i] = mat(name, { ...(dirOpts || {}), rot: rotFor(i, facing) });
+      }
+    }
     m[idx] = face;
     if (back) m[opp] = back;
   }
@@ -80,15 +115,16 @@ function pistonDef(facing, sticky) {
     face: mat(sticky ? 'piston_top_sticky' : 'piston_top'),
     back: mat('piston_bottom'),
     side: mat('piston_side'),
+    dirSide: 'piston_side',
     facing,
   });
 }
 function observerDef(facing) {
-  return cubeMats({ face: mat('observer_front'), back: mat('observer_back'), side: mat('observer_side'), top: mat('observer_top'), bottom: mat('observer_top'), facing });
+  return cubeMats({ face: mat('observer_front'), back: mat('observer_back'), side: mat('observer_side'), top: mat('observer_top'), bottom: mat('observer_top'), dirSide: 'observer_side', dirTop: 'observer_top', facing });
 }
 function commandDef(base, facing) {
   const side = mat(base + '_side');
-  return cubeMats({ face: mat(base + '_front'), back: mat(base + '_back'), side, top: side, bottom: side, facing: facing || '+z' });
+  return cubeMats({ face: mat(base + '_front'), back: mat(base + '_back'), side, top: side, bottom: side, dirSide: base + '_side', facing: facing || '+z' });
 }
 function frontBoxDef(front, facing) {
   return cubeMats({ face: mat(front), side: mat('furnace_side'), top: mat('furnace_top'), bottom: mat('furnace_top'), facing: facing || '+z' });
@@ -301,17 +337,17 @@ function blockMesh(type) {
   let materials;
   if (matsCache[type]) materials = matsCache[type];
   else {
+    const dirOf = () => normDir(type.split('|')[1]) || '+z';
     if (type.startsWith('piston')) {
-      const f = type.split('|')[1] || '+z';
-      materials = pistonDef(f, false);
+      materials = pistonDef(dirOf(), false);
     } else if (type.startsWith('sticky_piston')) {
-      materials = pistonDef(type.split('|')[1] || '+z', true);
+      materials = pistonDef(dirOf(), true);
     } else if (type.startsWith('observer')) {
-      materials = observerDef(type.split('|')[1] || '+z');
+      materials = observerDef(dirOf());
     } else if (type.startsWith('command_block') || type.startsWith('chain_command_block') || type.startsWith('repeating_command_block')) {
-      materials = commandDef(type.split('|')[0], type.split('|')[1]);
+      materials = commandDef(type.split('|')[0], dirOf());
     } else if (type.startsWith('dropper') || type.startsWith('dispenser')) {
-      materials = frontBoxDef(type.split('|')[0] + '_front', type.split('|')[1]);
+      materials = frontBoxDef(type.split('|')[0] + '_front', dirOf());
     } else if (BLOCK_DEFS[type]) {
       materials = BLOCK_DEFS[type]();
     } else if ((window.MC_BLOCKTEX || {})[type]) {

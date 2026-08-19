@@ -129,7 +129,8 @@ Format rules:
   cauldron, snow_block, magma_block,
   piston|DIR, sticky_piston|DIR, observer|DIR, dropper|DIR, dispenser|DIR,
   command_block|DIR, chain_command_block|DIR, repeating_command_block|DIR
-  where DIR is +x -x +y -y +z -z (the way it faces),
+  where DIR is +x -x +y -y +z -z (the way it faces = where the piston head / observer face / command-block arrows point;
+  north=-z south=+z east=+x west=-x up=+y down=-y),
   marker|ITEM_NAME = a floating item icon (e.g. marker|villager_spawn_egg to show where a mob goes).
 - COMMAND BLOCK BUILDS: you can now build command-block contraptions in 3D! Place the command
   blocks with the right type and facing, and put the EXACT command for each block in that step's
