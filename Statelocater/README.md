@@ -1,9 +1,10 @@
-# StateLocater — learn all 50 US states & capitals in 4 weeks
+# StateLocater — learn all 50 US states & capitals (1-week sprint or 2/4-week plan)
 
 A map game with a daily spaced-repetition plan, cloud save, and fill-in-the-map tests.
 
 **How it teaches**
-- **Meet** a few new states a day (3–6, you pick), each shown on the real map with its neighbors. Find it, then type its name.
+- **Pick your plan**: 1-week sprint (6–10 states/day, compressed review intervals), 2 weeks, or 4 weeks. Review intervals scale to the plan.
+- **Meet gently** — each new state: see it on the map → warm-up find (zoomed to its region, neighbors labeled, hint) → pick its name (multiple choice) → a few minutes later find it again + type it. Recognition first, spelling last; misses re-teach with a neighbor hint and require typing the answer.
 - **Capitals come 2 days later** — anchor the shape/place first, then hang the capital on it (with a memory hook).
 - **Spaced repetition** (Leitner boxes 1–6 → 1, 2, 4, 7, 14, 30 days). Questions move from tap-it / multiple choice to typing from memory as a state gets stronger. Spelling close counts.
 - **Checkpoints every 10 states**: a sheet of mini-maps (state highlighted in place → write name + capital), then fill every state you know in on the blank map. New states pause until you take it (or skip).

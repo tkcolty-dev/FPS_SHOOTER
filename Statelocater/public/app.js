@@ -21,14 +21,20 @@ const MNEMO = {
 AL:'Montgomery — where Rosa Parks rode the bus. Ala-BAMA drama, Mont-GOMERY.', AK:'"Do you know (Juneau) Alaska\'s capital?" Yes — Juneau!', AZ:'A Phoenix rises from the hot Arizona desert sun.', AR:'Arkansas ROCKS… just a Little Rock.', CA:'A SACK of California tomatoes — SACramento.', CO:'Denver, the Mile-High City in the Colorado Rockies.', CT:'Connecticut connects to your HEART — Hartford.', DE:'Delaware: drive over to DOVER.', FL:'TALL Florida palm trees in Tallahassee.', GA:'Georgia peach → Atlanta, the world\'s busiest airport.', HI:'Hawaii: do the hula in Honolulu.', ID:'Idaho potatoes — "BOY-see" those spuds! Boise.', IL:'Illinois: Abraham Lincoln\'s Springfield.', IN:'Indiana + polis (city) = Indianapolis.', IA:'Iowa: "Des Moines" = day-MOYN, out in the corn.', KS:'Kansas: Toto PEEKED out of the basket — ToPEKA.', KY:'Kentucky: be FRANK, it\'s Frankfort (not Louisville!).', LA:'Louisiana: "Baton Rouge" is French for red stick.', ME:'Maine: August is the month to visit Augusta.', MD:'Maryland: Anna at the Naval Academy — Annapolis.', MA:'Massachusetts: the Boston Tea Party.', MI:'Michigan is a mitten — Lansing sits in the palm.', MN:'Minnesota: Saint Paul, the twin of Minneapolis.', MS:'Mississippi: Jackson — say it with rhythm: Missis-sippi Jack-son.', MO:'Missouri: Jefferson City, right on the Missouri River.', MT:'Montana: HELEN-a of the mountains.', NE:'Nebraska: Abe Lincoln standing in the cornfields.', NV:'Nevada: NOT Las Vegas — Carson City, near Lake Tahoe.', NH:'New Hampshire: Concord grapes.', NJ:'New Jersey: Washington crossed the Delaware to Trenton.', NM:'New Mexico: Santa Fe ("holy faith"), the oldest US capital.', NY:'New York: NOT NYC — Albany, up the Hudson River.', NC:'North Carolina: Sir Walter Raleigh.', ND:'North Dakota: Bismarck, like the German chancellor.', OH:'Ohio: Columbus sailed to O-hi-o.', OK:'Oklahoma → just add "City": Oklahoma City.', OR:'Oregon: Salem (not the witch-trial one — that\'s Massachusetts).', PA:'Pennsylvania: NOT Philly — Harrisburg.', RI:'Rhode Island: Providence, the tiny state\'s big city.', SC:'South Carolina: Columbia (Columbus + -ia).', SD:'South Dakota: Pierre — said like "peer".', TN:'Tennessee: country music capital, Nashville.', TX:'Texas: Austin — keep it weird.', UT:'Utah: the Great Salt Lake → Salt Lake City.', VT:'Vermont = Green MOUNTain → MONTpelier, the smallest capital.', VA:'Virginia: Richmond, rich in history.', WA:'Washington: Mount Olympus → Olympia.', WV:'West Virginia: Charleston (the other Charleston is in SC, but it\'s not SC\'s capital).', WI:'Wisconsin: James MADISON loves cheese. Madison.', WY:'Wyoming: Cheyenne, home of the big rodeo.' };
 const PICTURE = {
 AL:'Picture a sweet-tea stand in Alabama run by a fellow named Mont Gomery.', AK:'Picture a moose in a parka asking "Did JUNEAU it\'s cold up here?"', AZ:'Picture a flaming PHOENIX bird rising out of the Grand Canyon.', AR:'Picture one tiny pebble — a LITTLE ROCK — sitting in the middle of Arkansas.', CA:'Picture a giant SACK of tomatoes dumped in California\'s valley — SACK-ramento.', CO:'Picture a bear DEN a mile high in the Rockies — DEN-ver.', CT:'Picture a big red HEART floating across a river FORD in Connecticut.', DE:'Picture a white DOVE flying OVER tiny Delaware — DOVE-r.', FL:'Picture a TALL palm tree at the top of Florida waving "HASS-ee!"', GA:'Picture a peach so huge it needs the world\'s busiest airport — Atlanta.', HI:'Picture hula dancers HONKing ukuleles — HONO-lulu.', ID:'Picture a BOY SEEing a potato the size of a truck — BOY-see.', IL:'Picture Abe Lincoln bouncing on a SPRING in a FIELD of Illinois corn.', IN:'Picture Indy race cars circling a city named after the state — India-napolis.', IA:'Picture an Iowa farmer sighing "DAY-MOYN, that\'s a lot of corn."', KS:'Picture Toto PEEKing out of the basket over Kansas — To-PEEK-a.', KY:'Picture a FRANK (hot dog) guarding a FORT of Kentucky bourbon barrels.', LA:'Picture a RED STICK (baton rouge) poking out of the Louisiana bayou.', ME:'Picture a GUST of August wind blowing Maine\'s lobster traps around.', MD:'Picture ANNA saluting at the Naval Academy in Maryland — ANNA-polis.', MA:'Picture tea crates splashing into BOSTON harbor.', MI:'Picture a LANCE stuck in the palm of Michigan\'s mitten — LANCE-ing.', MN:'Picture SAINT PAUL ice-fishing next to his twin, Minneapolis.', MS:'Picture Michael JACKSON moonwalking down the Mississippi River.', MO:'Picture Thomas JEFFERSON\'s face carved in the Missouri river bluffs.', MT:'Picture HELEN-a yodeling from the top of a Montana mountain.', NE:'Picture Abe LINCOLN\'s top hat poking up out of a Nebraska cornfield.', NV:'Picture Johnny CARSON hosting a talk show in a tiny Nevada town (NOT Vegas).', NH:'Picture purple CONCORD grapes rolling down a New Hampshire mountain.', NJ:'Picture Washington\'s boat crunching onto the snowy bank at TRENTON.', NM:'Picture SANTA in an adobe house in New Mexico — SANTA FE.', NY:'Picture a sleepy ALBANY far up the Hudson, giggling at the skyscrapers downstream.', NC:'Picture Sir Walter RALEIGH laying his cloak over a North Carolina puddle.', ND:'Picture stern old BISMARCK shivering on the North Dakota prairie.', OH:'Picture COLUMBUS\'s ship sailing down the O-hi-o River.', OK:'Picture a road sign: "Oklahoma → City, this way." That\'s it: Oklahoma City.', OR:'Picture a "SALE \'EM!" sign nailed to Oregon pine trees — SALE-M.', PA:'Picture a HARRY bear (HARRIS-burg) eating a cheesesteak far from Philly.', RI:'Picture PROVIDENCE — a guardian angel hovering over the tiniest state.', SC:'Picture COLUMBIA, the movie-logo lady, holding her torch over South Carolina.', SD:'Picture a PIER (peer) sticking into the Missouri River in South Dakota — PIERRE.', TN:'Picture a cowboy hat and a guitar — NASHVILLE, Music City.', TX:'Picture AUSTIN Powers riding a longhorn across Texas. Yeah baby.', UT:'Picture a SALTy LAKE with a CITY sparkling on its shore — Utah.', VT:'Picture a green MOUNTain (Ver-MONT) with a tiny capital perched on top — MONT-pelier.', VA:'Picture a RICH MAN (RICH-mond) in a powdered wig in colonial Virginia.', WA:'Picture the OLYMPIC rings hanging on Mount Olympus in Washington.', WV:'Picture CHARLES dancing the Charleston in the West Virginia hills.', WI:'Picture James MADISON biting into a giant wheel of Wisconsin cheese.', WY:'Picture a rodeo rider named SHY ANNE bucking across Wyoming — CHEY-ENNE.' };
-const INTERVALS = [0, 1, 2, 4, 7, 14, 30]; // days by box
-const PLAN_DAYS = 28;
+// Plan length is a setting: 7-day sprint, 14-day, or 28-day classic. Review intervals compress to fit.
+const INTERVALS_28 = [0, 1, 2, 4, 7, 14, 30];
+const INTERVALS_14 = [0, 1, 1, 2, 4, 7, 14];
+const INTERVALS_7 = [0, 1, 1, 1, 2, 3, 5];
 
 // ---------------- progress ----------------
-const LS = 'statelocater.v1';
-function defaultP() { return { v: 1, created: Date.now(), updatedAt: Date.now(), startDate: dayKey(), settings: { newPerDay: 4, sound: true }, cards: {}, intro: {}, days: {}, xp: 0, streak: 0, lastDone: null, tests: [], best: null, onboarded: false }; }
+const LS = 'statelocater.v2'; // v2 = fresh start (2026-08-20) with the new learning ladder
+function defaultP() { return { v: 1, created: Date.now(), updatedAt: Date.now(), startDate: dayKey(), settings: { newPerDay: 8, planDays: 7, sound: true }, cards: {}, intro: {}, days: {}, xp: 0, streak: 0, lastDone: null, tests: [], best: null, onboarded: false }; }
 let P = (() => { try { const p = JSON.parse(localStorage.getItem(LS)); if (p && p.cards) return Object.assign(defaultP(), p); } catch {} return defaultP(); })();
 let user = null, pushTimer = null;
+const planDays = () => P.settings.planDays || 28;
+const intervals = () => planDays() <= 7 ? INTERVALS_7 : planDays() <= 14 ? INTERVALS_14 : INTERVALS_28;
+const paceOptions = () => planDays() <= 7 ? [6, 8, 10] : planDays() <= 14 ? [4, 5, 6] : [3, 4, 5, 6];
+const defaultPace = () => planDays() <= 7 ? 8 : planDays() <= 14 ? 4 : 3;
 function save(push = true) { P.updatedAt = Date.now(); localStorage.setItem(LS, JSON.stringify(P)); if (push && user) { clearTimeout(pushTimer); pushTimer = setTimeout(pushProgress, 1200); } refreshHeader(); }
 async function pushProgress() {
   if (!user) return;
@@ -48,7 +54,7 @@ function adoptServer(sp) {
 const card = (abbr, kind) => P.cards[abbr + ':' + kind] || (P.cards[abbr + ':' + kind] = { box: 0, due: 0, seen: 0, right: 0, wrong: 0 });
 const introduced = (abbr) => P.intro[abbr] != null;
 const learnedList = () => ORDER.filter(introduced);
-const capDelay = () => (P.settings.capDelay == null ? 2 : P.settings.capDelay); // days after meeting a state before its capital is introduced
+const capDelay = () => (P.settings.capDelay == null ? (planDays() <= 7 ? 1 : 2) : P.settings.capDelay); // days after meeting a state before its capital is introduced
 const capReady = (abbr) => { if (!introduced(abbr)) return false; const c = card(abbr, 'cap'); const at = c.introAt != null ? c.introAt + capDelay() * DAY : (c.unlock || 0); return at <= dayStart() + DAY - 1; };
 const capLearned = (abbr) => card(abbr, 'cap').box >= 1;
 const knownList = () => ORDER.filter(a => introduced(a) && card(a, 'loc').box >= 1);
@@ -131,7 +137,10 @@ function ensureDay(k) { return P.days[k] || (P.days[k] = { newIntro: [], reviews
 function dueCards() { const now = dayStart() + DAY - 1; const out = []; for (const [k, c] of Object.entries(P.cards)) { if (c.box >= 1 && c.due <= now) { const [abbr, kind] = k.split(':'); if (introduced(abbr)) out.push({ abbr, kind, c }); } } return out; }
 function pickNew(n) { return ORDER.filter(a => !introduced(a)).slice(0, n); }
 function qFor(abbr, kind, box) {
-  if (kind === 'loc') { const pName = Math.min(.9, .25 + box * .15); return { type: Math.random() < pName ? 'name' : 'find', abbr, kind }; }
+  if (kind === 'loc') {
+    if (box <= 1) return { type: pick(['find', 'find', 'namemc', 'name']), abbr, kind }; // mostly recognition while weak
+    const pName = Math.min(.9, .25 + box * .15); return { type: Math.random() < pName ? 'name' : 'find', abbr, kind };
+  }
   if (box <= 1) return { type: 'capmc', abbr, kind }; if (box >= 4 && Math.random() < .35) return { type: 'rev', abbr, kind }; return { type: 'cap', abbr, kind };
 }
 function buildSession(extraNew = false) {
@@ -145,20 +154,23 @@ function buildSession(extraNew = false) {
   const capNew = ORDER.filter(a => capReady(a) && !capLearned(a) && card(a, 'loc').box >= 1 && !newAbbrs.includes(a));
   const due = shuffle(dueCards()).filter(x => !newAbbrs.includes(x.abbr) && !(x.kind === 'cap' && capNew.includes(x.abbr)));
   const q = [];
-  for (const a of newAbbrs) q.push({ type: 'learn', abbr: a }, { type: 'find', abbr: a, kind: 'loc', practice: true }, { type: 'name', abbr: a, kind: 'loc' });
+  // Ladder: meet it -> find it with training wheels -> recognize the name. Typing waits for the mixed round.
+  for (const a of newAbbrs) q.push({ type: 'learn', abbr: a }, { type: 'find', abbr: a, kind: 'loc', practice: true, easy: true }, { type: 'namemc', abbr: a, kind: 'loc', practice: true });
   for (const a of capNew) q.push({ type: 'learncap', abbr: a }, { type: 'capmc', abbr: a, kind: 'cap' });
   for (const x of due) q.push(qFor(x.abbr, x.kind, x.c.box));
+  // Mixed round: the same new states come back shuffled, a few minutes later — find again, then type the name (this one counts).
+  if (newAbbrs.length) { for (const a of shuffle(newAbbrs)) q.push({ type: 'find', abbr: a, kind: 'loc', practice: true, mixed: true }); for (const a of shuffle(newAbbrs)) q.push({ type: 'name', abbr: a, kind: 'loc' }); }
   session = { queue: q, i: 0, total: q.length, answered: 0, correct: 0, xp: 0, newAbbrs, capNew, day: today };
   save();
 }
 function buildPractice(abbrs, label, types) {
   const q = [];
-  for (const a of shuffle(abbrs)) { let kinds = [{ type: 'find', kind: 'loc' }, { type: 'name', kind: 'loc' }]; if (!introduced(a) || !capLearned(a)) { q.push({ type: 'learn', abbr: a, full: true }); kinds.push({ type: 'capmc', kind: 'cap' }); } else kinds.push({ type: 'capmc', kind: 'cap' }, { type: 'cap', kind: 'cap' }, { type: 'rev', kind: 'cap' }); if (types) kinds = types.map(t => ({ type: t, kind: t === 'find' || t === 'name' ? 'loc' : 'cap' })); q.push({ ...pick(kinds), abbr: a, practice: true }); }
+  for (const a of shuffle(abbrs)) { let kinds = [{ type: 'find', kind: 'loc' }, { type: 'name', kind: 'loc' }]; if (!introduced(a) || !capLearned(a)) { q.push({ type: 'learn', abbr: a, full: true }); kinds = [{ type: 'find', kind: 'loc' }, { type: 'namemc', kind: 'loc' }, { type: 'capmc', kind: 'cap' }]; } else kinds.push({ type: 'capmc', kind: 'cap' }, { type: 'cap', kind: 'cap' }, { type: 'rev', kind: 'cap' }); if (types) kinds = types.map(t => ({ type: t, kind: t === 'find' || t === 'name' ? 'loc' : 'cap' })); q.push({ ...pick(kinds), abbr: a, practice: true }); }
   session = { queue: q, i: 0, total: q.length, answered: 0, correct: 0, xp: 0, newAbbrs: [], day: dayKey(), practice: true, label };
 }
 function grade(abbr, kind, ok, { practice, hint } = {}) {
   const c = card(abbr, kind); const d = ensureDay(dayKey());
-  if (!practice) { c.seen++; d.reviews++; if (ok) { c.right++; d.correct++; if (c.lapsed) { c.lapsed = false; c.due = dayStart(1); } else { c.box = Math.min(6, c.box + 1); c.due = dayStart(INTERVALS[c.box]); } } else { c.wrong++; c.lapsed = true; c.box = Math.max(1, Math.ceil(c.box / 2)); c.due = dayStart(); } }
+  if (!practice) { c.seen++; d.reviews++; if (ok) { c.right++; d.correct++; if (c.lapsed) { c.lapsed = false; c.due = dayStart(1); } else { c.box = Math.min(6, c.box + 1); c.due = dayStart(intervals()[c.box]); } } else { c.wrong++; c.lapsed = true; c.box = Math.max(1, Math.ceil(c.box / 2)); c.due = dayStart(); } }
   const gain = ok ? (hint ? 5 : 10) : 0; P.xp += gain; d.xp += gain; session.xp += gain; session.answered++; if (ok) session.correct++;
   save(); return gain;
 }
@@ -177,17 +189,20 @@ document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { sessio
 // ---- onboarding ----
 function renderOnboard() {
   const box = h('div', { class: 'card' },
-    h('h1', {}, 'Learn all 50 states & capitals in 4 weeks 🇺🇸'),
-    h('p', {}, 'A few new states every day, placed on a real map. Old ones come back right before you\'d forget them (spaced repetition). By week 3 you\'ll be filling in the whole map from memory.'),
-    h('h3', {}, 'How many new states per day?'),
-    h('div', { class: 'row', id: 'pace' }, [3, 4, 5].map(n => h('button', { class: 'btn sec small', 'data-n': n, onclick: (e) => { P.settings.newPerDay = n; document.querySelectorAll('#pace .btn').forEach(b => b.classList.toggle('good', +b.dataset.n === n)); $('#pace-note').textContent = `All 50 learned by day ${Math.ceil(50 / n)}, then ${28 - Math.ceil(50 / n)} days of review + map tests.`; } }, `${n} / day`))),
+    h('h1', {}, 'Learn all 50 states & capitals 🇺🇸'),
+    h('p', {}, 'A few new states every day, placed on a real map. Each new state gets several easy reps before you ever have to spell it, and old ones come back right before you\'d forget them — until you can fill in the whole map from memory.'),
+    h('h3', {}, 'How much time do you have?'),
+    h('div', { class: 'row', id: 'plen' }, [[7, '1 week 🏃 (intense)'], [14, '2 weeks'], [28, '4 weeks (chill)']].map(([d, lab]) => h('button', { class: 'btn sec small' + (planDays() === d ? ' good' : ''), onclick: () => { P.settings.planDays = d; P.settings.newPerDay = defaultPace(); render(); } }, lab))),
+    h('h3', { style: 'margin-top:12px' }, 'New states per day'),
+    h('p', { class: 'muted' }, planDays() <= 7 ? 'A sprint means big days — sessions run 15–25 min. The reps are built so it still sticks.' : 'Start small — fewer sticks better. You can always tap "+ Learn more" on a good day.'),
+    h('div', { class: 'row', id: 'pace' }, paceOptions().map(n => h('button', { class: 'btn sec small', 'data-n': n, onclick: (e) => { P.settings.newPerDay = n; document.querySelectorAll('#pace .btn').forEach(b => b.classList.toggle('good', +b.dataset.n === n)); $('#pace-note').textContent = `All 50 learned by day ${Math.ceil(50 / n)}, then ${Math.max(0, planDays() - Math.ceil(50 / n))} day(s) of review + map tests.`; } }, `${n} / day`))),
     h('p', { class: 'muted', id: 'pace-note' }, ''),
     h('h3', {}, 'When do you want capitals?'),
-    h('div', { class: 'row', id: 'capw' }, [[0, 'Together with each state'], [2, 'A couple of days after (recommended)']].map(([k, lab]) => h('button', { class: 'btn sec small' + (capDelay() === k ? ' good' : ''), onclick: (e) => { P.settings.capDelay = k; [...e.target.parentNode.children].forEach(b => b.classList.remove('good')); e.target.classList.add('good'); } }, lab))),
+    h('div', { class: 'row', id: 'capw' }, (planDays() <= 7 ? [[0, 'Together with each state'], [1, 'The next day (recommended)']] : [[0, 'Together with each state'], [2, 'A couple of days after (recommended)']]).map(([k, lab]) => h('button', { class: 'btn sec small' + (capDelay() === k ? ' good' : ''), onclick: (e) => { P.settings.capDelay = k; [...e.target.parentNode.children].forEach(b => b.classList.remove('good')); e.target.classList.add('good'); } }, lab))),
     h('p', {}, h('b', {}, 'Each day: '), 'review what\'s due (5–10 min) → meet today\'s new states → quick quiz. Miss a day? No problem, it just piles up a bit.'),
     h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { P.onboarded = true; P.startDate = dayKey(); save(); render('today'); } }, 'Start Day 1 →'), h('button', { class: 'btn sec', onclick: accountModal }, user ? `Signed in as ${user}` : 'Sign in to save to cloud')),
   );
-  view.append(box); $(`#pace .btn[data-n="${P.settings.newPerDay}"]`).click();
+  view.append(box); const pb = $(`#pace .btn[data-n="${P.settings.newPerDay}"]`) || $(`#pace .btn`); pb.click();
 }
 
 // ---- Today ----
@@ -200,9 +215,9 @@ function renderToday() {
   const newToday = (d.newIntro.length || d.done || cp) ? pendingNew() : pendingNew().concat(pickNew(P.settings.newPerDay));
   const capNew = ORDER.filter(a => capReady(a) && !capLearned(a) && card(a, 'loc').box >= 1 && !newToday.includes(a));
   const mastered = ORDER.filter(a => mastery(a) >= 4).length;
-  const wk = Math.ceil(Math.min(dayNum(), PLAN_DAYS) / 7);
-  const phase = remaining > 0 ? `Week ${wk} · Learning phase` : dayNum() <= 21 ? `Week ${wk} · Lock it in` : `Week ${wk} · Test ready`;
-  const nQ = newToday.length * 3 + capNew.length * 2 + due.length;
+  const PD = planDays(); const wk = Math.ceil(Math.min(dayNum(), PD) / 7);
+  const phase = PD <= 7 ? (remaining > 0 ? `Day ${Math.min(dayNum(), PD)} of ${PD} · Sprint 🏃` : 'Sprint · Lock it in') : remaining > 0 ? `Week ${wk} · Learning phase` : dayNum() <= PD - 7 ? `Week ${wk} · Lock it in` : `Week ${wk} · Test ready`;
+  const nQ = newToday.length * 5 + capNew.length * 2 + due.length;
   const caughtUp = !nQ && !cp;
   if (cp) {
     view.append(h('div', { class: 'card learn' }, h('h3', {}, 'Checkpoint'), h('h1', {}, `🏁 ${cp} states known!`), h('p', {}, `Time to prove it. Part 1: a sheet of mini-maps, one state highlighted on each — write its name${ORDER.filter(capLearned).length ? ' (and capital where you\'ve learned it)' : ''}. Part 2: fill all ${knownList().length} in on the blank map. New states pause until you've taken it — reviews still run.`),
@@ -298,7 +313,7 @@ function renderQuestion() {
     qcard.append(h('small', { class: 'muted' }, `${session.practice ? 'MEET' : 'NEW STATE'} · ${REGION_NAME[s.region]}`), h('div', { class: 'big' }, s.name, ' ', h('span', { class: 'muted', style: 'font-size:18px' }, s.abbr)),
       showCap ? h('div', { class: 'cap' }, `★ Capital: ${s.capital}`) : h('div', { class: 'muted' }, `★ Capital: comes in ${capDelay()} day${capDelay() === 1 ? '' : 's'} — learn where it is first.`),
       h('div', { class: 'mn' }, showCap ? ['💡 ' + MNEMO[s.abbr], h('br'), h('span', { class: 'muted' }, '🎨 ' + PICTURE[s.abbr])] : (nbNames.length ? `📍 Touches ${nbNames.join(', ')}.` : `📍 Out on its own — no land neighbors.`)),
-      h('p', { class: 'muted', style: 'margin-top:10px' }, 'Look at its shape and what\'s around it. Say the name out loud once.'), nextBtn('Got it →'));
+      h('p', { class: 'muted', style: 'margin-top:10px' }, 'Look at its shape and what\'s around it. Say the name out loud once — you\'ll get several easy reps before any spelling, and it comes back again in a few minutes.'), nextBtn('Got it →'));
     return;
   }
   if (q.type === 'learncap') {
@@ -316,8 +331,21 @@ function renderQuestion() {
   const finish = (ok, opts = {}) => { grade(q.abbr, q.kind, ok, { practice: q.practice, hint: opts.hint }); if (!ok) requeue(); };
   if (q.type === 'find') {
     let done = false;
-    map = makeMap(mapHost, { onTap: (a) => { if (done || !a) return; done = true; const ok = a === q.abbr; map.add(q.abbr, 'good'); if (!ok) map.add(a, 'bad'); map.label(q.abbr, s.abbr); finish(ok); showFb(ok, ok ? `Yes! That's ${s.name}.` : `Not quite — that was ${BY[a].name}. ${s.name} is highlighted in green.`); qcard.append(ok ? nextBtn() : lockIn(s.name)); if (ok) advanceTimer = setTimeout(next, 1100); } });
-    qcard.append(h('div', { class: 'prompt' }, h('small', {}, q.practice ? 'Practice · Find it' : 'Find it'), `Tap ${s.name} on the map`), h('p', { class: 'kbd' }, 'Pinch or scroll to zoom in on small states.'), fb);
+    const whereHint = s.nb.length ? `It touches ${s.nb.map(a => BY[a].name).join(', ')}.` : `It's out on its own — no land neighbors.`;
+    map = makeMap(mapHost, { onTap: (a) => { if (done || !a) return; done = true; const ok = a === q.abbr; map.add(q.abbr, 'good'); if (!ok) map.add(a, 'bad'); map.label(q.abbr, s.abbr); s.nb.forEach(n => map.label(n, BY[n].abbr)); finish(ok); showFb(ok, ok ? `Yes! That's ${s.name}.` : `Not quite — that was ${BY[a].name}. ${s.name} is the green one. ${whereHint}`); qcard.append(ok ? nextBtn() : lockIn(s.name)); if (ok) advanceTimer = setTimeout(next, 1100); } });
+    if (q.easy) { const regionAbbrs = STATES.filter(x => x.region === s.region).map(x => x.abbr); map.zoomRegion(regionAbbrs.concat(s.nb)); s.nb.forEach(n => map.label(n, BY[n].abbr)); }
+    qcard.append(h('div', { class: 'prompt' }, h('small', {}, q.easy ? 'Warm-up · Find it (neighbors are labeled)' : q.mixed ? 'Round 2 · Find it again' : q.practice ? 'Practice · Find it' : 'Find it'), `Tap ${s.name} on the map`), q.easy ? h('p', { class: 'kbd' }, `Hint: ${whereHint}`) : h('p', { class: 'kbd' }, 'Pinch or scroll to zoom in on small states.'), fb);
+    return;
+  }
+  if (q.type === 'namemc') {
+    map = makeMap(mapHost); map.add(q.abbr, 'hl'); if (s.bbox[2] - s.bbox[0] < 110) map.zoomTo(q.abbr, 4);
+    const near = s.nb.length ? s.nb.map(a => BY[a].name) : STATES.filter(x => x.region === s.region && x.abbr !== s.abbr).map(x => x.name);
+    const others = shuffle(STATES.filter(x => x.abbr !== s.abbr).map(x => x.name));
+    const distract = shuffle(shuffle(near).slice(0, 2).concat(others).filter((v, i, a) => a.indexOf(v) === i && v !== s.name)).slice(0, 3);
+    const choices = shuffle([s.name, ...distract]);
+    let done = false; const grid = h('div', { class: 'choices' });
+    choices.forEach(c => grid.append(h('button', { onclick: (e) => { if (done) return; done = true; const ok = c === s.name; e.target.classList.add(ok ? 'good' : 'bad'); [...grid.children].forEach(b => { if (b.textContent === s.name) b.classList.add('good'); }); map.label(q.abbr, s.abbr); finish(ok); showFb(ok, ok ? `Yes — ${s.name}!` : `That's ${s.name}.`); qcard.append(ok ? nextBtn() : lockIn(s.name)); if (ok) advanceTimer = setTimeout(next, 1000); } }, c)));
+    qcard.append(h('div', { class: 'prompt' }, h('small', {}, (q.retry ? 'Try again · ' : '') + 'Which state?'), 'Which state is highlighted?'), grid, fb);
     return;
   }
   if (q.type === 'capmc') {
@@ -352,7 +380,7 @@ function renderSummary() {
   const acc = session.answered ? Math.round(session.correct / session.answered * 100) : 100;
   finishSession();
   const d = ensureDay(dayKey()); const remaining = 50 - learnedList().length;
-  view.append(h('div', { class: 'card summary' }, h('h3', {}, prac ? `Practice complete · ${session.label || ''}` : 'Session complete'), h('div', { class: 'big' }, `+${session.xp} XP`), h('p', {}, `${session.correct}/${session.answered} correct (${acc}%). ${session.newAbbrs.length ? 'New today: ' + session.newAbbrs.map(a => BY[a].name).join(', ') + '.' : ''}`), prac ? h('p', { class: 'muted' }, 'Practice doesn\'t change your review schedule — it\'s just extra reps (and XP).') : h('p', {}, `🔥 Streak: ${P.streak} day${P.streak === 1 ? '' : 's'} · Day ${dayNum()} of 28`), h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn', onclick: () => { session = null; render(prac ? 'play' : 'today'); } }, 'Done'), prac ? null : remaining > 0 ? h('button', { class: 'btn sec', onclick: () => { buildSession(true); render(); } }, `+ Learn ${Math.min(P.settings.newPerDay, remaining)} more`) : h('button', { class: 'btn sec', onclick: () => { session = null; render('test'); } }, 'Try the full-map test'))));
+  view.append(h('div', { class: 'card summary' }, h('h3', {}, prac ? `Practice complete · ${session.label || ''}` : 'Session complete'), h('div', { class: 'big' }, `+${session.xp} XP`), h('p', {}, `${session.correct}/${session.answered} correct (${acc}%). ${session.newAbbrs.length ? 'New today: ' + session.newAbbrs.map(a => BY[a].name).join(', ') + '.' : ''}`), prac ? h('p', { class: 'muted' }, 'Practice doesn\'t change your review schedule — it\'s just extra reps (and XP).') : h('p', {}, `🔥 Streak: ${P.streak} day${P.streak === 1 ? '' : 's'} · Day ${dayNum()} of ${planDays()}`), h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn', onclick: () => { session = null; render(prac ? 'play' : 'today'); } }, 'Done'), prac ? null : remaining > 0 ? h('button', { class: 'btn sec', onclick: () => { buildSession(true); render(); } }, `+ Learn ${Math.min(P.settings.newPerDay, remaining)} more`) : h('button', { class: 'btn sec', onclick: () => { session = null; render('test'); } }, 'Try the full-map test'))));
   session = null;
 }
 
@@ -596,13 +624,14 @@ function renderTestRun() {
 // ---- Plan tab ----
 function renderPlan() {
   const n = P.settings.newPerDay; const learnDays = Math.ceil(50 / n); const today = dayNum(); const start = keyToDate(P.startDate).getTime();
+  const PD = planDays(); const nWeeks = Math.ceil(PD / 7);
   const byDay = {}; for (const [a, d] of Object.entries(P.intro)) (byDay[d] = byDay[d] || []).push(a);
-  const box = h('div', { class: 'card' }, h('h1', {}, 'Your 4-week plan'), h('p', {}, `Started ${fmtDate(new Date(start))} · ${n} new states/day → all 50 by day ${learnDays}, then review until the whole map is automatic.`),
+  const box = h('div', { class: 'card' }, h('h1', {}, PD <= 7 ? 'Your 1-week sprint 🏃' : `Your ${nWeeks}-week plan`), h('p', {}, `Started ${fmtDate(new Date(start))} · ${n} new states/day → all 50 by day ${learnDays}, then review until the whole map is automatic.`),
     h('div', { class: 'weeks' }));
-  const weeks = box.lastChild; const labels = ['Week 1 · Meet the West & Mountains', 'Week 2 · Plains, Midwest & South', 'Week 3 · East coast + lock it in', 'Week 4 · Full-map tests'];
-  for (let w = 0; w < 4; w++) { weeks.append(h('div', { class: 'wk-label' }, labels[w])); const row = h('div', { class: 'week' }); for (let i = 0; i < 7; i++) { const d = w * 7 + i + 1; const k = dayKey(new Date(start + (d - 1) * DAY)); const rec = P.days[k]; const cls = ['day', d === today ? 'today' : '', rec?.done ? 'done' : '', d < today ? 'past' : ''].join(' '); const abbrs = byDay[d] || (rec ? [] : null); let lab = ''; if (d < today && !rec?.done) lab = abbrs?.length ? '' : 'skipped'; if (d >= today && !abbrs) { const todayAssigned = !!(P.days[dayKey()]?.newIntro?.length); const before = Object.keys(P.intro).length + (d - today - (todayAssigned ? 1 : 0)) * n; lab = before < 50 ? `+${Math.min(n, 50 - before)} new` : d >= 22 ? 'test day' : 'review'; } const cpMark = (abbrs?.length && Object.values(P.checkpoints || {}).some(c => c.done && c.date === k)) || (d >= today && !abbrs && lab.startsWith('+') && Math.floor((Object.keys(P.intro).length + (d - today - (P.days[dayKey()]?.newIntro?.length ? 1 : 0) + 1) * n) / 10) > Math.floor((Object.keys(P.intro).length + (d - today - (P.days[dayKey()]?.newIntro?.length ? 1 : 0)) * n) / 10)); row.append(h('div', { class: cls }, h('span', { class: 'n' }, `${rec?.done ? '✓ ' : ''}${d}${cpMark ? ' 🏁' : ''}`), h('span', { class: 'lab' }, fmtDate(new Date(start + (d - 1) * DAY))), abbrs?.length ? h('div', { class: 'abbr' }, abbrs.map(a => h('i', {}, a))) : h('span', { class: 'lab' }, lab))); } weeks.append(row); }
+  const weeks = box.lastChild; const labels = PD <= 7 ? ['The week · West → East, test at the end'] : nWeeks === 2 ? ['Week 1 · West, Mountains & Plains', 'Week 2 · East coast + full-map tests'] : ['Week 1 · Meet the West & Mountains', 'Week 2 · Plains, Midwest & South', 'Week 3 · East coast + lock it in', 'Week 4 · Full-map tests'];
+  for (let w = 0; w < nWeeks; w++) { weeks.append(h('div', { class: 'wk-label' }, labels[w])); const row = h('div', { class: 'week' }); for (let i = 0; i < 7; i++) { const d = w * 7 + i + 1; const k = dayKey(new Date(start + (d - 1) * DAY)); const rec = P.days[k]; const cls = ['day', d === today ? 'today' : '', rec?.done ? 'done' : '', d < today ? 'past' : ''].join(' '); const abbrs = byDay[d] || (rec ? [] : null); let lab = ''; if (d < today && !rec?.done) lab = abbrs?.length ? '' : 'skipped'; if (d >= today && !abbrs) { const todayAssigned = !!(P.days[dayKey()]?.newIntro?.length); const before = Object.keys(P.intro).length + (d - today - (todayAssigned ? 1 : 0)) * n; lab = before < 50 ? `+${Math.min(n, 50 - before)} new` : d > PD - Math.max(2, Math.floor(PD / 4)) ? 'test day' : 'review'; } const cpMark = (abbrs?.length && Object.values(P.checkpoints || {}).some(c => c.done && c.date === k)) || (d >= today && !abbrs && lab.startsWith('+') && Math.floor((Object.keys(P.intro).length + (d - today - (P.days[dayKey()]?.newIntro?.length ? 1 : 0) + 1) * n) / 10) > Math.floor((Object.keys(P.intro).length + (d - today - (P.days[dayKey()]?.newIntro?.length ? 1 : 0)) * n) / 10)); row.append(h('div', { class: cls }, h('span', { class: 'n' }, `${rec?.done ? '✓ ' : ''}${d}${cpMark ? ' 🏁' : ''}`), h('span', { class: 'lab' }, fmtDate(new Date(start + (d - 1) * DAY))), abbrs?.length ? h('div', { class: 'abbr' }, abbrs.map(a => h('i', {}, a))) : h('span', { class: 'lab' }, lab))); } weeks.append(row); }
   view.append(box);
-  view.append(h('div', { class: 'card' }, h('h2', {}, 'How it works'), h('p', {}, h('b', {}, '1. Meet: '), 'each new state is shown on the map with its neighbors. You find it, then type its name from memory.'), h('p', {}, h('b', {}, '2. Space it out: '), 'every state has a "box" (1–6). Get it right → it moves up and comes back later (1, 2, 4, 7, 14, 30 days). Miss it → it drops back and shows up tomorrow.'), h('p', {}, h('b', {}, '3. Recall, don\'t recognize: '), 'as a state gets stronger, questions switch from tap-it / multiple choice to writing the name and capital from memory — exactly what the test asks.'), h('p', {}, h('b', {}, '4. Capitals come second: '), `by default each state's capital arrives ${capDelay()} day(s) after you meet the state, so you anchor the shape and place first, then hang the capital on it. Change this in Settings below (same day = learn both together).`), h('p', {}, h('b', {}, '5. Checkpoints 🏁: '), 'every 10 states known, you take a checkpoint: a sheet of mini-maps (one state lit up on each) to name, then fill every state you know in on the blank map. Then the next batch unlocks.'), h('p', {}, h('b', {}, '6. Test: '), 'from week 3, take the full Fill-in-the-map test a few times a week. Your best full score is saved.')));
+  view.append(h('div', { class: 'card' }, h('h2', {}, 'How it works'), h('p', {}, h('b', {}, '1. Meet gently: '), 'each new state = see it on the map \u2192 warm-up find with neighbors labeled \u2192 pick its name \u2192 (a few minutes later) find it again and type it. Recognition first, spelling last.'), h('p', {}, h('b', {}, '2. Space it out: '), `every state has a "box" (1–6). Get it right → it moves up and comes back later (${intervals().slice(1).join(', ')} days). Miss it → it drops back and shows up tomorrow.`), h('p', {}, h('b', {}, '3. Recall, don\'t recognize: '), 'as a state gets stronger, questions switch from tap-it / multiple choice to writing the name and capital from memory — exactly what the test asks.'), h('p', {}, h('b', {}, '4. Capitals come second: '), `by default each state's capital arrives ${capDelay()} day(s) after you meet the state, so you anchor the shape and place first, then hang the capital on it. Change this in Settings below (same day = learn both together).`), h('p', {}, h('b', {}, '5. Checkpoints 🏁: '), 'every 10 states known, you take a checkpoint: a sheet of mini-maps (one state lit up on each) to name, then fill every state you know in on the blank map. Then the next batch unlocks.'), h('p', {}, h('b', {}, '6. Test: '), planDays() <= 7 ? 'from day 4, take the full Fill-in-the-map test daily — that IS the studying. Your best score is saved.' : 'from week 3, take the full Fill-in-the-map test a few times a week. Your best full score is saved.')));
   view.append(h('div', { class: 'card' }, h('h2', {}, '🧠 The science — why this works'),
     h('p', {}, h('b', {}, 'Retrieval beats re-reading. '), 'Testing yourself is one of only two "high-utility" study techniques found in the big Dunlosky research review — the other is spacing. That\'s why every question here makes you pull the answer out of your head instead of staring at a list.'),
     h('p', {}, h('b', {}, 'Space it out. '), 'Reviewing right before you\'d forget (1 → 2 → 4 → 7 → 14 → 30 days) roughly doubles what sticks vs. cramming. 10 minutes a day beats an hour on Sunday.'),
@@ -611,7 +640,8 @@ function renderPlan() {
     h('p', {}, h('b', {}, 'Mix it up + sleep. '), 'Interleave (states, capitals, regions in one session — that\'s what Play does) and get real sleep — that\'s when the day\'s states move to long-term memory.'),
     h('p', { class: 'muted' }, 'Sources: Dunlosky et al. 2013 review · retrieval + spacing studies · map-mnemonic classroom research.')));
   const sBox = h('div', { class: 'card' }, h('h2', {}, 'Settings'),
-    h('div', { class: 'row' }, h('span', {}, 'New states per day:'), h('div', { class: 'seg' }, [3, 4, 5, 6].map(k => h('button', { class: k === n ? 'on' : '', onclick: () => { P.settings.newPerDay = k; save(); render(); } }, String(k))))),
+    h('div', { class: 'row' }, h('span', {}, 'Plan length:'), h('div', { class: 'seg' }, [[7, '1 week'], [14, '2 weeks'], [28, '4 weeks']].map(([d2, lab]) => h('button', { class: planDays() === d2 ? 'on' : '', onclick: () => { P.settings.planDays = d2; if (!paceOptions().includes(P.settings.newPerDay)) P.settings.newPerDay = defaultPace(); save(); render(); } }, lab)))),
+    h('div', { class: 'row', style: 'margin-top:10px' }, h('span', {}, 'New states per day:'), h('div', { class: 'seg' }, paceOptions().map(k => h('button', { class: k === n ? 'on' : '', onclick: () => { P.settings.newPerDay = k; save(); render(); } }, String(k))))),
     h('div', { class: 'row', style: 'margin-top:10px' }, h('span', {}, 'Capitals arrive:'), h('div', { class: 'seg' }, [[0, 'Same day as the state'], [1, '1 day later'], [2, '2 days later'], [4, '4 days later']].map(([k, lab]) => h('button', { class: k === capDelay() ? 'on' : '', onclick: () => { P.settings.capDelay = k; save(); render(); } }, lab)))),
     h('div', { class: 'row', style: 'margin-top:10px' }, h('label', { class: 'sw' }, h('input', { type: 'checkbox', checked: P.settings.sound ? true : null, onchange: (e) => { P.settings.sound = e.target.checked; save(); } }), 'Sounds')),
     h('div', { class: 'row', style: 'margin-top:14px' }, h('button', { class: 'btn sec small', onclick: accountModal }, user ? `Account: ${user}` : 'Sign in / create account'), h('button', { class: 'btn sec small', onclick: () => { if (confirm('Reset ALL progress and start over from Day 1?')) { P = defaultP(); save(); if (user) pushProgress(); render('today'); } } }, 'Reset progress')),
