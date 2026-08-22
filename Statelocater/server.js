@@ -133,7 +133,7 @@ const ALL_STATES = JSON.parse(fs.readFileSync(path.join(__dirname, 'public', 'st
 const ROUND_MS = 14000, BETWEEN_MS = 2500, POINTS = 100;
 
 function roomSend(room, msg, except) { const s = JSON.stringify(msg); for (const p of room.players.values()) { if (p.ws !== except && p.ws.readyState === 1) p.ws.send(s); } }
-function roster(room) { return [...room.players.values()].map(p => ({ id: p.id, name: p.name, score: p.score, host: p.id === room.hostId, done: p.done })); }
+function roster(room) { return [...room.players.values()].map(p => ({ id: p.id, name: p.name, score: p.score, color: p.color, host: p.id === room.hostId, done: p.done })); }
 function cleanupRoom(code) { const r = ROOMS.get(code); if (r && r.players.size === 0) { clearTimeout(r.timer); ROOMS.delete(code); } }
 
 function startRound(room) {
@@ -173,21 +173,46 @@ function attachWs(server) {
       let m; try { m = JSON.parse(raw); } catch { return; }
       try {
         if (m.t === 'create') {
-          const code = mkCode(); me = { id: 'p' + (nextId++), name: String(m.name || 'Player').slice(0, 20), score: 0, ws };
-          room = { code, hostId: me.id, players: new Map([[me.id, me]]), state: 'lobby', round: 0, prompts: [], timer: null };
+          const code = mkCode(); me = { id: 'p' + (nextId++), name: String(m.name || 'Player').slice(0, 20), score: 0, color: 0, ws };
+          room = { code, hostId: me.id, players: new Map([[me.id, me]]), state: 'lobby', round: 0, prompts: [], timer: null, nextColor: 1 };
           ROOMS.set(code, room);
           send({ t: 'room', code, you: me.id, roster: roster(room), state: room.state });
         } else if (m.t === 'join') {
           const r = ROOMS.get(String(m.code || '').toUpperCase().trim());
           if (!r) return send({ t: 'err', msg: 'No room with that code. Check it and try again.' });
           if (r.players.size >= 8) return send({ t: 'err', msg: 'Room is full (8 max).' });
-          me = { id: 'p' + (nextId++), name: String(m.name || 'Player').slice(0, 20), score: 0, ws };
+          me = { id: 'p' + (nextId++), name: String(m.name || 'Player').slice(0, 20), score: 0, color: (r.nextColor = ((r.nextColor || 1)) % 8), ws };
+          r.nextColor++;
           room = r; room.players.set(me.id, me);
           send({ t: 'room', code: room.code, you: me.id, roster: roster(room), state: room.state });
           roomSend(room, { t: 'roster', roster: roster(room) }, ws);
         } else if (!room || !me) {
           return;
+        } else if (m.t === 'start' && me.id === room.hostId && room.state !== 'playing' && m.game === 'grab') {
+          for (const p of room.players.values()) p.score = 0;
+          clearTimeout(room.timer);
+          room.gameType = 'grab';
+          room.grabMode = m.mode === 'capitals' ? 'capitals' : 'states';
+          room.grabScope = ALL_STATES.map(s => s.abbr);
+          room.claimed = {};
+          room.state = 'playing';
+          room.grabT0 = Date.now();
+          roomSend(room, { t: 'grabStart', mode: room.grabMode, scope: room.grabScope, roster: roster(room) });
+        } else if (m.t === 'claim' && room.gameType === 'grab' && room.state === 'playing') {
+          const st = ALL_STATES.find(x => x.abbr === m.abbr);
+          if (!st) return;
+          if (room.claimed[m.abbr]) return send({ t: 'claimfail', abbr: m.abbr, reason: 'taken', by: room.claimed[m.abbr] });
+          const want = room.grabMode === 'capitals' ? st.capital : st.name;
+          if (String(m.answer || '') === want) {
+            room.claimed[m.abbr] = me.id; me.score++;
+            roomSend(room, { t: 'claimed', abbr: m.abbr, id: me.id, roster: roster(room), left: room.grabScope.length - Object.keys(room.claimed).length });
+            if (Object.keys(room.claimed).length >= room.grabScope.length) { room.state = 'ended'; room.gameType = null; roomSend(room, { t: 'gameEnd', grab: true, time: Date.now() - room.grabT0, roster: roster(room) }); }
+          } else {
+            send({ t: 'claimfail', abbr: m.abbr, reason: 'wrong' });
+            roomSend(room, { t: 'missed', id: me.id, name: me.name }, ws);
+          }
         } else if (m.t === 'start' && me.id === room.hostId && room.state !== 'playing') {
+          room.gameType = 'race';
           for (const p of room.players.values()) p.score = 0;
           room.prompts = buildPrompts(Math.min(20, Math.max(5, +m.rounds || 10)), ['states', 'capitals', 'mixed'].includes(m.mode) ? m.mode : 'mixed');
           room.round = 0;

@@ -152,7 +152,7 @@ function buildSession(extraNew = false) {
     newAbbrs = pendingNew();
   }
   const capNew = ORDER.filter(a => capReady(a) && !capLearned(a) && card(a, 'loc').box >= 1 && !newAbbrs.includes(a));
-  const due = shuffle(dueCards()).filter(x => !newAbbrs.includes(x.abbr) && !(x.kind === 'cap' && capNew.includes(x.abbr)));
+  const due = shuffle(dueCards()).sort((x, y) => (y.c.lapsed ? 1 : 0) - (x.c.lapsed ? 1 : 0)).filter(x => !newAbbrs.includes(x.abbr) && !(x.kind === 'cap' && capNew.includes(x.abbr)));
   const q = [];
   // Ladder: meet it -> find it with training wheels -> recognize the name. Typing waits for the mixed round.
   for (const a of newAbbrs) q.push({ type: 'learn', abbr: a }, { type: 'find', abbr: a, kind: 'loc', practice: true, easy: true }, { type: 'namemc', abbr: a, kind: 'loc', practice: true });
@@ -184,7 +184,7 @@ function finishSession() {
 // ---------------- views ----------------
 const view = $('#view'); let tab = 'today'; let currentMap = null;
 function render(t) { if (t) tab = t; document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab)); view.innerHTML = ''; window.scrollTo(0, 0); if (session) renderQuestion(); else ({ today: renderToday, play: renderPlay, map: renderMap, test: renderTest, plan: renderPlan })[tab](); refreshHeader(); }
-document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { session = null; matchGame = null; blitz = null; raceLeave(); if (b.dataset.tab !== 'test') { if (test && !test.checked && !confirm('Leave the test? Progress on it will be lost.')) return; test = null; } render(b.dataset.tab); });
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { session = null; matchGame = null; blitz = null; flash = null; raceLeave(); if (b.dataset.tab !== 'test') { if (test && !test.checked && !confirm('Leave the test? Progress on it will be lost.')) return; test = null; } render(b.dataset.tab); });
 
 // ---- onboarding ----
 function renderOnboard() {
@@ -423,6 +423,7 @@ function renderPlay() {
   if (matchGame) return renderMatch();
   if (blitz) return renderBlitz();
   if (race) return renderRace();
+  if (flash) return renderFlash();
   const learned2 = learnedList();
   const capPool = ORDER.filter(capLearned); const capAny = capPool.length >= 4 ? capPool : learned2.length >= 4 ? learned2 : ORDER;
   const blitzPool = learned2.length >= 8 ? learned2 : ORDER;
@@ -453,8 +454,53 @@ function renderPlay() {
       h('button', { class: 'btn small', onclick: () => { matchGame = { pool: capAny, round: 0, t0: Date.now(), xp: 0, misses: 0, label: capPool.length >= 4 ? 'learned capitals' : 'states' }; render(); } }, '🧩 Match game'),
       h('button', { class: 'btn sec small', onclick: () => { buildPractice(capAny, 'Capital → State', ['rev']); render(); } }, 'Capital → State'),
       h('button', { class: 'btn sec small', onclick: () => { buildPractice(capAny, 'Type the capitals', ['cap']); render(); } }, '⌨️ Type the capitals'),
-      h('button', { class: 'btn sec small', onclick: () => { buildPractice(ORDER, 'All 50 capitals', ['capmc', 'cap']); render(); } }, 'All 50 capitals'))));
+      h('button', { class: 'btn sec small', onclick: () => { buildPractice(ORDER, 'All 50 capitals', ['capmc', 'cap']); render(); } }, 'All 50 capitals')),
+    h('h3', { style: 'margin-top:14px' }, '🃏 Flashcards'),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn small', onclick: () => startFlash(capAny, 'state') }, `State → Capital (${capAny.length})`),
+      h('button', { class: 'btn sec small', onclick: () => startFlash(capAny, 'capital') }, 'Capital → State'),
+      h('button', { class: 'btn sec small', onclick: () => startFlash(capAny, 'mixed') }, 'Mixed'),
+      h('button', { class: 'btn sec small', onclick: () => startFlash(ORDER, 'mixed') }, 'All 50'))));
+  // drag practice
+  view.append(h('div', { class: 'card' }, h('h2', {}, '🧲 Drag the tiles'), h('p', { class: 'muted' }, 'Pile of name tiles, blank map — drag each one home. Instant feedback, great warm-up before a real test.'),
+    h('div', { class: 'row' },
+      h('button', { class: 'btn small', onclick: () => { test = { drag: true, practice: true, bank: 'states', instant: true, scope: (learned2.length >= 5 ? learned2 : ORDER).slice(), ans: {}, locked: {}, t0: Date.now(), checked: false }; render('test'); } }, 'State names'),
+      h('button', { class: 'btn sec small', onclick: () => { test = { drag: true, practice: true, bank: 'capitals', instant: true, scope: (capPool.length >= 5 ? capPool : (learned2.length >= 5 ? learned2 : ORDER)).slice(), ans: {}, locked: {}, t0: Date.now(), checked: false }; render('test'); } }, 'Capitals onto states'))));
+  // tricky states
+  const tricky = ORDER.filter(a => introduced(a) && (card(a, 'loc').wrong + card(a, 'cap').wrong) >= 2).sort((x, y) => (card(y, 'loc').wrong + card(y, 'cap').wrong) - (card(x, 'loc').wrong + card(x, 'cap').wrong)).slice(0, 10);
+  if (tricky.length) view.append(h('div', { class: 'card' }, h('h2', {}, '🎯 Your tricky ones'), h('p', { class: 'muted' }, 'The states you\'ve missed the most. Ten focused minutes here beats an hour everywhere else.'),
+    h('div', { class: 'row' }, tricky.map(a => h('span', { class: 'chip bad', onclick: () => stateModal(a), style: 'cursor:pointer' }, `${BY[a].name} ✗${card(a, 'loc').wrong + card(a, 'cap').wrong}`))),
+    h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn small', onclick: () => { buildPractice(tricky, 'Tricky states'); render(); } }, 'Practice these'), h('button', { class: 'btn sec small', onclick: () => startFlash(tricky, 'mixed') }, 'Flashcards'))));
   view.append(h('div', { class: 'card' }, h('h2', {}, '🏁 The big test'), h('p', { class: 'muted' }, 'Blank map, write everything in — the real deal lives on the Test tab.'), h('div', { class: 'row' }, h('button', { class: 'btn sec small', onclick: () => render('test') }, 'Go to Test →'))));
+}
+// ---- Flashcards (capitals) ----
+let flash = null;
+function startFlash(pool, front) { flash = { queue: shuffle(pool.slice()), front, i: 0, got: 0, again: 0, seen: new Set(), missed: new Set(), flipped: false, t0: Date.now() }; render('play'); }
+function renderFlash() {
+  const F = flash;
+  if (!F.queue.length) {
+    P.xp += F.got * 2; save(); beep('win'); if (!F.missed.size) confetti();
+    view.append(h('div', { class: 'card summary' }, h('h3', {}, '🃏 Deck done'), h('div', { class: 'big' }, `+${F.got * 2} XP`), h('p', {}, `${F.seen.size} cards · ${F.missed.size ? F.missed.size + ' needed a retry: ' + [...F.missed].map(a => BY[a].name).join(', ') : 'no retries — clean run! 🎉'}`), h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn', onclick: () => startFlash([...F.seen], F.front) }, 'Again'), F.missed.size ? h('button', { class: 'btn sec', onclick: () => startFlash([...F.missed], F.front) }, `Just the ${F.missed.size} tricky`) : null, h('button', { class: 'btn sec', onclick: () => { flash = null; render('play'); } }, 'Done'))));
+    flash = null; return;
+  }
+  const a = F.queue[0]; const st = BY[a];
+  const frontIsState = F.front === 'state' || (F.front === 'mixed' && (a.charCodeAt(0) + a.charCodeAt(1)) % 2 === 0);
+  const frontTxt = frontIsState ? st.name : st.capital;
+  const backTxt = frontIsState ? st.capital : st.name;
+  view.append(h('div', { class: 'progress-top' }, h('span', {}, `🃏 ${F.seen.size} / ${F.seen.size + new Set(F.queue.filter(x => !F.seen.has(x))).size}`), h('div', { class: 'bar' }, h('i', { style: `width:${F.seen.size / Math.max(1, F.seen.size + F.queue.length) * 100}%` })), h('span', {}, `✅ ${F.got}`), h('button', { class: 'pill ghost', onclick: () => { flash = null; render('play'); } }, 'Exit')));
+  const mini = h('div', { class: 'fmini' });
+  const card0 = h('div', { class: 'fcard' + (F.flipped ? ' flipped' : ''), onclick: () => { if (!F.flipped) { F.flipped = true; render('play'); } } },
+    h('div', { class: 'finner' },
+      h('div', { class: 'fface front' }, h('small', {}, frontIsState ? 'STATE' : 'CAPITAL'), h('div', { class: 'ftxt' }, frontTxt), h('span', { class: 'muted' }, 'tap to flip')),
+      h('div', { class: 'fface back' }, h('small', {}, frontIsState ? 'CAPITAL' : 'STATE'), h('div', { class: 'ftxt' }, backTxt), h('div', { class: 'fmn' }, '💡 ' + MNEMO[a]))));
+  const row = h('div', { class: 'row', style: 'margin-top:14px;justify-content:center' });
+  if (F.flipped) row.append(
+    h('button', { class: 'btn sec', onclick: () => { F.missed.add(a); F.again++; F.seen.add(a); F.queue.push(F.queue.shift()); F.flipped = false; beep('bad'); render('play'); } }, '🔁 Again'),
+    h('button', { class: 'btn good', onclick: () => { F.seen.add(a); F.got++; F.queue.shift(); F.flipped = false; beep('good'); render('play'); } }, '✅ Got it'));
+  else row.append(h('button', { class: 'btn', onclick: () => { F.flipped = true; render('play'); } }, 'Flip →'));
+  const wrap = h('div', { class: 'card', style: 'max-width:560px;margin:0 auto' }, card0, row, mini);
+  view.append(wrap);
+  const mm = makeMap(mini, { tools: false }); mm.add(a, 'hl'); mm.label(a, st.abbr); if (F.flipped) mm.star(a, st.capital); mm.zoomTo(a, 3.2); const hint = mini.querySelector('.hint'); if (hint) hint.remove();
 }
 // ---- Blitz ----
 let blitz = null;
@@ -521,31 +567,38 @@ function raceMsg(m) {
   if (m.t === 'err') { toast(m.msg); raceLeave(); if (tab === 'play') render(); return; }
   if (m.t === 'room') { R.code = m.code; R.you = m.you; R.roster = m.roster; R.state = 'lobby'; }
   if (m.t === 'roster') R.roster = m.roster;
+  if (m.t === 'grabStart') { R.state = 'grab'; R.grabMode = m.mode; R.scope = m.scope; R.claimed = {}; R.roster = m.roster; R.sel = null; R.locked = {}; }
+  if (m.t === 'claimed') { R.claimed[m.abbr] = m.id; R.roster = m.roster; R.left = m.left; if (R.sel === m.abbr) R.sel = null; if (m.id === R.you) beep('good'); }
+  if (m.t === 'claimfail') { if (m.reason === 'taken') { R.claimed[m.abbr] = m.by; toast('Too slow — already claimed!'); } else { R.locked[m.abbr] = Date.now() + 4000; beep('bad'); } if (R.sel === m.abbr) R.sel = null; }
   if (m.t === 'starting') { R.state = 'starting'; R.roster = m.roster; R.lastResult = null; }
   if (m.t === 'round') { R.state = 'playing'; R.prompt = m.prompt; R.roundI = m.i; R.roundN = m.n; R.roster = m.roster; R.answered = false; R.lastResult = null; }
   if (m.t === 'wrong') { R.answered = true; }
   if (m.t === 'roundEnd') { R.state = 'between'; R.lastResult = m; R.roster = m.roster; }
-  if (m.t === 'gameEnd') { R.state = 'ended'; R.roster = m.roster; const me = m.roster.find(p => p.id === R.you); const win = m.roster.slice().sort((a, b) => b.score - a.score)[0]; if (me && win && me.id === win.id && m.roster.length > 1) { confetti(); beep('win'); } P.xp += 20; save(); }
+  if (m.t === 'gameEnd') { if (m.grab) R.grabTime = m.time; R.state = 'ended'; R.roster = m.roster; const me = m.roster.find(p => p.id === R.you); const win = m.roster.slice().sort((a, b) => b.score - a.score)[0]; if (me && win && me.id === win.id && m.roster.length > 1) { confetti(); beep('win'); } P.xp += 20; save(); }
   if (tab === 'play') render();
 }
 function renderRace() {
   const R = race;
-  const board = () => h('div', { class: 'raceboard' }, R.roster.slice().sort((a, b) => b.score - a.score).map((p, i) => h('div', { class: 'racerow' + (p.id === R.you ? ' me' : '') }, h('span', {}, `${i === 0 && p.score > 0 ? '👑 ' : ''}${p.name}${p.host ? ' ⭐' : ''}${p.id === R.you ? ' (you)' : ''}`), h('b', {}, String(p.score)))));
+  const board = () => h('div', { class: 'raceboard' }, R.roster.slice().sort((a, b) => b.score - a.score).map((p, i) => h('div', { class: 'racerow' + (p.id === R.you ? ' me' : '') }, h('span', {}, h('i', { class: p.id === R.you ? 'pdot' : 'pdot c' + (p.color || 0) }), `${i === 0 && p.score > 0 ? '👑 ' : ''}${p.name}${p.host ? ' ⭐' : ''}${p.id === R.you ? ' (you)' : ''}`), h('b', {}, String(p.score)))));
   if (R.state === 'connecting') { view.append(h('div', { class: 'card' }, h('h2', {}, 'Connecting…'), h('button', { class: 'btn sec small', onclick: () => { raceLeave(); render(); } }, 'Cancel'))); return; }
   const iAmHost = R.roster.find(p => p.id === R.you)?.host;
   if (R.state === 'lobby' || R.state === 'ended') {
     const opts = { rounds: 10, mode: 'mixed' };
     view.append(h('div', { class: 'card learn' },
       h('h3', {}, R.state === 'ended' ? 'Final standings' : 'Race lobby'),
-      h('div', { class: 'row' }, h('h1', { class: 'grow' }, R.state === 'ended' ? '🏆 Race over!' : 'Room code:'), R.state === 'ended' ? null : h('div', { class: 'roomcode' }, R.code)),
+      h('div', { class: 'row' }, h('h1', { class: 'grow' }, R.state === 'ended' ? (R.grabTime ? `🏆 Map filled in ${fmtTime(R.grabTime)}!` : '🏆 Race over!') : 'Room code:'), R.state === 'ended' ? null : h('div', { class: 'roomcode' }, R.code)),
       R.state === 'ended' ? null : h('p', { class: 'muted' }, `Friends open ${location.host} → Play → type ${R.code} → Join. ${R.roster.length} player${R.roster.length === 1 ? '' : 's'} in.`),
       board(),
       h('div', { class: 'row', style: 'margin-top:12px' },
-        iAmHost ? h('button', { class: 'btn', onclick: () => R.ws.send(JSON.stringify({ t: 'start', rounds: 10, mode: 'mixed' })) }, R.state === 'ended' ? 'Rematch!' : `Start race (10 rounds)`) : h('p', { class: 'muted' }, R.state === 'ended' ? 'Waiting for the host to rematch…' : 'Waiting for the host to start…'),
-        iAmHost && R.state !== 'ended' ? h('button', { class: 'btn sec', onclick: () => R.ws.send(JSON.stringify({ t: 'start', rounds: 10, mode: 'states' })) }, 'States only') : null,
+        iAmHost ? h('div', { class: 'row' },
+          h('button', { class: 'btn', onclick: () => R.ws.send(JSON.stringify({ t: 'start', game: 'grab', mode: 'states' })) }, R.state === 'ended' ? '🗺️ Land grab again!' : '🗺️ Land grab — fill the map'),
+          h('button', { class: 'btn sec', onclick: () => R.ws.send(JSON.stringify({ t: 'start', game: 'grab', mode: 'capitals' })) }, '🏛️ Land grab: capitals'),
+          h('button', { class: 'btn sec', onclick: () => R.ws.send(JSON.stringify({ t: 'start', rounds: 10, mode: 'mixed' })) }, '⚡ Round race')) : h('p', { class: 'muted' }, R.state === 'ended' ? 'Waiting for the host to pick a rematch…' : 'Waiting for the host to start…'),
         h('button', { class: 'btn sec', onclick: () => { raceLeave(); render(); } }, 'Leave'))));
+    if (R.state !== 'ended') view.append(h('div', { class: 'card' }, h('h3', {}, 'The games'), h('p', {}, h('b', {}, '🗺️ Land grab: '), 'one shared map on every screen. Tap any open state, pick its name (or capital) from 4 choices — get it right and it\'s YOURS, painted your color live on everyone\'s map. Wrong = that state locks for you for 4s. When the map is full, most states wins.'), h('p', {}, h('b', {}, '⚡ Round race: '), 'same prompt for everyone, first correct tap wins the round.')));
     return;
   }
+  if (R.state === 'grab') return renderGrab(R);
   if (R.state === 'starting') { view.append(h('div', { class: 'card summary' }, h('h1', {}, 'Get ready… 3, 2, 1 🏁'), board())); return; }
   // playing / between rounds
   const wrap = h('div', { class: 'quiz' }); const mapHost = h('div'); const qcard = h('div', { class: 'card qcard' });
@@ -575,22 +628,94 @@ function closeModal() { $('#modal').classList.add('hidden'); }
 
 // ---- Test tab ----
 let test = null;
+let testDraft = null;
 function renderTest() {
-  if (test) return renderTestRun();
+  if (test) return test.drag ? renderDragRun() : renderTestRun();
   const learned = learnedList();
   const best = P.best;
-  const setup = { caps: true, instant: false, scope: learned.length >= 50 ? 'all' : 'learned' };
+  const d = testDraft || (testDraft = { style: 'type', caps: true, bank: 'capitals', instant: false, scope: learned.length >= 50 ? 'all' : 'learned' });
+  const seg = (opts, cur, set) => h('div', { class: 'seg' }, opts.map(([v, lab]) => h('button', { class: cur === v ? 'on' : '', onclick: () => { set(v); render('test'); } }, lab)));
   const box = h('div', { class: 'card' }, h('h1', {}, 'Fill in the map 🏁'),
-    h('p', {}, 'A blank map, borders only. Tap each state and write its name (and capital). Then check your answers — just like the real test.'),
-    h('h3', {}, 'What to fill in'), h('div', { class: 'seg', id: 't-caps' }, h('button', { class: 'on', onclick: (e) => { setup.caps = true; seg(e) } }, 'States + capitals'), h('button', { onclick: (e) => { setup.caps = false; seg(e) } }, 'States only')),
-    h('h3', { style: 'margin-top:12px' }, 'Which states'), h('div', { class: 'seg', id: 't-scope' }, h('button', { class: setup.scope === 'learned' ? 'on' : '', onclick: (e) => { setup.scope = 'learned'; seg(e) } }, `Learned so far (${learned.length})`), h('button', { class: setup.scope === 'all' ? 'on' : '', onclick: (e) => { setup.scope = 'all'; seg(e) } }, 'All 50')),
-    h('h3', { style: 'margin-top:12px' }, 'Feedback'), h('div', { class: 'seg', id: 't-inst' }, h('button', { class: 'on', onclick: (e) => { setup.instant = false; seg(e) } }, 'Check at the end'), h('button', { onclick: (e) => { setup.instant = true; seg(e) } }, 'Check as I go')),
-    h('div', { class: 'row', style: 'margin-top:16px' }, h('button', { class: 'btn', onclick: () => { const scope = setup.scope === 'all' ? ORDER.slice() : learned.slice(); if (!scope.length) return toast('Learn a few states first!'); test = { ...setup, scope, ans: {}, t0: Date.now(), sel: null, checked: false }; render(); } }, 'Start test')),
+    h('p', {}, d.style === 'drag' ? 'A blank map and a pile of name tiles — drag each tile onto the right state.' : 'A blank map, borders only. Tap each state and write its name (and capital). Then check your answers — just like the real test.'),
+    h('h3', {}, 'How you answer'), seg([['type', '⌨️ Type them in'], ['drag', '🧲 Drag the tiles']], d.style, v => d.style = v),
+    d.style === 'type'
+      ? h('div', {}, h('h3', { style: 'margin-top:12px' }, 'What to fill in'), seg([[true, 'States + capitals'], [false, 'States only']], d.caps, v => d.caps = v))
+      : h('div', {}, h('h3', { style: 'margin-top:12px' }, 'What\'s on the tiles'), seg([['states', 'State names'], ['capitals', 'Capital names']], d.bank, v => d.bank = v), d.bank === 'capitals' ? h('p', { class: 'muted', style: 'margin-top:4px' }, 'Drag each capital onto its state — tests capitals AND locations at once.') : null),
+    h('h3', { style: 'margin-top:12px' }, 'Which states'), seg([['learned', `Learned so far (${learned.length})`], ['all', 'All 50']], d.scope, v => d.scope = v),
+    h('h3', { style: 'margin-top:12px' }, 'Feedback'), seg([[false, 'Check at the end'], [true, 'Check as I go']], d.instant, v => d.instant = v),
+    h('div', { class: 'row', style: 'margin-top:16px' }, h('button', { class: 'btn', onclick: () => { const scope = d.scope === 'all' ? ORDER.slice() : learned.slice(); if (!scope.length) return toast('Learn a few states first!'); test = d.style === 'drag' ? { drag: true, bank: d.bank, instant: d.instant, scope, ans: {}, locked: {}, t0: Date.now(), checked: false } : { caps: d.caps, instant: d.instant, scope, ans: {}, t0: Date.now(), sel: null, checked: false }; render(); } }, 'Start test')),
     best ? h('p', { class: 'muted', style: 'margin-top:10px' }, `🏆 Best full test: ${best.states}/50 states${best.caps != null ? `, ${best.caps}/50 capitals` : ''} in ${fmtTime(best.time)} (${best.date})`) : null,
   );
-  function seg(e) { [...e.target.parentNode.children].forEach(b => b.classList.toggle('on', b === e.target)); }
   view.append(box);
-  if (P.tests.length) { const hist = h('div', { class: 'result-list' }); P.tests.slice(-10).reverse().forEach(t => hist.append(h('div', {}, h('span', {}, `${t.date} · ${t.n} states${t.scope === 'all' ? '' : ' (learned)'}`), h('span', {}, `${t.states}/${t.n}${t.caps != null ? ` · caps ${t.caps}/${t.n}` : ''} · ${fmtTime(t.time)}`)))); view.append(h('div', { class: 'card' }, h('h2', {}, 'Past tests'), hist)); }
+  if (P.tests.length) { const hist = h('div', { class: 'result-list' }); P.tests.slice(-10).reverse().forEach(t => hist.append(h('div', {}, h('span', {}, `${t.date} · ${t.n} states${t.scope === 'all' ? '' : ' (learned)'}${t.mode === 'drag' ? (t.bank === 'capitals' ? ' · drag capitals' : ' · drag') : ''}`), h('span', {}, `${t.states}/${t.n}${t.caps != null ? ` · caps ${t.caps}/${t.n}` : ''} · ${fmtTime(t.time)}`)))); view.append(h('div', { class: 'card' }, h('h2', {}, 'Past tests'), hist)); }
+}
+// ---- drag-the-tiles test ----
+function renderDragRun() {
+  const T = test; const inScope = new Set(T.scope);
+  const label = (a) => T.bank === 'capitals' ? BY[a].capital : BY[a].name;
+  if (!T.tray) T.tray = shuffle(T.scope.slice());
+  const wrap = h('div', { class: 'testpanel' }); const mapHost = h('div'); const panel = h('div', { class: 'card qcard' }); wrap.append(h('div', {}, mapHost), panel); view.append(wrap);
+  const m = makeMap(mapHost, { onTap: (a) => { if (T.checked) { if (a) showRes(a); return; } if (a && T.ans[a] && !T.locked[a]) { T.tray.push(T.ans[a]); delete T.ans[a]; refresh(); } } });
+  STATES.forEach(s => { if (!inScope.has(s.abbr)) m.add(s.abbr, 'dim'); });
+  const count = h('b'); const timer = h('span', { class: 'muted' }); const status = h('div', { class: 'feedback' });
+  const tray = h('div', { class: 'dtray' });
+  const results = h('div', { class: 'result-list', style: 'margin-top:10px' });
+  const finishBtn = h('button', { class: 'btn good', onclick: checkAll }, 'Finish & check ✓');
+  const exitBtn = h('button', { class: 'btn sec small', onclick: () => { if (T.checked || T.practice || confirm('Leave the test? Progress on it will be lost.')) { test = null; render(T.practice ? 'play' : 'test'); } } }, 'Exit');
+  const title = h('div', { class: 'prompt' }, h('small', {}, T.practice ? 'Practice · drag the tiles' : 'Drag the tiles onto the map'), T.bank === 'capitals' ? 'Where does each capital go?' : 'Where does each state name go?');
+  panel.append(title, h('p', {}, 'Placed: ', count, ` / ${T.scope.length} · `, timer), h('p', { class: 'kbd' }, 'Drag a tile onto a state. Tap a placed state to take its tile back. Pinch/scroll the map to zoom for the little ones.'), tray, status, h('div', { class: 'row', style: 'margin-top:12px' }, finishBtn, exitBtn), results);
+  const tick = () => { timer.textContent = fmtTime((T.end || Date.now()) - T.t0); if (test === T && !T.checked) T._tm = setTimeout(tick, 1000); }; tick();
+  const short = (a, txt) => (txt.length > 11 && BY[a].area < 3000) ? txt.slice(0, 9) + '…' : txt;
+  function paint() { for (const a of T.scope) { const it = T.ans[a]; if (T.checked) { const ok = it === a; m.set(a, ok ? 'good' : 'bad'); m.label(a, BY[a].abbr); if (T.bank === 'capitals' && ok) m.star(a, BY[a].capital); } else if (it) { m.set(a, T.locked[a] ? 'good' : 'filled'); m.label(a, short(a, label(it))); if (T.locked[a] && T.bank === 'capitals') m.star(a); } else { m.set(a, ''); m.label(a, null); } } }
+  function refresh() {
+    count.textContent = Object.keys(T.ans).length;
+    tray.innerHTML = '';
+    for (const it of T.tray) { const chip = h('button', { class: 'dchip' }, label(it)); dragify(chip, it); tray.append(chip); }
+    if (!T.tray.length && !T.checked) status.className = 'feedback good', status.style.display = 'block', status.textContent = T.instant ? 'All placed! 🎉' : 'All placed — hit Finish & check!';
+    paint();
+  }
+  function place(it, abbr) {
+    if (T.ans[abbr]) T.tray.push(T.ans[abbr]);
+    T.ans[abbr] = it; T.tray = T.tray.filter(x => x !== it);
+    if (T.instant) {
+      const ok = it === abbr;
+      if (ok) { T.locked[abbr] = true; P.xp += 2; save(false); beep('good'); }
+      else { beep('bad'); m.set(abbr, 'bad'); m.label(abbr, short(abbr, label(it))); setTimeout(() => { if (test === T && T.ans[abbr] === it) { delete T.ans[abbr]; T.tray.push(it); refresh(); } }, 700); status.className = 'feedback bad'; status.style.display = 'block'; status.textContent = `Not quite — "${label(it)}" goes somewhere else.`; }
+    }
+    refresh();
+    if (T.instant && T.scope.every(a => T.locked[a])) checkAll(true);
+  }
+  function dragify(chip, it) {
+    chip.addEventListener('pointerdown', (e) => {
+      if (T.checked) return;
+      e.preventDefault();
+      const ghost = h('div', { class: 'dchip ghost' }, label(it)); document.body.append(ghost);
+      const moveTo = (x, y) => { ghost.style.left = x + 'px'; ghost.style.top = y + 'px'; };
+      moveTo(e.clientX, e.clientY); chip.classList.add('lift');
+      let hovered = null;
+      const mv = (ev) => { moveTo(ev.clientX, ev.clientY); const el = document.elementFromPoint(ev.clientX, ev.clientY); const ab = el && el.getAttribute && el.getAttribute('data-abbr'); if (hovered !== ab) { if (hovered && !T.ans[hovered]) m.set(hovered, ''); hovered = (ab && inScope.has(ab) && !T.locked[ab]) ? ab : null; if (hovered && !T.ans[hovered]) m.set(hovered, 'sel'); } };
+      const up = (ev) => { window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); ghost.remove(); chip.classList.remove('lift'); if (hovered && !T.ans?.[hovered]) m.set(hovered, ''); const el = document.elementFromPoint(ev.clientX, ev.clientY); const ab = el && el.getAttribute && el.getAttribute('data-abbr'); if (ab && inScope.has(ab) && !T.locked[ab] && !T.checked) place(it, ab); };
+      window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+    });
+  }
+  function checkAll(auto) {
+    if (!auto && !confirm(`Check answers? ${T.scope.length - Object.keys(T.ans).length} still blank.`)) return;
+    T.checked = true; T.end = Date.now(); clearTimeout(T._tm);
+    const right = T.scope.filter(a => T.ans[a] === a).length;
+    const rec = { date: dayKey(), n: T.scope.length, scope: T.scope.length === 50 ? 'all' : 'learned', states: T.bank === 'states' ? right : null, caps: T.bank === 'capitals' ? right : null, time: T.end - T.t0, mode: 'drag', bank: T.bank };
+    if (!T.practice) { P.tests.push(rec); P.xp += right * 2; save(); } else { P.xp += right; save(); }
+    finishBtn.remove(); title.firstChild.textContent = 'Results'; title.lastChild.textContent = `${right}/${T.scope.length} right · ${fmtTime(rec.time)}`;
+    const perfect = right === T.scope.length;
+    status.className = 'feedback ' + (perfect ? 'good' : 'bad'); status.style.display = 'block';
+    status.textContent = perfect ? 'PERFECT! 🎉' : 'Red = wrong. Tap a state to see what it really is.';
+    if (perfect) { confetti(); beep('win'); } else beep('bad');
+    results.innerHTML = '';
+    T.scope.forEach(a => { const it = T.ans[a]; if (it === a) return; results.append(h('div', {}, h('span', { class: 'bad' }, it ? `you put "${label(it)}"` : '(left blank)'), h('span', { class: 'good' }, `${BY[a].name}${T.bank === 'capitals' ? ' — ' + BY[a].capital : ''}`))); });
+    if (!results.children.length) results.append(h('div', {}, h('span', { class: 'good' }, 'No misses!')));
+    tray.innerHTML = ''; paint(); m.reset();
+  }
+  function showRes(a) { const it = T.ans[a]; status.className = 'feedback ' + (it === a ? 'good' : 'bad'); status.style.display = 'block'; status.textContent = `${BY[a].name} — ${BY[a].capital}${it && it !== a ? ` (you put "${label(it)}")` : it ? '' : ' (blank)'}`; }
+  refresh();
 }
 const fmtTime = (ms) => { const s = Math.round(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 function renderTestRun() {
@@ -664,6 +789,33 @@ function accountModal() {
 }
 $('#acct-btn').onclick = accountModal;
 
+function renderGrab(R) {
+  const mine = R.roster.find(p => p.id === R.you);
+  const claimedN = Object.keys(R.claimed).length;
+  const wrap = h('div', { class: 'quiz' }); const mapHost = h('div'); const qcard = h('div', { class: 'card qcard' });
+  wrap.append(h('div', {}, mapHost), qcard);
+  view.append(h('div', { class: 'progress-top' }, h('span', {}, `🗺️ Land grab · ${R.grabMode === 'capitals' ? 'capitals' : 'states'}`), h('div', { class: 'bar' }, h('i', { style: `width:${claimedN / R.scope.length * 100}%` })), h('span', {}, `${claimedN}/${R.scope.length}`), h('button', { class: 'pill ghost', onclick: () => { raceLeave(); render(); } }, 'Leave')), wrap);
+  const colorOf = {}; R.roster.forEach(p => colorOf[p.id] = p.color || 0);
+  const m = makeMap(mapHost, { onTap: (a) => { if (!a) return; if (R.claimed[a]) { const owner = R.roster.find(p => p.id === R.claimed[a]); toast(`${BY[a].name}: ${owner ? owner.name : 'someone'}'s!`); return; } if ((R.locked[a] || 0) > Date.now()) { toast('Locked for a few seconds — you missed that one.'); return; } R.sel = a; paintSel(); ask(a); } });
+  function paintAll() { for (const s of STATES) { const owner = R.claimed[s.abbr]; if (owner) { m.set(s.abbr, owner === R.you ? 'good' : 'pc' + (colorOf[owner] % 8)); m.label(s.abbr, s.abbr); } else m.set(s.abbr, (R.locked[s.abbr] || 0) > Date.now() ? 'dim' : ''); } if (R.sel && !R.claimed[R.sel]) m.add(R.sel, 'sel'); }
+  function paintSel() { paintAll(); }
+  const prompt = h('div', { class: 'prompt' }, h('small', {}, 'Tap an open state to claim it'), 'The map is up for grabs!');
+  const choices = h('div', { class: 'choices' });
+  function ask(a) {
+    const s = BY[a];
+    const right = R.grabMode === 'capitals' ? s.capital : s.name;
+    const pool = R.grabMode === 'capitals' ? STATES.map(x => x.capital) : STATES.map(x => x.name);
+    const near = R.grabMode === 'capitals' ? s.nb.map(n => BY[n].capital) : s.nb.map(n => BY[n].name);
+    const distract = shuffle(shuffle(near).slice(0, 2).concat(shuffle(pool)).filter((v, i, arr) => arr.indexOf(v) === i && v !== right)).slice(0, 3);
+    prompt.innerHTML = ''; prompt.append(h('small', {}, R.grabMode === 'capitals' ? 'Claim it — what\'s its capital?' : 'Claim it — which state is this?'), 'The highlighted one is…');
+    choices.innerHTML = '';
+    shuffle([right, ...distract]).forEach(c => choices.append(h('button', { onclick: () => { R.ws.send(JSON.stringify({ t: 'claim', abbr: a, answer: c })); choices.innerHTML = ''; prompt.lastChild.textContent = '…'; } }, c)));
+  }
+  qcard.append(prompt, choices, board2());
+  function board2() { return h('div', { class: 'raceboard' }, R.roster.slice().sort((x, y) => y.score - x.score).map((p, i) => h('div', { class: 'racerow' + (p.id === R.you ? ' me' : '') }, h('span', {}, h('i', { class: p.id === R.you ? 'pdot' : 'pdot c' + (p.color || 0) }), `${i === 0 && p.score > 0 ? '👑 ' : ''}${p.name}${p.id === R.you ? ' (you)' : ''}`), h('b', {}, String(p.score))))); }
+  paintAll();
+  if (R.sel && !R.claimed[R.sel]) ask(R.sel);
+}
 // ---------------- boot ----------------
 await initAccount();
 render('today');
