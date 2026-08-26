@@ -79,6 +79,20 @@
   .prompt b{font-weight:700}
   .prompt sup{font-size:.7em}
   .hint{color:var(--ink-soft);font-size:.88rem;margin-top:10px}
+  .teach-btn{
+    display:block;margin-top:20px;padding:0;
+    background:none;border:none;color:var(--accent-deep);
+    font-weight:700;font-size:.95rem;text-decoration:underline;
+  }
+  .teach-btn:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+  .lesson{
+    margin-top:12px;background:var(--accent-soft);
+    border-left:4px solid var(--accent);border-radius:8px;
+    padding:12px 16px;font-size:.95rem;max-width:60ch;
+  }
+  .lesson sup{font-size:.7em}
+  .rev-item .a.why{margin-top:2px}
+  .rev-item .a.why sup{font-size:.7em}
 
   /* answer inputs */
   .ans-input{
@@ -367,12 +381,65 @@ var Q = [
   check:function(a){return decEq(a,7);}, correct:"7", short:"10 times as much as 0.7"},
  {n:23, type:"input", prompt:'Complete the sentence: &nbsp;<b>______ is 1/10 of 6.3.</b>',
   check:function(a){return decEq(a,0.63);}, correct:"0.63", short:"1/10 of 6.3"},
- {n:24, type:"input", prompt:'Write the expression using an exponent: &nbsp;<b>4 × 4 × 4 × 4 × 4</b>',
-  hint:'Type it with a caret, like this: 4^5',
-  check:function(a){var n=norm(a);return n==="4^5"||n==="4⁵";}, correct:"4⁵ (4^5)", short:"4×4×4×4×4 with an exponent"},
+ {n:24, type:"exp", prompt:'Write the expression using an exponent: &nbsp;<b>4 × 4 × 4 × 4 × 4</b>',
+  base:"4", expo:"5", correct:"4⁵", short:"4×4×4×4×4 with an exponent"},
  {n:25, type:"input", prompt:'Evaluate. &nbsp;<b>6<sup>4</sup> =</b> ?',
   check:function(a){return numEq(a,["1296"]);}, correct:"1,296", short:"6⁴ = ?"}
 ];
+
+/* per-question help: [mini-lesson shown during the test, explanation shown in review] */
+var HELP={
+ 1:["An exponent tells you how many times to multiply the base by itself. 10<sup>6</sup> means 10 × 10 × 10 × 10 × 10 × 10. Shortcut for tens: the exponent = the number of zeros. Example: 10<sup>3</sup> = 1,000 (three zeros).",
+    "10<sup>6</sup> is a 1 followed by 6 zeros: 1,000,000."],
+ 2:["For powers of 10, the exponent is just the number of zeros. Count the zeros! Example: 1,000 has 3 zeros, so 1,000 = 10<sup>3</sup>.",
+    "100,000 has 5 zeros, so the missing exponent is 5."],
+ 3:["Multiplying by 10<sup>4</sup> makes a number 10,000 times bigger — just attach 4 zeros. Example: 25 × 10<sup>2</sup> = 2,500.",
+    "73 with 4 zeros attached is 730,000."],
+ 4:["Count how many 10s are being multiplied — that count becomes the exponent. Example: 10 × 10 × 10 = 10<sup>3</sup>.",
+    "Six 10s are multiplied together, so it equals 10<sup>6</sup>."],
+ 5:["Expanded form lists the value of each place. Add them up, and put a 0 in any place that's missing. Example: 2,000 + 50 + 3 = 2,053 (the hundreds place gets a 0).",
+    "8 millions, 3 hundred-thousands, 2 ten-thousands, 0 thousands, 7 hundreds, 4 tens, 9 ones → 8,320,749."],
+ 6:["Count places from the RIGHT: ones, tens, hundreds, thousands, ten-thousands. So ten-thousands is the 5th digit from the right. Example: in 52,341 the ten-thousands digit is 5.",
+    "In 6,284,731 the 5th digit from the right is 8."],
+ 7:["Read big numbers in chunks: say the thousands part, then the rest. Careful: 608 is 'six hundred eight' — 'sixty-eight' would be 68.",
+    "24,608 = 24 thousand + 608 → twenty-four thousand six hundred eight."],
+ 8:["Turn each phrase into digits and use zeros to hold the empty places. 'Seven hundred thousand' = 700,000, and 'forty-two' = 42 in the tens and ones spots.",
+    "700,000 + 42 = 700,042 — the zeros hold the empty thousands and hundreds places."],
+ 9:["Two digits after the decimal point means hundredths. Read 0.37 out loud as 'thirty-seven hundredths' — that reading IS the fraction. Example: 0.09 = 9/100.",
+    "0.37 is thirty-seven hundredths, so it's 37/100."],
+ 10:["Each fully shaded grid = 1 whole. For the partly shaded grid, count the shaded little squares — each one is one hundredth. Example: 2 full grids + 50 squares = 2.50.",
+    "3 full grids and 64 shaded squares = 3 + 0.64 = 3.64."],
+ 11:["1.36 means 1 whole and 36 hundredths. Shade EVERY square of one grid (that's the 1), then shade 36 squares of the other grid.",
+    "Shade all 100 squares of one grid plus 36 of the other: 136 hundredths = 1.36."],
+ 12:["The word 'and' marks the decimal point — whole number before it, decimal digits after it. Example: 'five and three tenths' = 5.3.",
+    "Sixty-four = 64, 'and' = the decimal point, twenty-seven hundredths = .27 → 64.27."],
+ 13:["The tenths place is the FIRST digit after the decimal point (hundredths is second). Example: in 3.19, the tenths digit is 1.",
+    "In 58.42, the first digit after the point is 4."],
+ 14:["A zero added to the END of a decimal doesn't change its value: 2.5 and 2.50 are the exact same amount.",
+    "47.90 is just 47.9 with an extra ending zero, so they're equal."],
+ 15:["Compare decimals place by place from the left: ones first, then tenths, then hundredths. The first place that's different decides the winner.",
+    "The ones are both 7. Tenths: 4 vs 5, so 7.45 &lt; 7.54."],
+ 16:["Give every number the same number of decimal places by adding ending zeros, then they're easy to line up: 0.620, 0.206, 0.260, 0.602.",
+    "As thousandths: 206 &lt; 260 &lt; 602 &lt; 620, so the order is 0.206, 0.26, 0.602, 0.62."],
+ 17:["First figure out what the model shows, then compare each choice to it. Remember 3.3 = 3.30 — an ending zero changes nothing.",
+    "The model shows 3.27. 3.72, 3.30, and 3.3 are all more than 3.27. (3.27 is equal, not greater.)"],
+ 18:["To round to the nearest tenth, look at the hundredths digit: 5 or more, the tenths digit goes up; 4 or less, it stays. Example: 2.283 → 2.3.",
+    "In 3.746 the hundredths digit is 4, so the 7 stays: 3.7."],
+ 19:["They all weigh 4-point-something, so compare the decimal parts place by place: tenths first, then hundredths.",
+    "89 hundredths beats 82 and 76, so 4.89 — the Green pumpkin — is heaviest."],
+ 20:["Shortest time = fastest runner. Make the times the same length first: 6.40, 6.04, 6.44 — now they're easy to order.",
+    "6.04 &lt; 6.40 &lt; 6.44 → Ben, Ava, Cole."],
+ 21:["Zeros at the end of a decimal don't change its value: 3.200 = 3.2. Decimals like that are called equivalent.",
+    "42.500 is 42.5 with extra ending zeros — Yes, they're equivalent."],
+ 22:["Multiplying by 10 makes every digit one place bigger — the decimal point hops one spot to the RIGHT. Example: 0.4 × 10 = 4.",
+    "0.7 × 10 = 7."],
+ 23:["Taking 1/10 of a number makes it 10 times smaller — the decimal point hops one spot to the LEFT. Example: 1/10 of 25 is 2.5.",
+    "6.3 ÷ 10 = 0.63."],
+ 24:["The base is the number being multiplied over and over; the exponent counts HOW MANY of them there are. Count the 4s!",
+    "There are five 4s multiplied, so it's 4<sup>5</sup>."],
+ 25:["6<sup>4</sup> means 6 × 6 × 6 × 6. Do it in steps: 6 × 6 = 36, then 36 × 6 = 216, then 216 × 6.",
+    "6 × 6 × 6 × 6 = 1,296."]
+};
 
 /* ---------- state ---------- */
 var KEY="pv-decimals-test-v1";
@@ -386,6 +453,7 @@ try{
 }catch(e){}
 
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+var openTeach=new Set();   // question numbers with the mini-lesson open (per visit, not saved)
 
 function answered(i){
   var q=Q[i], a=state.answers[q.n];
@@ -393,6 +461,7 @@ function answered(i){
   if(q.type==="multi") return Array.isArray(a)&&a.length>0;
   if(q.type==="order") return Array.isArray(a)&&a.length===q.tiles.length;
   if(q.type==="mc") return typeof a==="number";
+  if(q.type==="exp") return !!(a && String(a.b||"").trim() && String(a.e||"").trim());
   return a!=null && String(a).trim()!=="";
 }
 function isCorrect(q){
@@ -408,6 +477,7 @@ function isCorrect(q){
     if(!Array.isArray(a)) return false;
     return a.join(",")===q.answer.join(",");
   }
+  if(q.type==="exp") return !!a && norm(a.b)===q.base && norm(a.e)===q.expo;
   return q.check(a||"");
 }
 function yourAnswerText(q){
@@ -416,6 +486,7 @@ function yourAnswerText(q){
   if(q.type==="mc") return typeof a==="number" ? q.opts[a].replace(/<[^>]+>/g,"") : "no answer";
   if(q.type==="multi") return Array.isArray(a)&&a.length ? a.map(function(i){return q.opts[i];}).join(", ") : "no answer";
   if(q.type==="order") return Array.isArray(a)&&a.length ? a.join(", ") : "no answer";
+  if(q.type==="exp") return a&&(a.b||a.e) ? (a.b||"?")+"^"+(a.e||"?") : "no answer";
   return (a&&String(a).trim())||"no answer";
 }
 
@@ -485,9 +556,16 @@ function renderQuestion(){
 
   if(q.type==="input"||q.type==="model"){
     var v=state.answers[q.n]||"";
-    h+='<input class="ans-input" id="ai" type="text" inputmode="text" autocomplete="off" '+
+    h+='<input class="ans-input" id="ai" type="text" inputmode="decimal" autocomplete="off" '+
        'placeholder="Type your answer" value="'+esc(v)+'" aria-label="Your answer">';
     if(q.hint) h+='<p class="hint">'+q.hint+'</p>';
+  }
+  else if(q.type==="exp"){
+    var ev=state.answers[q.n]||{b:"",e:""};
+    h+='<div class="exp-pair">'+
+       '<span><input class="ans-input base" id="eb" type="text" inputmode="numeric" maxlength="2" autocomplete="off" value="'+esc(ev.b||"")+'" aria-label="Base"><span class="lbl">base</span></span>'+
+       '<span><input class="ans-input expo" id="ee" type="text" inputmode="numeric" maxlength="1" autocomplete="off" value="'+esc(ev.e||"")+'" aria-label="Exponent"><span class="lbl">exponent</span></span>'+
+       '</div><p class="hint">Big box is the base, small raised box is the exponent. Numbers only.</p>';
   }
   else if(q.type==="mc"){
     h+='<div class="choices'+(q.row?' row':'')+'" role="radiogroup">';
@@ -535,6 +613,9 @@ function renderQuestion(){
        '</div>';
   }
 
+  h+='<button class="teach-btn" id="teachbtn">🎓 Teach me — I don&#39;t know this one</button>'+
+     '<div class="lesson" id="lesson" '+(openTeach.has(q.n)?'':'hidden')+'>'+HELP[q.n][0]+'</div>';
+
   h+='<div class="nav">';
   h+= i>0 ? '<button class="btn ghost" id="prev">← Back</button>' : '<span></span>';
   h+= i<Q.length-1
@@ -547,7 +628,12 @@ function renderQuestion(){
   /* wire up */
   var ai=document.getElementById("ai");
   if(ai){
-    ai.addEventListener("input",function(){ state.answers[q.n]=ai.value; save(); renderPalette(); });
+    ai.addEventListener("input",function(){
+      var bad = q.n===9 ? /[^0-9/.,]/g : /[^0-9.,]/g;   // numbers only (q9 also allows /)
+      var clean=ai.value.replace(bad,"");
+      if(clean!==ai.value) ai.value=clean;
+      state.answers[q.n]=ai.value; save(); renderPalette();
+    });
     ai.addEventListener("keydown",function(e){
       if(e.key==="Enter"){ var nx=document.getElementById("next")||document.getElementById("submit"); if(nx) nx.click(); }
     });
@@ -582,6 +668,24 @@ function renderQuestion(){
     });
   }
   if(q.type==="shade") wireShade(q);
+
+  var eb=document.getElementById("eb"), ee=document.getElementById("ee");
+  if(eb){
+    [eb,ee].forEach(function(inp){
+      inp.addEventListener("input",function(){
+        var clean=inp.value.replace(/[^0-9]/g,"");
+        if(clean!==inp.value) inp.value=clean;
+        state.answers[q.n]={b:eb.value,e:ee.value};
+        save(); renderPalette();
+      });
+    });
+  }
+
+  var tb=document.getElementById("teachbtn");
+  if(tb) tb.onclick=function(){
+    if(openTeach.has(q.n)) openTeach.delete(q.n); else openTeach.add(q.n);
+    document.getElementById("lesson").hidden=!openTeach.has(q.n);
+  };
 
   var prev=document.getElementById("prev");
   if(prev) prev.onclick=function(){ state.cur--; save(); renderQuestion(); };
@@ -701,7 +805,9 @@ function renderResults(animate){
       '<span class="q">'+q.n+'. '+esc(q.short)+'</span>'+
       '<span class="a">Your answer: <span class="yours">'+esc(yourAnswerText(q))+'</span>'+
       (ok?'':' &nbsp;·&nbsp; Correct answer: <span class="right">'+esc(q.correct)+'</span>')+
-      '</span></div>';
+      '</span>'+
+      (ok?'':'<span class="a why">💡 '+HELP[q.n][1]+'</span>')+
+      '</div>';
   });
   h+='</div><div class="again"><button class="btn primary retakeb">Take the test again</button></div>';
   main.innerHTML=h;
