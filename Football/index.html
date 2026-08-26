@@ -43,7 +43,9 @@
   .teamtag.blue{color:#fff; background:linear-gradient(180deg,#57b1ff,#1f6fd4);}
   .teamtag .poss{position:absolute; top:-11px; left:50%; transform:translateX(-50%); font-size:11px; display:none;}
   .teamtag.haspos .poss{display:block;}
-  .score{font-family:'Press Start 2P',monospace; font-size:22px; color:#fff; min-width:110px; text-align:center;}
+  .score{font-family:'Press Start 2P',monospace; font-size:22px; color:#fff; min-width:110px; text-align:center; display:inline-block;}
+  @keyframes scorepop{0%{transform:scale(1)}40%{transform:scale(1.4); color:#ffd23f;}100%{transform:scale(1)}}
+  .score.pop{animation:scorepop .5s ease;}
   .sub{font-family:'Press Start 2P',monospace; font-size:7px; color:var(--dim); text-align:center; margin-top:5px;}
   .turnpill{
     font-family:'Press Start 2P',monospace; font-size:9px; padding:8px 12px; border-radius:999px;
@@ -166,8 +168,8 @@
       <div class="rolerow"><span class="rolechip">S</span> Safety — up to 2 squares any direction. Last line of defense.</div>
       <h3>THE BALL</h3>
       <ul>
-        <li><b>Tackle = fumble:</b> land your move exactly on the ball carrier — you strip the ball and they get shoved aside.</li>
-        <li><b>Pass:</b> straight or diagonal line, path must be clear, must land on a teammate. QB throws 6 squares, everyone else laterals 3.</li>
+        <li><b>Tackle = fumble:</b> land your move exactly on the ball carrier — you strip the ball and they get shoved aside. Anyone standing <b>right next to</b> the carrier can always tackle, no matter how they normally move.</li>
+        <li><b>Pass:</b> the QB throws to <b>any</b> teammate within 6 squares, right over his own linemen — but a defender standing on the throwing lane bats it down. Everyone else laterals 3 squares in a straight/diagonal line with a clear path.</li>
         <li><b>Touchdown:</b> run the ball into the end zone — or send a receiver into the end zone and hit them with a pass. <b>7 points.</b></li>
         <li><b>Field goal:</b> within 8 squares of the end zone, click the goalpost. Green = good. If a defender is next to the kicker it's <span style="color:#ff4757">BLOCKED</span> and they take the ball. <b>3 points.</b></li>
       </ul>
@@ -213,6 +215,7 @@ let hoverKick=false;
 let particles=[];
 let shake=0;
 let logLines=[];
+let lastMove=null;
 
 function formation(team){
   const f=[
@@ -261,7 +264,7 @@ function newMatch(){
   };
   const qb=state.players.find(p=>p.team===TEAM_RED && p.role===ROLE.QB);
   state.ballOwner=qb.id;
-  busy=false; particles=[]; logLines=[];
+  busy=false; particles=[]; logLines=[]; lastMove=null;
   document.getElementById('winoverlay').classList.remove('show');
   addLog('KICK OFF! RED ball.', true);
   sfxWhistle();
@@ -305,6 +308,18 @@ function slideMoves(p, dirs, range){
 }
 
 function legalMoves(p){
+  const out=rawMoves(p);
+  // football rule: ANYONE can tackle a ball carrier standing right next to them,
+  // no matter how that piece normally moves (yes, even the knight-jumping RB)
+  const car=carrier();
+  if(car && car.team!==p.team && cheb(p,car)===1 &&
+     !out.some(m=>m.col===car.col && m.row===car.row)){
+    out.push({col:car.col, row:car.row, tackle:true});
+  }
+  return out;
+}
+
+function rawMoves(p){
   const car=carrier();
   switch(p.role){
     case ROLE.QB: return slideMoves(p, ALL8, 2);
@@ -427,11 +442,14 @@ async function doMove(p, mv){
   p.moving=false;
   p.col=mv.col; p.row=mv.row;
 
+  lastMove={x1:cx(fromCol),y1:cy(fromRow),x2:cx(mv.col),y2:cy(mv.row),team:p.team,t:performance.now(),dash:false};
   if(mv.tackle && victim){
     state.ballOwner=p.id;
     sfxTackle();
     burst(cx(mv.col), cy(mv.row), '#ffffff', 12);
-    shake=6;
+    ring(cx(mv.col), cy(mv.row), '#ffd23f');
+    floatText(cx(mv.col), cy(mv.row)-30, 'FUMBLE!', '#ffd23f');
+    shake=10;
     const homeDir = victim.team===TEAM_RED ? -1 : 1;
     let spots=ALL8.map(([dx,dy])=>({c:victim.col+dx, r:victim.row+dy, dx}))
       .filter(s=>inBounds(s.c,s.r) && !playerAt(s.c,s.r));
@@ -463,6 +481,7 @@ async function doPass(from, to){
   await hT;
   state.ball.free=false;
   state.ballOwner=to.id;
+  lastMove={x1:from.px,y1:from.py,x2:to.px,y2:to.py,team:from.team,t:performance.now(),dash:true};
   addLog(`${TEAM_NAME[from.team]} ${ROLE_NAME[from.role]} → ${ROLE_NAME[to.role]}`);
   sfxCatch();
   await checkTD() || endTurn();
@@ -491,6 +510,7 @@ async function doKick(p){
     updateHUD();
     shake=8;
     sfxFG(); sfxCrowd();
+    floatText(post.x, post.y-44, '+3', '#b6ff3c');
     for(let i=0;i<40;i++) confetti(post.x,post.y);
     showBanner("IT'S GOOD!", `FIELD GOAL — ${TEAM_NAME[p.team]} +3`);
     await wait(1500);
@@ -509,6 +529,8 @@ async function doKick(p){
     state.ball.free=false;
     state.ballOwner=b.id;
     burst(b.px,b.py,'#ffe066',10);
+    ring(b.px,b.py,'#ff4757');
+    floatText(b.px, b.py-30, 'BLOCKED!', '#ff4757');
     sfxTackle();
     addLog(`BLOCKED! ${TEAM_NAME[b.team]} ${ROLE_NAME[b.role]} gets a paw on it!`, true);
     endTurn();
@@ -522,7 +544,9 @@ async function checkTD(){
   updateHUD();
   shake=14;
   sfxTD(); sfxCrowd();
+  fireworks();
   const ex=c.px, ey=c.py;
+  floatText(ex, ey-36, '+7', '#ffd23f');
   for(let i=0;i<90;i++) confetti(ex,ey);
   showBanner('TOUCHDOWN!', `${TEAM_NAME[c.team]} +7`);
   await wait(1700);
@@ -578,6 +602,7 @@ function gameOver(team){
   el.textContent=`${TEAM_NAME[team]} WINS ${state.score[team]}-${state.score[1-team]}!`;
   el.style.color=TEAM_COL[team];
   document.getElementById('winoverlay').classList.add('show');
+  fireworks(); setTimeout(fireworks, 800);
   for(let i=0;i<160;i++) confetti(W/2+(Math.random()-.5)*600, H/2+(Math.random()-.5)*200);
   sfxTD(); setTimeout(sfxTD, 350); sfxCrowd();
 }
@@ -738,11 +763,38 @@ function confetti(x,y){
   particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-3,life:1,decay:0.006+Math.random()*0.008,
     color:cols[(Math.random()*cols.length)|0],size:4+Math.random()*4,g:0.12,spin:Math.random()*Math.PI});
 }
+function floatText(x,y,txt,color){
+  particles.push({x,y,vx:0,vy:-0.55,life:1.4,decay:0.016,txt,color,size:11,g:0});
+}
+function ring(x,y,color){
+  particles.push({x,y,vx:0,vy:0,ring:true,size:8,grow:2.8,life:0.8,decay:0.05,color,g:0});
+}
+function dust(x,y){
+  particles.push({x:x+(Math.random()-.5)*10, y:y+14, vx:(Math.random()-.5)*0.7, vy:-0.2-Math.random()*0.4,
+    life:0.5, decay:0.045, color:'#cfe0c2', size:2+Math.random()*2, g:0});
+}
+function fireworks(){
+  for(let i=0;i<6;i++){
+    setTimeout(()=>{
+      const fx=OX+CELL+Math.random()*(COLS-2)*CELL;
+      const fy=OY+20+Math.random()*140;
+      const col=['#ff4757','#3aa0ff','#ffd23f','#33e6d6','#ffffff'][(Math.random()*5)|0];
+      ring(fx,fy,col);
+      for(let j=0;j<24;j++){
+        const a=(j/24)*Math.PI*2, s=1.5+Math.random()*2.5;
+        particles.push({x:fx,y:fy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,decay:0.02+Math.random()*0.015,
+          color:col,size:3,g:0.05});
+      }
+      beep(900+Math.random()*600,0.12,'square',0.05);
+    }, i*200);
+  }
+}
 function stepParticles(){
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i];
     p.x+=p.vx; p.y+=p.vy; p.vy+=p.g||0; p.life-=p.decay;
     if(p.spin!=null) p.spin+=0.2;
+    if(p.ring) p.size+=p.grow;
     if(p.life<=0) particles.splice(i,1);
   }
 }
@@ -758,7 +810,12 @@ function addLog(msg, hot){
     `<div class="${l.hot?'hot':''}">${l.msg}</div>`).join('');
 }
 function updateHUD(){
-  document.getElementById('score').textContent=`${state.score[0]} - ${state.score[1]}`;
+  const sc=document.getElementById('score');
+  const txt=`${state.score[0]} - ${state.score[1]}`;
+  if(sc.textContent!==txt && sc.textContent.trim()!==''){
+    sc.classList.remove('pop'); void sc.offsetWidth; sc.classList.add('pop');
+  }
+  sc.textContent=txt;
   const c=carrier();
   document.getElementById('tag-red').classList.toggle('haspos', !!c && c.team===TEAM_RED);
   document.getElementById('tag-blue').classList.toggle('haspos', !!c && c.team===TEAM_BLUE);
@@ -985,6 +1042,36 @@ function drawBG(){
   // 50-yard midline glow
   g.fillStyle='rgba(255,255,255,0.08)';
   g.fillRect(OX+11*CELL-CELL/2, FY, CELL, FH);
+  // midfield logo: gold star in a ring
+  {
+    const mx=OX+11*CELL, my=FY+FH/2;
+    g.strokeStyle='rgba(255,255,255,0.55)'; g.lineWidth=3;
+    g.beginPath(); g.arc(mx,my,44,0,Math.PI*2); g.stroke();
+    g.fillStyle='rgba(255,210,63,0.85)';
+    g.beginPath();
+    for(let i=0;i<10;i++){
+      const rad=i%2===0?30:13, an=-Math.PI/2 + i*Math.PI/5;
+      const px2=mx+Math.cos(an)*rad, py2=my+Math.sin(an)*rad;
+      i===0 ? g.moveTo(px2,py2) : g.lineTo(px2,py2);
+    }
+    g.closePath(); g.fill();
+    g.strokeStyle='rgba(120,80,0,0.6)'; g.lineWidth=2; g.stroke();
+  }
+  // end zone corner pylons
+  g.fillStyle='#ff7b1c';
+  for(const px2 of [OX+CELL, OX+(COLS-1)*CELL]){
+    for(const py2 of [FY, FY+FH]){
+      g.fillRect(px2-3, py2-3, 6, 6);
+    }
+  }
+  // floodlight glow from the corners
+  for(const [lx,ly] of [[OX,FY],[OX+FW,FY],[OX,FY+FH],[OX+FW,FY+FH]]){
+    const lg=g.createRadialGradient(lx,ly,10,lx,ly,300);
+    lg.addColorStop(0,'rgba(255,250,220,0.10)');
+    lg.addColorStop(1,'rgba(255,250,220,0)');
+    g.fillStyle=lg;
+    g.fillRect(lx-300,ly-300,600,600);
+  }
   // sidelines
   g.strokeStyle='#ffffff'; g.lineWidth=3;
   g.strokeRect(OX+1.5, FY+1.5, FW-3, FH-3);
@@ -1041,6 +1128,41 @@ function render(now){
 
   const sel = state.selected!=null ? state.players.find(q=>q.id===state.selected) : null;
   const car = carrier();
+
+  // ---- last move trail ----
+  if(lastMove){
+    const age=(now-lastMove.t)/2600;
+    if(age<1){
+      ctx.globalAlpha=(1-age)*0.4;
+      ctx.strokeStyle=TEAM_COL[lastMove.team];
+      ctx.lineWidth=3;
+      if(lastMove.dash) ctx.setLineDash([8,6]);
+      ctx.beginPath(); ctx.moveTo(lastMove.x1,lastMove.y1); ctx.lineTo(lastMove.x2,lastMove.y2); ctx.stroke();
+      ctx.setLineDash([]);
+      const an=Math.atan2(lastMove.y2-lastMove.y1, lastMove.x2-lastMove.x1);
+      ctx.beginPath();
+      ctx.moveTo(lastMove.x2,lastMove.y2);
+      ctx.lineTo(lastMove.x2-Math.cos(an-0.4)*12, lastMove.y2-Math.sin(an-0.4)*12);
+      ctx.moveTo(lastMove.x2,lastMove.y2);
+      ctx.lineTo(lastMove.x2-Math.cos(an+0.4)*12, lastMove.y2-Math.sin(an+0.4)*12);
+      ctx.stroke();
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // ---- hover preview (no piece selected yet) ----
+  if(!sel && !busy && !state.over && hover && inBounds(hover.col,hover.row)
+     && !(mode==='ai' && state.turn===TEAM_BLUE)){
+    const hp=playerAt(hover.col,hover.row);
+    if(hp && hp.team===state.turn){
+      ctx.globalAlpha=0.35;
+      for(const m of legalMoves(hp)){
+        ctx.fillStyle = m.tackle ? '#ff4757' : '#ffffff';
+        ctx.beginPath(); ctx.arc(cx(m.col),cy(m.row),5,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    }
+  }
 
   // ---- highlights ----
   if(sel && !busy){
@@ -1121,8 +1243,9 @@ function render(now){
       ctx.beginPath(); ctx.arc(p.px,p.py+3,r,0,Math.PI*2); ctx.stroke();
     }
 
+    if(p.moving && Math.random()<0.4) dust(p.px, p.py);
     const frameN = p.moving ? (Math.floor(now/85)%2 ? 1 : 2) : 0;
-    const spr=sprite(p.team, p.skin, frameN);
+    const spr=sprite(p.team, p.skin, frameN, p.role);
     const bob = p.moving ? 0 : Math.sin(p.bobPhase)*1.3;
     ctx.save();
     ctx.translate(p.px, p.py+bob);
@@ -1149,6 +1272,8 @@ function render(now){
 
   // ---- flying ball ----
   if(state.ball.free){
+    particles.push({x:state.ball.x, y:state.ball.y-state.ball.h, vx:0, vy:0,
+      life:0.35, decay:0.07, color:'#ffe9b8', size:3, g:0});
     ctx.fillStyle='rgba(0,0,0,0.3)';
     ctx.beginPath(); ctx.ellipse(state.ball.x, state.ball.y+7, 7, 3, 0, 0, Math.PI*2); ctx.fill();
     drawFootball(state.ball.x, state.ball.y, state.ball.h, 0, state.ball.spin);
@@ -1156,7 +1281,21 @@ function render(now){
 
   // ---- particles ----
   for(const p of particles){
-    ctx.globalAlpha=Math.max(0,p.life);
+    ctx.globalAlpha=Math.max(0,Math.min(1,p.life));
+    if(p.txt){
+      ctx.font='11px "Press Start 2P", monospace';
+      ctx.textAlign='center';
+      ctx.lineWidth=4; ctx.strokeStyle='rgba(10,14,24,0.9)';
+      ctx.strokeText(p.txt,p.x,p.y);
+      ctx.fillStyle=p.color;
+      ctx.fillText(p.txt,p.x,p.y);
+      continue;
+    }
+    if(p.ring){
+      ctx.strokeStyle=p.color; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.stroke();
+      continue;
+    }
     ctx.fillStyle=p.color;
     if(p.spin!=null){
       ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.spin);
