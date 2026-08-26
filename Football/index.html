@@ -330,8 +330,39 @@ function legalMoves(p){
 
 function passRange(p){ return p.role===ROLE.QB ? PASS_QB : PASS_OTHER; }
 
+function lineCells(x0,y0,x1,y1){ // bresenham, excludes start, includes end
+  const cells=[];
+  const dx=Math.abs(x1-x0), dy=Math.abs(y1-y0);
+  const sx=x0<x1?1:-1, sy=y0<y1?1:-1;
+  let err=dx-dy, x=x0, y=y0, guard=0;
+  while(!(x===x1 && y===y1) && guard++<200){
+    const e2=2*err;
+    if(e2>-dy){ err-=dy; x+=sx; }
+    if(e2<dx){ err+=dx; y+=sy; }
+    cells.push([x,y]);
+  }
+  return cells;
+}
+
 function passTargets(p){
   const out=[];
+  if(p.role===ROLE.QB){
+    // the QB throws to ANY teammate in range, over his own linemen —
+    // but a defender standing on the throwing lane bats it down
+    for(const t of state.players){
+      if(t.team!==p.team || t.id===p.id) continue;
+      if(cheb(p,t)>PASS_QB) continue;
+      const lane=lineCells(p.col,p.row,t.col,t.row);
+      let denied=false;
+      for(const [c,r] of lane){
+        if(c===t.col && r===t.row) break;
+        const occ=playerAt(c,r);
+        if(occ && occ.team!==p.team){ denied=true; break; }
+      }
+      if(!denied) out.push(t);
+    }
+    return out;
+  }
   const range=passRange(p);
   for(const [dx,dy] of ALL8){
     for(let s=1;s<=range;s++){
