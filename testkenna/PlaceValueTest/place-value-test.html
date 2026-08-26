@@ -1,16 +1,17 @@
 <title>Place Value & Decimals Test</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
 <style>
   :root{
-    --paper:#F7F9FC;
+    --paper:#FFFFFF;
     --card:#FFFFFF;
-    --ink:#16283F;
-    --ink-soft:#4A5A70;
-    --line:#D8E0EA;
-    --accent:#4A79B5;
-    --accent-deep:#2F5687;
-    --accent-soft:#E3ECF7;
+    --field:#F7F9FB;
+    --ink:#1C2B3A;
+    --ink-soft:#5A6B7E;
+    --line:#DDE4EB;
+    --accent:#3D74C4;
+    --accent-deep:#26559A;
+    --accent-soft:#EAF1FA;
     --cell:#7FA3CF;
     --cell-line:#3E6295;
     --good:#2F8A5B;
@@ -18,57 +19,19 @@
     --bad:#C0473E;
     --bad-soft:#F9E7E5;
     --gold:#D9A036;
-    --shadow:0 2px 10px rgba(22,40,63,.08);
-  }
-  :root:not([data-theme="light"]){
-    @media (prefers-color-scheme: dark){
-      --paper:#101A28;
-      --card:#182536;
-      --ink:#E8EEF6;
-      --ink-soft:#9FB0C4;
-      --line:#2B3B50;
-      --accent:#6E9AD1;
-      --accent-deep:#9FBFE6;
-      --accent-soft:#223650;
-      --cell:#4E76A8;
-      --cell-line:#7FA3CF;
-      --good:#4CAF7D;
-      --good-soft:#1D3A2C;
-      --bad:#E06B60;
-      --bad-soft:#452424;
-      --gold:#E2B45C;
-      --shadow:0 2px 10px rgba(0,0,0,.35);
-    }
-  }
-  :root[data-theme="dark"]{
-    --paper:#101A28;
-    --card:#182536;
-    --ink:#E8EEF6;
-    --ink-soft:#9FB0C4;
-    --line:#2B3B50;
-    --accent:#6E9AD1;
-    --accent-deep:#9FBFE6;
-    --accent-soft:#223650;
-    --cell:#4E76A8;
-    --cell-line:#7FA3CF;
-    --good:#4CAF7D;
-    --good-soft:#1D3A2C;
-    --bad:#E06B60;
-    --bad-soft:#452424;
-    --gold:#E2B45C;
-    --shadow:0 2px 10px rgba(0,0,0,.35);
+    --shadow:0 2px 12px rgba(28,43,58,.07);
   }
   *{box-sizing:border-box}
   body{
     margin:0;
     background:var(--paper);
     color:var(--ink);
-    font-family:"Atkinson Hyperlegible",system-ui,sans-serif;
+    font-family:"Nunito",system-ui,sans-serif;
     font-size:17px;
     line-height:1.5;
     min-height:100vh;
   }
-  h1,h2,h3{font-family:"Zilla Slab",Georgia,serif;text-wrap:balance;margin:0}
+  h1,h2,h3{font-family:"Nunito",system-ui,sans-serif;font-weight:800;text-wrap:balance;margin:0}
   button{font:inherit;cursor:pointer}
   input[type=text]{font:inherit}
 
@@ -106,8 +69,7 @@
   }
   .qnum{
     display:inline-block;
-    font-family:"Zilla Slab",Georgia,serif;
-    font-weight:700;font-size:.85rem;
+    font-weight:800;font-size:.85rem;
     letter-spacing:.08em;text-transform:uppercase;
     color:var(--accent-deep);
     background:var(--accent-soft);
@@ -124,7 +86,7 @@
     padding:12px 14px;
     border:2px solid var(--line);
     border-radius:10px;
-    background:var(--paper);color:var(--ink);
+    background:var(--field);color:var(--ink);
     font-size:1.15rem;
     font-variant-numeric:tabular-nums;
   }
@@ -140,7 +102,7 @@
   .choice{
     display:flex;align-items:center;gap:12px;
     border:2px solid var(--line);border-radius:10px;
-    background:var(--paper);
+    background:var(--field);
     padding:12px 16px;text-align:left;color:var(--ink);
     font-size:1.05rem;
     transition:border-color .12s, background .12s;
@@ -191,7 +153,7 @@
     border:2px dashed var(--line);
     display:flex;align-items:center;justify-content:center;
     font-size:1.05rem;font-weight:700;font-variant-numeric:tabular-nums;
-    background:var(--paper);color:var(--ink);padding:0 10px;
+    background:var(--field);color:var(--ink);padding:0 10px;
   }
   .order-slots .slot.filled{border-style:solid;border-color:var(--accent);background:var(--accent-soft);cursor:pointer}
   .order-slots .arrow{color:var(--ink-soft);font-weight:700}
@@ -260,13 +222,19 @@
   .ring .pct{
     position:absolute;inset:0;display:flex;flex-direction:column;
     align-items:center;justify-content:center;
-    font-family:"Zilla Slab",Georgia,serif;
   }
-  .ring .pct .big{font-size:2.6rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+  .ring .pct .big{font-size:2.6rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
   .ring .pct .small{color:var(--ink-soft);font-size:.9rem}
   .score-hero h2{font-size:1.6rem;margin-bottom:6px}
   .score-hero .msg{color:var(--ink-soft);margin:0 0 4px}
   .score-hero .frac{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent-deep)}
+  .score-hero .retakeb{margin-top:18px}
+  .attempts{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:baseline}
+  .attempts h3{width:100%;font-size:.95rem;color:var(--ink-soft);margin-bottom:2px}
+  .att{background:var(--field);border:1px solid var(--line);border-radius:999px;
+    padding:4px 14px;font-size:.9rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .att.best{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)}
+  .past{color:var(--accent-deep);font-weight:700}
 
   .review{margin-top:26px}
   .review h3{font-size:1.2rem;margin-bottom:12px}
@@ -409,6 +377,7 @@ var Q = [
 /* ---------- state ---------- */
 var KEY="pv-decimals-test-v1";
 var state={name:"", cur:0, started:false, submitted:false,
+  history:[],           // one {right, pct} per finished attempt
   answers:{},           // qn -> string | number | array(indices) | array(order)
   shade:[[],[]] };      // q11: two arrays of cell indices
 try{
@@ -478,9 +447,13 @@ function renderStart(){
     '<div class="grid-logo">'+GRID(100)+GRID(36)+'</div>'+
     '<h1>Place Value &amp; Decimals Test</h1>'+
     '<p>25 questions on powers of ten, place value, and comparing decimals. '+
-    'Answer every question, then press <b>Submit</b> to see your score — just like Savvas.</p>'+
+    'Answer every question, then press <b>Submit</b> to see your score — just like Savvas. '+
+    'You can take it as many times as you want.</p>'+
+    ((state.history||[]).length ?
+      '<p class="past">Best score so far: '+Math.max.apply(null,state.history.map(function(a){return a.pct;}))+
+      '% · '+state.history.length+(state.history.length>1?' tries':' try')+'</p>' : '')+
     '<input class="ans-input" id="nm" type="text" placeholder="Type your name" value="'+esc(state.name)+'" autocomplete="off">'+
-    '<div><button class="btn primary" id="go">Start the test</button></div>'+
+    '<div><button class="btn primary" id="go">'+((state.history||[]).length?'Take the test again':'Start the test')+'</button></div>'+
    '</div>';
   var nm=document.getElementById("nm");
   var go=function(){
@@ -688,6 +661,8 @@ function trySubmit(){
   doSubmit();
 }
 function doSubmit(){
+  var right=Q.filter(isCorrect).length;
+  state.history=(state.history||[]).concat([{right:right,pct:Math.round(right/Q.length*100)}]);
   state.submitted=true; save(); renderResults(true);
 }
 function renderResults(animate){
@@ -708,7 +683,15 @@ function renderResults(animate){
     'stroke-dasharray="'+C+'" stroke-dashoffset="'+C+'"/></svg>'+
     '<div class="pct"><span class="big">'+pct+'%</span><span class="small">score</span></div></div>'+
     '<h2>'+(state.name? esc(state.name)+", you":"You")+' got <span class="frac">'+right+' out of '+Q.length+'</span></h2>'+
-    '<p class="msg">'+msg+'</p></div>';
+    '<p class="msg">'+msg+'</p>';
+  var hist=state.history||[];
+  if(hist.length>1){
+    var best=Math.max.apply(null,hist.map(function(a){return a.pct;}));
+    h+='<div class="attempts"><h3>Your tries</h3>'+hist.map(function(a,i){
+      return '<span class="att'+(a.pct===best?' best':'')+'">Try '+(i+1)+': '+a.pct+'%'+(a.pct===best?' ★':'')+'</span>';
+    }).join("")+'</div>';
+  }
+  h+='<button class="btn primary retakeb">Take the test again</button></div>';
 
   h+='<div class="review"><h3>Question review</h3>';
   Q.forEach(function(q){
@@ -720,13 +703,15 @@ function renderResults(animate){
       (ok?'':' &nbsp;·&nbsp; Correct answer: <span class="right">'+esc(q.correct)+'</span>')+
       '</span></div>';
   });
-  h+='</div><div class="again"><button class="btn primary" id="retake">Take the test again</button></div>';
+  h+='</div><div class="again"><button class="btn primary retakeb">Take the test again</button></div>';
   main.innerHTML=h;
   window.scrollTo(0,0);
-  document.getElementById("retake").onclick=function(){
-    state={name:state.name,cur:0,started:true,submitted:false,answers:{},shade:[[],[]]};
-    save(); renderQuestion();
-  };
+  main.querySelectorAll(".retakeb").forEach(function(b){
+    b.onclick=function(){
+      state={name:state.name,history:state.history||[],cur:0,started:true,submitted:false,answers:{},shade:[[],[]]};
+      save(); renderQuestion();
+    };
+  });
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
       var f=document.getElementById("ringfill");
