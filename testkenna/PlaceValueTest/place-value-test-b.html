@@ -1,0 +1,835 @@
+<title>Place Value & Decimals Test · Form B</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+  :root{
+    --paper:#FFFFFF;
+    --card:#FFFFFF;
+    --field:#F7F9FB;
+    --ink:#1C2B3A;
+    --ink-soft:#5A6B7E;
+    --line:#DDE4EB;
+    --accent:#3D74C4;
+    --accent-deep:#26559A;
+    --accent-soft:#EAF1FA;
+    --cell:#7FA3CF;
+    --cell-line:#3E6295;
+    --good:#2F8A5B;
+    --good-soft:#E2F2E9;
+    --bad:#C0473E;
+    --bad-soft:#F9E7E5;
+    --gold:#D9A036;
+    --shadow:0 2px 12px rgba(28,43,58,.07);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Nunito",system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  h1,h2,h3{font-family:"Nunito",system-ui,sans-serif;font-weight:800;text-wrap:balance;margin:0}
+  button{font:inherit;cursor:pointer}
+  input[type=text]{font:inherit}
+
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px 90px}
+
+  /* ---------- header ---------- */
+  header.bar{
+    background:var(--card);
+    border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:10;
+  }
+  .bar-inner{max-width:760px;margin:0 auto;padding:12px 16px}
+  .bar-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .bar-top h1{font-size:1.25rem;font-weight:700}
+  .bar-top .who{color:var(--ink-soft);font-size:.9rem}
+  .palette{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+  .palette button{
+    width:26px;height:26px;border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--card);color:var(--ink-soft);
+    font-size:.72rem;font-weight:700;padding:0;
+  }
+  .palette button.done{background:var(--accent);border-color:var(--accent);color:#fff}
+  .palette button.cur{outline:2px solid var(--accent-deep);outline-offset:1px}
+  .palette button:focus-visible{outline:2px solid var(--accent-deep);outline-offset:1px}
+
+  /* ---------- question card ---------- */
+  .qcard{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:26px 26px 30px;
+    margin-top:22px;
+  }
+  .qnum{
+    display:inline-block;
+    font-weight:800;font-size:.85rem;
+    letter-spacing:.08em;text-transform:uppercase;
+    color:var(--accent-deep);
+    background:var(--accent-soft);
+    border-radius:999px;padding:3px 12px;margin-bottom:12px;
+  }
+  .prompt{font-size:1.2rem;font-weight:400;margin:0 0 18px}
+  .prompt b{font-weight:700}
+  .prompt sup{font-size:.7em}
+  .hint{color:var(--ink-soft);font-size:.88rem;margin-top:10px}
+  .teach-btn{
+    display:block;margin-top:20px;padding:0;
+    background:none;border:none;color:var(--accent-deep);
+    font-weight:700;font-size:.95rem;text-decoration:underline;
+  }
+  .teach-btn:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+  .lesson{
+    margin-top:12px;background:var(--accent-soft);
+    border-left:4px solid var(--accent);border-radius:8px;
+    padding:12px 16px;font-size:.95rem;max-width:60ch;
+  }
+  .lesson sup{font-size:.7em}
+  .rev-item .a.why{margin-top:2px}
+  .rev-item .a.why sup{font-size:.7em}
+
+  /* answer inputs */
+  .ans-input{
+    width:100%;max-width:320px;
+    padding:12px 14px;
+    border:2px solid var(--line);
+    border-radius:10px;
+    background:var(--field);color:var(--ink);
+    font-size:1.15rem;
+    font-variant-numeric:tabular-nums;
+  }
+  .ans-input:focus{outline:none;border-color:var(--accent)}
+  .exp-pair{display:flex;align-items:flex-start;gap:6px}
+  .exp-pair .ans-input.base{max-width:110px}
+  .exp-pair .ans-input.expo{max-width:80px;font-size:.9rem;margin-top:-8px;padding:8px 10px}
+  .exp-pair .lbl{display:block;font-size:.75rem;color:var(--ink-soft);margin-top:4px;text-align:center}
+
+  /* choices */
+  .choices{display:flex;flex-direction:column;gap:10px}
+  .choices.row{flex-direction:row;flex-wrap:wrap}
+  .choice{
+    display:flex;align-items:center;gap:12px;
+    border:2px solid var(--line);border-radius:10px;
+    background:var(--field);
+    padding:12px 16px;text-align:left;color:var(--ink);
+    font-size:1.05rem;
+    transition:border-color .12s, background .12s;
+  }
+  .choice:hover{border-color:var(--accent)}
+  .choice:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+  .choice .dot{
+    width:20px;height:20px;border-radius:50%;
+    border:2px solid var(--ink-soft);flex:none;position:relative;
+  }
+  .choice.box .dot{border-radius:5px}
+  .choice.sel{border-color:var(--accent);background:var(--accent-soft)}
+  .choice.sel .dot{border-color:var(--accent-deep)}
+  .choice.sel .dot::after{
+    content:"";position:absolute;inset:3px;border-radius:inherit;background:var(--accent-deep);
+  }
+  .choice sup{font-size:.7em}
+
+  /* hundredths grids */
+  .models{display:flex;gap:18px;flex-wrap:wrap;margin:6px 0 16px}
+  .hgrid{
+    display:grid;
+    grid-template-columns:repeat(10,1fr);
+    width:140px;height:140px;
+    border:2px solid var(--cell-line);
+    background:var(--card);
+    flex:none;
+    touch-action:none;
+  }
+  .hgrid .c{border:.5px solid var(--cell-line);background:var(--card)}
+  .hgrid .c.on{background:var(--cell)}
+  .hgrid.clickable{cursor:pointer}
+  .grid-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+  .grid-tools .mini{
+    border:1px solid var(--line);border-radius:8px;background:var(--card);
+    color:var(--ink-soft);padding:5px 12px;font-size:.85rem;
+  }
+  .grid-tools .mini:hover{border-color:var(--accent);color:var(--ink)}
+  .shade-count{
+    font-variant-numeric:tabular-nums;font-weight:700;
+    color:var(--accent-deep);font-size:1.05rem;
+  }
+
+  /* ordering tiles */
+  .order-slots{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+  .order-slots .slot{
+    min-width:78px;height:48px;border-radius:10px;
+    border:2px dashed var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-size:1.05rem;font-weight:700;font-variant-numeric:tabular-nums;
+    background:var(--field);color:var(--ink);padding:0 10px;
+  }
+  .order-slots .slot.filled{border-style:solid;border-color:var(--accent);background:var(--accent-soft);cursor:pointer}
+  .order-slots .arrow{color:var(--ink-soft);font-weight:700}
+  .order-pool{display:flex;gap:10px;flex-wrap:wrap}
+  .tile{
+    border:2px solid var(--line);border-radius:10px;
+    background:var(--card);color:var(--ink);
+    padding:10px 16px;font-size:1.05rem;font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .tile:hover{border-color:var(--accent)}
+  .tile:disabled{opacity:.25;cursor:default}
+  .order-labels{display:flex;justify-content:space-between;max-width:420px;
+    font-size:.8rem;color:var(--ink-soft);margin-bottom:6px}
+
+  /* data table */
+  .dtable{border-collapse:collapse;margin:4px 0 18px;font-variant-numeric:tabular-nums}
+  .dtable th,.dtable td{
+    border:1px solid var(--line);padding:8px 18px;text-align:left;font-size:1rem;
+  }
+  .dtable th{background:var(--accent-soft);font-weight:700}
+  .runners{display:flex;gap:18px;flex-wrap:wrap;color:var(--ink-soft);margin-bottom:16px;font-variant-numeric:tabular-nums}
+
+  /* footer nav */
+  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px}
+  .btn{
+    border:none;border-radius:10px;padding:12px 26px;
+    font-weight:700;font-size:1rem;
+  }
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-deep)}
+  .btn.ghost{background:transparent;border:2px solid var(--line);color:var(--ink)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .btn.submit{background:var(--good);color:#fff}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+
+  /* start screen */
+  .start{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:40px 32px;margin-top:40px;text-align:center;
+  }
+  .start .grid-logo{display:flex;justify-content:center;gap:10px;margin-bottom:22px}
+  .start h1{font-size:2rem;margin-bottom:8px}
+  .start p{color:var(--ink-soft);max-width:46ch;margin:0 auto 24px}
+  .start input{max-width:280px;text-align:center;margin-bottom:18px}
+
+  /* confirm panel */
+  .confirm{
+    margin-top:16px;background:var(--bad-soft);
+    border:1px solid var(--bad);border-radius:12px;padding:16px 20px;
+  }
+  .confirm p{margin:0 0 12px}
+  .confirm .row{display:flex;gap:10px;flex-wrap:wrap}
+
+  /* results */
+  .score-hero{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:36px 28px;margin-top:28px;
+    text-align:center;
+  }
+  .ring{width:170px;height:170px;margin:0 auto 14px;position:relative}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .track{stroke:var(--line)}
+  .ring .fill{stroke:var(--good);transition:stroke-dashoffset 1.2s ease}
+  .ring .pct{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+  }
+  .ring .pct .big{font-size:2.6rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .ring .pct .small{color:var(--ink-soft);font-size:.9rem}
+  .score-hero h2{font-size:1.6rem;margin-bottom:6px}
+  .score-hero .msg{color:var(--ink-soft);margin:0 0 4px}
+  .score-hero .frac{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent-deep)}
+  .score-hero .retakeb{margin-top:18px}
+  .attempts{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:baseline}
+  .attempts h3{width:100%;font-size:.95rem;color:var(--ink-soft);margin-bottom:2px}
+  .att{background:var(--field);border:1px solid var(--line);border-radius:999px;
+    padding:4px 14px;font-size:.9rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .att.best{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)}
+  .past{color:var(--accent-deep);font-weight:700}
+
+  .review{margin-top:26px}
+  .review h3{font-size:1.2rem;margin-bottom:12px}
+  .rev-item{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:14px 18px;margin-bottom:10px;
+    display:grid;grid-template-columns:34px 1fr;gap:4px 14px;align-items:start;
+  }
+  .rev-item .mark{
+    width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;color:#fff;font-size:.9rem;margin-top:2px;
+  }
+  .rev-item.ok .mark{background:var(--good)}
+  .rev-item.no .mark{background:var(--bad)}
+  .rev-item .q{font-weight:700;font-size:.98rem}
+  .rev-item .a{grid-column:2;font-size:.92rem;color:var(--ink-soft)}
+  .rev-item .a b{color:var(--ink)}
+  .rev-item.no .a .yours{color:var(--bad);font-weight:700}
+  .rev-item .a .right{color:var(--good);font-weight:700}
+  .again{display:flex;justify-content:center;margin:26px 0 10px}
+
+  @media (prefers-reduced-motion: reduce){
+    .ring .fill{transition:none}
+    *{transition:none!important}
+  }
+  @media (max-width:520px){
+    .qcard{padding:20px 16px 24px}
+    .hgrid{width:118px;height:118px}
+  }
+</style>
+
+<header class="bar" id="topbar" hidden>
+  <div class="bar-inner">
+    <div class="bar-top">
+      <h1>Place Value &amp; Decimals Test — Form B</h1>
+      <span class="who" id="who"></span>
+    </div>
+    <nav class="palette" id="palette" aria-label="Question list"></nav>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- helpers ---------- */
+function norm(s){
+  return String(s==null?"":s).toLowerCase()
+    .replace(/[,\s]/g,"")
+    .replace(/⁄/g,"/")
+    .replace(/[×x*]/g,"x");
+}
+function numEq(s, targets){
+  var n = norm(s);
+  if(!n) return false;
+  return targets.some(function(t){ return norm(t)===n; });
+}
+// accept numerically-equal decimals too (3.7 vs 3.70, .63 vs 0.63)
+function decEq(s, val){
+  var n = norm(s);
+  if(!n || !/^-?\d*\.?\d+$/.test(n)) return false;
+  return parseFloat(n)===val;
+}
+
+var GRID = function(shaded){ // html for a display grid, `shaded` cells filled top-left first
+  var cells="";
+  for(var i=0;i<100;i++) cells+='<div class="c'+(i<shaded?" on":"")+'"></div>';
+  return '<div class="hgrid" role="img" aria-label="Grid with '+shaded+' of 100 squares shaded">'+cells+'</div>';
+};
+
+/* ---------- question data ---------- */
+var Q = [
+ {n:1, type:"input", prompt:'Evaluate. &nbsp;<b>10<sup>4</sup> =</b> ?',
+  check:function(a){return numEq(a,["10000"]);}, correct:"10,000", short:"10⁴ = ?"},
+ {n:2, type:"input", prompt:'Find the missing exponent. &nbsp;<b>10<sup>▢</sup> = 1,000</b>',
+  check:function(a){return numEq(a,["3"]);}, correct:"3", short:"10^▢ = 1,000"},
+ {n:3, type:"input", prompt:'Find the value. &nbsp;<b>46 × 10<sup>3</sup> =</b> ?',
+  check:function(a){return numEq(a,["46000"]);}, correct:"46,000", short:"46 × 10³ = ?"},
+ {n:4, type:"mc", prompt:'Which is equivalent to <b>10 × 10 × 10 × 10 × 10</b>?',
+  opts:['10<sup>3</sup>','10<sup>5</sup>','10<sup>7</sup>'], answer:1, row:true,
+  correct:"10⁵", short:"10×10×10×10×10 = ?"},
+ {n:5, type:"input", prompt:'Write <b>5,000,000 + 600,000 + 40,000 + 200 + 30 + 8</b> in standard form.',
+  check:function(a){return numEq(a,["5640238"]);}, correct:"5,640,238", short:"Expanded form → standard form"},
+ {n:6, type:"input", prompt:'In <b>3,157,946</b>, which digit is in the <b>ten-thousands</b> place?',
+  check:function(a){return numEq(a,["5"]);}, correct:"5", short:"Ten-thousands digit of 3,157,946"},
+ {n:7, type:"mc", prompt:'Which choice writes <b>36,205</b> correctly using words?',
+  opts:['thirty-six thousand two hundred five','thirty-six thousand twenty-five','thirty thousand six hundred twenty-five','thirty-two thousand six hundred five'],
+  answer:0, correct:"thirty-six thousand two hundred five", short:"36,205 in words"},
+ {n:8, type:"mc", prompt:'How do you write <b>"four hundred thousand sixty-three"</b> using digits?',
+  opts:['400,063','400,630','460,003','400,603'], answer:0, row:true,
+  correct:"400,063", short:"Four hundred thousand sixty-three in digits"},
+ {n:9, type:"input", prompt:'Write <b>0.53</b> as a fraction.',
+  hint:'Type it like this: 53/100',
+  check:function(a){return numEq(a,["53/100"]);}, correct:"53/100", short:"0.53 as a fraction"},
+ {n:10, type:"model", prompt:'What decimal number does the model represent? Each large square is 1 whole.',
+  grids:[100,100,45],
+  check:function(a){return decEq(a,2.45);}, correct:"2.45", short:"Read the decimal model"},
+ {n:11, type:"shade", prompt:'Shade the models to show <b>1.28</b>. Tap or drag across squares to shade them.',
+  target:128, correct:"Shade 128 squares (1 whole grid + 28 more)", short:"Shade the grids to show 1.28"},
+ {n:12, type:"input", prompt:'Write <b>forty-two and fifteen hundredths</b> as a decimal number.',
+  check:function(a){return decEq(a,42.15);}, correct:"42.15", short:"Forty-two and fifteen hundredths"},
+ {n:13, type:"input", prompt:'In <b>36.79</b>, which digit is in the <b>tenths</b> place?',
+  check:function(a){return numEq(a,["7"]);}, correct:"7", short:"Tenths digit of 36.79"},
+ {n:14, type:"mc", prompt:'Which sign makes the statement true? &nbsp;<b>25.6 ___ 25.60</b>',
+  opts:['&gt;','&lt;','='], answer:2, row:true, correct:"=", short:"25.6 ___ 25.60"},
+ {n:15, type:"mc", prompt:'Which sign makes the statement true? &nbsp;<b>4.38 ___ 4.83</b>',
+  opts:['&gt;','&lt;','='], answer:1, row:true, correct:"<", short:"4.38 ___ 4.83"},
+ {n:16, type:"order", prompt:'Put these numbers in order from <b>least to greatest</b>. Tap the tiles in order.',
+  tiles:["0.53","0.305","0.35","0.503"], answer:["0.305","0.35","0.503","0.53"],
+  correct:"0.305, 0.35, 0.503, 0.53", short:"Order least → greatest"},
+ {n:17, type:"multi", prompt:'Which decimals are <b>greater</b> than the one shown in the model? Select all that are.',
+  grids:[100,100,34],
+  opts:['2.43','2.34','2.40','2.4'], answer:[0,2,3],
+  correct:"2.43, 2.40, and 2.4", short:"Decimals greater than the model (2.34)"},
+ {n:18, type:"input", prompt:'What is <b>5.482</b> rounded to the nearest <b>tenth</b>?',
+  check:function(a){return decEq(a,5.5);}, correct:"5.5", short:"Round 5.482 to the nearest tenth"},
+ {n:19, type:"mc", prompt:'Maya wants the <b>heaviest</b> pumpkin. Which pumpkin should she choose?',
+  table:[["Pumpkin","Weight (lb)"],["Orange","6.35"],["White","6.53"],["Green","6.29"]],
+  opts:['orange','white','green'], answer:1, row:true, correct:"white (6.53 lb)", short:"Heaviest pumpkin"},
+ {n:20, type:"mc", prompt:'Which list shows the runners in order from <b>shortest time to longest time</b>?',
+  runners:"Ava 7.2 sec &nbsp;·&nbsp; Ben 7.02 sec &nbsp;·&nbsp; Cole 7.22 sec",
+  opts:['Ava, Ben, Cole','Ben, Ava, Cole','Cole, Ben, Ava'], answer:1,
+  correct:"Ben, Ava, Cole", short:"Runners, fastest first"},
+ {n:21, type:"mc", prompt:'Are <b>36.700</b> and <b>36.7</b> equivalent decimals?',
+  opts:['Yes','No'], answer:0, row:true, correct:"Yes", short:"36.700 = 36.7?"},
+ {n:22, type:"input", prompt:'Complete the sentence: &nbsp;<b>______ is 10 times as much as 0.4.</b>',
+  check:function(a){return decEq(a,4);}, correct:"4", short:"10 times as much as 0.4"},
+ {n:23, type:"input", prompt:'Complete the sentence: &nbsp;<b>______ is 1/10 of 8.2.</b>',
+  check:function(a){return decEq(a,0.82);}, correct:"0.82", short:"1/10 of 8.2"},
+ {n:24, type:"exp", prompt:'Write the expression using an exponent: &nbsp;<b>3 × 3 × 3 × 3</b>',
+  base:"3", expo:"4", correct:"3⁴", short:"3×3×3×3 with an exponent"},
+ {n:25, type:"input", prompt:'Evaluate. &nbsp;<b>5<sup>3</sup> =</b> ?',
+  check:function(a){return numEq(a,["125"]);}, correct:"125", short:"5³ = ?"}
+];
+
+/* per-question help: [mini-lesson shown during the test, explanation shown in review] */
+var HELP={
+ 1:["An exponent tells you how many times to multiply the base by itself. 10<sup>4</sup> means 10 × 10 × 10 × 10. Shortcut for tens: the exponent = the number of zeros. Example: 10<sup>3</sup> = 1,000 (three zeros).",
+    "10<sup>4</sup> is a 1 followed by 4 zeros: 10,000."],
+ 2:["For powers of 10, the exponent is just the number of zeros. Count the zeros! Example: 100 has 2 zeros, so 100 = 10<sup>2</sup>.",
+    "1,000 has 3 zeros, so the missing exponent is 3."],
+ 3:["Multiplying by 10<sup>3</sup> makes a number 1,000 times bigger — just attach 3 zeros. Example: 25 × 10<sup>2</sup> = 2,500.",
+    "46 with 3 zeros attached is 46,000."],
+ 4:["Count how many 10s are being multiplied — that count becomes the exponent. Example: 10 × 10 × 10 = 10<sup>3</sup>.",
+    "Five 10s are multiplied together, so it equals 10<sup>5</sup>."],
+ 5:["Expanded form lists the value of each place. Add them up, and put a 0 in any place that's missing. Example: 2,000 + 50 + 3 = 2,053 (the hundreds place gets a 0).",
+    "5 millions, 6 hundred-thousands, 4 ten-thousands, 0 thousands, 2 hundreds, 3 tens, 8 ones → 5,640,238."],
+ 6:["Count places from the RIGHT: ones, tens, hundreds, thousands, ten-thousands. So ten-thousands is the 5th digit from the right. Example: in 52,341 the ten-thousands digit is 5.",
+    "In 3,157,946 the 5th digit from the right is 5."],
+ 7:["Read big numbers in chunks: say the thousands part, then the rest. Careful: 205 is 'two hundred five' — 'twenty-five' would be 25.",
+    "36,205 = 36 thousand + 205 → thirty-six thousand two hundred five."],
+ 8:["Turn each phrase into digits and use zeros to hold the empty places. 'Four hundred thousand' = 400,000, and 'sixty-three' = 63 in the tens and ones spots.",
+    "400,000 + 63 = 400,063 — the zeros hold the empty thousands and hundreds places."],
+ 9:["Two digits after the decimal point means hundredths. Read 0.53 out loud as 'fifty-three hundredths' — that reading IS the fraction. Example: 0.09 = 9/100.",
+    "0.53 is fifty-three hundredths, so it's 53/100."],
+ 10:["Each fully shaded grid = 1 whole. For the partly shaded grid, count the shaded little squares — each one is one hundredth. Example: 3 full grids + 50 squares = 3.50.",
+    "2 full grids and 45 shaded squares = 2 + 0.45 = 2.45."],
+ 11:["1.28 means 1 whole and 28 hundredths. Shade EVERY square of one grid (that's the 1), then shade 28 squares of the other grid.",
+    "Shade all 100 squares of one grid plus 28 of the other: 128 hundredths = 1.28."],
+ 12:["The word 'and' marks the decimal point — whole number before it, decimal digits after it. Example: 'five and three tenths' = 5.3.",
+    "Forty-two = 42, 'and' = the decimal point, fifteen hundredths = .15 → 42.15."],
+ 13:["The tenths place is the FIRST digit after the decimal point (hundredths is second). Example: in 3.19, the tenths digit is 1.",
+    "In 36.79, the first digit after the point is 7."],
+ 14:["A zero added to the END of a decimal doesn't change its value: 2.5 and 2.50 are the exact same amount.",
+    "25.60 is just 25.6 with an extra ending zero, so they're equal."],
+ 15:["Compare decimals place by place from the left: ones first, then tenths, then hundredths. The first place that's different decides the winner.",
+    "The ones are both 4. Tenths: 3 vs 8, so 4.38 &lt; 4.83."],
+ 16:["Give every number the same number of decimal places by adding ending zeros, then they're easy to line up: 0.530, 0.305, 0.350, 0.503.",
+    "As thousandths: 305 &lt; 350 &lt; 503 &lt; 530, so the order is 0.305, 0.35, 0.503, 0.53."],
+ 17:["First figure out what the model shows, then compare each choice to it. Remember 2.4 = 2.40 — an ending zero changes nothing.",
+    "The model shows 2.34. 2.43, 2.40, and 2.4 are all more than 2.34. (2.34 is equal, not greater.)"],
+ 18:["To round to the nearest tenth, look at the hundredths digit: 5 or more, the tenths digit goes up; 4 or less, it stays. Example: 2.283 → 2.3.",
+    "In 5.482 the hundredths digit is 8, so the 4 rounds up: 5.5."],
+ 19:["They all weigh 6-point-something, so compare the decimal parts place by place: tenths first, then hundredths.",
+    "53 hundredths beats 35 and 29, so 6.53 — the White pumpkin — is heaviest."],
+ 20:["Shortest time = fastest runner. Make the times the same length first: 7.20, 7.02, 7.22 — now they're easy to order.",
+    "7.02 &lt; 7.20 &lt; 7.22 → Ben, Ava, Cole."],
+ 21:["Zeros at the end of a decimal don't change its value: 3.200 = 3.2. Decimals like that are called equivalent.",
+    "36.700 is 36.7 with extra ending zeros — Yes, they're equivalent."],
+ 22:["Multiplying by 10 makes every digit one place bigger — the decimal point hops one spot to the RIGHT. Example: 0.7 × 10 = 7.",
+    "0.4 × 10 = 4."],
+ 23:["Taking 1/10 of a number makes it 10 times smaller — the decimal point hops one spot to the LEFT. Example: 1/10 of 25 is 2.5.",
+    "8.2 ÷ 10 = 0.82."],
+ 24:["The base is the number being multiplied over and over; the exponent counts HOW MANY of them there are. Count the 3s!",
+    "There are four 3s multiplied, so it's 3<sup>4</sup>."],
+ 25:["5<sup>3</sup> means 5 × 5 × 5. Do it in steps: 5 × 5 = 25, then 25 × 5.",
+    "5 × 5 × 5 = 125."]
+};
+
+/* ---------- state ---------- */
+var KEY="pv-decimals-test-b-v1";
+var state={name:"", cur:0, started:false, submitted:false,
+  history:[],           // one {right, pct} per finished attempt
+  answers:{},           // qn -> string | number | array(indices) | array(order)
+  shade:[[],[]] };      // q11: two arrays of cell indices
+try{
+  var saved=JSON.parse(localStorage.getItem(KEY)||"null");
+  if(saved && saved.answers) state=saved;
+}catch(e){}
+
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+var openTeach=new Set();   // question numbers with the mini-lesson open (per visit, not saved)
+
+function answered(i){
+  var q=Q[i], a=state.answers[q.n];
+  if(q.type==="shade") return (state.shade[0].length+state.shade[1].length)>0;
+  if(q.type==="multi") return Array.isArray(a)&&a.length>0;
+  if(q.type==="order") return Array.isArray(a)&&a.length===q.tiles.length;
+  if(q.type==="mc") return typeof a==="number";
+  if(q.type==="exp") return !!(a && String(a.b||"").trim() && String(a.e||"").trim());
+  return a!=null && String(a).trim()!=="";
+}
+function isCorrect(q){
+  var a=state.answers[q.n];
+  if(q.type==="shade") return (state.shade[0].length+state.shade[1].length)===q.target;
+  if(q.type==="mc") return a===q.answer;
+  if(q.type==="multi"){
+    if(!Array.isArray(a)) return false;
+    var want=q.answer.slice().sort().join(","); var got=a.slice().sort().join(",");
+    return want===got;
+  }
+  if(q.type==="order"){
+    if(!Array.isArray(a)) return false;
+    return a.join(",")===q.answer.join(",");
+  }
+  if(q.type==="exp") return !!a && norm(a.b)===q.base && norm(a.e)===q.expo;
+  return q.check(a||"");
+}
+function yourAnswerText(q){
+  var a=state.answers[q.n];
+  if(q.type==="shade"){var t=state.shade[0].length+state.shade[1].length;return t? t+" squares shaded ("+(t/100).toFixed(2).replace(/0$/,"").replace(/\.$/,"")+")":"no squares shaded";}
+  if(q.type==="mc") return typeof a==="number" ? q.opts[a].replace(/<[^>]+>/g,"") : "no answer";
+  if(q.type==="multi") return Array.isArray(a)&&a.length ? a.map(function(i){return q.opts[i];}).join(", ") : "no answer";
+  if(q.type==="order") return Array.isArray(a)&&a.length ? a.join(", ") : "no answer";
+  if(q.type==="exp") return a&&(a.b||a.e) ? (a.b||"?")+"^"+(a.e||"?") : "no answer";
+  return (a&&String(a).trim())||"no answer";
+}
+
+/* ---------- rendering ---------- */
+var main=document.getElementById("main");
+var topbar=document.getElementById("topbar");
+var palette=document.getElementById("palette");
+var who=document.getElementById("who");
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}
+
+function renderPalette(){
+  palette.innerHTML="";
+  Q.forEach(function(q,i){
+    var b=document.createElement("button");
+    b.textContent=q.n;
+    b.setAttribute("aria-label","Question "+q.n+(answered(i)?", answered":""));
+    if(answered(i)) b.classList.add("done");
+    if(i===state.cur) b.classList.add("cur");
+    b.onclick=function(){ state.cur=i; save(); renderQuestion(); };
+    palette.appendChild(b);
+  });
+}
+
+function renderStart(){
+  topbar.hidden=true;
+  main.innerHTML=
+   '<div class="start">'+
+    '<div class="grid-logo">'+GRID(100)+GRID(28)+'</div>'+
+    '<h1>Place Value &amp; Decimals Test — Form B</h1>'+
+    '<p>25 questions on powers of ten, place value, and comparing decimals — same test, new numbers. '+
+    'Answer every question, then press <b>Submit</b> to see your score — just like Savvas. '+
+    'You can take it as many times as you want.</p>'+
+    ((state.history||[]).length ?
+      '<p class="past">Best score so far: '+Math.max.apply(null,state.history.map(function(a){return a.pct;}))+
+      '% · '+state.history.length+(state.history.length>1?' tries':' try')+'</p>' : '')+
+    '<input class="ans-input" id="nm" type="text" placeholder="Type your name" value="'+esc(state.name)+'" autocomplete="off">'+
+    '<div><button class="btn primary" id="go">'+((state.history||[]).length?'Take the test again':'Start the test')+'</button></div>'+
+   '</div>';
+  var nm=document.getElementById("nm");
+  var go=function(){
+    state.name=nm.value.trim();
+    state.started=true; save(); renderQuestion();
+  };
+  document.getElementById("go").onclick=go;
+  nm.addEventListener("keydown",function(e){ if(e.key==="Enter") go(); });
+  nm.focus();
+}
+
+function renderQuestion(){
+  if(state.submitted){ renderResults(false); return; }
+  topbar.hidden=false;
+  who.textContent = state.name ? state.name : "";
+  renderPalette();
+  var i=state.cur, q=Q[i];
+  var h='<section class="qcard" aria-labelledby="qp">';
+  h+='<span class="qnum">Question '+q.n+' of 25</span>';
+  h+='<p class="prompt" id="qp">'+q.prompt+'</p>';
+
+  if(q.table){
+    h+='<table class="dtable"><tr>'+q.table[0].map(function(c){return '<th>'+c+'</th>';}).join("")+'</tr>';
+    for(var r=1;r<q.table.length;r++) h+='<tr>'+q.table[r].map(function(c){return '<td>'+c+'</td>';}).join("")+'</tr>';
+    h+='</table>';
+  }
+  if(q.runners) h+='<p class="runners">'+q.runners+'</p>';
+  if(q.grids) h+='<div class="models">'+q.grids.map(GRID).join("")+'</div>';
+
+  if(q.type==="input"||q.type==="model"){
+    var v=state.answers[q.n]||"";
+    h+='<input class="ans-input" id="ai" type="text" inputmode="decimal" autocomplete="off" '+
+       'placeholder="Type your answer" value="'+esc(v)+'" aria-label="Your answer">';
+    if(q.hint) h+='<p class="hint">'+q.hint+'</p>';
+  }
+  else if(q.type==="exp"){
+    var ev=state.answers[q.n]||{b:"",e:""};
+    h+='<div class="exp-pair">'+
+       '<span><input class="ans-input base" id="eb" type="text" inputmode="numeric" maxlength="2" autocomplete="off" value="'+esc(ev.b||"")+'" aria-label="Base"><span class="lbl">base</span></span>'+
+       '<span><input class="ans-input expo" id="ee" type="text" inputmode="numeric" maxlength="1" autocomplete="off" value="'+esc(ev.e||"")+'" aria-label="Exponent"><span class="lbl">exponent</span></span>'+
+       '</div><p class="hint">Big box is the base, small raised box is the exponent. Numbers only.</p>';
+  }
+  else if(q.type==="mc"){
+    h+='<div class="choices'+(q.row?' row':'')+'" role="radiogroup">';
+    q.opts.forEach(function(o,oi){
+      var sel=state.answers[q.n]===oi;
+      h+='<button class="choice'+(sel?' sel':'')+'" role="radio" aria-checked="'+sel+'" data-oi="'+oi+'">'+
+         '<span class="dot" aria-hidden="true"></span><span>'+o+'</span></button>';
+    });
+    h+='</div>';
+  }
+  else if(q.type==="multi"){
+    var cur=state.answers[q.n]||[];
+    h+='<div class="choices row" role="group">';
+    q.opts.forEach(function(o,oi){
+      var sel=cur.indexOf(oi)>=0;
+      h+='<button class="choice box'+(sel?' sel':'')+'" role="checkbox" aria-checked="'+sel+'" data-oi="'+oi+'">'+
+         '<span class="dot" aria-hidden="true"></span><span>'+o+'</span></button>';
+    });
+    h+='</div><p class="hint">More than one answer is correct — pick all of them.</p>';
+  }
+  else if(q.type==="order"){
+    var ord=state.answers[q.n]||[];
+    h+='<div class="order-labels"><span>least</span><span>greatest</span></div>';
+    h+='<div class="order-slots">';
+    for(var s=0;s<q.tiles.length;s++){
+      var val=ord[s];
+      h+=(s?'<span class="arrow" aria-hidden="true">→</span>':'');
+      h+= val!=null
+        ? '<button class="slot filled" data-slot="'+s+'" aria-label="Remove '+val+'">'+val+'</button>'
+        : '<span class="slot" aria-hidden="true"></span>';
+    }
+    h+='</div><div class="order-pool">';
+    q.tiles.forEach(function(t){
+      var used=ord.indexOf(t)>=0;
+      h+='<button class="tile" data-t="'+t+'" '+(used?'disabled':'')+'>'+t+'</button>';
+    });
+    h+='</div><p class="hint">Tap a number to place it in the next open spot. Tap a placed number to take it back.</p>';
+  }
+  else if(q.type==="shade"){
+    h+='<div class="grid-tools"><span class="shade-count" id="sc"></span>'+
+       '<button class="mini" id="clr">Clear</button></div>';
+    h+='<div class="models">'+
+       '<div class="hgrid clickable" id="g0" aria-label="First grid, tap squares to shade"></div>'+
+       '<div class="hgrid clickable" id="g1" aria-label="Second grid, tap squares to shade"></div>'+
+       '</div>';
+  }
+
+  h+='<button class="teach-btn" id="teachbtn">🎓 Teach me — I don&#39;t know this one</button>'+
+     '<div class="lesson" id="lesson" '+(openTeach.has(q.n)?'':'hidden')+'>'+HELP[q.n][0]+'</div>';
+
+  h+='<div class="nav">';
+  h+= i>0 ? '<button class="btn ghost" id="prev">← Back</button>' : '<span></span>';
+  h+= i<Q.length-1
+    ? '<button class="btn primary" id="next">Next →</button>'
+    : '<button class="btn submit" id="submit">Submit test</button>';
+  h+='</div><div id="confirmArea"></div></section>';
+  main.innerHTML=h;
+  window.scrollTo(0,0);
+
+  /* wire up */
+  var ai=document.getElementById("ai");
+  if(ai){
+    ai.addEventListener("input",function(){
+      var bad = q.n===9 ? /[^0-9/.,]/g : /[^0-9.,]/g;   // numbers only (q9 also allows /)
+      var clean=ai.value.replace(bad,"");
+      if(clean!==ai.value) ai.value=clean;
+      state.answers[q.n]=ai.value; save(); renderPalette();
+    });
+    ai.addEventListener("keydown",function(e){
+      if(e.key==="Enter"){ var nx=document.getElementById("next")||document.getElementById("submit"); if(nx) nx.click(); }
+    });
+    if(!('ontouchstart' in window)) ai.focus();
+  }
+  main.querySelectorAll(".choice").forEach(function(b){
+    b.onclick=function(){
+      var oi=+b.dataset.oi;
+      if(q.type==="mc"){ state.answers[q.n]=oi; }
+      else{ // multi toggle
+        var cur=(state.answers[q.n]||[]).slice();
+        var at=cur.indexOf(oi);
+        if(at>=0) cur.splice(at,1); else cur.push(oi);
+        state.answers[q.n]=cur;
+      }
+      save(); renderQuestion();
+    };
+  });
+  if(q.type==="order"){
+    main.querySelectorAll(".tile").forEach(function(t){
+      t.onclick=function(){
+        var ord=(state.answers[q.n]||[]).slice();
+        if(ord.length<q.tiles.length){ ord.push(t.dataset.t); state.answers[q.n]=ord; save(); renderQuestion(); }
+      };
+    });
+    main.querySelectorAll(".slot.filled").forEach(function(sl){
+      sl.onclick=function(){
+        var ord=(state.answers[q.n]||[]).slice();
+        ord.splice(+sl.dataset.slot,1);
+        state.answers[q.n]=ord; save(); renderQuestion();
+      };
+    });
+  }
+  if(q.type==="shade") wireShade(q);
+
+  var eb=document.getElementById("eb"), ee=document.getElementById("ee");
+  if(eb){
+    [eb,ee].forEach(function(inp){
+      inp.addEventListener("input",function(){
+        var clean=inp.value.replace(/[^0-9]/g,"");
+        if(clean!==inp.value) inp.value=clean;
+        state.answers[q.n]={b:eb.value,e:ee.value};
+        save(); renderPalette();
+      });
+    });
+  }
+
+  var tb=document.getElementById("teachbtn");
+  if(tb) tb.onclick=function(){
+    if(openTeach.has(q.n)) openTeach.delete(q.n); else openTeach.add(q.n);
+    document.getElementById("lesson").hidden=!openTeach.has(q.n);
+  };
+
+  var prev=document.getElementById("prev");
+  if(prev) prev.onclick=function(){ state.cur--; save(); renderQuestion(); };
+  var next=document.getElementById("next");
+  if(next) next.onclick=function(){ state.cur++; save(); renderQuestion(); };
+  var sub=document.getElementById("submit");
+  if(sub) sub.onclick=trySubmit;
+}
+
+/* interactive shading (q11) */
+function wireShade(q){
+  var painting=false, paintOn=true;
+  [0,1].forEach(function(gi){
+    var g=document.getElementById("g"+gi);
+    for(var c=0;c<100;c++){
+      var d=document.createElement("div");
+      d.className="c"+(state.shade[gi].indexOf(c)>=0?" on":"");
+      d.dataset.gi=gi; d.dataset.c=c;
+      g.appendChild(d);
+    }
+  });
+  function setCell(el,on){
+    var gi=+el.dataset.gi, c=+el.dataset.c;
+    var arr=state.shade[gi], at=arr.indexOf(c);
+    if(on && at<0) arr.push(c);
+    if(!on && at>=0) arr.splice(at,1);
+    el.classList.toggle("on",on);
+    updateCount();
+  }
+  function updateCount(){
+    var t=state.shade[0].length+state.shade[1].length;
+    document.getElementById("sc").textContent="Shaded: "+t+" hundredths = "+(t/100).toFixed(2);
+    save(); renderPalette();
+  }
+  function cellFromEvent(e){
+    var pt=e.touches?e.touches[0]:e;
+    var el=document.elementFromPoint(pt.clientX,pt.clientY);
+    return el&&el.classList.contains("c")&&el.dataset.gi!=null?el:null;
+  }
+  main.querySelectorAll(".hgrid.clickable").forEach(function(g){
+    g.addEventListener("pointerdown",function(e){
+      var el=cellFromEvent(e); if(!el) return;
+      e.preventDefault();
+      painting=true; paintOn=!el.classList.contains("on");
+      setCell(el,paintOn);
+    });
+    g.addEventListener("pointermove",function(e){
+      if(!painting) return;
+      var el=cellFromEvent(e); if(el) setCell(el,paintOn);
+    });
+  });
+  window.addEventListener("pointerup",function(){ painting=false; });
+  document.getElementById("clr").onclick=function(){
+    state.shade=[[],[]];
+    main.querySelectorAll(".hgrid.clickable .c").forEach(function(c){c.classList.remove("on");});
+    updateCount();
+  };
+  updateCount();
+}
+
+/* ---------- submit + results ---------- */
+function trySubmit(){
+  var missing=Q.filter(function(q,i){return !answered(i);}).map(function(q){return q.n;});
+  if(missing.length){
+    var area=document.getElementById("confirmArea");
+    area.innerHTML='<div class="confirm" role="alert">'+
+      '<p><b>Hold on — '+missing.length+' question'+(missing.length>1?'s are':' is')+' blank:</b> '+missing.join(", ")+'</p>'+
+      '<div class="row"><button class="btn ghost" id="goback">Go finish them</button>'+
+      '<button class="btn submit" id="really">Submit anyway</button></div></div>';
+    document.getElementById("goback").onclick=function(){
+      state.cur=Q.findIndex(function(q,i){return !answered(i);});
+      save(); renderQuestion();
+    };
+    document.getElementById("really").onclick=doSubmit;
+    return;
+  }
+  doSubmit();
+}
+function doSubmit(){
+  var right=Q.filter(isCorrect).length;
+  state.history=(state.history||[]).concat([{right:right,pct:Math.round(right/Q.length*100)}]);
+  state.submitted=true; save(); renderResults(true);
+}
+function renderResults(animate){
+  topbar.hidden=true;
+  var right=Q.filter(isCorrect).length;
+  var pct=Math.round(right/Q.length*100);
+  var msg = pct===100 ? "Perfect score! You crushed it." :
+            pct>=90 ? "Excellent work — you really know this!" :
+            pct>=80 ? "Nice job! Just a couple to review." :
+            pct>=70 ? "Good effort — look over the ones you missed." :
+            pct>=50 ? "Keep practicing — review the missed ones below." :
+                      "Tough round — go through the answers below and try again.";
+  var C=2*Math.PI*70;
+  var h='<div class="score-hero">'+
+    '<div class="ring"><svg width="170" height="170" viewBox="0 0 170 170">'+
+    '<circle class="track" cx="85" cy="85" r="70" fill="none" stroke-width="14"/>'+
+    '<circle class="fill" id="ringfill" cx="85" cy="85" r="70" fill="none" stroke-width="14" stroke-linecap="round" '+
+    'stroke-dasharray="'+C+'" stroke-dashoffset="'+C+'"/></svg>'+
+    '<div class="pct"><span class="big">'+pct+'%</span><span class="small">score</span></div></div>'+
+    '<h2>'+(state.name? esc(state.name)+", you":"You")+' got <span class="frac">'+right+' out of '+Q.length+'</span></h2>'+
+    '<p class="msg">'+msg+'</p>';
+  var hist=state.history||[];
+  if(hist.length>1){
+    var best=Math.max.apply(null,hist.map(function(a){return a.pct;}));
+    h+='<div class="attempts"><h3>Your tries</h3>'+hist.map(function(a,i){
+      return '<span class="att'+(a.pct===best?' best':'')+'">Try '+(i+1)+': '+a.pct+'%'+(a.pct===best?' ★':'')+'</span>';
+    }).join("")+'</div>';
+  }
+  h+='<button class="btn primary retakeb">Take the test again</button></div>';
+
+  h+='<div class="review"><h3>Question review</h3>';
+  Q.forEach(function(q){
+    var ok=isCorrect(q);
+    h+='<div class="rev-item '+(ok?'ok':'no')+'">'+
+      '<span class="mark" aria-label="'+(ok?'correct':'incorrect')+'">'+(ok?'✓':'✗')+'</span>'+
+      '<span class="q">'+q.n+'. '+esc(q.short)+'</span>'+
+      '<span class="a">Your answer: <span class="yours">'+esc(yourAnswerText(q))+'</span>'+
+      (ok?'':' &nbsp;·&nbsp; Correct answer: <span class="right">'+esc(q.correct)+'</span>')+
+      '</span>'+
+      (ok?'':'<span class="a why">💡 '+HELP[q.n][1]+'</span>')+
+      '</div>';
+  });
+  h+='</div><div class="again"><button class="btn primary retakeb">Take the test again</button></div>';
+  main.innerHTML=h;
+  window.scrollTo(0,0);
+  main.querySelectorAll(".retakeb").forEach(function(b){
+    b.onclick=function(){
+      state={name:state.name,history:state.history||[],cur:0,started:true,submitted:false,answers:{},shade:[[],[]]};
+      save(); renderQuestion();
+    };
+  });
+  requestAnimationFrame(function(){
+    requestAnimationFrame(function(){
+      var f=document.getElementById("ringfill");
+      f.style.strokeDashoffset = C*(1-pct/100);
+      if(!animate) f.style.transition="none";
+    });
+  });
+}
+
+/* ---------- boot ---------- */
+if(state.submitted) renderResults(false);
+else if(state.started) renderQuestion();
+else renderStart();
+})();
+</script>
