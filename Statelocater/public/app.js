@@ -35,7 +35,7 @@ const planDays = () => P.settings.planDays || 28;
 const intervals = () => planDays() <= 7 ? INTERVALS_7 : planDays() <= 14 ? INTERVALS_14 : INTERVALS_28;
 const paceOptions = () => planDays() <= 7 ? [6, 8, 10] : planDays() <= 14 ? [4, 5, 6] : [3, 4, 5, 6];
 const defaultPace = () => planDays() <= 7 ? 8 : planDays() <= 14 ? 4 : 3;
-function save(push = true) { P.updatedAt = Date.now(); localStorage.setItem(LS, JSON.stringify(P)); if (push && user) { clearTimeout(pushTimer); pushTimer = setTimeout(pushProgress, 1200); } refreshHeader(); }
+function save(push = true) { if (user) P.owner = user; P.updatedAt = Date.now(); localStorage.setItem(LS, JSON.stringify(P)); if (push && user) { clearTimeout(pushTimer); pushTimer = setTimeout(pushProgress, 1200); } refreshHeader(); }
 async function pushProgress() {
   if (!user) return;
   try { const r = await fetch('/api/progress', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ progress: P }) }).then(r => r.json());
@@ -48,7 +48,10 @@ async function initAccount() {
   refreshHeader();
 }
 function adoptServer(sp) {
-  if (sp && sp.cards && (!P.onboarded || sp.updatedAt >= P.updatedAt)) { P = Object.assign(defaultP(), sp); localStorage.setItem(LS, JSON.stringify(P)); }
+  // Local progress "belongs" to the account that last saved it (P.owner). Never carry one account's progress into another.
+  const foreign = P.owner && user && P.owner !== user;
+  if (sp && sp.cards && (foreign || !P.onboarded || sp.updatedAt >= P.updatedAt)) { P = Object.assign(defaultP(), sp); P.owner = user; localStorage.setItem(LS, JSON.stringify(P)); }
+  else if (foreign) { P = defaultP(); P.owner = user; localStorage.setItem(LS, JSON.stringify(P)); }
   else if (P.onboarded) pushProgress();
 }
 const card = (abbr, kind) => P.cards[abbr + ':' + kind] || (P.cards[abbr + ':' + kind] = { box: 0, due: 0, seen: 0, right: 0, wrong: 0 });
@@ -850,7 +853,7 @@ function renderPlan() {
 // ---- account ----
 function accountModal() {
   const m = $('#modal'); m.classList.remove('hidden'); m.innerHTML = '';
-  if (user) { m.append(h('div', { class: 'box' }, h('h2', {}, `👤 ${user}`), h('p', { class: 'muted' }, 'Your progress syncs to the cloud whenever you answer. Sign in on any device to continue.'), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: closeModal }, 'Close'), h('button', { class: 'btn sec', onclick: async () => { await pushProgress(); await fetch('/api/logout', { method: 'POST' }); user = null; closeModal(); refreshHeader(); render(); toast('Signed out'); } }, 'Sign out')))); m.onclick = (e) => { if (e.target === m) closeModal(); }; return; }
+  if (user) { m.append(h('div', { class: 'box' }, h('h2', {}, `👤 ${user}`), h('p', { class: 'muted' }, 'Your progress syncs to the cloud whenever you answer. Sign in on any device to continue.'), h('div', { class: 'row' }, h('button', { class: 'btn', onclick: closeModal }, 'Close'), h('button', { class: 'btn sec', onclick: async () => { await pushProgress(); await fetch('/api/logout', { method: 'POST' }); user = null; closeModal(); refreshHeader(); render(); toast('Signed out'); } }, 'Sign out'), h('button', { class: 'btn sec', onclick: () => { if (confirm(`Restart from scratch? This wipes ${user}'s map, XP and streak, and starts over with the placement quiz.`)) { P = defaultP(); P.owner = user; save(); pushProgress(); closeModal(); refreshHeader(); toast('Fresh start! First: a quick placement quiz.'); startPlacement(); } } }, '🔄 Restart')))); m.onclick = (e) => { if (e.target === m) closeModal(); }; return; }
   let mode = 'login';
   const name = h('input', { type: 'text', placeholder: 'Your name (e.g. colton)', autocomplete: 'username', value: localStorage.getItem('sl.user') || '' });
   const pass = h('input', { type: 'password', placeholder: 'Password', autocomplete: 'current-password' });
