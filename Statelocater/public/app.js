@@ -183,8 +183,8 @@ function finishSession() {
 
 // ---------------- views ----------------
 const view = $('#view'); let tab = 'today'; let currentMap = null;
-function render(t) { if (t) tab = t; document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab)); view.innerHTML = ''; window.scrollTo(0, 0); if (session) renderQuestion(); else ({ today: renderToday, play: renderPlay, map: renderMap, test: renderTest, plan: renderPlan })[tab](); refreshHeader(); }
-document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { session = null; matchGame = null; blitz = null; flash = null; raceLeave(); if (b.dataset.tab !== 'test') { if (test && !test.checked && !confirm('Leave the test? Progress on it will be lost.')) return; test = null; } render(b.dataset.tab); });
+function render(t) { if (t) tab = t; document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab)); view.innerHTML = ''; window.scrollTo(0, 0); if (placement) renderPlacement(); else if (session) renderQuestion(); else ({ today: renderToday, play: renderPlay, map: renderMap, test: renderTest, plan: renderPlan })[tab](); refreshHeader(); }
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => { if (placement && placement.phase !== 'done') { if (!confirm('Leave the placement quiz? Your answers so far will be lost.')) return; placement = null; } else placement = null; session = null; matchGame = null; blitz = null; flash = null; raceLeave(); if (b.dataset.tab !== 'test') { if (test && !test.checked && !confirm('Leave the test? Progress on it will be lost.')) return; test = null; } render(b.dataset.tab); });
 
 // ---- onboarding ----
 function renderOnboard() {
@@ -199,10 +199,83 @@ function renderOnboard() {
     h('p', { class: 'muted', id: 'pace-note' }, ''),
     h('h3', {}, 'When do you want capitals?'),
     h('div', { class: 'row', id: 'capw' }, (planDays() <= 7 ? [[0, 'Together with each state'], [1, 'The next day (recommended)']] : [[0, 'Together with each state'], [2, 'A couple of days after (recommended)']]).map(([k, lab]) => h('button', { class: 'btn sec small' + (capDelay() === k ? ' good' : ''), onclick: (e) => { P.settings.capDelay = k; [...e.target.parentNode.children].forEach(b => b.classList.remove('good')); e.target.classList.add('good'); } }, lab))),
+    h('h3', { style: 'margin-top:12px' }, 'Already know some states?'),
+    P.placement
+      ? h('p', { class: 'muted' }, `✔ Placement quiz done — you already knew ${P.placement.states} state${P.placement.states === 1 ? '' : 's'} and ${P.placement.caps} capital${P.placement.caps === 1 ? '' : 's'}. Those skip straight to review; lessons teach the other ${50 - P.placement.states}.`)
+      : h('p', { class: 'muted' }, 'Take a quick placement quiz first — anything you already know gets skipped, so your lessons only teach what you don\'t.'),
     h('p', {}, h('b', {}, 'Each day: '), 'review what\'s due (5–10 min) → meet today\'s new states → quick quiz. Miss a day? No problem, it just piles up a bit.'),
-    h('div', { class: 'row' }, h('button', { class: 'btn', onclick: () => { P.onboarded = true; P.startDate = dayKey(); save(); render('today'); } }, 'Start Day 1 →'), h('button', { class: 'btn sec', onclick: accountModal }, user ? `Signed in as ${user}` : 'Sign in to save to cloud')),
+    h('div', { class: 'row' },
+      P.placement ? null : h('button', { class: 'btn sec', onclick: startPlacement }, '🧭 Placement quiz first (recommended)'),
+      h('button', { class: 'btn', onclick: () => { P.onboarded = true; P.startDate = dayKey(); save(); render('today'); } }, P.placement ? `Start Day 1 — teach me the rest →` : 'Start Day 1 →'),
+      h('button', { class: 'btn sec', onclick: accountModal }, user ? `Signed in as ${user}` : 'Sign in to save to cloud')),
   );
   view.append(box); const pb = $(`#pace .btn[data-n="${P.settings.newPerDay}"]`) || $(`#pace .btn`); pb.click();
+}
+
+// ---- placement quiz: find out what a new learner already knows, teach only the rest ----
+let placement = null;
+function startPlacement() {
+  placement = { phase: 'states', queue: shuffle(ORDER.slice()), i: 0, knew: [], missed: [], capQueue: [], capKnew: [] };
+  render('today');
+}
+function placementSeed() {
+  const PL = placement;
+  const pace = P.settings.newPerDay || defaultPace();
+  // Known states start deep in the ladder (box 3) with staggered reviews over the next few days.
+  PL.knew.forEach((a, i) => { P.intro[a] = 0; const c = card(a, 'loc'); c.box = 3; c.due = dayStart(1 + (i % 3)); c.seen = 1; c.right = 1; });
+  PL.capKnew.forEach((a, i) => { const c = card(a, 'cap'); c.box = 3; c.due = dayStart(1 + (i % 3)); c.seen = 1; c.right = 1; c.introAt = dayStart() - capDelay() * DAY; });
+  // Capitals they DON'T know (for states they do) trickle into lessons at the daily pace instead of flooding day 1.
+  PL.knew.filter(a => !PL.capKnew.includes(a)).forEach((a, i) => { const c = card(a, 'cap'); c.introAt = dayStart(Math.floor(i / pace)) - capDelay() * DAY; });
+  P.checkpoints = P.checkpoints || {};
+  for (const k of CHECKPOINTS) if (knownList().length >= k) P.checkpoints[k] = P.checkpoints[k] || { skipped: true, placement: true };
+  P.placement = { date: dayKey(), states: PL.knew.length, caps: PL.capKnew.length };
+  save();
+}
+function renderPlacement() {
+  const PL = placement;
+  if (PL.phase === 'states' && PL.i >= PL.queue.length) { PL.capQueue = shuffle(PL.knew.slice()); PL.i = 0; PL.phase = PL.capQueue.length ? 'caps' : 'done'; if (PL.phase === 'done') placementSeed(); return renderPlacement(); }
+  if (PL.phase === 'caps' && PL.i >= PL.capQueue.length) { PL.phase = 'done'; placementSeed(); return renderPlacement(); }
+  if (PL.phase === 'done') {
+    const n = PL.knew.length;
+    view.append(h('div', { class: 'card summary' }, h('h3', {}, '🧭 Placement quiz done'), h('div', { class: 'big' }, `${n}/50 states`),
+      h('p', {}, n
+        ? `You already know ${n} state${n === 1 ? '' : 's'} and ${PL.capKnew.length} capital${PL.capKnew.length === 1 ? '' : 's'} — those go straight into review instead of being re-taught. Your lessons will teach the other ${50 - n} state${50 - n === 1 ? '' : 's'}${PL.knew.length - PL.capKnew.length ? ` (plus the ${PL.knew.length - PL.capKnew.length} missing capital${PL.knew.length - PL.capKnew.length === 1 ? '' : 's'})` : ''}.`
+        : `A fresh map — perfect, that's exactly what the plan is for. All 50 will be taught step by step.`),
+      h('div', { class: 'row', style: 'margin-top:10px' }, h('button', { class: 'btn', onclick: () => { placement = null; render('today'); } }, P.onboarded ? 'Done →' : 'Continue setup →'))));
+    if (n) {
+      const mc = h('div', { class: 'card' }, h('h2', {}, 'What you already know'), h('p', { class: 'muted' }, 'Green = you knew it. Everything else is what we\'ll teach.'));
+      const host = h('div'); mc.append(host); view.append(mc);
+      const m = makeMap(host); PL.knew.forEach(a => { m.set(a, 'good'); m.label(a, BY[a].abbr); });
+    }
+    confetti(); beep('win');
+    return;
+  }
+  const caps = PL.phase === 'caps';
+  const queue = caps ? PL.capQueue : PL.queue; const total = queue.length;
+  const a = queue[PL.i]; const s = BY[a];
+  const prog = h('div', { class: 'progress-top' }, h('span', {}, `🧭 ${caps ? 'Capitals' : 'States'} ${PL.i + 1} / ${total}`), h('div', { class: 'bar' }, h('i', { style: `width:${PL.i / total * 100}%` })), h('span', {}, `✅ ${caps ? PL.capKnew.length : PL.knew.length}`), h('button', { class: 'pill ghost', onclick: () => { if (confirm('Quit the placement quiz? Your answers so far will be lost.')) { placement = null; render('today'); } } }, 'Exit'));
+  const wrap = h('div', { class: 'quiz' }); const mapHost = h('div'); const qcard = h('div', { class: 'card qcard' });
+  wrap.append(h('div', {}, mapHost), qcard); view.append(prog, wrap);
+  const map = makeMap(mapHost); map.add(a, 'hl'); if (s.bbox[2] - s.bbox[0] < 110) map.zoomTo(a, 4);
+  if (caps) { map.label(a, s.abbr); map.star(a); }
+  const right = caps ? s.capital : s.name;
+  const pool = caps ? STATES.map(x => x.capital) : STATES.map(x => x.name);
+  const near = caps
+    ? STATES.filter(x => x.region === s.region && x.abbr !== s.abbr).map(x => x.capital)
+    : (s.nb.length ? s.nb.map(x => BY[x].name) : STATES.filter(x => x.region === s.region && x.abbr !== s.abbr).map(x => x.name));
+  const distract = shuffle(shuffle(near).slice(0, 2).concat(shuffle(pool)).filter((v, i2, arr) => arr.indexOf(v) === i2 && v !== right)).slice(0, 3);
+  let done = false; const grid = h('div', { class: 'choices' }); const fb = h('div', { class: 'feedback' });
+  shuffle([right, ...distract]).forEach(c => grid.append(h('button', { onclick: (e) => {
+    if (done) return; done = true; const ok = c === right;
+    e.target.classList.add(ok ? 'good' : 'bad'); [...grid.children].forEach(b => { if (b.textContent === right) b.classList.add('good'); });
+    if (!caps) (ok ? PL.knew : PL.missed).push(a); else if (ok) PL.capKnew.push(a);
+    fb.className = 'feedback ' + (ok ? 'good' : 'bad'); fb.textContent = ok ? 'Yep!' : `That's ${right} — it goes on the teach-me list.`;
+    beep(ok ? 'good' : 'bad');
+    PL.i++; advanceTimer = setTimeout(() => { if (placement === PL) render(); }, ok ? 500 : 1100);
+  } }, c)));
+  qcard.append(h('div', { class: 'prompt' }, h('small', {}, caps ? 'Placement · capitals of states you knew' : 'Placement · no pressure, guessing is fine'), caps ? `What is the capital of ${s.name}?` : 'Which state is highlighted?'), grid, fb);
+  if (caps) qcard.append(h('div', { class: 'row', style: 'margin-top:12px' }, h('button', { class: 'btn sec small', onclick: () => { PL.i = PL.capQueue.length; render(); } }, "I don't know the rest — skip to results")));
+  else if (PL.i === 0) qcard.append(h('p', { class: 'kbd', style: 'margin-top:10px' }, 'All 50 states, quick-fire. Whatever you already know gets skipped in lessons and goes straight into spaced review.'));
 }
 
 // ---- Today ----
@@ -782,7 +855,7 @@ function accountModal() {
   const name = h('input', { type: 'text', placeholder: 'Your name (e.g. colton)', autocomplete: 'username', value: localStorage.getItem('sl.user') || '' });
   const pass = h('input', { type: 'password', placeholder: 'Password', autocomplete: 'current-password' });
   const err = h('div', { class: 'err' }); const title = h('h2', {}, 'Sign in'); const sub = h('p', { class: 'muted' }, 'Save your progress to the cloud so you can keep going on your phone, laptop, anywhere.');
-  const go = async () => { err.textContent = ''; try { const r = await fetch('/api/' + mode, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: name.value, pass: pass.value }) }).then(r => r.json()); if (r.error) { err.textContent = r.error; return; } user = r.user; localStorage.setItem('sl.user', user); adoptServer(r.progress); if (!r.progress && P.onboarded) await pushProgress(); closeModal(); refreshHeader(); render(); toast(mode === 'register' ? 'Account created — progress will save to the cloud ☁️' : 'Signed in ☁️'); } catch (e) { err.textContent = 'Could not reach the server.'; } };
+  const go = async () => { err.textContent = ''; try { const r = await fetch('/api/' + mode, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user: name.value, pass: pass.value }) }).then(r => r.json()); if (r.error) { err.textContent = r.error; return; } user = r.user; localStorage.setItem('sl.user', user); adoptServer(r.progress); if (!r.progress && P.onboarded) await pushProgress(); closeModal(); refreshHeader(); if (mode === 'register' && !P.onboarded && !P.placement) { toast('Account created ☁️ — first, a quick quiz to see what you already know!'); startPlacement(); return; } render(); toast(mode === 'register' ? 'Account created — progress will save to the cloud ☁️' : 'Signed in ☁️'); } catch (e) { err.textContent = 'Could not reach the server.'; } };
   const swap = h('button', { class: 'btn sec small', type: 'button', onclick: () => { mode = mode === 'login' ? 'register' : 'login'; title.textContent = mode === 'login' ? 'Sign in' : 'Create account'; swap.textContent = mode === 'login' ? 'New here? Create account' : 'Have an account? Sign in'; pass.autocomplete = mode === 'login' ? 'current-password' : 'new-password'; } }, 'New here? Create account');
     m.append(h('div', { class: 'box' }, title, sub, h('form', { onsubmit: (e) => { e.preventDefault(); go(); } }, h('label', {}, 'Name'), name, h('label', {}, 'Password'), pass, err, h('div', { class: 'row' }, h('button', { class: 'btn', type: 'submit' }, 'Go'), swap, h('button', { class: 'pill ghost', type: 'button', onclick: closeModal }, 'Cancel')))));
   m.onclick = (e) => { if (e.target === m) closeModal(); }; setTimeout(() => (name.value ? pass : name).focus(), 50);
