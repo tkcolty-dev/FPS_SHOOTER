@@ -216,6 +216,7 @@ class Bridge {
       this.retryMs = 2000;
       console.log(`[bridge ${this.projectId}] connected to Scratch cloud`);
       announceStatus(this.projectId);
+      this.drain(); // send anything queued while we were reconnecting
     });
     ws.on('message', (buf) => {
       for (const line of buf.toString().split('\n')) {
@@ -252,17 +253,17 @@ class Bridge {
     if (this.sending) return;
     this.sending = true;
     const tick = () => {
+      // if we're disconnected, keep the queue — it drains after reconnect
+      if (!this.ws || this.ws.readyState !== WebSocket.OPEN) { this.sending = false; return; }
       const item = this.queue.shift();
       if (!item) { this.sending = false; return; }
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({
-          method: 'set',
-          name: item.name,
-          value: item.value,
-          user: config.scratch.username,
-          project_id: this.projectId,
-        }) + '\n');
-      }
+      this.ws.send(JSON.stringify({
+        method: 'set',
+        name: item.name,
+        value: item.value,
+        user: config.scratch.username,
+        project_id: this.projectId,
+      }) + '\n');
       setTimeout(tick, 100);
     };
     tick();
