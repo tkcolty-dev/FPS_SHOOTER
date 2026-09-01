@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>☁ CloudLift</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Nunito', system-ui, sans-serif;
+    background: linear-gradient(180deg, #4aa8ff 0%, #7cc4ff 40%, #cde9ff 100%);
+    min-height: 100vh;
+    color: #17324d;
+    padding-bottom: 60px;
+  }
+  header { text-align: center; padding: 28px 16px 10px; color: #fff; }
+  header h1 { font-weight: 900; font-size: 2.4rem; text-shadow: 0 2px 8px rgba(0,60,120,.3); }
+  header p { font-weight: 700; opacity: .95; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
+  .card {
+    background: #fff; border-radius: 20px; padding: 18px 20px; margin-bottom: 16px;
+    box-shadow: 0 6px 20px rgba(0,60,120,.15);
+  }
+  .card h2 { font-size: 1.1rem; font-weight: 900; margin-bottom: 10px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type=text], input[type=password] {
+    font-family: inherit; font-weight: 700; font-size: .95rem;
+    padding: 10px 14px; border: 2px solid #cfe4f7; border-radius: 12px; outline: none;
+    flex: 1; min-width: 140px;
+  }
+  input:focus { border-color: #4aa8ff; }
+  button {
+    font-family: inherit; font-weight: 800; font-size: .9rem; cursor: pointer;
+    padding: 10px 16px; border: none; border-radius: 12px;
+    background: #ff9f1c; color: #fff; transition: transform .08s, filter .15s;
+  }
+  button:hover { filter: brightness(1.07); transform: translateY(-1px); }
+  button.blue { background: #2f80ed; }
+  button.green { background: #27ae60; }
+  button.ghost { background: #eaf4fe; color: #2f80ed; }
+  button.danger { background: #ffe3e3; color: #d63031; }
+  button.small { padding: 6px 10px; font-size: .8rem; border-radius: 10px; }
+  code.pill {
+    background: #eaf4fe; border-radius: 10px; padding: 8px 12px; font-weight: 700;
+    font-size: .85rem; word-break: break-all;
+  }
+  .muted { color: #6b8aa6; font-size: .85rem; font-weight: 700; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #eaf4fe; border-radius: 999px; padding: 4px 12px; font-weight: 800; font-size: .8rem; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #b0bec5; }
+  .dot.connected { background: #27ae60; box-shadow: 0 0 6px #27ae60; }
+  .dot.connecting { background: #f39c12; animation: pulse 1s infinite; }
+  .dot.offline, .dot.error { background: #e74c3c; }
+  @keyframes pulse { 50% { opacity: .4; } }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: #6b8aa6; padding: 6px 8px; }
+  td { padding: 8px; border-top: 1px solid #eef5fb; font-weight: 700; font-size: .92rem; vertical-align: middle; }
+  td.val { font-variant-numeric: tabular-nums; }
+  tr.flash td { animation: flash .8s; }
+  @keyframes flash { 0% { background: #fff3c4; } 100% { background: transparent; } }
+  .proj-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .proj-title { font-size: 1.25rem; font-weight: 900; }
+  .feed { margin-top: 12px; max-height: 150px; overflow-y: auto; background: #f6fbff; border-radius: 12px; padding: 10px 14px; font-size: .82rem; font-weight: 700; }
+  .feed div { padding: 2px 0; color: #4a6b8a; }
+  .feed b { color: #17324d; }
+  .spark { vertical-align: middle; }
+  .empty { text-align: center; color: #fff; font-weight: 800; padding: 30px; font-size: 1.05rem; text-shadow: 0 1px 4px rgba(0,60,120,.3); }
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: #17324d; color: #fff; font-weight: 800; padding: 12px 22px;
+    border-radius: 999px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 50;
+  }
+  .toast.show { opacity: 1; }
+  details.help { margin-top: 8px; }
+  details.help summary { cursor: pointer; font-weight: 800; color: #2f80ed; font-size: .88rem; }
+  details.help li { margin: 6px 0 6px 20px; font-size: .88rem; font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>☁ CloudLift</h1>
+  <p>Your own cloud-variable server — still synced with Scratch</p>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>🔌 Your cloud host</h2>
+    <div class="row">
+      <code class="pill" id="hostUrl"></code>
+      <button class="ghost small" onclick="copyText(hostUrlText())">Copy</button>
+    </div>
+    <details class="help">
+      <summary>How does this work?</summary>
+      <ul>
+        <li><b>Play through CloudLift:</b> hit ▶ Play on a project below — it opens in TurboWarp using <b>this server</b> for cloud variables. Fast updates, extra variables allowed, and you can watch everything live here.</li>
+        <li><b>Stay synced with Scratch:</b> log in below and turn on the 🌉 bridge — CloudLift connects to the real scratch.mit.edu cloud and keeps the ☁ variables matching <b>both ways</b>. People playing on the Scratch website share the same data!</li>
+        <li><b>Note:</b> the bridge needs a "Scratcher" account (not New Scratcher), and real Scratch only accepts number values.</li>
+      </ul>
+    </details>
+  </div>
+
+  <div class="card" id="accountCard">
+    <h2>🐱 Scratch account (for the bridge)</h2>
+    <div id="accountBody"></div>
+  </div>
+
+  <div class="card">
+    <h2>➕ Add a project</h2>
+    <div class="row">
+      <input type="text" id="projInput" placeholder="Paste a Scratch project link or ID" onkeydown="if(event.key==='Enter')addProject()">
+      <label style="font-weight:800;font-size:.85rem;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="projBridge" checked> 🌉 sync with Scratch
+      </label>
+      <button class="green" onclick="addProject()">Add</button>
+    </div>
+  </div>
+
+  <div id="projects"></div>
+  <div class="empty" id="emptyMsg" style="display:none">No projects yet — paste one above to get started! 🚀</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let state = { scratch: null, projects: {} };
+const flashSet = new Set(); // "projectId|name" to flash on next render
+
+function wsUrl() {
+  return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+}
+function hostUrlText() { return wsUrl(); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Copied! 📋'));
+}
+async function api(method, url, body) {
+  const res = await fetch(url, {
+    method, headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { toast('⚠️ ' + (j.error || 'Something went wrong')); throw new Error(j.error || 'error'); }
+  return j;
+}
+async function refresh() {
+  state = await (await fetch('/api/state')).json();
+  render();
+}
+
+// ---------- actions ----------
+async function login() {
+  const u = document.getElementById('su').value.trim();
+  const p = document.getElementById('sp').value;
+  if (!u || !p) return toast('Type your Scratch username and password');
+  const btn = document.getElementById('loginBtn');
+  btn.textContent = 'Logging in…'; btn.disabled = true;
+  try {
+    await api('POST', '/api/login', { username: u, password: p });
+    toast('Logged in! 🎉');
+    refresh();
+  } catch {} finally { btn.textContent = 'Log in'; btn.disabled = false; }
+}
+async function logout() { await api('POST', '/api/logout'); refresh(); }
+async function addProject() {
+  const id = document.getElementById('projInput').value.trim();
+  if (!id) return;
+  await api('POST', '/api/projects', { id, bridge: document.getElementById('projBridge').checked });
+  document.getElementById('projInput').value = '';
+  toast('Project added! ☁️');
+  refresh();
+}
+async function removeProject(id) {
+  if (!confirm('Remove this project from CloudLift? (Its saved variables here will be deleted)')) return;
+  await api('DELETE', '/api/projects/' + id);
+  refresh();
+}
+async function toggleBridge(id, on) {
+  if (on && !state.scratch) return toast('Log in to your Scratch account first!');
+  await api('POST', `/api/projects/${id}/bridge`, { on });
+  refresh();
+}
+async function editVar(id, name, current) {
+  const v = prompt('New value for ' + name + ':', current);
+  if (v === null) return;
+  await api('POST', `/api/projects/${id}/set`, { name, value: v });
+}
+async function addVar(id) {
+  const name = prompt('Variable name (start with ☁ if it should sync to Scratch):', '☁ ');
+  if (!name || !name.trim()) return;
+  const v = prompt('Starting value:', '0');
+  if (v === null) return;
+  await api('POST', `/api/projects/${id}/set`, { name: name.trim(), value: v });
+}
+async function deleteVar(id, name) {
+  if (!confirm('Delete ' + name + ' from CloudLift?')) return;
+  await api('DELETE', `/api/projects/${id}/vars/${encodeURIComponent(name)}`);
+}
+function playLink(id) {
+  return 'https://turbowarp.org/' + id + '?cloud_host=' + encodeURIComponent(wsUrl());
+}
+
+// ---------- rendering ----------
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function ago(t) {
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 5) return 'just now';
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  if (s < 86400) return Math.floor(s/3600) + 'h ago';
+  return Math.floor(s/86400) + 'd ago';
+}
+function sparkline(history, name) {
+  const pts = history.filter(h => h.name === name && isFinite(Number(h.value))).slice(-30).map(h => Number(h.value));
+  if (pts.length < 2) return '';
+  const w = 80, h = 24, min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
+  const step = w / (pts.length - 1);
+  const d = pts.map((v, i) => (i ? 'L' : 'M') + (i*step).toFixed(1) + ',' + (h - 3 - (v - min) / span * (h - 6)).toFixed(1)).join(' ');
+  return `<svg class="spark" width="${w}" height="${h}"><path d="${d}" fill="none" stroke="#2f80ed" stroke-width="2" stroke-linecap="round"/></svg>`;
+}
+function bridgeLabel(st) {
+  return { connected: 'Bridge: synced with Scratch', connecting: 'Bridge: connecting…',
+           offline: 'Bridge: reconnecting…', error: 'Bridge: problem', off: 'Bridge: off' }[st] || st;
+}
+function render() {
+  document.getElementById('hostUrl').textContent = wsUrl();
+
+  // account card
+  const acc = document.getElementById('accountBody');
+  if (state.scratch) {
+    acc.innerHTML = `<div class="row">
+      <span class="badge"><span class="dot connected"></span> Logged in as <b>&nbsp;${esc(state.scratch.username)}</b></span>
+      <button class="ghost small" onclick="logout()">Log out</button>
+    </div>`;
+  } else {
+    acc.innerHTML = `<div class="row">
+      <input type="text" id="su" placeholder="Scratch username" autocomplete="off">
+      <input type="password" id="sp" placeholder="Password" onkeydown="if(event.key==='Enter')login()">
+      <button class="blue" id="loginBtn" onclick="login()">Log in</button>
+    </div>
+    <p class="muted" style="margin-top:8px">Only needed for the 🌉 bridge. Your login is stored on <b>your</b> server and only used to talk to scratch.mit.edu.</p>`;
+  }
+
+  // projects
+  const ids = Object.keys(state.projects);
+  document.getElementById('emptyMsg').style.display = ids.length ? 'none' : 'block';
+  const holder = document.getElementById('projects');
+  holder.innerHTML = ids.map(id => {
+    const p = state.projects[id];
+    const vars = Object.entries(p.vars || {});
+    const feed = (p.history || []).slice(-15).reverse();
+    return `<div class="card">
+      <div class="proj-head">
+        <div>
+          <div class="proj-title">${esc(p.title || 'Project ' + id)}</div>
+          <div class="muted">${p.author ? 'by ' + esc(p.author) + ' · ' : ''}ID ${id}</div>
+        </div>
+        <div class="row">
+          <span class="badge">👾 ${p.players || 0} playing</span>
+          <span class="badge"><span class="dot ${esc(p.bridgeStatus)}"></span> ${bridgeLabel(p.bridgeStatus)}</span>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button class="green" onclick="window.open(playLink('${id}'))">▶ Play on my server</button>
+        <button class="ghost" onclick="copyText(playLink('${id}'))">Copy play link</button>
+        <button class="ghost" onclick="window.open('https://scratch.mit.edu/projects/${id}')">See on Scratch</button>
+        <button class="ghost" onclick="toggleBridge('${id}', ${!p.bridge})">${p.bridge ? '🌉 Bridge: ON' : '🌉 Bridge: off'}</button>
+        <button class="danger small" onclick="removeProject('${id}')">Remove</button>
+      </div>
+      ${vars.length ? `<table>
+        <tr><th>Variable</th><th>Value</th><th>Graph</th><th>Last set by</th><th>When</th><th></th></tr>
+        ${vars.map(([name, v]) => `
+          <tr class="${flashSet.has(id + '|' + name) ? 'flash' : ''}">
+            <td>${esc(name)}</td>
+            <td class="val">${esc(v.value)}</td>
+            <td>${sparkline(p.history || [], name)}</td>
+            <td>${esc(v.source || '')}</td>
+            <td class="muted">${ago(v.updated)}</td>
+            <td style="text-align:right;white-space:nowrap">
+              <button class="ghost small" onclick="editVar('${id}','${esc(name)}','${esc(v.value)}')">✏️</button>
+              <button class="danger small" onclick="deleteVar('${id}','${esc(name)}')">🗑</button>
+            </td>
+          </tr>`).join('')}
+      </table>` : `<p class="muted" style="margin-top:10px">No variables yet — they'll appear the moment someone plays (or the bridge hears from Scratch).</p>`}
+      <div class="row" style="margin-top:8px"><button class="ghost small" onclick="addVar('${id}')">+ Add variable</button></div>
+      ${feed.length ? `<div class="feed">${feed.map(h =>
+        `<div>☁ <b>${esc(h.name)}</b> → <b>${esc(h.value)}</b> <span style="opacity:.7">by ${esc(h.source)} · ${ago(h.t)}</span></div>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+  flashSet.clear();
+}
+
+// ---------- live updates ----------
+function connectLive() {
+  const ws = new WebSocket(wsUrl() + '/dash');
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'snapshot') { state = msg.state; render(); }
+    else if (msg.type === 'var') {
+      const p = state.projects[msg.projectId];
+      if (!p) return refresh();
+      p.vars[msg.name] = { value: msg.value, updated: msg.t, source: msg.source };
+      (p.history = p.history || []).push({ t: msg.t, name: msg.name, value: msg.value, source: msg.source });
+      flashSet.add(msg.projectId + '|' + msg.name);
+      render();
+    }
+    else if (msg.type === 'status') {
+      const p = state.projects[msg.projectId];
+      if (!p) return refresh();
+      p.bridgeStatus = msg.bridge; p.players = msg.players;
+      render();
+    }
+    else if (msg.type === 'login') { state.scratch = msg.username ? { username: msg.username } : null; render(); }
+    else if (msg.type === 'refresh') refresh();
+  };
+  ws.onclose = () => setTimeout(connectLive, 2000);
+}
+
+refresh();
+connectLive();
+setInterval(render, 30000); // keep "ago" times fresh
+</script>
+</body>
+</html>
