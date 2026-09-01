@@ -11,10 +11,12 @@ function getAI() {
   if (process.env.VCAP_SERVICES) {
     try {
       const vcap = JSON.parse(process.env.VCAP_SERVICES);
-      const genai = vcap.genai && vcap.genai[0];
-      if (genai) {
-        const ep = genai.credentials.endpoint || genai.credentials;
-        return { provider: 'genai', apiBase: ep.api_base, apiKey: ep.api_key };
+      for (const list of Object.values(vcap)) {
+        for (const svc of list || []) {
+          const c = svc.credentials || {};
+          const ep = (c.endpoint && c.endpoint.api_base) ? c.endpoint : c;
+          if (ep.api_base && ep.api_key) return { provider: 'genai', apiBase: ep.api_base, apiKey: ep.api_key };
+        }
       }
     } catch {}
   }
