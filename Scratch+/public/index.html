@@ -3,168 +3,297 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>☁ CloudLift</title>
+<title>☁ CloudLift — Mission Control</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>">
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Rubik:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg0: #0b1b33; --bg1: #102547; --panel: rgba(23, 48, 79, .72); --panel-solid: #16304f;
+    --line: #2c517e; --line-soft: rgba(77, 216, 255, .14);
+    --text: #eaf4ff; --mut: #8fb3d9;
+    --cyan: #4dd8ff; --orange: #ff9f43; --green: #3ddc84; --red: #ff6b6b;
+    --r: 18px;
+  }
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: 'Nunito', system-ui, sans-serif;
-    background: linear-gradient(180deg, #4aa8ff 0%, #7cc4ff 40%, #cde9ff 100%);
-    min-height: 100vh;
-    color: #17324d;
-    padding-bottom: 60px;
+    font-family: 'Rubik', system-ui, sans-serif;
+    background: linear-gradient(180deg, var(--bg0) 0%, var(--bg1) 55%, #143059 100%);
+    color: var(--text); min-height: 100vh; overflow-x: hidden;
   }
-  header { text-align: center; padding: 28px 16px 10px; color: #fff; }
-  header h1 { font-weight: 900; font-size: 2.4rem; text-shadow: 0 2px 8px rgba(0,60,120,.3); }
-  header p { font-weight: 700; opacity: .95; }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 16px; }
-  .card {
-    background: #fff; border-radius: 20px; padding: 18px 20px; margin-bottom: 16px;
-    box-shadow: 0 6px 20px rgba(0,60,120,.15);
+  /* ---- drifting sky ---- */
+  .sky { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
+  .star { position: absolute; width: 2px; height: 2px; border-radius: 50%; background: #cfeaff; opacity: .5; animation: twinkle 4s infinite; }
+  @keyframes twinkle { 50% { opacity: .12; } }
+  .cloudb { position: absolute; font-size: 90px; opacity: .05; filter: blur(1px); animation: drift linear infinite; }
+  @keyframes drift { from { transform: translateX(-140px); } to { transform: translateX(110vw); } }
+  @media (prefers-reduced-motion: reduce) { .star, .cloudb { animation: none; } }
+
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 20px 80px; }
+
+  /* ---- top bar ---- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 18px 0 6px;
   }
-  .card h2 { font-size: 1.1rem; font-weight: 900; margin-bottom: 10px; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  input[type=text], input[type=password] {
-    font-family: inherit; font-weight: 700; font-size: .95rem;
-    padding: 10px 14px; border: 2px solid #cfe4f7; border-radius: 12px; outline: none;
-    flex: 1; min-width: 140px;
+  .logo { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 1.5rem; letter-spacing: .01em; display: flex; align-items: center; gap: 10px; }
+  .logo .puff { filter: drop-shadow(0 0 10px rgba(77,216,255,.7)); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; font-weight: 500; font-size: .86rem; color: var(--text);
+    backdrop-filter: blur(8px); cursor: pointer; transition: border-color .2s;
   }
-  input:focus { border-color: #4aa8ff; }
+  .chip:hover { border-color: var(--cyan); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #5b7fa6; flex: none; }
+  .dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .dot.connecting { background: var(--orange); animation: pulse 1s infinite; }
+  .dot.offline, .dot.error { background: var(--red); }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  /* ---- hero ---- */
+  .hero { padding: 44px 0 20px; }
+  .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: .72rem; font-weight: 700; letter-spacing: .32em; color: var(--cyan); text-transform: uppercase; }
+  h1 {
+    font-family: 'Fredoka', sans-serif; font-weight: 600; line-height: 1.08;
+    font-size: clamp(2.1rem, 5.4vw, 3.4rem); margin: 12px 0 10px; max-width: 700px;
+  }
+  h1 em { font-style: normal; color: var(--cyan); text-shadow: 0 0 24px rgba(77,216,255,.45); }
+  .hero p.sub { color: var(--mut); font-size: 1.05rem; max-width: 560px; }
+  .hostline { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 22px; }
+  .hostpill {
+    font-family: 'JetBrains Mono', monospace; font-weight: 500; font-size: .85rem;
+    background: rgba(9, 22, 42, .8); border: 1px solid var(--line-soft); color: var(--cyan);
+    border-radius: 12px; padding: 11px 16px; word-break: break-all;
+  }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-top: 26px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--r);
+    padding: 14px 18px; backdrop-filter: blur(8px);
+  }
+  .stat b { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; display: block; }
+  .stat span { color: var(--mut); font-size: .78rem; font-weight: 500; }
+
+  /* ---- buttons ---- */
   button {
-    font-family: inherit; font-weight: 800; font-size: .9rem; cursor: pointer;
-    padding: 10px 16px; border: none; border-radius: 12px;
-    background: #ff9f1c; color: #fff; transition: transform .08s, filter .15s;
+    font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: .9rem; cursor: pointer;
+    border: none; border-radius: 12px; padding: 10px 18px; color: #0b1b33;
+    background: var(--cyan); transition: transform .12s, box-shadow .2s, filter .2s;
   }
-  button:hover { filter: brightness(1.07); transform: translateY(-1px); }
-  button.blue { background: #2f80ed; }
-  button.green { background: #27ae60; }
-  button.ghost { background: #eaf4fe; color: #2f80ed; }
-  button.danger { background: #ffe3e3; color: #d63031; }
-  button.small { padding: 6px 10px; font-size: .8rem; border-radius: 10px; }
-  code.pill {
-    background: #eaf4fe; border-radius: 10px; padding: 8px 12px; font-weight: 700;
-    font-size: .85rem; word-break: break-all;
+  button:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  button.orange { background: var(--orange); box-shadow: 0 4px 18px rgba(255,159,67,.25); }
+  button.green { background: var(--green); box-shadow: 0 4px 18px rgba(61,220,132,.22); }
+  button.ghost { background: transparent; color: var(--cyan); border: 1px solid var(--line); }
+  button.ghost:hover { border-color: var(--cyan); }
+  button.danger { background: transparent; color: var(--red); border: 1px solid rgba(255,107,107,.35); }
+  button.sm { padding: 6px 12px; font-size: .8rem; border-radius: 10px; }
+
+  input[type=text], input[type=password] {
+    font-family: 'Rubik', sans-serif; font-size: .95rem; color: var(--text);
+    background: rgba(9, 22, 42, .8); border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px 15px; outline: none; flex: 1; min-width: 150px; transition: border-color .2s;
   }
-  .muted { color: #6b8aa6; font-size: .85rem; font-weight: 700; }
-  .badge { display: inline-flex; align-items: center; gap: 6px; background: #eaf4fe; border-radius: 999px; padding: 4px 12px; font-weight: 800; font-size: .8rem; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; background: #b0bec5; }
-  .dot.connected { background: #27ae60; box-shadow: 0 0 6px #27ae60; }
-  .dot.connecting { background: #f39c12; animation: pulse 1s infinite; }
-  .dot.offline, .dot.error { background: #e74c3c; }
-  @keyframes pulse { 50% { opacity: .4; } }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th { text-align: left; font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: #6b8aa6; padding: 6px 8px; }
-  td { padding: 8px; border-top: 1px solid #eef5fb; font-weight: 700; font-size: .92rem; vertical-align: middle; }
-  td.val { font-variant-numeric: tabular-nums; }
-  tr.flash td { animation: flash .8s; }
-  @keyframes flash { 0% { background: #fff3c4; } 100% { background: transparent; } }
-  .proj-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
-  .proj-title { font-size: 1.25rem; font-weight: 900; }
-  .feed { margin-top: 12px; max-height: 150px; overflow-y: auto; background: #f6fbff; border-radius: 12px; padding: 10px 14px; font-size: .82rem; font-weight: 700; }
-  .feed div { padding: 2px 0; color: #4a6b8a; }
-  .feed b { color: #17324d; }
+  input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(77,216,255,.12); }
+  input::placeholder { color: #5b7fa6; }
+
+  /* ---- sections ---- */
+  section { margin-top: 54px; }
+  .sect-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
+  .sect-head h2 { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 1.45rem; }
+  .sect-head .tag { font-family: 'JetBrains Mono', monospace; font-size: .7rem; letter-spacing: .2em; color: var(--mut); text-transform: uppercase; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--r);
+    padding: 20px 22px; backdrop-filter: blur(10px); margin-bottom: 16px;
+  }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .mut { color: var(--mut); font-size: .85rem; }
+
+  /* ---- project cards ---- */
+  .proj-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .proj-title { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 1.3rem; }
+  .badge { display: inline-flex; align-items: center; gap: 7px; background: rgba(9,22,42,.7); border: 1px solid var(--line-soft); border-radius: 999px; padding: 5px 12px; font-size: .78rem; font-weight: 500; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); padding: 6px 8px; font-weight: 500; }
+  td { padding: 9px 8px; border-top: 1px solid rgba(44,81,126,.5); font-size: .92rem; vertical-align: middle; }
+  td.name { font-weight: 500; }
+  td.val { font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--cyan); }
+  tr.flash td { animation: flashrow 1s; }
+  @keyframes flashrow { 0% { background: rgba(77,216,255,.18); } 100% { background: transparent; } }
+  .feed { margin-top: 12px; max-height: 150px; overflow-y: auto; background: rgba(9,22,42,.55); border-radius: 12px; padding: 10px 14px; font-size: .8rem; }
+  .feed div { padding: 2.5px 0; color: var(--mut); }
+  .feed b { color: var(--text); font-weight: 500; }
+  .feed .v { color: var(--cyan); font-family: 'JetBrains Mono', monospace; }
+  .empty-msg { text-align: center; color: var(--mut); padding: 26px; font-size: .95rem; }
   .spark { vertical-align: middle; }
-  .empty { text-align: center; color: #fff; font-weight: 800; padding: 30px; font-size: 1.05rem; text-shadow: 0 1px 4px rgba(0,60,120,.3); }
-  .toast {
-    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-    background: #17324d; color: #fff; font-weight: 800; padding: 12px 22px;
-    border-radius: 999px; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 50;
+
+  /* ---- CloudLift TV ---- */
+  .tv { border: 1px solid var(--line-soft); border-radius: 22px; overflow: hidden; background: rgba(9, 20, 38, .85); backdrop-filter: blur(10px); }
+  .tv-screen { position: relative; background: #08131f; }
+  .tv-screen canvas { display: block; width: 100%; height: auto; }
+  .tv-caption {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 20px 16px; pointer-events: none;
+    background: linear-gradient(transparent, rgba(4, 10, 20, .88));
+    font-size: clamp(.85rem, 2.2vw, 1.02rem); font-weight: 500; text-shadow: 0 1px 4px #000;
+    min-height: 54px; display: flex; align-items: flex-end;
   }
-  .toast.show { opacity: 1; }
-  details.help { margin-top: 8px; }
-  details.help summary { cursor: pointer; font-weight: 800; color: #2f80ed; font-size: .88rem; }
-  details.help li { margin: 6px 0 6px 20px; font-size: .88rem; font-weight: 700; }
+  .tv-bigplay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(4, 10, 20, .35); cursor: pointer; border: none; border-radius: 0; transition: background .2s;
+  }
+  .tv-bigplay:hover { background: rgba(4, 10, 20, .2); transform: none; }
+  .tv-bigplay span {
+    width: 84px; height: 84px; border-radius: 50%; background: rgba(77,216,255,.92); color: #06121f;
+    display: flex; align-items: center; justify-content: center; font-size: 2rem; padding-left: 7px;
+    box-shadow: 0 0 40px rgba(77,216,255,.5);
+  }
+  .tv-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(10, 22, 40, .95); border-top: 1px solid var(--line-soft); }
+  .tv-bar button { flex: none; }
+  .tv-time { font-family: 'JetBrains Mono', monospace; font-size: .75rem; color: var(--mut); flex: none; min-width: 84px; text-align: right; }
+  .tv-scrub { flex: 1; appearance: none; height: 6px; border-radius: 3px; background: #24466f; outline: none; cursor: pointer; }
+  .tv-scrub::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--cyan); box-shadow: 0 0 10px rgba(77,216,255,.7); }
+  .episodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 14px 16px 16px; background: rgba(10, 22, 40, .95); }
+  .ep {
+    text-align: left; background: rgba(23, 48, 79, .6); border: 1px solid var(--line-soft); color: var(--text);
+    border-radius: 14px; padding: 12px 14px; font-family: 'Rubik', sans-serif; font-weight: 400;
+  }
+  .ep:hover { border-color: var(--cyan); transform: none; }
+  .ep.active { border-color: var(--cyan); background: rgba(77,216,255,.1); }
+  .ep .epnum { font-family: 'JetBrains Mono', monospace; font-size: .66rem; letter-spacing: .18em; color: var(--cyan); }
+  .ep .eptitle { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: .95rem; margin-top: 3px; }
+  .ep .eplen { font-size: .74rem; color: var(--mut); margin-top: 2px; }
+
+  /* ---- modal ---- */
+  .modal-bg { position: fixed; inset: 0; background: rgba(4, 10, 20, .7); display: none; align-items: center; justify-content: center; z-index: 40; padding: 20px; backdrop-filter: blur(4px); }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--panel-solid); border: 1px solid var(--line); border-radius: 20px; padding: 26px; width: 100%; max-width: 420px; }
+  .modal h3 { font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 1.25rem; margin-bottom: 6px; }
+  .modal .mut { margin-bottom: 16px; display: block; }
+  .modal .row { margin-top: 10px; }
+
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--cyan); color: #06121f; font-family: 'Fredoka', sans-serif; font-weight: 600;
+    padding: 12px 24px; border-radius: 999px; opacity: 0; transition: .3s; pointer-events: none; z-index: 60;
+    box-shadow: 0 8px 30px rgba(77,216,255,.4);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  footer { text-align: center; color: #4a6b93; font-size: .78rem; margin-top: 70px; font-family: 'JetBrains Mono', monospace; }
 </style>
 </head>
 <body>
-<header>
-  <h1>☁ CloudLift</h1>
-  <p>Your own cloud-variable server — still synced with Scratch</p>
-</header>
+
+<div class="sky" id="sky"></div>
 
 <div class="wrap">
-  <div class="card">
-    <h2>🔌 Your cloud host</h2>
-    <div class="row">
-      <code class="pill" id="hostUrl"></code>
-      <button class="ghost small" onclick="copyText(hostUrlText())">Copy</button>
+  <div class="topbar">
+    <div class="logo"><span class="puff">☁</span> CloudLift</div>
+    <div class="chip" id="accountChip" onclick="accountClick()"><span class="dot" id="accountDot"></span><span id="accountLabel">Log in to Scratch</span></div>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow">Mission Control</div>
+    <h1>Your cloud variables, on <em>your own server.</em></h1>
+    <p class="sub">Games stay on scratch.mit.edu like normal — CloudLift holds the data, shows every change live, and syncs both ways.</p>
+    <div class="hostline">
+      <span class="hostpill" id="hostUrl"></span>
+      <button class="ghost sm" onclick="copyText(wsUrl())">Copy host</button>
+      <button class="orange" onclick="document.getElementById('tv-anchor').scrollIntoView()">📺 Watch how it works</button>
     </div>
-    <details class="help">
-      <summary>How does this work?</summary>
-      <ul>
-        <li><b>Play through CloudLift:</b> hit ▶ Play on a project below — it opens in TurboWarp using <b>this server</b> for cloud variables. Fast updates, extra variables allowed, and you can watch everything live here.</li>
-        <li><b>Stay synced with Scratch:</b> log in below and turn on the 🌉 bridge — CloudLift connects to the real scratch.mit.edu cloud and keeps the ☁ variables matching <b>both ways</b>. People playing on the Scratch website share the same data!</li>
-        <li><b>Note:</b> the bridge needs a "Scratcher" account (not New Scratcher), and real Scratch only accepts number values.</li>
-      </ul>
-    </details>
-  </div>
-
-  <div class="card" id="accountCard">
-    <h2>🐱 Scratch account (for the bridge)</h2>
-    <div id="accountBody"></div>
-  </div>
-
-  <div class="card">
-    <h2>➕ Add a project</h2>
-    <div class="row">
-      <input type="text" id="projInput" placeholder="Paste a Scratch project link or ID" onkeydown="if(event.key==='Enter')addProject()">
-      <label style="font-weight:800;font-size:.85rem;display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="projBridge" checked> 🌉 sync with Scratch
-      </label>
-      <button class="green" onclick="addProject()">Add</button>
+    <div class="stats">
+      <div class="stat"><b id="statProjects">0</b><span>projects</span></div>
+      <div class="stat"><b id="statPlayers">0</b><span>playing right now</span></div>
+      <div class="stat"><b id="statChanges">0</b><span>changes today</span></div>
+      <div class="stat"><b id="statBridges">0</b><span>bridges synced</span></div>
     </div>
   </div>
 
-  <div id="projects"></div>
-  <div class="empty" id="emptyMsg" style="display:none">No projects yet — paste one above to get started! 🚀</div>
+  <section>
+    <div class="sect-head"><h2>Projects</h2><span class="tag">live</span></div>
+    <div class="card">
+      <div class="row">
+        <input type="text" id="projInput" placeholder="Paste a Scratch project link or ID" onkeydown="if(event.key==='Enter')addProject()">
+        <label style="font-size:.85rem;display:flex;align-items:center;gap:7px;color:var(--mut)">
+          <input type="checkbox" id="projBridge" checked style="accent-color:var(--cyan)"> sync with Scratch
+        </label>
+        <button class="green" onclick="addProject()">Add project</button>
+      </div>
+    </div>
+    <div id="projects"></div>
+    <div class="card empty-msg" id="emptyMsg" style="display:none">No projects yet — paste one of your Scratch games above and it goes live here. 🚀</div>
+  </section>
+
+  <section id="tv-anchor">
+    <div class="sect-head"><h2>📺 CloudLift TV</h2><span class="tag">tutorials</span></div>
+    <div class="tv">
+      <div class="tv-screen">
+        <canvas id="tvCanvas" width="880" height="495"></canvas>
+        <div class="tv-caption" id="tvCaption"></div>
+        <button class="tv-bigplay" id="tvBigPlay" onclick="tvToggle()" aria-label="Play tutorial"><span>▶</span></button>
+      </div>
+      <div class="tv-bar">
+        <button class="sm" id="tvPlayBtn" onclick="tvToggle()">▶</button>
+        <input type="range" class="tv-scrub" id="tvScrub" min="0" max="1000" value="0" aria-label="Seek">
+        <span class="tv-time" id="tvTime">0:00 / 0:00</span>
+      </div>
+      <div class="episodes" id="tvEpisodes"></div>
+    </div>
+  </section>
+</div>
+
+<div class="modal-bg" id="loginModal">
+  <div class="modal">
+    <h3>🐱 Connect your Scratch account</h3>
+    <span class="mut">Powers the bridge that syncs ☁ variables with scratch.mit.edu. Your login stays on your server and only talks to Scratch.</span>
+    <div class="row"><input type="text" id="su" placeholder="Scratch username" autocomplete="off"></div>
+    <div class="row"><input type="password" id="sp" placeholder="Password" onkeydown="if(event.key==='Enter')login()"></div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="ghost" onclick="closeModal()">Cancel</button>
+      <button id="loginBtn" onclick="login()">Log in</button>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
+<footer>☁ cloudlift · your server · synced with scratch</footer>
 
 <script>
+/* ============================ dashboard core ============================ */
 let state = { scratch: null, projects: {} };
-const flashSet = new Set(); // "projectId|name" to flash on next render
+const flashSet = new Set();
 
-function wsUrl() {
-  return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
-}
-function hostUrlText() { return wsUrl(); }
-
+function wsUrl() { return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host; }
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2200);
 }
-function copyText(text) {
-  navigator.clipboard.writeText(text).then(() => toast('Copied! 📋'));
-}
+function copyText(text) { navigator.clipboard.writeText(text).then(() => toast('Copied 📋')); }
 async function api(method, url, body) {
-  const res = await fetch(url, {
-    method, headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const j = await res.json().catch(() => ({}));
   if (!res.ok) { toast('⚠️ ' + (j.error || 'Something went wrong')); throw new Error(j.error || 'error'); }
   return j;
 }
-async function refresh() {
-  state = await (await fetch('/api/state')).json();
-  render();
-}
+async function refresh() { state = await (await fetch('/api/state')).json(); render(); }
 
-// ---------- actions ----------
+function accountClick() {
+  if (state.scratch) { if (confirm('Log out of ' + state.scratch.username + '?')) logout(); }
+  else document.getElementById('loginModal').classList.add('show');
+}
+function closeModal() { document.getElementById('loginModal').classList.remove('show'); }
+document.getElementById('loginModal').addEventListener('click', (e) => { if (e.target.id === 'loginModal') closeModal(); });
+
 async function login() {
-  const u = document.getElementById('su').value.trim();
-  const p = document.getElementById('sp').value;
+  const u = document.getElementById('su').value.trim(), p = document.getElementById('sp').value;
   if (!u || !p) return toast('Type your Scratch username and password');
   const btn = document.getElementById('loginBtn');
   btn.textContent = 'Logging in…'; btn.disabled = true;
-  try {
-    await api('POST', '/api/login', { username: u, password: p });
-    toast('Logged in! 🎉');
-    refresh();
-  } catch {} finally { btn.textContent = 'Log in'; btn.disabled = false; }
+  try { await api('POST', '/api/login', { username: u, password: p }); toast('Logged in 🎉'); closeModal(); refresh(); }
+  catch {} finally { btn.textContent = 'Log in'; btn.disabled = false; }
 }
 async function logout() { await api('POST', '/api/logout'); refresh(); }
 async function addProject() {
@@ -172,18 +301,15 @@ async function addProject() {
   if (!id) return;
   await api('POST', '/api/projects', { id, bridge: document.getElementById('projBridge').checked });
   document.getElementById('projInput').value = '';
-  toast('Project added! ☁️');
-  refresh();
+  toast('Project added ☁'); refresh();
 }
 async function removeProject(id) {
-  if (!confirm('Remove this project from CloudLift? (Its saved variables here will be deleted)')) return;
-  await api('DELETE', '/api/projects/' + id);
-  refresh();
+  if (!confirm('Remove this project from CloudLift? Its saved variables here will be deleted.')) return;
+  await api('DELETE', '/api/projects/' + id); refresh();
 }
 async function toggleBridge(id, on) {
-  if (on && !state.scratch) return toast('Log in to your Scratch account first!');
-  await api('POST', `/api/projects/${id}/bridge`, { on });
-  refresh();
+  if (on && !state.scratch) { toast('Connect your Scratch account first'); return accountClick(); }
+  await api('POST', `/api/projects/${id}/bridge`, { on }); refresh();
 }
 async function editVar(id, name, current) {
   const v = prompt('New value for ' + name + ':', current);
@@ -191,7 +317,7 @@ async function editVar(id, name, current) {
   await api('POST', `/api/projects/${id}/set`, { name, value: v });
 }
 async function addVar(id) {
-  const name = prompt('Variable name (start with ☁ if it should sync to Scratch):', '☁ ');
+  const name = prompt('Variable name (start with ☁ so it syncs to Scratch):', '☁ ');
   if (!name || !name.trim()) return;
   const v = prompt('Starting value:', '0');
   if (v === null) return;
@@ -201,11 +327,8 @@ async function deleteVar(id, name) {
   if (!confirm('Delete ' + name + ' from CloudLift?')) return;
   await api('DELETE', `/api/projects/${id}/vars/${encodeURIComponent(name)}`);
 }
-function playLink(id) {
-  return 'https://turbowarp.org/' + id + '?cloud_host=' + encodeURIComponent(wsUrl());
-}
+function playLink(id) { return 'https://turbowarp.org/' + id + '?cloud_host=' + encodeURIComponent(wsUrl()); }
 
-// ---------- rendering ----------
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function ago(t) {
   const s = Math.floor((Date.now() - t) / 1000);
@@ -218,39 +341,39 @@ function ago(t) {
 function sparkline(history, name) {
   const pts = history.filter(h => h.name === name && isFinite(Number(h.value))).slice(-30).map(h => Number(h.value));
   if (pts.length < 2) return '';
-  const w = 80, h = 24, min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
+  const w = 84, h = 26, min = Math.min(...pts), max = Math.max(...pts), span = (max - min) || 1;
   const step = w / (pts.length - 1);
   const d = pts.map((v, i) => (i ? 'L' : 'M') + (i*step).toFixed(1) + ',' + (h - 3 - (v - min) / span * (h - 6)).toFixed(1)).join(' ');
-  return `<svg class="spark" width="${w}" height="${h}"><path d="${d}" fill="none" stroke="#2f80ed" stroke-width="2" stroke-linecap="round"/></svg>`;
+  return `<svg class="spark" width="${w}" height="${h}"><path d="${d}" fill="none" stroke="#4dd8ff" stroke-width="2" stroke-linecap="round" opacity=".9"/></svg>`;
 }
 function bridgeLabel(st) {
-  return { connected: 'Bridge: synced with Scratch', connecting: 'Bridge: connecting…',
-           offline: 'Bridge: reconnecting…', error: 'Bridge: problem', off: 'Bridge: off' }[st] || st;
+  return { connected: 'synced with Scratch', connecting: 'connecting…', offline: 'reconnecting…', error: 'bridge problem', off: 'bridge off' }[st] || st;
 }
+
 function render() {
   document.getElementById('hostUrl').textContent = wsUrl();
 
-  // account card
-  const acc = document.getElementById('accountBody');
-  if (state.scratch) {
-    acc.innerHTML = `<div class="row">
-      <span class="badge"><span class="dot connected"></span> Logged in as <b>&nbsp;${esc(state.scratch.username)}</b></span>
-      <button class="ghost small" onclick="logout()">Log out</button>
-    </div>`;
-  } else {
-    acc.innerHTML = `<div class="row">
-      <input type="text" id="su" placeholder="Scratch username" autocomplete="off">
-      <input type="password" id="sp" placeholder="Password" onkeydown="if(event.key==='Enter')login()">
-      <button class="blue" id="loginBtn" onclick="login()">Log in</button>
-    </div>
-    <p class="muted" style="margin-top:8px">Only needed for the 🌉 bridge. Your login is stored on <b>your</b> server and only used to talk to scratch.mit.edu.</p>`;
-  }
+  // account chip
+  const dot = document.getElementById('accountDot'), label = document.getElementById('accountLabel');
+  if (state.scratch) { dot.className = 'dot connected'; label.textContent = state.scratch.username; }
+  else { dot.className = 'dot'; label.textContent = 'Log in to Scratch'; }
 
-  // projects
+  // stats
   const ids = Object.keys(state.projects);
+  const dayStart = new Date(); dayStart.setHours(0,0,0,0);
+  let players = 0, changes = 0, bridges = 0;
+  for (const p of Object.values(state.projects)) {
+    players += p.players || 0;
+    if (p.bridgeStatus === 'connected') bridges++;
+    changes += (p.history || []).filter(h => h.t >= dayStart.getTime()).length;
+  }
+  statProjects.textContent = ids.length;
+  statPlayers.textContent = players;
+  statChanges.textContent = changes;
+  statBridges.textContent = bridges;
+
   document.getElementById('emptyMsg').style.display = ids.length ? 'none' : 'block';
-  const holder = document.getElementById('projects');
-  holder.innerHTML = ids.map(id => {
+  document.getElementById('projects').innerHTML = ids.map(id => {
     const p = state.projects[id];
     const vars = Object.entries(p.vars || {});
     const feed = (p.history || []).slice(-15).reverse();
@@ -258,44 +381,43 @@ function render() {
       <div class="proj-head">
         <div>
           <div class="proj-title">${esc(p.title || 'Project ' + id)}</div>
-          <div class="muted">${p.author ? 'by ' + esc(p.author) + ' · ' : ''}ID ${id}</div>
+          <div class="mut">${p.author ? 'by ' + esc(p.author) + ' · ' : ''}ID ${id}</div>
         </div>
         <div class="row">
           <span class="badge">👾 ${p.players || 0} playing</span>
           <span class="badge"><span class="dot ${esc(p.bridgeStatus)}"></span> ${bridgeLabel(p.bridgeStatus)}</span>
         </div>
       </div>
-      <div class="row" style="margin-top:12px">
+      <div class="row" style="margin-top:14px">
         <button class="green" onclick="window.open(playLink('${id}'))">▶ Play on my server</button>
-        <button class="ghost" onclick="copyText(playLink('${id}'))">Copy play link</button>
-        <button class="ghost" onclick="window.open('https://scratch.mit.edu/projects/${id}')">See on Scratch</button>
-        <button class="ghost" onclick="toggleBridge('${id}', ${!p.bridge})">${p.bridge ? '🌉 Bridge: ON' : '🌉 Bridge: off'}</button>
-        <button class="danger small" onclick="removeProject('${id}')">Remove</button>
+        <button class="ghost sm" onclick="copyText(playLink('${id}'))">Copy play link</button>
+        <button class="ghost sm" onclick="window.open('https://scratch.mit.edu/projects/${id}')">See on Scratch</button>
+        <button class="ghost sm" onclick="toggleBridge('${id}', ${!p.bridge})">${p.bridge ? '🌉 Bridge on' : '🌉 Bridge off'}</button>
+        <button class="danger sm" onclick="removeProject('${id}')">Remove</button>
       </div>
       ${vars.length ? `<table>
         <tr><th>Variable</th><th>Value</th><th>Graph</th><th>Last set by</th><th>When</th><th></th></tr>
         ${vars.map(([name, v]) => `
           <tr class="${flashSet.has(id + '|' + name) ? 'flash' : ''}">
-            <td>${esc(name)}</td>
+            <td class="name">${esc(name)}</td>
             <td class="val">${esc(v.value)}</td>
             <td>${sparkline(p.history || [], name)}</td>
-            <td>${esc(v.source || '')}</td>
-            <td class="muted">${ago(v.updated)}</td>
+            <td class="mut">${esc(v.source || '')}</td>
+            <td class="mut">${ago(v.updated)}</td>
             <td style="text-align:right;white-space:nowrap">
-              <button class="ghost small" onclick="editVar('${id}','${esc(name)}','${esc(v.value)}')">✏️</button>
-              <button class="danger small" onclick="deleteVar('${id}','${esc(name)}')">🗑</button>
+              <button class="ghost sm" onclick="editVar('${id}','${esc(name)}','${esc(v.value)}')">✏️</button>
+              <button class="danger sm" onclick="deleteVar('${id}','${esc(name)}')">🗑</button>
             </td>
           </tr>`).join('')}
-      </table>` : `<p class="muted" style="margin-top:10px">No variables yet — they'll appear the moment someone plays (or the bridge hears from Scratch).</p>`}
-      <div class="row" style="margin-top:8px"><button class="ghost small" onclick="addVar('${id}')">+ Add variable</button></div>
+      </table>` : `<p class="mut" style="margin-top:12px">No variables yet — they appear the moment someone plays, or the bridge hears from Scratch.</p>`}
+      <div class="row" style="margin-top:10px"><button class="ghost sm" onclick="addVar('${id}')">+ Add variable</button></div>
       ${feed.length ? `<div class="feed">${feed.map(h =>
-        `<div>☁ <b>${esc(h.name)}</b> → <b>${esc(h.value)}</b> <span style="opacity:.7">by ${esc(h.source)} · ${ago(h.t)}</span></div>`).join('')}</div>` : ''}
+        `<div>☁ <b>${esc(h.name)}</b> → <span class="v">${esc(h.value)}</span> by ${esc(h.source)} · ${ago(h.t)}</div>`).join('')}</div>` : ''}
     </div>`;
   }).join('');
   flashSet.clear();
 }
 
-// ---------- live updates ----------
 function connectLive() {
   const ws = new WebSocket(wsUrl() + '/dash');
   ws.onmessage = (e) => {
@@ -312,8 +434,7 @@ function connectLive() {
     else if (msg.type === 'status') {
       const p = state.projects[msg.projectId];
       if (!p) return refresh();
-      p.bridgeStatus = msg.bridge; p.players = msg.players;
-      render();
+      p.bridgeStatus = msg.bridge; p.players = msg.players; render();
     }
     else if (msg.type === 'login') { state.scratch = msg.username ? { username: msg.username } : null; render(); }
     else if (msg.type === 'refresh') refresh();
@@ -321,9 +442,423 @@ function connectLive() {
   ws.onclose = () => setTimeout(connectLive, 2000);
 }
 
-refresh();
-connectLive();
-setInterval(render, 30000); // keep "ago" times fresh
+/* ---- night sky ---- */
+(function makeSky() {
+  const sky = document.getElementById('sky');
+  for (let i = 0; i < 46; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random()*100 + 'vw';
+    s.style.top = Math.random()*100 + 'vh';
+    s.style.animationDelay = (Math.random()*4) + 's';
+    sky.appendChild(s);
+  }
+  for (let i = 0; i < 5; i++) {
+    const c = document.createElement('div');
+    c.className = 'cloudb'; c.textContent = '☁';
+    c.style.top = (5 + Math.random()*70) + 'vh';
+    c.style.fontSize = (60 + Math.random()*90) + 'px';
+    c.style.animationDuration = (70 + Math.random()*90) + 's';
+    c.style.animationDelay = (-Math.random()*120) + 's';
+    sky.appendChild(c);
+  }
+})();
+
+refresh(); connectLive();
+setInterval(render, 30000);
+
+/* ============================ CloudLift TV ============================ */
+/* Hand-animated tutorial "videos" drawn on canvas, frame by frame. */
+const TV = (() => {
+  const C = { bg:'#0d1f38', panel:'#16304f', panel2:'#1d3c63', line:'#2c517e', text:'#eaf4ff', mut:'#8fb3d9', cyan:'#4dd8ff', orange:'#ff9f43', green:'#3ddc84', red:'#ff6b6b', dark:'#08131f' };
+  const cv = document.getElementById('tvCanvas'), ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+
+  const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+  const seg = (t,a,b) => clamp((t-a)/(b-a), 0, 1);
+  const ez = p => p < .5 ? 2*p*p : 1 - Math.pow(-2*p+2, 2)/2;
+  const lerp = (a,b,p) => a + (b-a)*p;
+  function rr(x,y,w,h,r) { ctx.beginPath(); ctx.roundRect(x,y,w,h,r); }
+  function text(str, x, y, size, color, font, align) {
+    ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle';
+    ctx.font = (font || '500') + ' ' + size + 'px Rubik, sans-serif';
+    ctx.fillText(str, x, y);
+  }
+  function ftext(str, x, y, size, color, weight, align) {
+    ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle';
+    ctx.font = (weight || 600) + ' ' + size + 'px Fredoka, sans-serif';
+    ctx.fillText(str, x, y);
+  }
+  function mono(str, x, y, size, color, align) {
+    ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.textBaseline = 'middle';
+    ctx.font = '700 ' + size + 'px "JetBrains Mono", monospace';
+    ctx.fillText(str, x, y);
+  }
+
+  function bgSky(t) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#0b1b33'); g.addColorStop(1, '#143059');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = .06; ctx.fillStyle = '#fff';
+    ctx.font = '90px serif'; ctx.textAlign = 'center';
+    ctx.fillText('☁', (t*14) % (W+200) - 100, 90);
+    ctx.fillText('☁', (t*9 + 400) % (W+200) - 100, 350);
+    ctx.globalAlpha = 1;
+  }
+
+  // ----- reusable mini-UI -----
+  function browser(x, y, w, h, url) {
+    rr(x, y, w, h, 14); ctx.fillStyle = C.dark; ctx.fill();
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1.5; ctx.stroke();
+    rr(x, y, w, 34, [14,14,0,0]); ctx.fillStyle = C.panel; ctx.fill();
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(x+20+i*18, y+17, 5, 0, 7); ctx.fillStyle = [C.red, C.orange, C.green][i]; ctx.fill(); }
+    rr(x+72, y+8, w-92, 19, 9); ctx.fillStyle = '#0a1728'; ctx.fill();
+    mono(url, x+82, y+18, 10.5, C.mut);
+  }
+  function dashChrome(x, y, w) {
+    ftext('☁ CloudLift', x+18, y+58, 17, C.cyan);
+    text('Mission Control', x+18, y+78, 10, C.mut);
+  }
+  function inputBox(x, y, w, label, typed, focus) {
+    rr(x, y, w, 32, 10); ctx.fillStyle = '#0a1728'; ctx.fill();
+    ctx.strokeStyle = focus ? C.cyan : C.line; ctx.lineWidth = focus ? 2 : 1.2; ctx.stroke();
+    if (typed) mono(typed, x+12, y+16, 11, C.text);
+    else text(label, x+12, y+16, 11, '#5b7fa6');
+  }
+  function btn(x, y, w, h, label, color) {
+    rr(x, y, w, h, 9); ctx.fillStyle = color || C.cyan; ctx.fill();
+    ftext(label, x+w/2, y+h/2+1, 12, '#0b1b33', 600, 'center');
+  }
+  function varRow(x, y, w, name, value, hot) {
+    if (hot) { rr(x-6, y-13, w+12, 28, 8); ctx.fillStyle = 'rgba(77,216,255,.14)'; ctx.fill(); }
+    text(name, x, y, 12.5, C.text);
+    mono(value, x+w, y, 13, C.cyan, 'right');
+    ctx.strokeStyle = 'rgba(44,81,126,.5)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x-4, y+14); ctx.lineTo(x+w+4, y+14); ctx.stroke();
+  }
+  function cursor(x, y, click) {
+    if (click > 0) {
+      ctx.beginPath(); ctx.arc(x, y, 10 + click*22, 0, 7);
+      ctx.strokeStyle = `rgba(77,216,255,${(1-click)*.8})`; ctx.lineWidth = 3; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+12, y+13); ctx.lineTo(x+6.6, y+13.6); ctx.lineTo(x+9.5, y+20.5); ctx.lineTo(x+6, y+22); ctx.lineTo(x+3, y+14.8); ctx.lineTo(x-1, y+19); ctx.closePath();
+    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0b1b33'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  // keyframed cursor: [{t,x,y,click?}]
+  function cursorAt(keys, t) {
+    let a = keys[0], b = keys[keys.length-1], click = 0;
+    for (let i = 0; i < keys.length-1; i++) if (t >= keys[i].t && t <= keys[i+1].t) { a = keys[i]; b = keys[i+1]; break; }
+    if (t > keys[keys.length-1].t) a = b = keys[keys.length-1];
+    const p = a === b ? 1 : ez(seg(t, a.t, b.t));
+    for (const k of keys) if (k.click && t >= k.t && t < k.t + .5) click = (t - k.t) / .5;
+    return { x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), click };
+  }
+  function typed(str, t, a, b) { return str.slice(0, Math.floor(seg(t,a,b) * str.length)); }
+  function titleCard(t, until, num, title, sub) {
+    const fade = 1 - seg(t, until-.6, until);
+    if (fade <= 0) return false;
+    ctx.globalAlpha = fade;
+    const pop = ez(seg(t, .1, .8));
+    ftext('☁', W/2, H/2 - 96 + (1-pop)*20, 64, C.cyan, 600, 'center');
+    mono('EPISODE ' + num, W/2, H/2 - 30, 13, C.orange, 'center');
+    ftext(title, W/2, H/2 + 10, 34, C.text, 600, 'center');
+    text(sub, W/2, H/2 + 52, 15, C.mut, '400', 'center');
+    ctx.globalAlpha = 1;
+    return t < until;
+  }
+  function endCard(t, from, msg) {
+    const p = seg(t, from, from+.7);
+    if (p <= 0) return;
+    ctx.fillStyle = `rgba(8,19,31,${p*.82})`; ctx.fillRect(0,0,W,H);
+    ctx.globalAlpha = p;
+    ftext(msg, W/2, H/2 - 8, 30, C.cyan, 600, 'center');
+    text('☁ CloudLift TV', W/2, H/2 + 32, 13, C.mut, '400', 'center');
+    ctx.globalAlpha = 1;
+  }
+  function node(x, y, emoji, label, sub) {
+    rr(x-70, y-52, 140, 104, 16); ctx.fillStyle = C.panel; ctx.fill();
+    ctx.strokeStyle = C.line; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.font = '34px serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+    ctx.fillText(emoji, x, y - 12);
+    ftext(label, x, y + 20, 13, C.text, 600, 'center');
+    text(sub, x, y + 38, 9.5, C.mut, '400', 'center');
+  }
+  function flow(x1, x2, y, t, color, dir) {
+    ctx.strokeStyle = 'rgba(44,81,126,.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+    for (let i = 0; i < 3; i++) {
+      let p = ((t*.55 + i/3) % 1);
+      if (dir < 0) p = 1 - p;
+      const x = lerp(x1+8, x2-8, p);
+      ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 7);
+      ctx.fillStyle = color; ctx.fill();
+    }
+  }
+
+  /* ----- Episode 1: Add your project ----- */
+  const ep1 = {
+    num: 1, title: 'Add your project', dur: 26,
+    caps: [
+      [0, 3.6, "Hey! Let's put your first game on CloudLift."],
+      [3.8, 8.5, 'This is your dashboard. Paste your Scratch project link in the box…'],
+      [8.5, 12.5, '…any project link from scratch.mit.edu works.'],
+      [12.5, 15.5, 'Hit Add project…'],
+      [15.5, 21.5, 'Boom — CloudLift grabs the title, and your ☁ variables show up the second anyone plays.'],
+      [21.5, 26, 'Your game is live on your own server. That was it!'],
+    ],
+    draw(t) {
+      bgSky(t);
+      if (titleCard(t, 3.8, 1, 'Add your project', 'Get your game onto CloudLift in 20 seconds')) return;
+      const bx = 90, by = 40, bw = W-180, bh = H-90;
+      browser(bx, by, bw, bh, 'cloudlift.apps.tas-ndc.kuhn-labs.com');
+      dashChrome(bx, by, bw);
+      const url = 'scratch.mit.edu/projects/1198245886';
+      inputBox(bx+30, by+100, bw-230, 'Paste a Scratch project link or ID', typed(url, t, 8.6, 12.2), t > 8 && t < 13);
+      btn(bx+bw-180, by+100, 130, 32, 'Add project', C.green);
+      const added = seg(t, 14.4, 15.2);
+      if (added > 0) {
+        ctx.globalAlpha = added;
+        const cy0 = by+160 + (1-ez(added))*24;
+        rr(bx+30, cy0, bw-60, 170, 14); ctx.fillStyle = C.panel; ctx.fill();
+        ctx.strokeStyle = C.line; ctx.stroke();
+        ftext('BLOCK INVADERS REMASTERED', bx+50, cy0+30, 16, C.text);
+        text('by plane3465 · ID 1198245886', bx+50, cy0+52, 10.5, C.mut);
+        const rows = [['☁ WORLD RECORD', 2200], ['☁ PLAYER 1', 0], ['☁ PLAYER 2', 0]];
+        rows.forEach((r, i) => {
+          const rp = seg(t, 16 + i*1.1, 16.8 + i*1.1);
+          if (rp > 0) {
+            ctx.globalAlpha = added * rp;
+            varRow(bx+50, cy0+86+i*26, bw-140, r[0], String(Math.round(r[1]*ez(rp))), rp < 1);
+          }
+        });
+        ctx.globalAlpha = 1;
+      }
+      const cur = cursorAt([
+        {t:4, x:W-160, y:H-80}, {t:8, x:bx+140, y:by+116, click:1},
+        {t:13, x:bx+bw-115, y:by+116}, {t:14, x:bx+bw-115, y:by+116, click:1},
+        {t:16, x:bx+bw-260, y:by+240},
+      ], t);
+      if (t > 3.8) cursor(cur.x, cur.y, cur.click);
+      endCard(t, 22, 'Your game is live ☁');
+    },
+  };
+
+  /* ----- Episode 2: The Scratch bridge ----- */
+  const ep2 = {
+    num: 2, title: 'The Scratch bridge', dur: 30,
+    caps: [
+      [0, 3.6, 'The bridge is the magic part — it keeps Scratch and your server in sync.'],
+      [3.8, 8.2, 'First, connect your Scratch account. Your login stays on YOUR server.'],
+      [8.2, 12.2, 'Now flip the bridge on for your project…'],
+      [12.4, 18.5, 'CloudLift joins your game on scratch.mit.edu like an invisible player.'],
+      [18.5, 24.5, 'When anyone playing on Scratch changes a ☁ variable, it flows to your server — and back the other way too.'],
+      [24.5, 30, 'Both sides always agree. One shared brain. 🧠'],
+    ],
+    draw(t) {
+      bgSky(t);
+      if (titleCard(t, 3.8, 2, 'The Scratch bridge', 'Sync ☁ variables both ways with scratch.mit.edu')) return;
+      if (t < 12.4) {
+        // login modal
+        const mp = ez(seg(t, 3.9, 4.6));
+        ctx.globalAlpha = mp;
+        const mx = W/2-170, my = H/2-120 + (1-mp)*18;
+        rr(mx, my, 340, 208, 16); ctx.fillStyle = C.panel2; ctx.fill();
+        ctx.strokeStyle = C.line; ctx.stroke();
+        ftext('🐱 Connect Scratch account', mx+24, my+32, 15, C.text);
+        inputBox(mx+24, my+58, 292, 'Username', typed('plane3465', t, 5, 6.6), t > 4.8 && t < 6.8);
+        inputBox(mx+24, my+100, 292, 'Password', typed('•••••••••', t, 6.9, 8.3), t > 6.8 && t < 8.4);
+        btn(mx+206, my+150, 110, 32, t > 9.6 ? 'Done ✓' : 'Log in', t > 9.6 ? C.green : C.cyan);
+        ctx.globalAlpha = 1;
+        // bridge toggle appears
+        const bp = ez(seg(t, 10.2, 10.9));
+        if (bp > 0) {
+          ctx.globalAlpha = bp;
+          btn(W/2-90, H-90, 180, 40, t > 11.6 ? '🌉 Bridge on' : '🌉 Bridge off', t > 11.6 ? C.orange : C.panel);
+          ctx.globalAlpha = 1;
+        }
+        const cur = cursorAt([
+          {t:4.6, x:W/2+120, y:H/2+100}, {t:5, x:mx+120, y:my+74, click:1},
+          {t:6.9, x:mx+120, y:my+116, click:1}, {t:9, x:mx+260, y:my+166}, {t:9.5, x:mx+260, y:my+166, click:1},
+          {t:11, x:W/2, y:H-70}, {t:11.5, x:W/2, y:H-70, click:1},
+        ], t);
+        cursor(cur.x, cur.y, cur.click);
+        return;
+      }
+      // sync diagram
+      const p = ez(seg(t, 12.4, 13.2));
+      ctx.globalAlpha = p;
+      node(W/2-250, H/2-20, '🐱', 'Scratch cloud', 'players on scratch.mit.edu');
+      node(W/2+250, H/2-20, '☁', 'CloudLift', 'your server + dashboard');
+      ftext('🌉', W/2, H/2-70, 30, C.text, 600, 'center');
+      flow(W/2-178, W/2+178, H/2-40, t, C.orange, 1);
+      flow(W/2-178, W/2+178, H/2, t, C.cyan, -1);
+      if (t > 18.5) {
+        const vp = seg(t, 18.5, 19.2);
+        ctx.globalAlpha = p * vp;
+        const score = 2200 + Math.round(ez(seg(t, 19.5, 22)) * 350);
+        rr(W/2-150, H/2+70, 300, 44, 12); ctx.fillStyle = '#0a1728'; ctx.fill();
+        ctx.strokeStyle = seg(t,19.5,22) < 1 && seg(t,19.5,22) > 0 ? C.cyan : C.line; ctx.stroke();
+        text('☁ WORLD RECORD', W/2-132, H/2+92, 12.5, C.text);
+        mono(String(score), W/2+132, H/2+92, 15, C.cyan, 'right');
+      }
+      ctx.globalAlpha = 1;
+      endCard(t, 26, 'Both sides, one shared brain 🌉');
+    },
+  };
+
+  /* ----- Episode 3: Watch & edit live ----- */
+  const ep3 = {
+    num: 3, title: 'Watch & edit live', dur: 26,
+    caps: [
+      [0, 3.6, 'Your dashboard is a live window into the game.'],
+      [3.8, 9, 'Someone is playing right now — watch the world record climb in real time.'],
+      [9, 13.5, 'Every change shows who set it, with a little graph of its history.'],
+      [13.5, 18.5, 'And YOU are in control. Tap ✏️ to change any value yourself…'],
+      [18.5, 23, '…and every player gets the new value within a second. Great for fixing cheated scores!'],
+      [23, 26, 'You run the cloud now. ☁'],
+    ],
+    draw(t) {
+      bgSky(t);
+      if (titleCard(t, 3.8, 3, 'Watch & edit live', 'See every ☁ change — and change them yourself')) return;
+      const bx = 90, by = 40, bw = W-180, bh = H-90;
+      browser(bx, by, bw, bh, 'cloudlift — BLOCK INVADERS');
+      dashChrome(bx, by, bw);
+      const score = t < 9 ? 2200 + Math.round(ez(seg(t, 4.5, 9)) * 412) : (t < 19.8 ? 2612 : Math.round(2612 * (1 - ez(seg(t, 19.8, 20.6)))));
+      const rows = [['☁ WORLD RECORD', score, (t > 4.5 && t < 9) || (t > 19.6 && t < 21)], ['☁ PLAYER 1', 1, false], ['☁ PLAYER 2', 0, false]];
+      rows.forEach((r, i) => varRow(bx+50, by+120+i*30, bw-260, r[0], String(r[1]), r[2]));
+      btn(bx+bw-170, by+106, 34, 26, '✏️', t > 15.8 ? C.orange : C.panel2);
+      // graph
+      ctx.strokeStyle = C.cyan; ctx.lineWidth = 2; ctx.beginPath();
+      const gp = seg(t, 4.5, 9);
+      for (let i = 0; i <= 40 * Math.max(gp, .02); i++) {
+        const x = bx+60 + i*(bw-320)/40, y = by+300 - Math.sin(i/8)*14 - i*1.1;
+        i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.stroke();
+      text('☁ WORLD RECORD over time', bx+60, by+330, 10, C.mut);
+      // feed line
+      if (t > 9.4) {
+        rr(bx+30, by+bh-64, bw-60, 34, 10); ctx.fillStyle = 'rgba(9,22,42,.7)'; ctx.fill();
+        mono(t < 20 ? '☁ WORLD RECORD → 2612 by scratch-player · just now' : '☁ WORLD RECORD → 0 by dashboard · just now', bx+44, by+bh-47, 10.5, C.mut);
+      }
+      const cur = cursorAt([
+        {t:10, x:W-140, y:H-60}, {t:15.5, x:bx+bw-153, y:by+119}, {t:16, x:bx+bw-153, y:by+119, click:1},
+        {t:19.5, x:bx+bw-153, y:by+119, click:1}, {t:21, x:bx+bw/2, y:by+200},
+      ], t);
+      if (t > 9.5) cursor(cur.x, cur.y, cur.click);
+      endCard(t, 23.4, 'You run the cloud now ☁');
+    },
+  };
+
+  /* ----- Episode 4: Your play link ----- */
+  const ep4 = {
+    num: 4, title: 'Your play link', dur: 24,
+    caps: [
+      [0, 3.6, 'One more superpower: a play link that runs on YOUR server.'],
+      [3.8, 8.5, 'Hit ▶ Play on my server — your real project opens in TurboWarp…'],
+      [8.5, 14, '…but its cloud variables connect to CloudLift. Faster updates, extra variables, everything on your dashboard.'],
+      [14, 19.5, 'Copy the link and send it to friends — everyone on it plays together on your server.'],
+      [19.5, 24, 'Scratch players + your-link players, all synced by the bridge. 🚀'],
+    ],
+    draw(t) {
+      bgSky(t);
+      if (titleCard(t, 3.8, 4, 'Your play link', 'Run your game through your own server')) return;
+      if (t < 8) {
+        btn(W/2-130, H/2-24, 260, 48, '▶ Play on my server', C.green);
+        const cur = cursorAt([{t:4.2, x:W/2+190, y:H/2+120}, {t:6, x:W/2+20, y:H/2, click:1}], t);
+        cursor(cur.x, cur.y, cur.click);
+        return;
+      }
+      const p = ez(seg(t, 8, 8.8));
+      ctx.globalAlpha = p;
+      const bx = 120, by = 44, bw = W-240, bh = H-100;
+      browser(bx, by, bw, bh, 'turbowarp.org/1198245886?cloud_host=wss://cloudlift…');
+      // mini game
+      rr(bx+24, by+52, bw-48, bh-120, 10); ctx.fillStyle = '#04101c'; ctx.fill();
+      const gx = bx+24, gw = bw-48;
+      for (let i = 0; i < 6; i++) {
+        const ix = gx + 40 + ((i*67 + t*30) % (gw-80));
+        ctx.fillStyle = i % 2 ? C.red : C.orange;
+        ctx.fillRect(ix, by+80 + (i%3)*34 + Math.sin(t*2+i)*5, 20, 14);
+      }
+      ctx.fillStyle = C.cyan; ctx.fillRect(gx + gw/2 - 12 + Math.sin(t*1.4)*60, by+bh-110, 24, 14);
+      mono('SCORE ' + (1000 + Math.round((t-8)*137)), gx+16, by+72, 12, C.text);
+      mono('☁ WORLD RECORD 2612', gx+gw-16, by+72, 12, C.cyan, 'right');
+      // link chip + friends
+      if (t > 14) {
+        const lp = ez(seg(t, 14, 14.7));
+        ctx.globalAlpha = p * lp;
+        rr(bx+40, by+bh-52, bw-80, 34, 10); ctx.fillStyle = 'rgba(77,216,255,.12)'; ctx.fill();
+        ctx.strokeStyle = C.cyan; ctx.stroke();
+        mono('turbowarp.org/…?cloud_host=wss://cloudlift…  📋 copied!', bx+56, by+bh-35, 11, C.cyan);
+        ['🧑‍🚀','🦖','🐸'].forEach((e, i) => {
+          const fp = seg(t, 15.5+i, 16.3+i);
+          if (fp > 0) {
+            ctx.globalAlpha = p * fp;
+            ctx.font = '30px serif'; ctx.textAlign = 'center';
+            ctx.fillText(e, bx + bw - 40, by + 90 + i*44 - (1-ez(fp))*14);
+          }
+        });
+      }
+      ctx.globalAlpha = 1;
+      endCard(t, 20, 'Share it. Everyone plays on YOUR server 🚀');
+    },
+  };
+
+  const eps = [ep1, ep2, ep3, ep4];
+  let cur = 0, t = 0, playing = false, last = 0, raf = null;
+
+  const capEl = document.getElementById('tvCaption');
+  const scrub = document.getElementById('tvScrub');
+  const timeEl = document.getElementById('tvTime');
+  const playBtn = document.getElementById('tvPlayBtn');
+  const bigPlay = document.getElementById('tvBigPlay');
+
+  function fmt(s) { return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2, '0'); }
+  function frame(now) {
+    const ep = eps[cur];
+    if (playing) {
+      t += Math.min((now - last) / 1000, .1);
+      if (t >= ep.dur) { t = ep.dur; playing = false; updateButtons(); }
+    }
+    last = now;
+    ep.draw(t);
+    const cap = ep.caps.find(c => t >= c[0] && t < c[1]);
+    capEl.textContent = cap ? cap[2] : '';
+    scrub.value = Math.round(t / ep.dur * 1000);
+    timeEl.textContent = fmt(t) + ' / ' + fmt(ep.dur);
+    if (playing) raf = requestAnimationFrame(frame);
+  }
+  function renderFrame() { cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
+  function updateButtons() {
+    playBtn.textContent = playing ? '⏸' : '▶';
+    bigPlay.style.display = playing ? 'none' : 'flex';
+  }
+  window.tvToggle = function () {
+    const ep = eps[cur];
+    if (!playing && t >= ep.dur - .01) t = 0;
+    playing = !playing; last = performance.now();
+    updateButtons(); renderFrame();
+  };
+  scrub.addEventListener('input', () => { t = scrub.value / 1000 * eps[cur].dur; renderFrame(); });
+  window.tvPick = function (i) {
+    cur = i; t = 0; playing = true; last = performance.now();
+    updateButtons(); renderEpisodeList(); renderFrame();
+    document.getElementById('tv-anchor').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+  function renderEpisodeList() {
+    document.getElementById('tvEpisodes').innerHTML = eps.map((e, i) => `
+      <button class="ep ${i === cur ? 'active' : ''}" onclick="tvPick(${i})">
+        <div class="epnum">EP ${e.num} · ${fmt(e.dur)}</div>
+        <div class="eptitle">${e.title}</div>
+        <div class="eplen">${['Get a game on CloudLift', 'Sync both ways with Scratch', 'Live values you control', 'Play + share on your server'][i]}</div>
+      </button>`).join('');
+  }
+  renderEpisodeList();
+  document.fonts.ready.then(renderFrame);
+  renderFrame();
+  return {};
+})();
 </script>
 </body>
 </html>
