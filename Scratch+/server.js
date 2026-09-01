@@ -132,7 +132,7 @@ function getProject(id) { return data.projects[id]; }
 function setVar(projectId, name, value, source) {
   const p = getProject(projectId);
   if (!p) return false;
-  value = String(value);
+  value = String(value).slice(0, 100000); // text allowed — cap length for safety
   const existing = p.vars[name];
   if (existing && existing.value === value) return false; // no change → no echo loops
   p.vars[name] = { value, updated: Date.now(), source };

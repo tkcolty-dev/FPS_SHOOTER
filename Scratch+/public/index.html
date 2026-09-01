@@ -319,7 +319,7 @@ async function editVar(id, name, current) {
 async function addVar(id) {
   const name = prompt('Variable name (start with ☁ so it syncs to Scratch):', '☁ ');
   if (!name || !name.trim()) return;
-  const v = prompt('Starting value:', '0');
+  const v = prompt('Starting value (numbers sync to Scratch; letters work on your server + play link):', '0');
   if (v === null) return;
   await api('POST', `/api/projects/${id}/set`, { name: name.trim(), value: v });
 }
@@ -399,8 +399,8 @@ function render() {
         <tr><th>Variable</th><th>Value</th><th>Graph</th><th>Last set by</th><th>When</th><th></th></tr>
         ${vars.map(([name, v]) => `
           <tr class="${flashSet.has(id + '|' + name) ? 'flash' : ''}">
-            <td class="name">${esc(name)}</td>
-            <td class="val">${esc(v.value)}</td>
+            <td class="name">${esc(name)}${/^-?\d+(\.\d+)?$/.test(v.value) ? '' : ' <span class="badge" style="font-size:.62rem;padding:2px 8px;color:var(--orange)" title="Letters live on your server and your play link — real Scratch only accepts numbers, so this one doesn\'t cross the bridge">ABC · server-only</span>'}</td>
+            <td class="val">${esc(v.value).slice(0, 60)}${v.value.length > 60 ? '…' : ''}</td>
             <td>${sparkline(p.history || [], name)}</td>
             <td class="mut">${esc(v.source || '')}</td>
             <td class="mut">${ago(v.updated)}</td>
