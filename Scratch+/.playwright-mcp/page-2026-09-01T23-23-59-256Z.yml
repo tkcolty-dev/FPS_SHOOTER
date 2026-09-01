@@ -1,0 +1,136 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e49]: ☁
+    - generic [ref=e50]: ☁
+    - generic [ref=e51]: ☁
+    - generic [ref=e52]: ☁
+    - generic [ref=e53]: ☁
+  - generic [ref=e54]:
+    - generic [ref=e55]:
+      - generic [ref=e56]:
+        - generic [ref=e57]: ☁
+        - text: CloudLift
+      - generic [ref=e58] [cursor=pointer]: Log in to Scratch
+    - generic [ref=e61]:
+      - generic [ref=e62]: Mission Control
+      - heading [level=1] [ref=e63]:
+        - text: Your cloud variables, on
+        - emphasis [ref=e64]: your own server.
+      - paragraph [ref=e65]: Games stay on scratch.mit.edu like normal — CloudLift holds the data, shows every change live, and syncs both ways.
+      - generic [ref=e66]:
+        - generic [ref=e67]: ws://localhost:4995
+        - button "Copy host" [ref=e68] [cursor=pointer]
+        - button "📺 Watch how it works" [ref=e69] [cursor=pointer]
+      - generic [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]: "1"
+          - text: projects
+        - generic [ref=e73]:
+          - generic [ref=e74]: "0"
+          - text: playing right now
+        - generic [ref=e75]:
+          - generic [ref=e76]: "3"
+          - text: changes today
+        - generic [ref=e77]:
+          - generic [ref=e78]: "0"
+          - text: bridges synced
+    - generic [ref=e79]:
+      - generic [ref=e80]:
+        - heading "Projects" [level=2] [ref=e81]
+        - generic [ref=e82]: live
+      - generic [ref=e84]:
+        - textbox "Paste a Scratch project link or ID" [ref=e85]
+        - generic [ref=e86]:
+          - checkbox "sync with Scratch" [checked] [ref=e87]
+          - text: sync with Scratch
+        - button "Add project" [ref=e88] [cursor=pointer]
+      - generic [ref=e90]:
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]: Paper Minecraft v11.7 (Minecraft 2D)
+            - generic [ref=e94]: by griffpatch · ID 10128407
+          - generic [ref=e95]:
+            - generic [ref=e96]: 👾 0 playing
+            - generic [ref=e97]: bridge off
+        - generic [ref=e99]:
+          - button "▶ Play on my server" [ref=e100] [cursor=pointer]
+          - button "Copy play link" [ref=e101] [cursor=pointer]
+          - button "See on Scratch" [ref=e102] [cursor=pointer]
+          - button "🌉 Bridge off" [ref=e103] [cursor=pointer]
+          - button "Remove" [ref=e104] [cursor=pointer]
+        - table [ref=e105]:
+          - rowgroup [ref=e106]:
+            - row [ref=e107]:
+              - columnheader "Variable" [ref=e108]
+              - columnheader "Value" [ref=e109]
+              - columnheader "Graph" [ref=e110]
+              - columnheader "Last set by" [ref=e111]
+              - columnheader "When" [ref=e112]
+              - columnheader [ref=e113]
+            - row [ref=e114]:
+              - cell "☁ highscore" [ref=e115]
+              - cell "9500" [ref=e116]
+              - cell [ref=e117]
+              - cell "bob" [ref=e120]
+              - cell "1h ago" [ref=e121]
+              - cell [ref=e122]:
+                - button "Aa" [ref=e123] [cursor=pointer]
+                - button "✏️" [ref=e124] [cursor=pointer]
+                - button "🗑" [ref=e125] [cursor=pointer]
+            - row [ref=e126]:
+              - cell "☁ test" [ref=e127]
+              - cell "123" [ref=e128]
+              - cell [ref=e129]
+              - cell "dashboard" [ref=e130]
+              - cell "1h ago" [ref=e131]
+              - cell [ref=e132]:
+                - button "Aa" [ref=e133] [cursor=pointer]
+                - button "✏️" [ref=e134] [cursor=pointer]
+                - button "🗑" [ref=e135] [cursor=pointer]
+        - button "+ Add variable" [ref=e137] [cursor=pointer]
+        - generic [ref=e138]:
+          - generic [ref=e139]: ☁ ☁ test → 123 by dashboard · 1h ago
+          - generic [ref=e140]: ☁ ☁ highscore → 9500 by bob · 1h ago
+          - generic [ref=e141]: ☁ ☁ highscore → 9000 by alice · 1h ago
+    - generic [ref=e142]:
+      - generic [ref=e143]:
+        - heading "🔤 Letters on Scratch" [level=2] [ref=e144]
+        - generic [ref=e145]: blocks pack
+      - generic [ref=e147]:
+        - generic [ref=e148]:
+          - paragraph [ref=e149]: Scratch's cloud only carries numbers — so these custom blocks turn words into number codes and back. "hi" → 1817 → "hi"
+          - paragraph [ref=e150]: 1. Download the blocks and open the file at scratch.mit.edu (File → Load from your computer, or open it in a new project and backpack the sprite). 2. Drag the CL encode / CL decode scripts onto your sprite. Use CL encode [your words], then set your ☁ variable to encoded. Read with CL decode (☁ variable) → decoded. 3. On this dashboard, hit the Aa button on that variable — CloudLift shows the real words and lets you type words back.
+        - link [ref=e151] [cursor=pointer]:
+          - /url: /CloudLift-Text-Blocks.sb3
+          - button "⬇ Download blocks (.sb3)" [ref=e152]
+    - generic [ref=e153]:
+      - generic [ref=e154]:
+        - heading "📺 CloudLift TV" [level=2] [ref=e155]
+        - generic [ref=e156]: tutorials
+      - generic [ref=e157]:
+        - generic [ref=e158]:
+          - generic: Hey! Let's put your first game on CloudLift.
+          - button "Play tutorial" [ref=e160] [cursor=pointer]:
+            - generic [ref=e161]: ▶
+        - generic [ref=e162]:
+          - button "▶" [ref=e163] [cursor=pointer]
+          - slider "Seek" [ref=e164] [cursor=pointer]: "0"
+          - generic [ref=e165]: 0:00 / 0:26
+        - generic [ref=e166]:
+          - button "EP 1 · 0:26 Add your project Get a game on CloudLift" [ref=e167] [cursor=pointer]:
+            - generic [ref=e168]: EP 1 · 0:26
+            - generic [ref=e169]: Add your project
+            - generic [ref=e170]: Get a game on CloudLift
+          - button "EP 2 · 0:30 The Scratch bridge Sync both ways with Scratch" [ref=e171] [cursor=pointer]:
+            - generic [ref=e172]: EP 2 · 0:30
+            - generic [ref=e173]: The Scratch bridge
+            - generic [ref=e174]: Sync both ways with Scratch
+          - button "EP 3 · 0:26 Watch & edit live Live values you control" [ref=e175] [cursor=pointer]:
+            - generic [ref=e176]: EP 3 · 0:26
+            - generic [ref=e177]: Watch & edit live
+            - generic [ref=e178]: Live values you control
+          - button "EP 4 · 0:24 Your play link Play + share on your server" [ref=e179] [cursor=pointer]:
+            - generic [ref=e180]: EP 4 · 0:24
+            - generic [ref=e181]: Your play link
+            - generic [ref=e182]: Play + share on your server
+  - contentinfo [ref=e183]: ☁ cloudlift · your server · synced with scratch

@@ -296,7 +296,7 @@ function publicState() {
   for (const [id, p] of Object.entries(data.projects)) {
     const b = bridges.get(id);
     projects[id] = {
-      title: p.title, author: p.author, bridge: p.bridge,
+      title: p.title, author: p.author, bridge: p.bridge, textVars: p.textVars || {},
       bridgeStatus: b ? b.status : (p.bridge ? 'offline' : 'off'),
       players: playersIn(id),
       vars: p.vars,
@@ -368,6 +368,18 @@ app.post('/api/projects/:id/bridge', (req, res) => {
   saveSoon();
   syncBridges();
   announceStatus(req.params.id);
+  res.json({ ok: true });
+});
+
+// mark a variable as encoded text (dashboard shows decoded words)
+app.post('/api/projects/:id/textvar', (req, res) => {
+  const p = getProject(req.params.id);
+  if (!p) return res.status(404).json({ error: 'No such project' });
+  const { name, on } = req.body || {};
+  p.textVars = p.textVars || {};
+  if (on) p.textVars[name] = true; else delete p.textVars[name];
+  saveSoon();
+  tellDashboards({ type: 'refresh' });
   res.json({ ok: true });
 });
 

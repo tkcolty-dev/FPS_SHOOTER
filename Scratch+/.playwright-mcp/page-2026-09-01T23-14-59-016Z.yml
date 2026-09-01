@@ -1,0 +1,135 @@
+- generic [ref=f2e3]:
+  - generic [ref=f2e5]:
+    - generic [ref=f2e10]: Loading Project
+    - generic [ref=f2e11]: Loading project …
+  - generic [ref=f2e14]:
+    - generic [ref=f2e19]: Creating Project
+    - generic [ref=f2e20]: Loading project …
+  - generic [ref=f2e23]:
+    - generic [ref=f2e24]:
+      - generic [ref=f2e25] [cursor=pointer]: Settings
+      - generic [ref=f2e29] [cursor=pointer]: File
+      - generic [ref=f2e33] [cursor=pointer]: Edit
+      - generic [ref=f2e37] [cursor=pointer]: Addons
+      - generic [ref=f2e40] [cursor=pointer]: Advanced
+    - textbox "Project title here" [ref=f2e45]: Project
+    - link [ref=f2e47] [cursor=pointer]:
+      - /url: https://scratch.mit.edu/users/GarboMuffin/#comments
+      - button "TurboWarp Feedback" [ref=f2e48]
+  - generic [ref=f2e51]:
+    - generic [ref=f2e52]:
+      - generic [ref=f2e53]:
+        - tablist [ref=f2e54]:
+          - tab "Code" [selected] [ref=f2e55] [cursor=pointer]
+          - tab "Costumes" [ref=f2e58] [cursor=pointer]
+          - tab "Sounds" [ref=f2e61] [cursor=pointer]
+          - searchbox [ref=f2e67]
+        - tabpanel "Code" [ref=f2e68]:
+          - generic [ref=f2e71]:
+            - generic [ref=f2e73]:
+              - generic [ref=f2e74]: Motion
+              - generic [ref=f2e78]: Looks
+              - generic [ref=f2e82]: Sound
+              - generic [ref=f2e86]: Events
+              - generic [ref=f2e90]: Control
+              - generic [ref=f2e94]: Sensing
+              - generic [ref=f2e98]: Operators
+              - generic [ref=f2e102]: Variables
+              - generic [ref=f2e106]: My Blocks
+            - img [ref=f2e126]:
+              - generic [ref=f2e129]:
+                - generic [ref=f2e131]: switch backdrop to
+                - generic [ref=f2e140]:
+                  - generic [ref=f2e147]: switch backdrop to
+                  - generic [ref=f2e148]: and wait
+                - generic [ref=f2e150]: next backdrop
+                - generic [ref=f2e154]:
+                  - generic [ref=f2e156]: "25"
+                  - generic [ref=f2e160]: change
+                  - generic [ref=f2e161]: color
+                  - generic [ref=f2e165]: effect by
+                - generic [ref=f2e167]:
+                  - generic [ref=f2e169]: "0"
+                  - generic [ref=f2e173]: set
+                  - generic [ref=f2e174]: color
+                  - generic [ref=f2e178]: effect to
+                - generic [ref=f2e180]: clear graphic effects
+                - generic [ref=f2e186] [cursor=pointer]
+                - generic [ref=f2e188]:
+                  - generic [ref=f2e190]: backdrop
+                  - generic [ref=f2e191]: number
+                - generic [ref=f2e196]:
+                  - generic [ref=f2e203]: play sound
+                  - generic [ref=f2e204]: until done
+                - generic [ref=f2e206]: start sound
+                - generic [ref=f2e223] [cursor=pointer]
+                - generic [ref=f2e246] [cursor=pointer]
+                - generic [ref=f2e252] [cursor=pointer]
+                - generic [ref=f2e257] [cursor=pointer]
+                - generic [ref=f2e262] [cursor=pointer]
+                - generic [ref=f2e267] [cursor=pointer]
+                - generic [ref=f2e272] [cursor=pointer]
+                - generic [ref=f2e279] [cursor=pointer]
+                - generic [ref=f2e284] [cursor=pointer]
+                - generic [ref=f2e289] [cursor=pointer]
+                - generic [ref=f2e294] [cursor=pointer]
+                - generic [ref=f2e310]: Motion
+                - generic [ref=f2e313]: "Stage selected: no motion blocks"
+                - generic [ref=f2e316]: Looks
+                - generic [ref=f2e319]: Sound
+                - generic [ref=f2e322]: Events
+                - generic [ref=f2e325]: Control
+                - generic [ref=f2e328]: Sensing
+                - generic [ref=f2e331]: Operators
+                - generic [ref=f2e334]: Variables
+                - generic [ref=f2e337]: Make a Variable
+                - generic [ref=f2e341]: Make a List
+                - generic [ref=f2e345]: My Blocks
+                - generic [ref=f2e348]: Make a Block
+          - button "Add Extension" [ref=f2e357] [cursor=pointer]
+      - generic [ref=f2e359]: Backpack
+    - generic [ref=f2e361]:
+      - generic [ref=f2e364]:
+        - generic [ref=f2e365]:
+          - img "Go" [ref=f2e366] [cursor=pointer]
+          - img "Pause" [ref=f2e367] [cursor=pointer]
+          - img "Stop" [ref=f2e368] [cursor=pointer]
+        - generic [ref=f2e369]:
+          - generic [ref=f2e371]:
+            - button "Switch to small stage" [ref=f2e372] [cursor=pointer]
+            - button "Switch to full stage" [pressed] [ref=f2e374] [cursor=pointer]
+          - button [ref=f2e377] [cursor=pointer]:
+            - img "Switch to full stage" [ref=f2e379]
+      - generic [ref=f2e387]:
+        - generic [ref=f2e388]:
+          - generic [ref=f2e389]:
+            - generic [ref=f2e391]:
+              - generic [ref=f2e392]: Sprite
+              - textbox "Sprite" [disabled] [ref=f2e393]:
+                - /placeholder: Name
+            - generic [ref=f2e396]:
+              - generic [ref=f2e397]: x
+              - spinbutton "x" [disabled] [ref=f2e398]
+            - generic [ref=f2e401]:
+              - generic [ref=f2e402]: "y"
+              - spinbutton "y" [disabled] [ref=f2e403]
+          - generic [ref=f2e404]:
+            - generic [ref=f2e405]:
+              - generic [ref=f2e406]: Show
+              - generic [ref=f2e408]:
+                - button "Show sprite" [disabled] [ref=f2e409]
+                - button "Hide sprite" [disabled] [ref=f2e411]
+            - generic [ref=f2e414]:
+              - generic [ref=f2e415]: Size
+              - spinbutton "Size" [disabled] [ref=f2e416]
+            - generic [ref=f2e418]:
+              - generic [ref=f2e419]: Direction
+              - spinbutton "Direction" [disabled] [ref=f2e420]
+        - generic [ref=f2e423]:
+          - button "Choose a Sprite" [ref=f2e424] [cursor=pointer]
+          - generic [ref=f2e426]:
+            - generic:
+              - button "Upload Sprite" [ref=f2e428] [cursor=pointer]
+              - button "Surprise" [ref=f2e431] [cursor=pointer]
+              - button "Paint" [ref=f2e434] [cursor=pointer]
+              - button "Choose a Sprite" [ref=f2e437] [cursor=pointer]

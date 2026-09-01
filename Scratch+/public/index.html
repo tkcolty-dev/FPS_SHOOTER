@@ -226,6 +226,23 @@
     <div class="card empty-msg" id="emptyMsg" style="display:none">No projects yet — paste one of your Scratch games above and it goes live here. 🚀</div>
   </section>
 
+  <section>
+    <div class="sect-head"><h2>🔤 Letters on Scratch</h2><span class="tag">blocks pack</span></div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div style="max-width:600px">
+          <p style="font-weight:500">Scratch's cloud only carries numbers — so these custom blocks turn words into number codes and back. <span class="mut">"hi" → 1817 → "hi"</span></p>
+          <p class="mut" style="margin-top:8px">
+            1. Download the blocks and open the file at scratch.mit.edu (File → Load from your computer, or open it in a new project and backpack the sprite).<br>
+            2. Drag the <b style="color:var(--text)">CL encode</b> / <b style="color:var(--text)">CL decode</b> scripts onto your sprite. Use <b style="color:var(--text)">CL encode [your words]</b>, then set your ☁ variable to <b style="color:var(--text)">encoded</b>. Read with <b style="color:var(--text)">CL decode (☁ variable)</b> → <b style="color:var(--text)">decoded</b>.<br>
+            3. On this dashboard, hit the <b style="color:var(--orange)">Aa</b> button on that variable — CloudLift shows the real words and lets you type words back.
+          </p>
+        </div>
+        <a href="/CloudLift-Text-Blocks.sb3" download style="text-decoration:none"><button class="orange">⬇ Download blocks (.sb3)</button></a>
+      </div>
+    </div>
+  </section>
+
   <section id="tv-anchor">
     <div class="sect-head"><h2>📺 CloudLift TV</h2><span class="tag">tutorials</span></div>
     <div class="tv">
@@ -312,6 +329,11 @@ async function toggleBridge(id, on) {
   await api('POST', `/api/projects/${id}/bridge`, { on }); refresh();
 }
 async function editVar(id, name, current) {
+  if (isTextVar(id, name)) {
+    const words = prompt('New text for ' + name + ' (gets encoded to numbers for Scratch):', decodeText(current) ?? '');
+    if (words === null) return;
+    return api('POST', `/api/projects/${id}/set`, { name, value: encodeText(words) });
+  }
   const v = prompt('New value for ' + name + ':', current);
   if (v === null) return;
   await api('POST', `/api/projects/${id}/set`, { name, value: v });
@@ -328,6 +350,32 @@ async function deleteVar(id, name) {
   await api('DELETE', `/api/projects/${id}/vars/${encodeURIComponent(name)}`);
 }
 function playLink(id) { return 'https://turbowarp.org/' + id + '?cloud_host=' + encodeURIComponent(wsUrl()); }
+
+/* ---- text encoding (must match the CL encode/decode Scratch blocks) ---- */
+const ALPHA = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 " + ".,!?'\"()+-*/=<>:;@#%&_~^$[";
+function encodeText(s) {
+  let out = '';
+  for (const ch of String(s)) { const i = ALPHA.indexOf(ch); out += (i < 0 ? 99 : i + 10); }
+  return out;
+}
+function decodeText(d) {
+  d = String(d);
+  if (!/^\d+$/.test(d) || d.length % 2) return null;
+  let out = '';
+  for (let i = 0; i < d.length; i += 2) {
+    const n = Number(d.slice(i, i + 2)) - 10;
+    if (n < 0) return null;
+    out += n === 89 ? '?' : ALPHA[n];
+  }
+  return out;
+}
+function isTextVar(projId, name) {
+  const p = state.projects[projId];
+  return !!(p && p.textVars && p.textVars[name]);
+}
+async function toggleText(id, name) {
+  await api('POST', `/api/projects/${id}/textvar`, { name, on: !isTextVar(id, name) });
+}
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function ago(t) {
@@ -397,18 +445,24 @@ function render() {
       </div>
       ${vars.length ? `<table>
         <tr><th>Variable</th><th>Value</th><th>Graph</th><th>Last set by</th><th>When</th><th></th></tr>
-        ${vars.map(([name, v]) => `
+        ${vars.map(([name, v]) => {
+          const asText = p.textVars && p.textVars[name];
+          const decoded = asText ? decodeText(v.value) : null;
+          const shown = decoded !== null && asText ? '“' + decoded + '”' : v.value;
+          const numeric = /^-?\d+(\.\d+)?$/.test(v.value);
+          return `
           <tr class="${flashSet.has(id + '|' + name) ? 'flash' : ''}">
-            <td class="name">${esc(name)}${/^-?\d+(\.\d+)?$/.test(v.value) ? '' : ' <span class="badge" style="font-size:.62rem;padding:2px 8px;color:var(--orange)" title="Letters live on your server and your play link — real Scratch only accepts numbers, so this one doesn\'t cross the bridge">ABC · server-only</span>'}</td>
-            <td class="val">${esc(v.value).slice(0, 60)}${v.value.length > 60 ? '…' : ''}</td>
+            <td class="name">${esc(name)}${numeric ? '' : ' <span class="badge" style="font-size:.62rem;padding:2px 8px;color:var(--orange)" title="Letters live on your server and your play link — real Scratch only accepts numbers, so this one doesn\'t cross the bridge">ABC · server-only</span>'}</td>
+            <td class="val" title="${esc(v.value).slice(0, 200)}">${esc(shown).slice(0, 60)}${shown.length > 60 ? '…' : ''}</td>
             <td>${sparkline(p.history || [], name)}</td>
             <td class="mut">${esc(v.source || '')}</td>
             <td class="mut">${ago(v.updated)}</td>
             <td style="text-align:right;white-space:nowrap">
+              <button class="ghost sm" style="${asText ? 'border-color:var(--orange);color:var(--orange)' : ''}" title="Text mode: show this variable as words (uses the CloudLift letter-code)" onclick="toggleText('${id}','${esc(name)}')">Aa</button>
               <button class="ghost sm" onclick="editVar('${id}','${esc(name)}','${esc(v.value)}')">✏️</button>
               <button class="danger sm" onclick="deleteVar('${id}','${esc(name)}')">🗑</button>
             </td>
-          </tr>`).join('')}
+          </tr>`;}).join('')}
       </table>` : `<p class="mut" style="margin-top:12px">No variables yet — they appear the moment someone plays, or the bridge hears from Scratch.</p>`}
       <div class="row" style="margin-top:10px"><button class="ghost sm" onclick="addVar('${id}')">+ Add variable</button></div>
       ${feed.length ? `<div class="feed">${feed.map(h =>

@@ -1,0 +1,2 @@
+[     169ms] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:4995/:0
+[    5120ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:4995/api/projects/10128407/textvar:0

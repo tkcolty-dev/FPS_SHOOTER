@@ -1,0 +1,2 @@
+[  324315ms] [WARNING] vm warn Error loading vector image: TypeError: Cannot read properties of undefined (reading 'baseVal') @ https://turbowarp.org/js/pentapod/vendors~editor~embed~fullscreen~player.351bae045be7385381fc.js:1
+[  324331ms] [WARNING] vm warn Error loading vector image: TypeError: Cannot read properties of undefined (reading 'baseVal') @ https://turbowarp.org/js/pentapod/vendors~editor~embed~fullscreen~player.351bae045be7385381fc.js:1
