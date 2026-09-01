@@ -1,0 +1,9 @@
+applications:
+- name: blockbuddy
+  memory: 256M
+  instances: 1
+  buildpacks:
+  - nodejs_buildpack
+  command: node server.js
+  services:
+  - blockbuddy-ai

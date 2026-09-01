@@ -1,0 +1,12 @@
+{
+  "name": "blockbuddy",
+  "version": "1.0.0",
+  "description": "AI coach for Scratch coding — answers with real rendered Scratch blocks",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
