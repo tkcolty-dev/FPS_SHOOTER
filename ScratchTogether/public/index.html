@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scratch Together</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+  :root { --blue: #4c97ff; --blue-dark: #3373cc; --orange: #ffab19; --ink: #1f2937; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #e5f0ff;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); }
+  .card { background: #fff; border-radius: 20px; padding: 36px 40px; width: min(92vw, 460px);
+    box-shadow: 0 16px 48px rgba(76,151,255,.18); }
+  h1 { margin: 0 0 4px; font-size: 30px; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 40px; height: 40px; }
+  p.sub { margin: 0 0 26px; color: #6b7280; }
+  button, input { font: inherit; }
+  .big { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--blue); color: #fff;
+    font-size: 18px; font-weight: 700; cursor: pointer; }
+  .big:hover { background: var(--blue-dark); }
+  .or { text-align: center; color: #9ca3af; margin: 18px 0; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; }
+  .join { display: flex; gap: 8px; }
+  .join input { flex: 1; padding: 12px 14px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 20px;
+    letter-spacing: .2em; text-transform: uppercase; text-align: center; }
+  .join input:focus { outline: none; border-color: var(--blue); }
+  .join button { padding: 12px 18px; border: 0; border-radius: 12px; background: var(--orange); color: #fff; font-weight: 700; cursor: pointer; }
+  label { display: block; font-size: 13px; color: #6b7280; margin: 0 0 6px; }
+  .name { width: 100%; padding: 10px 12px; border: 2px solid #d1d5db; border-radius: 10px; margin-bottom: 20px; }
+  .how { margin-top: 26px; font-size: 13px; color: #6b7280; line-height: 1.5; }
+  .err { color: #dc2626; font-size: 13px; min-height: 18px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1><img src="/favicon.svg" alt=""> Scratch Together</h1>
+  <p class="sub">The real Scratch editor, edited live by everyone in the room.</p>
+  <label for="name">Your name</label>
+  <input id="name" class="name" placeholder="e.g. Colton" maxlength="24">
+  <button id="create" class="big">Start a new room</button>
+  <div class="or">or join a room</div>
+  <form class="join" id="joinForm">
+    <input id="code" placeholder="CODE" maxlength="5" autocomplete="off" spellcheck="false">
+    <button type="submit">Join</button>
+  </form>
+  <div class="err" id="err"></div>
+  <div class="how">Start a room, hit <b>Copy link</b> in the editor, send it to friends on the same wifi.
+    Blocks, sprites, costumes and sounds sync instantly. File ▸ Load from your computer works too and brings everyone along.</div>
+</div>
+<script>
+  const nameEl = document.getElementById('name');
+  nameEl.value = localStorage.getItem('st_name') || '';
+  const saveName = () => { const n = nameEl.value.trim(); if (n) localStorage.setItem('st_name', n); return n; };
+  document.getElementById('create').onclick = async () => {
+    if (!saveName()) { nameEl.focus(); return; }
+    const r = await fetch('/api/rooms', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+    const {code} = await r.json();
+    location.href = `/editor?room=${code}`;
+  };
+  document.getElementById('joinForm').onsubmit = async e => {
+    e.preventDefault();
+    if (!saveName()) { nameEl.focus(); return; }
+    const code = document.getElementById('code').value.trim().toUpperCase();
+    const r = await fetch(`/api/rooms/${code}`);
+    if (!r.ok) { document.getElementById('err').textContent = 'No room with that code.'; return; }
+    location.href = `/editor?room=${code}`;
+  };
+</script>
+</body>
+</html>
