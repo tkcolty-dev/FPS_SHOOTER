@@ -100,6 +100,7 @@
         return out;
     }
 
+    const assetsSeen = new Set(); // md5exts already confirmed on the server
     async function syncAssets (targets) {
         let assets;
         if (targets) {
@@ -111,6 +112,7 @@
         } else {
             assets = allAssets();
         }
+        for (const k of assets.keys()) if (assetsSeen.has(k)) assets.delete(k);
         if (!assets.size) return;
         let missing;
         try {
@@ -120,11 +122,13 @@
             });
             missing = (await r.json()).missing || [];
         } catch (e) { return; }
+        for (const k of assets.keys()) if (!missing.includes(k)) assetsSeen.add(k);
         await Promise.all(missing.map(async name => {
             const asset = assets.get(name);
             try {
-                await fetch(`${API}/assets/${name}`, {method: 'POST', body: asset.data,
+                const r = await fetch(`${API}/assets/${name}`, {method: 'POST', body: asset.data,
                     headers: {'Content-Type': 'application/octet-stream'}});
+                if (r.ok) assetsSeen.add(name);
             } catch (e) { console.warn('upload failed', name, e); }
         }));
     }
@@ -238,12 +242,18 @@
     }
 
     // ---------------- host snapshot ----------------
+    let snapshotDirty = true;
     async function sendSnapshot () {
         if (!isHost || !ready || !vm.runtime.targets.some(t => t.isStage)) return;
+        if (isRunning()) { scheduleSnapshot(); return; } // don't serialize mid-game
+        snapshotDirty = false;
         await syncAssets();
+        // serialize in an idle moment so a big project never hitches a block drag
+        const idle = window.requestIdleCallback ? new Promise(r => requestIdleCallback(r, {timeout: 3000})) : Promise.resolve();
+        await idle;
         send({type: 'snapshot', project: vm.toJSON(), title});
     }
-    const scheduleSnapshot = debounce(() => { sendSnapshot(); }, 1500);
+    const scheduleSnapshot = debounce(() => { if (snapshotDirty) sendSnapshot(); }, 4000);
 
     // ---------------- outgoing block events ----------------
     function onLocalBlockEvent (e) {
@@ -603,8 +613,13 @@
         knownMonitors.clear();
         vm.runtime._monitorState.forEach((m, id) => knownMonitors.set(id, !!m.get('visible')));
     }
+    let lastMonitorKeys = '';
     function onMonitorsUpdate (state) {
         if (!ready || remoteBusy > 0) return;
+        let keys = '';
+        state.forEach((m, id) => { if (m.get('visible')) keys += `${id}|`; });
+        if (keys === lastMonitorKeys) return;
+        lastMonitorKeys = keys;
         state.forEach((m, id) => {
             const visible = !!m.get('visible');
             if (knownMonitors.get(id) === visible) return;
@@ -702,7 +717,7 @@
                 return;
             case 'users': users = msg.users || []; renderUsers(); return;
             case 'host': isHost = true; renderUsers(); sendSnapshot(); return;
-            case 'requestSnapshot': if (ready) sendSnapshot(); return;
+            case 'requestSnapshot': if (ready) { snapshotDirty = true; sendSnapshot(); } return;
             case 'title': setTitle(msg.title, false); return;
             default:
                 if (!ready) inbox.push(msg); else handle(msg);
@@ -746,7 +761,7 @@
             `<button class="tg-copy" title="Copy invite link">Copy link</button>` +
             `<span class="tg-count">👥 ${users.length}</span>` +
             `${statusText ? `<span class="tg-status">${esc(statusText)}</span>` : ''}</div>` +
-            `<div class="tg-list">${list}</div>`;
+            `<div class="tg-list">${list}<div class="tg-credit">Built on the open-source Scratch editor · <a href="https://scratch.mit.edu" target="_blank" rel="noopener">scratch.mit.edu</a></div></div>`;
         pill.querySelector('.tg-copy').onclick = () => {
             const link = `${location.origin}/r/${ROOM}`;
             navigator.clipboard.writeText(link).then(() => {
@@ -847,13 +862,13 @@
             return p;
         };
 
-        vm.on('targetsUpdate', () => { checkTargets(); sendPresence(false); });
-        vm.on('PROJECT_CHANGED', () => { checkTargets(); ensureCloud(); if (isHost) scheduleSnapshot(); });
+        vm.on('targetsUpdate', () => { checkTargets(); sendPresence(false); snapshotDirty = true; if (isHost) scheduleSnapshot(); });
+        vm.on('PROJECT_CHANGED', () => { checkTargets(); ensureCloud(); snapshotDirty = true; if (isHost) scheduleSnapshot(); });
         vm.on('PROJECT_RUN_STOP', () => checkTargets());
         vm.runtime.on('MONITORS_UPDATE', onMonitorsUpdate);
 
         const storageTimer = setInterval(() => { if (installAssetStore()) clearInterval(storageTimer); }, 100);
-        setInterval(attachWorkspace, 750);
+        setInterval(attachWorkspace, 2000);
         setInterval(() => { if (window.onbeforeunload) window.onbeforeunload = null; }, 1000);
         connect();
     }

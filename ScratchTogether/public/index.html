@@ -29,6 +29,8 @@
   .name { width: 100%; padding: 10px 12px; border: 2px solid #d1d5db; border-radius: 10px; margin-bottom: 20px; }
   .how { margin-top: 26px; font-size: 13px; color: #6b7280; line-height: 1.5; }
   .err { color: #dc2626; font-size: 13px; min-height: 18px; margin-top: 8px; }
+  .credit { margin-top: 18px; padding-top: 14px; border-top: 1px solid #eef2f7; font-size: 12px; color: #9ca3af; line-height: 1.5; }
+  .credit a { color: var(--blue); text-decoration: none; }
 </style>
 </head>
 <body>
@@ -46,6 +48,10 @@
   <div class="err" id="err"></div>
   <div class="how">Start a room, hit <b>Copy link</b> in the editor, send it to friends on the same wifi.
     Blocks, sprites, costumes and sounds sync instantly. File ▸ Load from your computer works too and brings everyone along.</div>
+  <div class="credit">Built on the open-source <a href="https://github.com/scratchfoundation/scratch-editor" target="_blank" rel="noopener">Scratch editor</a>
+    by the <a href="https://scratch.mit.edu" target="_blank" rel="noopener">Scratch Foundation</a> and the Lifelong Kindergarten Group at the MIT Media Lab.
+    Scratch is a trademark of MIT. This is a fan project, not affiliated with or endorsed by Scratch.
+    Library sprites and sounds are © Scratch, CC BY-SA. Source on <a href="https://github.com/tkcolty-dev/FPS_SHOOTER/tree/blockforge/ScratchTogether" target="_blank" rel="noopener">GitHub</a>.</div>
 </div>
 <script>
   const nameEl = document.getElementById('name');

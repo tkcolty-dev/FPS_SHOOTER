@@ -47,3 +47,11 @@ normal `.sb3` that opens on scratch.mit.edu.
 
 Rooms persist in `data/<CODE>/` (project.json + assets) and survive server restarts. The oldest
 connected editor is the "host" and keeps the server's snapshot fresh; newcomers get the latest state.
+
+## Credit
+
+Scratch Together is built on the open-source [Scratch editor](https://github.com/scratchfoundation/scratch-editor)
+(`scratch-gui`, `scratch-vm`, `scratch-blocks`, `scratch-render`, `scratch-paint`, ...) developed by the
+[Scratch Foundation](https://scratch.mit.edu) and the Lifelong Kindergarten Group at the MIT Media Lab, used under the
+AGPL-3.0 license. Scratch is a trademark of MIT. This is a fan project and is not affiliated with or endorsed by Scratch.
+Library sprites, backdrops and sounds are © Scratch and licensed CC BY-SA 2.0.
