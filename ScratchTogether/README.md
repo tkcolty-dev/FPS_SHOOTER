@@ -31,7 +31,11 @@ pill and send it to friends on the same wifi (the terminal also prints your LAN 
 | Sprites added / duplicated / deleted / renamed / reordered | structural diff after each change |
 | Costumes, backdrops, sounds (paint, upload, library, rename, reorder) | asset bytes uploaded once to the server, fetched by everyone else |
 | Sprite position, size, direction, visibility, rotation style | synced when the project is not running |
-| Extensions (Pen, Music, ...) | loaded on every editor when one person adds it |
+| Extensions (Pen, Music, Video Sensing, Text to Speech, Translate, hardware) | loaded on every editor when one person adds it |
+| Sprite / costume / sound / backdrop libraries, tutorials | straight from Scratch's CDN, like scratch.mit.edu |
+| Backpack | our own backpack server, follows your name across rooms (sprites, costumes, sounds, scripts) |
+| Cloud variables (☁) | relayed to your CloudLift server; the room is a project there, so every editor and every player shares the values |
+| Dragging scripts onto another sprite, dropping backpack code | synced |
 | File ▸ Load from your computer | whole project replaced for everyone |
 | Project title | shared |
 

@@ -22,7 +22,16 @@
         localStorage.setItem('st_name', NAME);
     }
 
+    // scratch-gui's backpack reads ?username=&token= from the URL; token is just "present" for us.
+    if (params.get('username') !== NAME || !params.get('token')) {
+        params.set('username', NAME); params.set('token', 'together');
+        history.replaceState(null, '', `${location.pathname}?${params}`);
+    }
+
     const API = `/api/rooms/${ROOM}`;
+    let CLOUD_HOST = null;
+    // Cloud variables: numeric project id derived from the room code (Scratch cloud servers expect a number).
+    const CLOUD_PROJECT_ID = String(9000000000 + [...ROOM].reduce((n, ch) => n * 32 + 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'.indexOf(ch), 0));
     const SYNC_EVENTS = new Set(['create', 'delete', 'change', 'move', 'var_create', 'var_rename', 'var_delete',
         'comment_create', 'comment_change', 'comment_move', 'comment_delete']);
     const EXTRA_FIELDS = ['commentId', 'blockId', 'varId', 'xy', 'width', 'height', 'text', 'minimized',
@@ -125,8 +134,8 @@
         if (!storage || storage.__togetherStore) return false;
         storage.__togetherStore = true;
         const T = storage.AssetType;
-        storage.addWebStore([T.ImageVector, T.ImageBitmap, T.Sound],
-            asset => `${location.origin}${API}/assets/${asset.assetId}.${asset.dataFormat}`);
+        const urlFor = asset => `${location.origin}${API}/assets/${asset.assetId}.${asset.dataFormat}`;
+        storage.addWebStore([T.ImageVector, T.ImageBitmap, T.Sound], urlFor, urlFor, urlFor);
         // Try our room first, fall back to Scratch's CDN for library assets.
         const stores = storage.webHelper && storage.webHelper.stores;
         if (stores && stores.length > 1) stores.unshift(stores.pop());
@@ -489,6 +498,7 @@
             remoteLoading = false;
             remoteBusy--;
             snapshotKnown();
+            ensureCloud();
         }
     }
 
@@ -497,6 +507,93 @@
         if (em.isExtensionLoaded(msg.id)) return;
         remoteExtensions.add(msg.id);
         em.loadExtensionURL(msg.id).catch(() => {}).finally(() => remoteExtensions.delete(msg.id));
+    }
+
+    const CORE_PREFIXES = new Set(['motion', 'looks', 'sound', 'event', 'control', 'sensing', 'operator', 'data',
+        'procedures', 'argument', 'math', 'text', 'colour', 'note']);
+    async function applyBlocksAdd (msg) {
+        const t = findTarget(msg.sprite);
+        if (!t || !msg.blocks) return;
+        const em = vm.extensionManager;
+        const needed = new Set(Object.values(msg.blocks).map(b => String(b.opcode || '').split('_')[0])
+            .filter(p => p && !CORE_PREFIXES.has(p) && !em.isExtensionLoaded(p)));
+        for (const id of needed) {
+            remoteExtensions.add(id);
+            try { await em.loadExtensionURL(id); } catch (e) { /* unknown prefix */ } finally { remoteExtensions.delete(id); }
+        }
+        remoteBusy++;
+        try {
+            let added = 0;
+            for (const id in msg.blocks) {
+                if (t.blocks._blocks[id]) continue;
+                t.blocks.createBlock(JSON.parse(JSON.stringify(msg.blocks[id])));
+                added++;
+            }
+            if (added) {
+                t.blocks.updateTargetSpecificBlocks(t.isStage);
+                vm.runtime.emitProjectChanged();
+                if (vm.editingTarget === t) vm.emitWorkspaceUpdate();
+            }
+        } finally { remoteBusy--; }
+    }
+
+    // ---------------- cloud variables (CloudLift speaks Scratch's cloud protocol) ----------------
+    let cloud = null;
+    class CloudProvider {
+        constructor (host, projectId, username) {
+            this.host = host; this.projectId = projectId; this.username = username;
+            this.attempts = 0; this.queue = []; this.closed = false;
+            this.open();
+        }
+        open () {
+            this.attempts++;
+            // Relayed through our own server (browsers are picky about third-party sockets).
+            const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+            try { this.ws = new WebSocket(`${proto}${location.host}/cloud?room=${encodeURIComponent(ROOM)}`); } catch (e) { this.ws = null; return; }
+            this.ws.onopen = () => {
+                this.attempts = 1;
+                this.write('handshake');
+                this.queue.splice(0).forEach(d => this.ws.send(d));
+            };
+            this.ws.onmessage = ev => String(ev.data).split('\n').forEach(line => {
+                if (!line) return;
+                let m; try { m = JSON.parse(line); } catch (e) { return; }
+                if (m.method === 'set') vm.postIOData('cloud', {varUpdate: {name: m.name, value: m.value}});
+            });
+            this.ws.onclose = () => {
+                if (this.closed) return;
+                const wait = Math.random() * (Math.pow(2, Math.min(this.attempts, 5)) - 1) * 1000 + 500;
+                this.timer = setTimeout(() => this.open(), wait);
+            };
+            this.ws.onerror = () => {};
+        }
+        write (method, name, value, newName) {
+            const msg = {method, user: this.username, project_id: this.projectId};
+            if (name) msg.name = name;
+            if (newName) msg.new_name = newName;
+            if (value !== undefined && value !== null) msg.value = value;
+            const data = `${JSON.stringify(msg)}\n`;
+            if (this.ws && this.ws.readyState === 1) this.ws.send(data);
+            else if (method !== 'set') this.queue.push(data);
+        }
+        createVariable (name, value) { this.write('create', name, value); }
+        updateVariable (name, value) { this.write('set', name, value); }
+        renameVariable (oldName, newName) { this.write('rename', oldName, null, newName); }
+        deleteVariable (name) { this.write('delete', name); }
+        requestCloseConnection () { this.closed = true; clearTimeout(this.timer); if (this.ws) this.ws.close(); }
+    }
+    function ensureCloud () {
+        if (!CLOUD_HOST || !vm || !ready) return;
+        const has = vm.runtime.hasCloudData();
+        if (has && !cloud) {
+            cloud = new CloudProvider(CLOUD_HOST, CLOUD_PROJECT_ID, NAME);
+            vm.setCloudProvider(cloud);
+            log('cloud variables connected to', CLOUD_HOST);
+        } else if (!has && cloud) {
+            cloud.requestCloseConnection();
+            cloud = null;
+            vm.setCloudProvider(null);
+        }
     }
 
     // ---------------- message dispatch ----------------
@@ -510,7 +607,7 @@
         case 'reorder': chain = chain.then(() => applyReorder(msg)); break;
         case 'project': chain = chain.then(() => applyProject(msg.project)); break;
         case 'extension': applyExtension(msg); break;
-        case 'blocksReplace': break;
+        case 'blocksAdd': chain = chain.then(() => applyBlocksAdd(msg)).catch(e => console.warn(e)); break;
         default: break;
         }
     }
@@ -528,6 +625,7 @@
         }
         ready = true;
         log('ready', isHost ? '(host)' : '');
+        ensureCloud();
         if (isHost) sendSnapshot();
         sendPresence(true);
         const queued = inbox.splice(0);
@@ -678,6 +776,21 @@
             return p;
         };
 
+        const origShare = vm.shareBlocksToTarget.bind(vm);
+        vm.shareBlocksToTarget = function (blocks, targetId, optFromTargetId) {
+            const target = vm.runtime.getTargetById(targetId);
+            const before = target ? new Set(Object.keys(target.blocks._blocks)) : null;
+            const p = origShare(blocks, targetId, optFromTargetId);
+            if (target && ready) {
+                p.then(() => {
+                    const added = {};
+                    for (const id in target.blocks._blocks) if (!before.has(id)) added[id] = target.blocks._blocks[id];
+                    if (Object.keys(added).length) send({type: 'blocksAdd', sprite: keyOf(target), blocks: added});
+                }).catch(() => {});
+            }
+            return p;
+        };
+
         const em = vm.extensionManager;
         const origExt = em.loadExtensionURL.bind(em);
         em.loadExtensionURL = function (id) {
@@ -687,7 +800,7 @@
         };
 
         vm.on('targetsUpdate', () => { checkTargets(); sendPresence(false); });
-        vm.on('PROJECT_CHANGED', () => { checkTargets(); if (isHost) scheduleSnapshot(); });
+        vm.on('PROJECT_CHANGED', () => { checkTargets(); ensureCloud(); if (isHost) scheduleSnapshot(); });
         vm.on('PROJECT_RUN_STOP', () => checkTargets());
 
         const storageTimer = setInterval(() => { if (installAssetStore()) clearInterval(storageTimer); }, 100);
@@ -717,7 +830,11 @@
                 canShare: false,
                 enableCommunity: false,
                 showComingSoon: false,
-                backpackVisible: false,
+                backpackVisible: true,
+                backpackHost: `${location.origin}/backpack`,
+                username: NAME,
+                cloudHost: CLOUD_HOST || undefined,
+                hasCloudPermission: !!CLOUD_HOST,
                 projectTitle: title,
                 onUpdateProjectTitle: t => { if (ready && t && t !== title) setTitle(t, true); },
                 onClickLogo: () => { location.href = '/'; },
@@ -727,5 +844,6 @@
         guiRender();
     }
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+    fetch('/api/config').then(r => r.json()).then(c => { CLOUD_HOST = c.cloudHost || null; }).catch(() => {})
+        .then(() => { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot(); });
 })();

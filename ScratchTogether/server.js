@@ -7,10 +7,14 @@ const http = require('http');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const {WebSocketServer} = require('ws');
+const {WebSocketServer, WebSocket} = require('ws');
 
 const PORT = process.env.PORT || 4940;
 const DATA_DIR = path.join(__dirname, 'data');
+const BACKPACK_DIR = path.join(DATA_DIR, '_backpack');
+// Cloud variables go to the user's own CloudLift server (speaks Scratch's cloud protocol).
+const CLOUD_HOST = process.env.CLOUD_HOST || 'cloudlift.apps.tas-ndc.kuhn-labs.com';
+const crypto = require('crypto');
 const GUI_DIST = path.dirname(require.resolve('scratch-gui/package.json')) + '/dist';
 
 fs.mkdirSync(DATA_DIR, {recursive: true});
@@ -41,6 +45,8 @@ const store = {
                 pool = new Pool({connectionString: uri, ssl});
                 await pool.query('CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, meta JSONB, project TEXT)');
                 await pool.query('CREATE TABLE IF NOT EXISTS assets (code TEXT, name TEXT, data BYTEA, PRIMARY KEY (code, name))');
+                await pool.query('CREATE TABLE IF NOT EXISTS backpack_items (username TEXT, id TEXT, item JSONB, created BIGINT, PRIMARY KEY (username, id))');
+                await pool.query('CREATE TABLE IF NOT EXISTS backpack_files (name TEXT PRIMARY KEY, data BYTEA)');
                 break;
             } catch (e) {
                 try { await pool.end(); } catch (e2) { /* ignore */ }
@@ -97,6 +103,49 @@ const store = {
         }
         const p = path.join(roomDir(code), 'assets', name);
         return fs.existsSync(p) ? fs.readFileSync(p) : null;
+    },
+    // ---- backpack (per user name, files named by md5 like Scratch's backpack server) ----
+    async backpackList (username, limit, offset) {
+        if (pool) {
+            const r = await pool.query('SELECT item FROM backpack_items WHERE username = $1 ORDER BY created DESC LIMIT $2 OFFSET $3',
+                [username, limit, offset]);
+            return r.rows.map(x => x.item);
+        }
+        const dir = path.join(BACKPACK_DIR, username);
+        if (!fs.existsSync(dir)) return [];
+        return fs.readdirSync(dir).filter(f => f.endsWith('.json'))
+            .map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+            .sort((a, b) => b.created - a.created).slice(offset, offset + limit);
+    },
+    async backpackAdd (username, item, files) {
+        if (pool) {
+            for (const [name, buf] of files) {
+                await pool.query('INSERT INTO backpack_files (name, data) VALUES ($1, $2) ON CONFLICT DO NOTHING', [name, buf]);
+            }
+            await pool.query('INSERT INTO backpack_items (username, id, item, created) VALUES ($1, $2, $3, $4)',
+                [username, item.id, JSON.stringify(item), item.created]);
+            return;
+        }
+        fs.mkdirSync(path.join(BACKPACK_DIR, 'files'), {recursive: true});
+        fs.mkdirSync(path.join(BACKPACK_DIR, username), {recursive: true});
+        for (const [name, buf] of files) {
+            const fp = path.join(BACKPACK_DIR, 'files', name);
+            if (!fs.existsSync(fp)) fs.writeFileSync(fp, buf);
+        }
+        fs.writeFileSync(path.join(BACKPACK_DIR, username, `${item.id}.json`), JSON.stringify(item));
+    },
+    async backpackDelete (username, id) {
+        if (pool) { await pool.query('DELETE FROM backpack_items WHERE username = $1 AND id = $2', [username, id]); return; }
+        const fp = path.join(BACKPACK_DIR, username, `${id}.json`);
+        if (fs.existsSync(fp)) fs.unlinkSync(fp);
+    },
+    async backpackFile (name) {
+        if (pool) {
+            const r = await pool.query('SELECT data FROM backpack_files WHERE name = $1', [name]);
+            return r.rows[0] ? r.rows[0].data : null;
+        }
+        const fp = path.join(BACKPACK_DIR, 'files', name);
+        return fs.existsSync(fp) ? fs.readFileSync(fp) : null;
     },
     async putAsset (code, name, buf) {
         if (pool) {
@@ -219,13 +268,54 @@ app.get('/api/rooms/:code/assets/:file', wrap(async (req, res) => {
     res.type(MIME[file.split('.').pop().toLowerCase()] || 'application/octet-stream');
     res.send(buf);
 }));
-app.post('/api/rooms/:code/assets/:file', express.raw({type: () => true, limit: '60mb'}), wrap(async (req, res) => {
+const uploadAsset = wrap(async (req, res) => {
     const {code, file} = req.params;
     if (!ASSET_RE.test(file)) return res.status(400).end();
     const room = await loadRoom(code.toUpperCase());
     if (!room) return res.status(404).end();
     if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).end();
     await store.putAsset(room.code, file, req.body);
+    res.json({ok: true, status: 'ok', 'content-name': file});
+});
+app.post('/api/rooms/:code/assets/:file', express.raw({type: () => true, limit: '60mb'}), uploadAsset);
+app.put('/api/rooms/:code/assets/:file', express.raw({type: () => true, limit: '60mb'}), uploadAsset);
+
+app.get('/api/config', (req, res) => res.json({cloudHost: CLOUD_HOST}));
+
+// ---------- backpack (same API scratch-gui expects from Scratch's backpack server) ----------
+const BP_MIME_EXT = {'image/svg+xml': 'svg', 'image/png': 'png', 'audio/x-wav': 'wav', 'audio/wav': 'wav',
+    'audio/mp3': 'mp3', 'audio/mpeg': 'mp3', 'application/zip': 'zip', 'application/json': 'json'};
+const BP_EXT_MIME = {svg: 'image/svg+xml', png: 'image/png', wav: 'audio/wav', mp3: 'audio/mpeg', zip: 'application/zip',
+    json: 'application/json', jpg: 'image/jpeg'};
+const bpUser = u => String(u || '').replace(/[^A-Za-z0-9_\-. ]/g, '').trim().slice(0, 24) || 'someone';
+
+app.get('/backpack/:file([a-f0-9]{32}\.[a-z0-9]+)', wrap(async (req, res) => {
+    const buf = await store.backpackFile(req.params.file);
+    if (!buf) return res.status(404).end();
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.type(BP_EXT_MIME[req.params.file.split('.').pop()] || 'application/octet-stream');
+    res.send(buf);
+}));
+app.get('/backpack/:username', wrap(async (req, res) => {
+    const limit = Math.min(50, parseInt(req.query.limit, 10) || 20);
+    const offset = parseInt(req.query.offset, 10) || 0;
+    res.json(await store.backpackList(bpUser(req.params.username), limit, offset));
+}));
+app.post('/backpack/:username', express.json({limit: '60mb'}), wrap(async (req, res) => {
+    const {type, mime, name, body, thumbnail} = req.body || {};
+    if (!type || !body) return res.status(400).json({error: 'bad item'});
+    const ext = BP_MIME_EXT[mime] || 'bin';
+    const bodyBuf = Buffer.from(String(body), 'base64');
+    const thumbBuf = Buffer.from(String(thumbnail || ''), 'base64');
+    const bodyName = `${crypto.createHash('md5').update(bodyBuf).digest('hex')}.${ext}`;
+    const thumbName = `${crypto.createHash('md5').update(thumbBuf).digest('hex')}.jpg`;
+    const item = {id: crypto.randomBytes(8).toString('hex'), type, mime, name: String(name || type).slice(0, 60),
+        body: bodyName, thumbnail: thumbName, created: Date.now()};
+    await store.backpackAdd(bpUser(req.params.username), item, [[bodyName, bodyBuf], [thumbName, thumbBuf]]);
+    res.json(item);
+}));
+app.delete('/backpack/:username/:id', wrap(async (req, res) => {
+    await store.backpackDelete(bpUser(req.params.username), String(req.params.id).slice(0, 32));
     res.json({ok: true});
 }));
 app.head('/api/rooms/:code/assets/:file', wrap(async (req, res) => {
@@ -244,7 +334,27 @@ app.get('/r/:code', (req, res) => res.redirect(`/editor?room=${encodeURIComponen
 
 // ---------- websocket ----------
 const server = http.createServer(app);
-const wss = new WebSocketServer({server, path: '/ws', maxPayload: 64 * 1024 * 1024});
+const wss = new WebSocketServer({noServer: true, maxPayload: 64 * 1024 * 1024});
+const cloudWss = new WebSocketServer({noServer: true});
+server.on('upgrade', (req, socket, head) => {
+    const pathname = new URL(req.url, 'http://x').pathname;
+    if (pathname === '/ws') wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws, req));
+    else if (pathname === '/cloud') cloudWss.handleUpgrade(req, socket, head, ws => cloudWss.emit('connection', ws, req));
+    else socket.destroy();
+});
+
+// Cloud variables: the editor talks to us, we relay to the cloud-variable server (CloudLift) line for line.
+cloudWss.on('connection', (client, req) => {
+    const up = new WebSocket(`wss://${CLOUD_HOST}/`, {headers: {'User-Agent': 'ScratchTogether'}});
+    const pending = [];
+    up.on('open', () => { pending.splice(0).forEach(d => up.send(d)); });
+    up.on('message', d => { if (client.readyState === 1) client.send(d.toString()); });
+    up.on('close', () => { if (client.readyState === 1) client.close(1012, 'cloud server closed'); });
+    up.on('error', e => { console.warn('cloud upstream error', e.message); if (client.readyState === 1) client.close(1011); });
+    client.on('message', d => { const s = d.toString(); if (up.readyState === 1) up.send(s); else if (up.readyState === 0) pending.push(s); });
+    client.on('close', () => { try { up.close(); } catch (e) { /* ignore */ } });
+    client.on('error', () => {});
+});
 
 const COLORS = ['#ff6680', '#4c97ff', '#59c059', '#ffab19', '#9966ff', '#0fbd8c', '#ff8c1a', '#5cb1d6', '#cf63cf'];
 let nextUser = 1;
