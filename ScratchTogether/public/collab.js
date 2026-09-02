@@ -180,6 +180,7 @@
     const poseSigOf = d => JSON.stringify([d.x, d.y, d.size, d.direction, d.visible, d.currentCostume]);
 
     function snapshotKnown () {
+        monitorsSnapshot();
         known.clear();
         originals().forEach(t => {
             const d = describe(t);
@@ -596,6 +597,52 @@
         }
     }
 
+    // ---------------- stage monitors (the "show variable" checkbox) ----------------
+    const knownMonitors = new Map(); // monitor id -> visible
+    function monitorsSnapshot () {
+        knownMonitors.clear();
+        vm.runtime._monitorState.forEach((m, id) => knownMonitors.set(id, !!m.get('visible')));
+    }
+    function onMonitorsUpdate (state) {
+        if (!ready || remoteBusy > 0) return;
+        state.forEach((m, id) => {
+            const visible = !!m.get('visible');
+            if (knownMonitors.get(id) === visible) return;
+            knownMonitors.set(id, visible);
+            const block = vm.runtime.monitorBlocks.getBlock(id);
+            if (!block) return;
+            const tid = m.get('targetId') || block.targetId || null;
+            const t = tid ? vm.runtime.getTargetById(tid) : null;
+            const b = JSON.parse(JSON.stringify(block));
+            delete b.targetId;
+            send({type: 'monitor', id, visible, block: b, targetId: t ? t.id : null, sprite: t ? keyOf(t) : null});
+        });
+    }
+    function applyMonitor (msg) {
+        const t = msg.sprite ? findTarget(msg.sprite) : null;
+        if (msg.sprite && !t) return;
+        let id = msg.id;
+        if (msg.targetId && t) id = id.split(msg.targetId).join(t.id);
+        const mb = vm.runtime.monitorBlocks;
+        let block = mb.getBlock(id);
+        if (!block) {
+            const b = JSON.parse(JSON.stringify(msg.block));
+            b.id = id;
+            b.targetId = t ? t.id : null;
+            b.isMonitored = false;
+            mb.createBlock(b);
+            block = mb.getBlock(id);
+        }
+        if (!block) return;
+        block.isMonitored = !msg.visible;
+        if (t) block.targetId = t.id;
+        knownMonitors.set(id, msg.visible);
+        remoteBusy++;
+        try {
+            withEditingTarget(t || vm.editingTarget, () => mb.changeBlock({id, element: 'checkbox', value: msg.visible}));
+        } catch (e) { console.warn('[together] monitor apply failed', e); } finally { remoteBusy--; }
+    }
+
     // ---------------- message dispatch ----------------
     function handle (msg) {
         switch (msg.type) {
@@ -607,6 +654,7 @@
         case 'reorder': chain = chain.then(() => applyReorder(msg)); break;
         case 'project': chain = chain.then(() => applyProject(msg.project)); break;
         case 'extension': applyExtension(msg); break;
+        case 'monitor': applyMonitor(msg); break;
         case 'blocksAdd': chain = chain.then(() => applyBlocksAdd(msg)).catch(e => console.warn(e)); break;
         default: break;
         }
@@ -802,6 +850,7 @@
         vm.on('targetsUpdate', () => { checkTargets(); sendPresence(false); });
         vm.on('PROJECT_CHANGED', () => { checkTargets(); ensureCloud(); if (isHost) scheduleSnapshot(); });
         vm.on('PROJECT_RUN_STOP', () => checkTargets());
+        vm.runtime.on('MONITORS_UPDATE', onMonitorsUpdate);
 
         const storageTimer = setInterval(() => { if (installAssetStore()) clearInterval(storageTimer); }, 100);
         setInterval(attachWorkspace, 750);

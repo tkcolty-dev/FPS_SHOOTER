@@ -36,6 +36,7 @@ pill and send it to friends on the same wifi (the terminal also prints your LAN 
 | Backpack | our own backpack server, follows your name across rooms (sprites, costumes, sounds, scripts) |
 | Cloud variables (☁) | relayed to your CloudLift server; the room is a project there, so every editor and every player shares the values |
 | Dragging scripts onto another sprite, dropping backpack code | synced |
+| "Show variable" checkbox (stage monitors) | synced |
 | File ▸ Load from your computer | whole project replaced for everyone |
 | Project title | shared |
 

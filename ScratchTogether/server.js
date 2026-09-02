@@ -421,9 +421,9 @@ wss.on('connection', async (ws, req) => {
             broadcast(room, {type: 'title', title: room.meta.title}, ws);
             return;
         case 'blocks': case 'sprite': case 'deleteSprite': case 'reorder':
-        case 'project': case 'extension': case 'blocksReplace':
+        case 'project': case 'extension': case 'blocksReplace': case 'blocksAdd': case 'monitor':
             msg.from = ws.userId;
-            if (process.env.DEBUG || msg.type !== 'blocks') console.log(`[${code}] ${ws.userName}: ${msg.type} ${msg.sprite || ''}${msg.add ? ' (new)' : ''}${msg.rename ? ' → ' + msg.rename : ''} → ${room.clients.size - 1} others`);
+            if (process.env.DEBUG || (msg.type !== 'blocks' && msg.type !== 'monitor')) console.log(`[${code}] ${ws.userName}: ${msg.type} ${msg.sprite || ''}${msg.add ? ' (new)' : ''}${msg.rename ? ' → ' + msg.rename : ''} → ${room.clients.size - 1} others`);
             if (msg.type === 'project') {
                 if (!validProject(msg.project)) return;
                 room.project = msg.project; saveRoom(room);
