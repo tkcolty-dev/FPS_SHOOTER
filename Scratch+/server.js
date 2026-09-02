@@ -336,17 +336,23 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.post('/api/projects', async (req, res) => {
-  let { id, bridge } = req.body || {};
+  let { id, bridge, title } = req.body || {};
   const m = String(id || '').match(/(\d{4,})/);
   if (!m) return res.status(400).json({ error: 'Paste a project link or ID (the number in the URL).' });
   id = m[1];
   if (!data.projects[id]) {
     data.projects[id] = { title: null, author: null, bridge: !!bridge, vars: {}, history: [] };
-  } else {
+  } else if (title === undefined) {
     data.projects[id].bridge = !!bridge;
   }
-  const info = await fetchProjectInfo(id);
-  if (info) { data.projects[id].title = info.title; data.projects[id].author = info.author; }
+  if (title) {
+    // Scratch Together rooms register themselves by name (they are not on scratch.mit.edu)
+    data.projects[id].title = String(title).slice(0, 80);
+    data.projects[id].author = data.projects[id].author || 'Scratch Together';
+  } else {
+    const info = await fetchProjectInfo(id);
+    if (info) { data.projects[id].title = info.title; data.projects[id].author = info.author; }
+  }
   saveSoon();
   syncBridges();
   tellDashboards({ type: 'refresh' });
