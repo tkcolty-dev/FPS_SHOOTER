@@ -7,7 +7,12 @@ sounds, backdrops, variables, custom blocks, extensions. No editor reloads while
 This is not a Scratch clone. It serves the official open-source `scratch-gui` bundle (the same code
 scratch.mit.edu runs) and adds a small sync layer on top.
 
-## Run it
+## Online
+
+Live at **https://scratch-together.apps.tas-ndc.kuhn-labs.com** (Cloud Foundry, rooms and art stored in Postgres).
+Friends anywhere can join with the room link. Redeploy with `cf push` from this folder.
+
+## Run it locally
 
 ```
 cd ScratchTogether

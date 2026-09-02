@@ -15,38 +15,127 @@ const GUI_DIST = path.dirname(require.resolve('scratch-gui/package.json')) + '/d
 
 fs.mkdirSync(DATA_DIR, {recursive: true});
 
+// ---------- storage (postgres on Cloud Foundry, plain files locally) ----------
+function pgUri () {
+    try {
+        const vcap = JSON.parse(process.env.VCAP_SERVICES);
+        for (const list of Object.values(vcap)) {
+            for (const svc of list) {
+                const c = svc.credentials || {};
+                const uri = c.uri || c.url;
+                if (uri && /^postgres/.test(uri)) return uri;
+            }
+        }
+    } catch (e) { /* not on CF */ }
+    return process.env.DATABASE_URL || null;
+}
+
+let pool = null;
+const store = {
+    async init () {
+        const uri = pgUri();
+        if (!uri) { console.log('  storage: local files (data/)'); return; }
+        const {Pool} = require('pg');
+        for (const ssl of [false, {rejectUnauthorized: false}]) {
+            try {
+                pool = new Pool({connectionString: uri, ssl});
+                await pool.query('CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, meta JSONB, project TEXT)');
+                await pool.query('CREATE TABLE IF NOT EXISTS assets (code TEXT, name TEXT, data BYTEA, PRIMARY KEY (code, name))');
+                break;
+            } catch (e) {
+                try { await pool.end(); } catch (e2) { /* ignore */ }
+                pool = null;
+                if (ssl !== false) throw e;
+            }
+        }
+        console.log('  storage: postgres');
+    },
+    async getRoom (code) {
+        if (pool) {
+            const r = await pool.query('SELECT meta, project FROM rooms WHERE code = $1', [code]);
+            return r.rows[0] ? {meta: r.rows[0].meta || {}, project: r.rows[0].project} : null;
+        }
+        const dir = roomDir(code);
+        if (!fs.existsSync(dir)) return null;
+        let project = null;
+        let meta = {};
+        try { project = fs.readFileSync(path.join(dir, 'project.json'), 'utf8'); } catch (e) { /* new room */ }
+        try { meta = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); } catch (e) { /* none */ }
+        return {meta, project};
+    },
+    async exists (code) {
+        if (pool) return (await pool.query('SELECT 1 FROM rooms WHERE code = $1', [code])).rowCount > 0;
+        return fs.existsSync(roomDir(code));
+    },
+    async saveRoom (code, meta, project) {
+        if (pool) {
+            await pool.query('INSERT INTO rooms (code, meta, project) VALUES ($1, $2, $3) ' +
+                'ON CONFLICT (code) DO UPDATE SET meta = $2, project = $3', [code, JSON.stringify(meta), project]);
+            return;
+        }
+        const dir = roomDir(code);
+        fs.mkdirSync(path.join(dir, 'assets'), {recursive: true});
+        fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta));
+        if (project) fs.writeFileSync(path.join(dir, 'project.json'), project);
+    },
+    async hasAsset (code, name) {
+        if (pool) return (await pool.query('SELECT 1 FROM assets WHERE code = $1 AND name = $2', [code, name])).rowCount > 0;
+        return fs.existsSync(path.join(roomDir(code), 'assets', name));
+    },
+    async missingAssets (code, names) {
+        if (pool) {
+            const r = await pool.query('SELECT name FROM assets WHERE code = $1 AND name = ANY($2)', [code, names]);
+            const have = new Set(r.rows.map(x => x.name));
+            return names.filter(n => !have.has(n));
+        }
+        return names.filter(n => !fs.existsSync(path.join(roomDir(code), 'assets', n)));
+    },
+    async getAsset (code, name) {
+        if (pool) {
+            const r = await pool.query('SELECT data FROM assets WHERE code = $1 AND name = $2', [code, name]);
+            return r.rows[0] ? r.rows[0].data : null;
+        }
+        const p = path.join(roomDir(code), 'assets', name);
+        return fs.existsSync(p) ? fs.readFileSync(p) : null;
+    },
+    async putAsset (code, name, buf) {
+        if (pool) {
+            await pool.query('INSERT INTO assets (code, name, data) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [code, name, buf]);
+            return;
+        }
+        const dir = path.join(roomDir(code), 'assets');
+        fs.mkdirSync(dir, {recursive: true});
+        const p = path.join(dir, name);
+        if (!fs.existsSync(p)) fs.writeFileSync(p, buf);
+    }
+};
+
 // ---------- rooms ----------
-const rooms = new Map(); // code -> {code, project, clients:Set<ws>, dir, saveTimer}
+const rooms = new Map(); // code -> {code, project, clients:Set<ws>, meta, saveTimer, snapshotWaiters}
 
 function roomDir (code) { return path.join(DATA_DIR, code); }
 
-function loadRoom (code) {
+async function loadRoom (code) {
     if (rooms.has(code)) return rooms.get(code);
-    const dir = roomDir(code);
-    if (!fs.existsSync(dir)) return null;
-    let project = null;
-    try { project = fs.readFileSync(path.join(dir, 'project.json'), 'utf8'); } catch (e) { /* new room */ }
-    let meta = {};
-    try { meta = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); } catch (e) { /* none */ }
-    const room = {code, project, clients: new Set(), dir, meta, saveTimer: null, snapshotWaiters: []};
+    const rec = await store.getRoom(code);
+    if (!rec) return null;
+    const room = {code, project: rec.project, clients: new Set(), meta: rec.meta || {}, saveTimer: null, snapshotWaiters: []};
     rooms.set(code, room);
     return room;
 }
 
-function makeCode () {
+async function makeCode () {
     const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
     for (let i = 0; i < 5; i++) code += letters[Math.floor(Math.random() * letters.length)];
-    return rooms.has(code) || fs.existsSync(roomDir(code)) ? makeCode() : code;
+    return (rooms.has(code) || await store.exists(code)) ? makeCode() : code;
 }
 
-function createRoom (title) {
-    const code = makeCode();
-    const dir = roomDir(code);
-    fs.mkdirSync(path.join(dir, 'assets'), {recursive: true});
+async function createRoom (title) {
+    const code = await makeCode();
     const meta = {title: title || 'Untitled project', created: Date.now()};
-    fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta));
-    const room = {code, project: null, clients: new Set(), dir, meta, saveTimer: null, snapshotWaiters: []};
+    await store.saveRoom(code, meta, null);
+    const room = {code, project: null, clients: new Set(), meta, saveTimer: null, snapshotWaiters: []};
     rooms.set(code, room);
     return room;
 }
@@ -54,10 +143,12 @@ function createRoom (title) {
 function saveRoom (room) {
     clearTimeout(room.saveTimer);
     room.saveTimer = setTimeout(() => {
-        if (room.project) fs.writeFile(path.join(room.dir, 'project.json'), room.project, () => {});
-        fs.writeFile(path.join(room.dir, 'meta.json'), JSON.stringify(room.meta), () => {});
+        store.saveRoom(room.code, room.meta, room.project).catch(e => console.warn('save failed', e.message));
     }, 500);
 }
+
+const MIME = {svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif',
+    bmp: 'image/bmp', wav: 'audio/wav', mp3: 'audio/mpeg'};
 
 // A usable project has a stage; never let an empty/broken snapshot overwrite a good one.
 function validProject (str) {
@@ -96,56 +187,57 @@ app.use('/vendor/react.js', express.static(require.resolve('react/umd/react.prod
 app.use('/vendor/react-dom.js', express.static(require.resolve('react-dom/umd/react-dom.production.min.js')));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.post('/api/rooms', express.json(), (req, res) => {
-    const room = createRoom(req.body && req.body.title);
-    res.json({code: room.code});
-});
+const wrap = fn => (req, res) => fn(req, res).catch(e => { console.warn(e); res.status(500).json({error: 'server error'}); });
 
-app.get('/api/rooms/:code', (req, res) => {
-    const room = loadRoom(req.params.code.toUpperCase());
+app.post('/api/rooms', express.json(), wrap(async (req, res) => {
+    const room = await createRoom(req.body && req.body.title);
+    res.json({code: room.code});
+}));
+
+app.get('/api/rooms/:code', wrap(async (req, res) => {
+    const room = await loadRoom(req.params.code.toUpperCase());
     if (!room) return res.status(404).json({error: 'no such room'});
     res.json({code: room.code, title: room.meta.title, users: usersOf(room).length, hasProject: !!room.project});
-});
+}));
 
 const ASSET_RE = /^[a-f0-9]{32}\.(svg|png|jpg|jpeg|gif|bmp|wav|mp3)$/i;
-app.post('/api/rooms/:code/assets-check', express.json({limit: '2mb'}), (req, res) => {
-    const room = loadRoom(req.params.code.toUpperCase());
+app.post('/api/rooms/:code/assets-check', express.json({limit: '2mb'}), wrap(async (req, res) => {
+    const room = await loadRoom(req.params.code.toUpperCase());
     if (!room) return res.status(404).end();
-    const files = Array.isArray(req.body && req.body.files) ? req.body.files : [];
-    const missing = files.filter(f => ASSET_RE.test(f) && !fs.existsSync(path.join(room.dir, 'assets', f)));
-    res.json({missing});
-});
+    const files = (Array.isArray(req.body && req.body.files) ? req.body.files : []).filter(f => ASSET_RE.test(f));
+    res.json({missing: files.length ? await store.missingAssets(room.code, files) : []});
+}));
 
 // Asset store: the sender uploads costume/sound bytes here, other editors fetch them through
 // scratch-storage as if this were assets.scratch.mit.edu.
-app.get('/api/rooms/:code/assets/:file', (req, res) => {
+app.get('/api/rooms/:code/assets/:file', wrap(async (req, res) => {
     const {code, file} = req.params;
     if (!ASSET_RE.test(file)) return res.status(400).end();
-    const p = path.join(roomDir(code.toUpperCase()), 'assets', file);
-    if (!fs.existsSync(p)) return res.status(404).end();
+    const buf = await store.getAsset(code.toUpperCase(), file);
+    if (!buf) return res.status(404).end();
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
-    res.sendFile(p);
-});
-app.post('/api/rooms/:code/assets/:file', express.raw({type: () => true, limit: '60mb'}), (req, res) => {
+    res.type(MIME[file.split('.').pop().toLowerCase()] || 'application/octet-stream');
+    res.send(buf);
+}));
+app.post('/api/rooms/:code/assets/:file', express.raw({type: () => true, limit: '60mb'}), wrap(async (req, res) => {
     const {code, file} = req.params;
     if (!ASSET_RE.test(file)) return res.status(400).end();
-    const room = loadRoom(code.toUpperCase());
+    const room = await loadRoom(code.toUpperCase());
     if (!room) return res.status(404).end();
-    const p = path.join(room.dir, 'assets', file);
-    if (!fs.existsSync(p)) fs.writeFileSync(p, req.body);
+    if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).end();
+    await store.putAsset(room.code, file, req.body);
     res.json({ok: true});
-});
-app.head('/api/rooms/:code/assets/:file', (req, res) => {
-    const p = path.join(roomDir(req.params.code.toUpperCase()), 'assets', req.params.file);
-    res.status(fs.existsSync(p) ? 200 : 404).end();
-});
+}));
+app.head('/api/rooms/:code/assets/:file', wrap(async (req, res) => {
+    res.status(await store.hasAsset(req.params.code.toUpperCase(), req.params.file) ? 200 : 404).end();
+}));
 
 // Download the room as a .sb3-compatible project.json (the editor's File menu also works).
-app.get('/api/rooms/:code/project.json', (req, res) => {
-    const room = loadRoom(req.params.code.toUpperCase());
+app.get('/api/rooms/:code/project.json', wrap(async (req, res) => {
+    const room = await loadRoom(req.params.code.toUpperCase());
     if (!room || !room.project) return res.status(404).end();
     res.type('json').send(room.project);
-});
+}));
 
 app.get('/editor', (req, res) => res.sendFile(path.join(__dirname, 'public', 'editor.html')));
 app.get('/r/:code', (req, res) => res.redirect(`/editor?room=${encodeURIComponent(req.params.code.toUpperCase())}`));
@@ -168,11 +260,13 @@ function sendInit (room, ws) {
     }));
 }
 
-wss.on('connection', (ws, req) => {
+wss.on('connection', async (ws, req) => {
     const url = new URL(req.url, 'http://x');
     const code = (url.searchParams.get('room') || '').toUpperCase();
-    const room = loadRoom(code);
+    let room = null;
+    try { room = await loadRoom(code); } catch (e) { console.warn(e); }
     if (!room) { ws.close(4004, 'no such room'); return; }
+    if (ws.readyState !== 1) return;
 
     ws.userId = `u${nextUser++}`;
     ws.userName = (url.searchParams.get('name') || 'Someone').slice(0, 24);
@@ -239,7 +333,7 @@ wss.on('connection', (ws, req) => {
     });
 });
 
-server.listen(PORT, () => {
+store.init().catch(e => { console.error('storage init failed', e); process.exit(1); }).then(() => server.listen(PORT, () => {
     const ips = Object.values(os.networkInterfaces()).flat()
         .filter(i => i && i.family === 'IPv4' && !i.internal).map(i => i.address);
     console.log('');
@@ -247,4 +341,4 @@ server.listen(PORT, () => {
     console.log(`  You:      http://localhost:${PORT}`);
     ips.forEach(ip => console.log(`  Friends:  http://${ip}:${PORT}   (same wifi)`));
     console.log('');
-});
+}));
