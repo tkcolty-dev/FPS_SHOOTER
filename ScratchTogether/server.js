@@ -15,6 +15,7 @@ const BACKPACK_DIR = path.join(DATA_DIR, '_backpack');
 // Cloud variables go to the user's own CloudLift server (speaks Scratch's cloud protocol).
 const CLOUD_HOST = process.env.CLOUD_HOST || 'cloudlift.apps.tas-ndc.kuhn-labs.com';
 const crypto = require('crypto');
+const cloudProjectId = code => String(9000000000 + [...code].reduce((n, ch) => n * 32 + 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'.indexOf(ch), 0));
 const GUI_DIST = path.dirname(require.resolve('scratch-gui/package.json')) + '/dist';
 
 fs.mkdirSync(DATA_DIR, {recursive: true});
@@ -68,6 +69,26 @@ const store = {
         try { project = fs.readFileSync(path.join(dir, 'project.json'), 'utf8'); } catch (e) { /* new room */ }
         try { meta = JSON.parse(fs.readFileSync(path.join(dir, 'meta.json'), 'utf8')); } catch (e) { /* none */ }
         return {meta, project};
+    },
+    async listRooms () {
+        if (pool) {
+            const r = await pool.query('SELECT code, meta FROM rooms');
+            return r.rows.map(x => ({code: x.code, meta: x.meta || {}}));
+        }
+        if (!fs.existsSync(DATA_DIR)) return [];
+        return fs.readdirSync(DATA_DIR).filter(d => /^[A-Z0-9]{5}$/.test(d)).map(code => {
+            let meta = {};
+            try { meta = JSON.parse(fs.readFileSync(path.join(roomDir(code), 'meta.json'), 'utf8')); } catch (e) { /* none */ }
+            return {code, meta};
+        });
+    },
+    async deleteRoom (code) {
+        if (pool) {
+            await pool.query('DELETE FROM rooms WHERE code = $1', [code]);
+            await pool.query('DELETE FROM assets WHERE code = $1', [code]);
+            return;
+        }
+        fs.rmSync(roomDir(code), {recursive: true, force: true});
     },
     async exists (code) {
         if (pool) return (await pool.query('SELECT 1 FROM rooms WHERE code = $1', [code])).rowCount > 0;
@@ -243,10 +264,56 @@ app.post('/api/rooms', express.json(), wrap(async (req, res) => {
     res.json({code: room.code});
 }));
 
+function summary (code, meta) {
+    const live = rooms.get(code);
+    return {
+        code, title: meta.title || 'Untitled project', created: meta.created || 0, updated: meta.updated || meta.created || 0,
+        thumb: meta.thumb || null, cloudMode: meta.cloudMode || 'live', sprites: meta.sprites || 0,
+        online: live ? usersOf(live).length : 0, people: live ? usersOf(live).map(u => u.name) : []
+    };
+}
+
+app.get('/api/rooms', wrap(async (req, res) => {
+    const list = await store.listRooms();
+    res.json(list.map(r => summary(r.code, r.meta)).sort((a, b) => b.updated - a.updated));
+}));
+
 app.get('/api/rooms/:code', wrap(async (req, res) => {
     const room = await loadRoom(req.params.code.toUpperCase());
     if (!room) return res.status(404).json({error: 'no such room'});
-    res.json({code: room.code, title: room.meta.title, users: usersOf(room).length, hasProject: !!room.project});
+    res.json(Object.assign(summary(room.code, room.meta), {hasProject: !!room.project, cloudProjectId: cloudProjectId(room.code)}));
+}));
+
+app.delete('/api/rooms/:code', wrap(async (req, res) => {
+    const code = req.params.code.toUpperCase();
+    const room = rooms.get(code);
+    if (room) {
+        for (const c of room.clients) { try { c.close(4010, 'room deleted'); } catch (e) { /* ignore */ } }
+        clearTimeout(room.saveTimer);
+        rooms.delete(code);
+    }
+    await store.deleteRoom(code);
+    res.json({ok: true});
+}));
+
+// Room settings (title, cloud-variable mode) — shared by everyone in the room.
+app.post('/api/rooms/:code/settings', express.json(), wrap(async (req, res) => {
+    const room = await loadRoom(req.params.code.toUpperCase());
+    if (!room) return res.status(404).end();
+    const b = req.body || {};
+    if (typeof b.title === 'string' && b.title.trim()) room.meta.title = b.title.trim().slice(0, 100);
+    if (['live', 'sim', 'off'].includes(b.cloudMode)) room.meta.cloudMode = b.cloudMode;
+    saveRoom(room);
+    broadcast(room, {type: 'settings', title: room.meta.title, cloudMode: room.meta.cloudMode || 'live'});
+    res.json({title: room.meta.title, cloudMode: room.meta.cloudMode || 'live'});
+}));
+
+// Stage thumbnail from the host (small JPEG data URL) for the projects page.
+app.post('/api/rooms/:code/thumbnail', express.text({type: '*/*', limit: '400kb'}), wrap(async (req, res) => {
+    const room = await loadRoom(req.params.code.toUpperCase());
+    if (!room) return res.status(404).end();
+    if (/^data:image\/(jpeg|png|webp);base64,/.test(req.body || '')) { room.meta.thumb = req.body; saveRoom(room); }
+    res.json({ok: true});
 }));
 
 const ASSET_RE = /^[a-f0-9]{32}\.(svg|png|jpg|jpeg|gif|bmp|wav|mp3)$/i;
@@ -330,6 +397,7 @@ app.get('/api/rooms/:code/project.json', wrap(async (req, res) => {
 }));
 
 app.get('/editor', (req, res) => res.sendFile(path.join(__dirname, 'public', 'editor.html')));
+app.get('/projects', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/r/:code', (req, res) => res.redirect(`/editor?room=${encodeURIComponent(req.params.code.toUpperCase())}`));
 
 // ---------- websocket ----------
@@ -343,8 +411,59 @@ server.on('upgrade', (req, socket, head) => {
     else socket.destroy();
 });
 
-// Cloud variables: the editor talks to us, we relay to the cloud-variable server (CloudLift) line for line.
-cloudWss.on('connection', (client, req) => {
+// Tell CloudLift the room's name so its dashboard shows "My Game" instead of a number.
+const registered = new Map();
+async function registerWithCloudLift (room) {
+    if (!CLOUD_HOST) return;
+    const key = `${room.code}:${room.meta.title}`;
+    if (registered.get(room.code) === key) return;
+    registered.set(room.code, key);
+    await fetch(`https://${CLOUD_HOST}/api/projects`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: cloudProjectId(room.code), title: `${room.meta.title} (Scratch Together ${room.code})`})
+    });
+}
+
+// Simulated cloud variables: kept per room on this server, shared with everyone in the room.
+const simClients = new Map(); // code -> Set<ws>
+function simCloud (client, room) {
+    if (!simClients.has(room.code)) simClients.set(room.code, new Set());
+    const peers = simClients.get(room.code);
+    peers.add(client);
+    room.meta.cloudVars = room.meta.cloudVars || {};
+    client.on('message', d => {
+        for (const line of d.toString().split('\n')) {
+            if (!line.trim()) continue;
+            let msg; try { msg = JSON.parse(line); } catch (e) { continue; }
+            if (msg.method === 'handshake') {
+                const lines = Object.entries(room.meta.cloudVars).map(([name, value]) => JSON.stringify({method: 'set', name, value}));
+                if (lines.length && client.readyState === 1) client.send(`${lines.join('\n')}\n`);
+            } else if ((msg.method === 'set' || msg.method === 'create') && typeof msg.name === 'string') {
+                const value = String(msg.value === undefined ? 0 : msg.value).slice(0, 256);
+                room.meta.cloudVars[msg.name] = value;
+                saveRoom(room);
+                const out = `${JSON.stringify({method: 'set', name: msg.name, value})}\n`;
+                for (const p of peers) if (p !== client && p.readyState === 1) p.send(out);
+            } else if (msg.method === 'rename' && msg.name && msg.new_name) {
+                room.meta.cloudVars[msg.new_name] = room.meta.cloudVars[msg.name]; delete room.meta.cloudVars[msg.name]; saveRoom(room);
+            } else if (msg.method === 'delete' && msg.name) {
+                delete room.meta.cloudVars[msg.name]; saveRoom(room);
+            }
+        }
+    });
+    client.on('close', () => peers.delete(client));
+    client.on('error', () => {});
+}
+
+// Cloud variables: the editor talks to us. "live" relays to CloudLift line for line, "sim" stays in the room.
+cloudWss.on('connection', async (client, req) => {
+    const url = new URL(req.url, 'http://x');
+    const room = await loadRoom((url.searchParams.get('room') || '').toUpperCase()).catch(() => null);
+    if (!room) { client.close(4004); return; }
+    const mode = room.meta.cloudMode || 'live';
+    if (mode === 'sim') return simCloud(client, room);
+    if (mode === 'off') { client.close(4005, 'cloud off'); return; }
+    registerWithCloudLift(room).catch(() => {});
     const up = new WebSocket(`wss://${CLOUD_HOST}/`, {headers: {'User-Agent': 'ScratchTogether'}});
     const pending = [];
     up.on('open', () => { pending.splice(0).forEach(d => up.send(d)); });
@@ -364,6 +483,7 @@ function sendInit (room, ws) {
         type: 'init',
         project: room.project,
         title: room.meta.title,
+        cloudMode: room.meta.cloudMode || 'live',
         you: ws.userId,
         host: hostOf(room) === ws,
         users: usersOf(room)
@@ -406,6 +526,8 @@ wss.on('connection', async (ws, req) => {
             if (validProject(msg.project)) {
                 room.project = msg.project;
                 if (msg.title) room.meta.title = msg.title;
+                room.meta.updated = Date.now();
+                try { room.meta.sprites = JSON.parse(msg.project).targets.filter(t => !t.isStage).length; } catch (e) { /* ignore */ }
                 saveRoom(room);
                 const waiters = room.snapshotWaiters.splice(0);
                 waiters.forEach(fn => fn());
@@ -419,6 +541,7 @@ wss.on('connection', async (ws, req) => {
             room.meta.title = String(msg.title || '').slice(0, 100);
             saveRoom(room);
             broadcast(room, {type: 'title', title: room.meta.title}, ws);
+            registerWithCloudLift(room).catch(() => {});
             return;
         case 'blocks': case 'sprite': case 'deleteSprite': case 'reorder':
         case 'project': case 'extension': case 'blocksReplace': case 'blocksAdd': case 'monitor':
@@ -426,7 +549,7 @@ wss.on('connection', async (ws, req) => {
             if (process.env.DEBUG || (msg.type !== 'blocks' && msg.type !== 'monitor')) console.log(`[${code}] ${ws.userName}: ${msg.type} ${msg.sprite || ''}${msg.add ? ' (new)' : ''}${msg.rename ? ' → ' + msg.rename : ''} → ${room.clients.size - 1} others`);
             if (msg.type === 'project') {
                 if (!validProject(msg.project)) return;
-                room.project = msg.project; saveRoom(room);
+                room.project = msg.project; room.meta.updated = Date.now(); saveRoom(room);
             }
             broadcast(room, msg, ws);
             return;

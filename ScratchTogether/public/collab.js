@@ -47,6 +47,13 @@
     let ready = false;
     let isHost = false;
     let title = 'Untitled project';
+    let cloudMode = 'live';   // live (CloudLift) | sim (this room only) | off
+    let settingsOpen = false;
+    try {
+        const list = JSON.parse(localStorage.getItem('st_rooms') || '[]').filter(c => c !== ROOM);
+        list.unshift(ROOM);
+        localStorage.setItem('st_rooms', JSON.stringify(list.slice(0, 40)));
+    } catch (e) { /* ignore */ }
     let users = [];
     let myId = null;
 
@@ -252,6 +259,23 @@
         const idle = window.requestIdleCallback ? new Promise(r => requestIdleCallback(r, {timeout: 3000})) : Promise.resolve();
         await idle;
         send({type: 'snapshot', project: vm.toJSON(), title});
+        sendThumbnail();
+    }
+    let lastThumb = 0;
+    function sendThumbnail () {
+        if (Date.now() - lastThumb < 20000) return;
+        const renderer = vm.runtime.renderer;
+        if (!renderer || !renderer.requestSnapshot) return;
+        lastThumb = Date.now();
+        renderer.requestSnapshot(uri => {
+            const img = new Image();
+            img.onload = () => {
+                const c = document.createElement('canvas'); c.width = 240; c.height = 180;
+                c.getContext('2d').drawImage(img, 0, 0, 240, 180);
+                fetch(`${API}/thumbnail`, {method: 'POST', headers: {'Content-Type': 'text/plain'}, body: c.toDataURL('image/jpeg', 0.7)}).catch(() => {});
+            };
+            img.src = uri;
+        });
     }
     const scheduleSnapshot = debounce(() => { if (snapshotDirty) sendSnapshot(); }, 4000);
 
@@ -594,12 +618,12 @@
         requestCloseConnection () { this.closed = true; clearTimeout(this.timer); if (this.ws) this.ws.close(); }
     }
     function ensureCloud () {
-        if (!CLOUD_HOST || !vm || !ready) return;
-        const has = vm.runtime.hasCloudData();
+        if (!vm || !ready) return;
+        const has = vm.runtime.hasCloudData() && cloudMode !== 'off' && (cloudMode === 'sim' || !!CLOUD_HOST);
         if (has && !cloud) {
             cloud = new CloudProvider(CLOUD_HOST, CLOUD_PROJECT_ID, NAME);
             vm.setCloudProvider(cloud);
-            log('cloud variables connected to', CLOUD_HOST);
+            log('cloud variables:', cloudMode === 'sim' ? 'simulated in this room' : `live via ${CLOUD_HOST}`);
         } else if (!has && cloud) {
             cloud.requestCloseConnection();
             cloud = null;
@@ -658,6 +682,11 @@
         } catch (e) { console.warn('[together] monitor apply failed', e); } finally { remoteBusy--; }
     }
 
+    function reconnectCloud () {
+        if (cloud) { cloud.requestCloseConnection(); cloud = null; vm.setCloudProvider(null); }
+        ensureCloud();
+    }
+
     // ---------------- message dispatch ----------------
     function handle (msg) {
         switch (msg.type) {
@@ -680,6 +709,7 @@
         isHost = !!msg.host;
         users = msg.users || [];
         if (msg.title) setTitle(msg.title, false);
+        if (msg.cloudMode) cloudMode = msg.cloudMode;
         renderUsers();
         if (msg.project) {
             await applyProject(msg.project);
@@ -719,6 +749,11 @@
             case 'host': isHost = true; renderUsers(); sendSnapshot(); return;
             case 'requestSnapshot': if (ready) { snapshotDirty = true; sendSnapshot(); } return;
             case 'title': setTitle(msg.title, false); return;
+            case 'settings':
+                if (msg.title) setTitle(msg.title, false);
+                if (msg.cloudMode && msg.cloudMode !== cloudMode) { cloudMode = msg.cloudMode; reconnectCloud(); }
+                renderUsers();
+                return;
             default:
                 if (!ready) inbox.push(msg); else handle(msg);
             }
@@ -752,16 +787,50 @@
     let statusText = 'Loading…';
     function setStatus (s) { statusText = s; renderUsers(); }
 
+    function saveSettings (patch) {
+        fetch(`${API}/settings`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(patch)})
+            .then(r => r.json()).then(r => {
+                if (r.title) setTitle(r.title, false);
+                if (r.cloudMode && r.cloudMode !== cloudMode) { cloudMode = r.cloudMode; reconnectCloud(); }
+                renderUsers();
+            }).catch(() => {});
+    }
+
     function renderUsers () {
         const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+        const modeLabel = {live: 'Live', sim: 'Simulated', off: 'Off'}[cloudMode] || cloudMode;
+        const settings = settingsOpen ? `<div class="tg-settings">
+            <label class="tg-label">Project name</label>
+            <div class="tg-row"><input class="tg-input" id="tg-title" value="${esc(title)}" maxlength="100"><button class="tg-btn" id="tg-title-save">Save</button></div>
+            <label class="tg-label">Cloud variables (☁)</label>
+            <div class="tg-modes">
+              <label><input type="radio" name="tg-cloud" value="live" ${cloudMode === 'live' ? 'checked' : ''}${CLOUD_HOST ? '' : ' disabled'}> Live · shared with players on your cloud server${CLOUD_HOST ? '' : ' (not set up)'}</label>
+              <label><input type="radio" name="tg-cloud" value="sim" ${cloudMode === 'sim' ? 'checked' : ''}> Simulated · shared only inside this room</label>
+              <label><input type="radio" name="tg-cloud" value="off" ${cloudMode === 'off' ? 'checked' : ''}> Off · ☁ variables act like normal variables</label>
+            </div>
+            ${CLOUD_HOST && cloudMode === 'live' ? `<a class="tg-link" href="https://${esc(CLOUD_HOST)}/" target="_blank" rel="noopener">Open cloud dashboard ↗</a>` : ''}
+            <div class="tg-row tg-foot"><a class="tg-link" href="/projects">All projects</a><a class="tg-link" href="/">Leave room</a></div>
+          </div>` : '';
         const list = users.map(u => `<div class="tg-user"><span class="tg-dot" style="background:${u.color}"></span>` +
             `<span class="tg-name">${esc(u.name)}${u.id === myId ? ' (you)' : ''}</span>` +
             `${u.sprite ? `<span class="tg-sprite">${esc(u.sprite)}</span>` : ''}</div>`).join('');
         pill.innerHTML = `<div class="tg-head"><span class="tg-code">${ROOM}</span>` +
             `<button class="tg-copy" title="Copy invite link">Copy link</button>` +
             `<span class="tg-count">👥 ${users.length}</span>` +
+            `<button class="tg-gear" title="Room settings">⚙</button>` +
             `${statusText ? `<span class="tg-status">${esc(statusText)}</span>` : ''}</div>` +
-            `<div class="tg-list">${list}<div class="tg-credit">Built on the open-source Scratch editor · <a href="https://scratch.mit.edu" target="_blank" rel="noopener">scratch.mit.edu</a></div></div>`;
+            `<div class="tg-list"${settingsOpen ? ' style="display:block"' : ''}>${list}` +
+            `<div class="tg-cloud">☁ cloud variables: ${modeLabel}</div>${settings}` +
+            `<div class="tg-credit">Built on the open-source Scratch editor · <a href="https://scratch.mit.edu" target="_blank" rel="noopener">scratch.mit.edu</a></div></div>`;
+        pill.classList.toggle('tg-open', settingsOpen);
+        pill.querySelector('.tg-gear').onclick = () => { settingsOpen = !settingsOpen; renderUsers(); };
+        if (settingsOpen) {
+            const titleEl = pill.querySelector('#tg-title');
+            const saveTitle = () => { const v = titleEl.value.trim(); if (v && v !== title) saveSettings({title: v}); };
+            pill.querySelector('#tg-title-save').onclick = saveTitle;
+            titleEl.onkeydown = e => { if (e.key === 'Enter') saveTitle(); };
+            pill.querySelectorAll('input[name="tg-cloud"]').forEach(r => { r.onchange = () => saveSettings({cloudMode: r.value}); });
+        }
         pill.querySelector('.tg-copy').onclick = () => {
             const link = `${location.origin}/r/${ROOM}`;
             navigator.clipboard.writeText(link).then(() => {
@@ -897,8 +966,8 @@
                 backpackVisible: true,
                 backpackHost: `${location.origin}/backpack`,
                 username: NAME,
-                cloudHost: CLOUD_HOST || undefined,
-                hasCloudPermission: !!CLOUD_HOST,
+                cloudHost: CLOUD_HOST || 'together',
+                hasCloudPermission: true,
                 projectTitle: title,
                 onUpdateProjectTitle: t => { if (ready && t && t !== title) setTitle(t, true); },
                 onClickLogo: () => { location.href = '/'; },

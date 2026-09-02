@@ -5,72 +5,252 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scratch Together</title>
 <link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --blue: #4c97ff; --blue-dark: #3373cc; --orange: #ffab19; --ink: #1f2937; }
+  :root {
+    /* Scratch's own block palette */
+    --motion: #4C97FF; --motion-d: #3373CC; --looks: #9966FF; --sound: #CF63CF; --events: #FFBF00; --events-d: #CC9900;
+    --control: #FFAB19; --control-d: #CF8B17; --sensing: #5CB1D6; --operators: #59C059; --variables: #FF8C1A;
+    --ink: #575E75; --ink-strong: #2f3550; --paper: #fff; --line: #d9d9d9; --ground: #f9f9f9; --sel: #e9f1fc;
+    --display: Fredoka, "Helvetica Neue", Arial, sans-serif; --body: Nunito, "Helvetica Neue", Arial, sans-serif;
+  }
   * { box-sizing: border-box; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #e5f0ff;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); }
-  .card { background: #fff; border-radius: 20px; padding: 36px 40px; width: min(92vw, 460px);
-    box-shadow: 0 16px 48px rgba(76,151,255,.18); }
-  h1 { margin: 0 0 4px; font-size: 30px; display: flex; align-items: center; gap: 10px; }
-  h1 img { width: 40px; height: 40px; }
-  p.sub { margin: 0 0 26px; color: #6b7280; }
+  html, body { margin: 0; }
+  body { color: var(--ink); font-family: var(--body); font-weight: 600; background: var(--ground);
+    /* the Scratch code area's dot grid */
+    background-image: radial-gradient(#d0d0d0 1.2px, transparent 1.3px); background-size: 40px 40px; background-position: 20px 20px; }
+  a { color: var(--motion); text-decoration: none; }
   button, input { font: inherit; }
-  .big { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--blue); color: #fff;
-    font-size: 18px; font-weight: 700; cursor: pointer; }
-  .big:hover { background: var(--blue-dark); }
-  .or { text-align: center; color: #9ca3af; margin: 18px 0; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; }
+  :focus-visible { outline: 3px solid var(--motion); outline-offset: 2px; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  nav { display: flex; align-items: center; gap: 18px; padding: 18px 0 8px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 22px; color: var(--ink-strong); }
+  .brand img { width: 34px; height: 34px; }
+  nav .links { margin-left: auto; display: flex; gap: 20px; font-size: 14px; font-weight: 700; }
+  nav .links a { color: var(--ink); }
+  nav .links a:hover { color: var(--motion); }
+
+  /* ---- hero ---- */
+  .hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; padding: 44px 0 56px; }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(38px, 5.4vw, 62px); line-height: 1; color: var(--ink-strong); margin: 0 0 14px; letter-spacing: -.01em; }
+  h1 span { color: var(--motion); }
+  .lead { font-size: 18px; line-height: 1.5; margin: 0 0 26px; max-width: 460px; }
+  .start { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.05); max-width: 460px; }
+  .start label { display: block; font-size: 12px; font-weight: 800; color: var(--ink); margin: 0 0 6px; }
+  .start .field { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; color: var(--ink-strong); }
+  .start .field:focus { border-color: var(--motion); outline: none; box-shadow: 0 0 0 3px rgba(76,151,255,.25); }
+  .hat { width: 100%; border: 0; cursor: pointer; color: #fff; font-family: var(--display); font-weight: 600; font-size: 19px; text-align: left;
+    padding: 14px 18px 12px; background: var(--events); border-radius: 22px 22px 6px 6px; border-bottom: 4px solid var(--events-d); position: relative; }
+  .hat::after { content: ""; position: absolute; left: 14px; bottom: -8px; width: 26px; height: 8px; background: var(--events); border-radius: 0 0 6px 6px; }
+  .hat:hover { filter: brightness(1.04); } .hat:active { transform: translateY(2px); border-bottom-width: 2px; }
+  .or { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #8a90a6; margin: 18px 0 10px; }
+  .or::before, .or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
   .join { display: flex; gap: 8px; }
-  .join input { flex: 1; padding: 12px 14px; border: 2px solid #d1d5db; border-radius: 12px; font-size: 20px;
-    letter-spacing: .2em; text-transform: uppercase; text-align: center; }
-  .join input:focus { outline: none; border-color: var(--blue); }
-  .join button { padding: 12px 18px; border: 0; border-radius: 12px; background: var(--orange); color: #fff; font-weight: 700; cursor: pointer; }
-  label { display: block; font-size: 13px; color: #6b7280; margin: 0 0 6px; }
-  .name { width: 100%; padding: 10px 12px; border: 2px solid #d1d5db; border-radius: 10px; margin-bottom: 20px; }
-  .how { margin-top: 26px; font-size: 13px; color: #6b7280; line-height: 1.5; }
-  .err { color: #dc2626; font-size: 13px; min-height: 18px; margin-top: 8px; }
-  .credit { margin-top: 18px; padding-top: 14px; border-top: 1px solid #eef2f7; font-size: 12px; color: #9ca3af; line-height: 1.5; }
-  .credit a { color: var(--blue); text-decoration: none; }
+  .join .field { flex: 1; margin: 0; font-family: var(--display); font-size: 22px; letter-spacing: .22em; text-transform: uppercase; text-align: center; }
+  .join button { padding: 0 20px; border: 0; border-radius: 8px; background: var(--motion); color: #fff; font-weight: 800; cursor: pointer; border-bottom: 3px solid var(--motion-d); }
+  .join button:active { transform: translateY(2px); border-bottom-width: 1px; }
+  .err { color: #e0483d; font-size: 13px; min-height: 18px; margin-top: 8px; }
+
+  /* ---- the script (hero illustration) ---- */
+  .script { justify-self: center; width: 100%; max-width: 440px; font-family: var(--display); font-weight: 500; font-size: 17px; color: #fff; user-select: none; }
+  .blk { position: relative; padding: 11px 16px 10px; border-radius: 6px; border-bottom: 3px solid rgba(0,0,0,.22); margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    animation: snap .5s cubic-bezier(.2,1.4,.4,1) both; }
+  .blk::before { content: ""; position: absolute; top: -3px; left: 14px; width: 26px; height: 4px; background: inherit; border-radius: 0 0 4px 4px; }
+  .blk::after { content: ""; position: absolute; bottom: -8px; left: 14px; width: 26px; height: 5px; background: inherit; border-radius: 0 0 4px 4px; z-index: 1; }
+  .blk.hat { border-radius: 26px 26px 6px 6px; padding-top: 16px; text-align: left; width: auto; font-size: 17px; }
+  .blk.hat::before { display: none; }
+  .blk.hat::after { display: none; }
+  .b-events { background: var(--events); } .b-motion { background: var(--motion); } .b-control { background: var(--control); }
+  .b-looks { background: var(--looks); } .b-sound { background: var(--sound); } .b-var { background: var(--variables); }
+  .cwrap { margin-top: 3px; animation: snap .5s cubic-bezier(.2,1.4,.4,1) both; }
+  .cwrap .top { border-radius: 6px 6px 0 0; border-bottom: 0; margin: 0; animation: none; }
+  .cwrap .arm { display: flex; }
+  .cwrap .arm .side { width: 18px; background: var(--control); flex: none; }
+  .cwrap .arm .inner { flex: 1; padding: 4px 0 6px 8px; }
+  .cwrap .bottom { border-radius: 0 0 6px 6px; height: 26px; margin: 0; animation: none; }
+  .cwrap .bottom::before { display: none; }
+  .inner .blk { margin-top: 3px; }
+  .pill { display: inline-block; background: #fff; color: var(--ink-strong); border-radius: 999px; padding: 3px 12px; font-size: 15px; font-weight: 600; }
+  .drop { display: inline-flex; align-items: center; gap: 6px; background: rgba(0,0,0,.2); border-radius: 999px; padding: 3px 10px 3px 12px; font-size: 15px; }
+  .drop::after { content: "▾"; font-size: 12px; }
+  .flag { display: inline-block; width: 22px; height: 22px; vertical-align: middle; }
+  .cursors { position: relative; height: 0; }
+  .cursor { position: absolute; font-size: 12px; font-family: var(--body); font-weight: 800; color: #fff; padding: 3px 8px; border-radius: 999px; white-space: nowrap; animation: hover 5s ease-in-out infinite; }
+  .cursor::before { content: "➤"; margin-right: 5px; display: inline-block; transform: rotate(-45deg); }
+  .cursor.a { background: var(--sound); left: 72%; top: -212px; }
+  .cursor.b { background: var(--operators); left: 86%; top: -18px; animation-delay: -2.5s; }
+  @keyframes snap { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+  @keyframes hover { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-12px, 8px); } }
+  .script .blk:nth-child(1) { animation-delay: .05s; } .script .blk:nth-child(2) { animation-delay: .17s; }
+  .script .cwrap { animation-delay: .3s; } .script .inner .blk:nth-child(1) { animation-delay: .42s; }
+  .script .inner .blk:nth-child(2) { animation-delay: .52s; } .script .inner .blk:nth-child(3) { animation-delay: .62s; }
+  .script .blk.last { animation-delay: .78s; }
+
+  /* ---- projects (sprite tiles) ---- */
+  .section { margin-top: 10px; }
+  .section-head { display: flex; align-items: baseline; gap: 14px; margin: 30px 0 12px; }
+  .section-head h2 { font-family: var(--display); font-weight: 600; font-size: 22px; color: var(--ink-strong); margin: 0; }
+  .section-head .hint { font-size: 13px; color: #8a90a6; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+  .tile { background: var(--paper); border: 2px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; position: relative; transition: border-color .12s, box-shadow .12s, transform .12s; }
+  .tile:hover, .tile:focus-within { border-color: var(--motion); box-shadow: 0 0 0 4px rgba(76,151,255,.2); transform: translateY(-2px); }
+  .thumb { aspect-ratio: 4 / 3; background: #fff; display: grid; place-items: center; position: relative; border-bottom: 1px solid #eee; }
+  .thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .thumb .blank { width: 64px; height: 48px; border: 2px dashed #d5dbe7; border-radius: 6px; }
+  .live { position: absolute; top: 8px; left: 8px; background: var(--operators); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+  .live::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #fff; margin-right: 5px; vertical-align: middle; animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  .mine { position: absolute; top: 8px; right: 8px; background: var(--variables); color: #fff; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
+  .namebar { padding: 8px 10px 4px; }
+  .namebar h3 { margin: 0; font-size: 15px; font-weight: 800; color: var(--ink-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #8a90a6; padding: 0 10px 8px; }
+  .code { font-family: var(--display); letter-spacing: .12em; color: var(--motion); background: var(--sel); padding: 1px 7px; border-radius: 6px; }
+  .actions { display: flex; gap: 6px; padding: 0 8px 8px; }
+  .actions button { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 7px 4px; font-weight: 800; font-size: 12px; cursor: pointer; background: #fff; color: var(--ink); white-space: nowrap; }
+  .actions button:hover { border-color: var(--motion); color: var(--motion); }
+  .actions button.open { background: var(--motion); border-color: var(--motion); color: #fff; }
+  .actions button.del { flex: 0 0 auto; padding: 7px 9px; }
+  .actions button.del:hover { border-color: #e0483d; color: #e0483d; }
+  .empty { background: var(--paper); border: 2px dashed var(--line); border-radius: 10px; padding: 28px; text-align: center; color: #8a90a6; grid-column: 1 / -1; }
+  footer { margin: 56px 0 30px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; color: #8a90a6; line-height: 1.6; }
+
+  @media (max-width: 760px) { .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 24px; } .script { max-width: 380px; font-size: 15px; } }
+  @media (prefers-reduced-motion: reduce) { .blk, .cwrap, .cursor, .live::before { animation: none !important; } }
 </style>
 </head>
 <body>
-<div class="card">
-  <h1><img src="/favicon.svg" alt=""> Scratch Together</h1>
-  <p class="sub">The real Scratch editor, edited live by everyone in the room.</p>
-  <label for="name">Your name</label>
-  <input id="name" class="name" placeholder="e.g. Colton" maxlength="24">
-  <button id="create" class="big">Start a new room</button>
-  <div class="or">or join a room</div>
-  <form class="join" id="joinForm">
-    <input id="code" placeholder="CODE" maxlength="5" autocomplete="off" spellcheck="false">
-    <button type="submit">Join</button>
-  </form>
-  <div class="err" id="err"></div>
-  <div class="how">Start a room, hit <b>Copy link</b> in the editor, send it to friends on the same wifi.
-    Blocks, sprites, costumes and sounds sync instantly. File ▸ Load from your computer works too and brings everyone along.</div>
-  <div class="credit">Built on the open-source <a href="https://github.com/scratchfoundation/scratch-editor" target="_blank" rel="noopener">Scratch editor</a>
+<div class="wrap">
+  <nav>
+    <a class="brand" href="/"><img src="/favicon.svg" alt="">Scratch Together</a>
+    <div class="links"><a href="#projects">Projects</a><a href="https://scratch.mit.edu" target="_blank" rel="noopener">scratch.mit.edu</a><a href="https://github.com/tkcolty-dev/FPS_SHOOTER/tree/blockforge/ScratchTogether" target="_blank" rel="noopener">Source</a></div>
+  </nav>
+
+  <section class="hero">
+    <div>
+      <h1>Make games <span>together.</span></h1>
+      <p class="lead">The real Scratch editor, edited live by everyone in the room. Drag a block, paint a costume, add a sound, and your friends see it as it happens.</p>
+      <div class="start">
+        <label for="name">Your name</label>
+        <input id="name" class="field" placeholder="What should friends call you?" maxlength="24" autocomplete="off">
+        <label for="ptitle">Project name <span style="font-weight:600;color:#8a90a6">(you can change it later)</span></label>
+        <input id="ptitle" class="field" placeholder="Untitled project" maxlength="60" autocomplete="off">
+        <button id="create" class="hat">🏁 Start a new project</button>
+        <div class="or">or join a friend's</div>
+        <form class="join" id="joinForm">
+          <input id="code" class="field" placeholder="CODE" maxlength="5" autocomplete="off" spellcheck="false" aria-label="Room code">
+          <button type="submit">Join</button>
+        </form>
+        <div class="err" id="err"></div>
+      </div>
+    </div>
+
+    <div class="script" aria-hidden="true">
+      <div class="blk hat b-events">when <svg class="flag" viewBox="0 0 24 24"><path d="M4 3v18" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><path d="M5 4c4-2 7 2 11 0v9c-4 2-7-2-11 0z" fill="#59C059" stroke="#3f8f3f" stroke-width="1"/></svg> clicked</div>
+      <div class="blk b-motion">join room <span class="pill">ABC12</span> with <span class="pill">your friends</span></div>
+      <div class="cwrap">
+        <div class="blk top b-control">forever</div>
+        <div class="arm"><div class="side"></div><div class="inner">
+          <div class="blk b-looks">sync <span class="drop">blocks</span> and <span class="drop">costumes</span></div>
+          <div class="blk b-sound">sync <span class="drop">sounds</span> too</div>
+          <div class="blk b-var">set <span class="drop">☁ highscore</span> to <span class="pill">9999</span></div>
+        </div></div>
+        <div class="blk bottom b-control"></div>
+      </div>
+      <div class="blk last b-motion">save as <span class="pill">.sb3</span> for scratch.mit.edu</div>
+      <div class="cursors"><span class="cursor a">Maya</span><span class="cursor b">Leo</span></div>
+    </div>
+  </section>
+
+  <section class="section" id="projects">
+    <div class="section-head"><h2>Your projects</h2><span class="hint" id="mineHint"></span></div>
+    <div class="grid" id="mine"></div>
+    <div class="section-head"><h2>All projects on this server</h2><span class="hint" id="allHint"></span></div>
+    <div class="grid" id="all"></div>
+  </section>
+
+  <footer>Built on the open-source <a href="https://github.com/scratchfoundation/scratch-editor" target="_blank" rel="noopener">Scratch editor</a>
     by the <a href="https://scratch.mit.edu" target="_blank" rel="noopener">Scratch Foundation</a> and the Lifelong Kindergarten Group at the MIT Media Lab.
-    Scratch is a trademark of MIT. This is a fan project, not affiliated with or endorsed by Scratch.
-    Library sprites and sounds are © Scratch, CC BY-SA. Source on <a href="https://github.com/tkcolty-dev/FPS_SHOOTER/tree/blockforge/ScratchTogether" target="_blank" rel="noopener">GitHub</a>.</div>
+    Scratch is a trademark of MIT. This is a fan project, not affiliated with or endorsed by Scratch. Library sprites and sounds are © Scratch, CC BY-SA.</footer>
 </div>
+
 <script>
-  const nameEl = document.getElementById('name');
+  const $ = id => document.getElementById(id);
+  const nameEl = $('name');
   nameEl.value = localStorage.getItem('st_name') || '';
   const saveName = () => { const n = nameEl.value.trim(); if (n) localStorage.setItem('st_name', n); return n; };
-  document.getElementById('create').onclick = async () => {
-    if (!saveName()) { nameEl.focus(); return; }
-    const r = await fetch('/api/rooms', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'});
+  const needName = () => { nameEl.focus(); nameEl.style.borderColor = '#e0483d'; $('err').textContent = 'Type your name first so friends know who you are.'; };
+  const myCodes = () => { try { return JSON.parse(localStorage.getItem('st_rooms') || '[]'); } catch (e) { return []; } };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+  $('create').onclick = async () => {
+    if (!saveName()) return needName();
+    const r = await fetch('/api/rooms', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({title: $('ptitle').value.trim() || undefined})});
     const {code} = await r.json();
     location.href = `/editor?room=${code}`;
   };
-  document.getElementById('joinForm').onsubmit = async e => {
+  $('joinForm').onsubmit = async e => {
     e.preventDefault();
-    if (!saveName()) { nameEl.focus(); return; }
-    const code = document.getElementById('code').value.trim().toUpperCase();
+    if (!saveName()) return needName();
+    const code = $('code').value.trim().toUpperCase();
     const r = await fetch(`/api/rooms/${code}`);
-    if (!r.ok) { document.getElementById('err').textContent = 'No room with that code.'; return; }
+    if (!r.ok) { $('err').textContent = `No project with the code ${code}. Check it with your friend.`; return; }
     location.href = `/editor?room=${code}`;
   };
+
+  const ago = t => {
+    if (!t) return 'new';
+    const s = (Date.now() - t) / 1000;
+    if (s < 60) return 'just now';
+    if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+    return `${Math.floor(s / 86400)} d ago`;
+  };
+
+  function tile (p, mine) {
+    const el = document.createElement('div');
+    el.className = 'tile';
+    const who = p.online ? (p.people && p.people.length ? p.people.slice(0, 3).join(', ') + (p.people.length > 3 ? ` +${p.people.length - 3}` : '') : `${p.online} editing`) : '';
+    el.innerHTML = `<div class="thumb">${p.thumb ? `<img src="${p.thumb}" alt="">` : '<div class="blank"></div>'}
+        ${p.online ? `<span class="live" title="Editing right now">${esc(who)}</span>` : ''}${mine ? '<span class="mine">yours</span>' : ''}</div>
+      <div class="namebar"><h3>${esc(p.title)}</h3></div>
+      <div class="meta"><span class="code">${p.code}</span><span>${p.sprites || 0} sprite${p.sprites === 1 ? '' : 's'}</span><span>· ${ago(p.updated)}</span></div>
+      <div class="actions"><button class="open">Open</button><button class="link">Copy link</button><button class="del" title="Delete project">🗑</button></div>`;
+    const open = () => { if (!saveName()) { window.scrollTo({top: 0, behavior: 'smooth'}); return needName(); } location.href = `/editor?room=${p.code}`; };
+    el.querySelector('.thumb').onclick = open;
+    el.querySelector('.namebar').onclick = open;
+    el.querySelector('.open').onclick = open;
+    el.querySelector('.link').onclick = ev => {
+      navigator.clipboard.writeText(`${location.origin}/r/${p.code}`).then(() => { ev.target.textContent = 'Copied'; setTimeout(() => { ev.target.textContent = 'Copy link'; }, 1500); });
+    };
+    el.querySelector('.del').onclick = async () => {
+      if (!confirm(`Delete "${p.title}" (${p.code}) for everyone? This can't be undone.`)) return;
+      await fetch(`/api/rooms/${p.code}`, {method: 'DELETE'});
+      localStorage.setItem('st_rooms', JSON.stringify(myCodes().filter(c => c !== p.code)));
+      load();
+    };
+    return el;
+  }
+
+  async function load () {
+    let list = [];
+    try { list = await fetch('/api/rooms').then(r => r.json()); } catch (e) { /* offline */ }
+    const codes = myCodes();
+    const mine = codes.map(c => list.find(p => p.code === c)).filter(Boolean);
+    const rest = list.filter(p => !codes.includes(p.code));
+    const mineEl = $('mine'), allEl = $('all');
+    mineEl.innerHTML = ''; allEl.innerHTML = '';
+    if (mine.length) mine.forEach(p => mineEl.appendChild(tile(p, true)));
+    else mineEl.innerHTML = '<div class="empty">No projects yet. Start one above, or join a friend\'s with their code.</div>';
+    if (rest.length) rest.forEach(p => allEl.appendChild(tile(p, false)));
+    else allEl.innerHTML = '<div class="empty">Nothing else here yet.</div>';
+    $('mineHint').textContent = mine.length ? `${mine.length}` : '';
+    const online = list.reduce((n, p) => n + (p.online || 0), 0);
+    $('allHint').textContent = `${list.length} project${list.length === 1 ? '' : 's'}${online ? ` · ${online} editing right now` : ''}`;
+  }
+  load();
+  setInterval(load, 15000);
 </script>
 </body>
 </html>

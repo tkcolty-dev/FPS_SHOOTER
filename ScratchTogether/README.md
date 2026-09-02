@@ -43,6 +43,18 @@ pill and send it to friends on the same wifi (the terminal also prints your LAN 
 Green flag runs are per person (everyone runs their own copy). File ▸ Save to your computer gives a
 normal `.sb3` that opens on scratch.mit.edu.
 
+## Room settings (⚙ in the top-right pill)
+
+- **Project name** — shared with everyone in the room.
+- **Cloud variables** — *Live* sends ☁ variables to your CloudLift server (the room shows up there by name, and
+  players of the exported game share the same values); *Simulated* keeps them on this server, shared only inside the
+  room; *Off* makes ☁ variables behave like normal variables.
+
+## Projects page
+
+The start page lists your projects (this device) and everything on the server, with live stage thumbnails, who is
+editing right now, copy-link and delete.
+
 ## Rooms
 
 Rooms persist in `data/<CODE>/` (project.json + assets) and survive server restarts. The oldest
