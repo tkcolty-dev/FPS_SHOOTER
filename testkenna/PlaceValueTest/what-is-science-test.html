@@ -1,0 +1,599 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What Is Science? Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+  :root{
+    --paper:#FFFFFF; --card:#FFFFFF; --field:#F7F9FB;
+    --ink:#1C2B3A; --ink-soft:#5A6B7E; --line:#DDE4EB;
+    --accent:#2E8B6E; --accent-deep:#1F6B53; --accent-soft:#E6F4EE;
+    --good:#2F8A5B; --good-soft:#E2F2E9; --bad:#C0473E; --bad-soft:#F9E7E5; --gold:#D9A036;
+    --shadow:0 2px 12px rgba(28,43,58,.07);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Nunito",system-ui,sans-serif;font-size:17px;line-height:1.5;min-height:100vh}
+  h1,h2,h3{font-weight:800;text-wrap:balance;margin:0}
+  button{font:inherit;cursor:pointer}
+  input[type=text],textarea{font:inherit}
+  a{color:var(--accent-deep)}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px 90px}
+
+  header.bar{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  .bar-inner{max-width:760px;margin:0 auto;padding:12px 16px}
+  .bar-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .bar-top h1{font-size:1.25rem;font-weight:700}
+  .bar-top .who{color:var(--ink-soft);font-size:.9rem}
+  .palette{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px;align-items:center}
+  .palette button{width:26px;height:26px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font-size:.72rem;font-weight:700;padding:0}
+  .palette button.done{background:var(--accent);border-color:var(--accent);color:#fff}
+  .palette button.cur{outline:2px solid var(--accent-deep);outline-offset:1px}
+  .palette .gap{color:var(--ink-soft);font-size:.72rem;padding:0 4px}
+
+  .qcard{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:26px 26px 30px;margin-top:22px}
+  .qnum{display:inline-block;font-weight:800;font-size:.85rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-deep);background:var(--accent-soft);border-radius:999px;padding:3px 12px;margin-bottom:12px}
+  .section-tag{display:inline-block;margin-left:8px;font-size:.8rem;color:var(--ink-soft);font-weight:700}
+  .prompt{font-size:1.2rem;font-weight:400;margin:0 0 18px}
+  .prompt b{font-weight:700}
+  .prompt u{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px;font-weight:700}
+  .blank{display:inline-block;min-width:110px;border-bottom:2px solid var(--ink);vertical-align:baseline}
+  .hint{color:var(--ink-soft);font-size:.88rem;margin-top:10px}
+  .directions{background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px 14px;font-size:.92rem;color:var(--ink-soft);margin-bottom:16px}
+
+  .ans-input{width:100%;max-width:360px;padding:12px 14px;border:2px solid var(--line);border-radius:10px;background:var(--field);color:var(--ink);font-size:1.15rem}
+  .ans-input:focus{outline:none;border-color:var(--accent)}
+  textarea.ans-input{max-width:100%;min-height:190px;line-height:1.5;font-size:1.05rem;resize:vertical}
+  .wc{font-size:.85rem;color:var(--ink-soft);margin-top:6px}
+
+  .choices{display:flex;flex-direction:column;gap:10px}
+  .choices.row{flex-direction:row;flex-wrap:wrap}
+  .choice{display:flex;align-items:center;gap:12px;border:2px solid var(--line);border-radius:10px;background:var(--field);padding:12px 16px;text-align:left;color:var(--ink);font-size:1.05rem;transition:border-color .12s,background .12s}
+  .choice:hover{border-color:var(--accent)}
+  .choice:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+  .choice .dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--ink-soft);flex:none;position:relative}
+  .choice .letter{font-weight:800;color:var(--ink-soft);width:1.2em;flex:none}
+  .choice.sel{border-color:var(--accent);background:var(--accent-soft)}
+  .choice.sel .dot{border-color:var(--accent-deep)}
+  .choice.sel .dot::after{content:"";position:absolute;inset:3px;border-radius:inherit;background:var(--accent-deep)}
+  .fix{margin-top:14px}
+  .fix label{display:block;font-size:.9rem;color:var(--ink-soft);margin-bottom:6px}
+
+  .teach-btn{display:block;margin-top:20px;padding:0;background:none;border:none;color:var(--accent-deep);font-weight:700;font-size:.95rem;text-decoration:underline}
+  .lesson{margin-top:12px;background:var(--accent-soft);border-left:4px solid var(--accent);border-radius:8px;padding:12px 16px;font-size:.95rem;max-width:62ch}
+
+  .nav{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px}
+  .btn{border:none;border-radius:10px;padding:12px 26px;font-weight:700;font-size:1rem}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-deep)}
+  .btn.ghost{background:transparent;border:2px solid var(--line);color:var(--ink)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .btn.submit{background:var(--good);color:#fff}
+  .btn:disabled{opacity:.4;cursor:default}
+  .btn:focus-visible{outline:2px solid var(--accent-deep);outline-offset:2px}
+
+  .start{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:40px 32px;margin-top:40px;text-align:center}
+  .start .logo{font-size:2.6rem;margin-bottom:10px}
+  .start h1{font-size:2rem;margin-bottom:8px}
+  .start p{color:var(--ink-soft);max-width:50ch;margin:0 auto 24px}
+  .start input{max-width:280px;text-align:center;margin-bottom:18px}
+  .start .parts{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:22px}
+  .start .parts span{background:var(--accent-soft);color:var(--accent-deep);border-radius:999px;padding:4px 12px;font-size:.85rem;font-weight:700}
+  .back{display:inline-block;margin-top:18px;font-size:.9rem}
+
+  .confirm{margin-top:16px;background:var(--bad-soft);border:1px solid var(--bad);border-radius:12px;padding:16px 20px}
+  .confirm p{margin:0 0 12px}
+  .confirm .row{display:flex;gap:10px;flex-wrap:wrap}
+
+  .score-hero{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:36px 28px;margin-top:28px;text-align:center}
+  .ring{width:170px;height:170px;margin:0 auto 14px;position:relative}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .track{stroke:var(--line)}
+  .ring .fill{stroke:var(--good);transition:stroke-dashoffset 1.2s ease}
+  .ring .pct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .pct .big{font-size:2.6rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+  .ring .pct .small{color:var(--ink-soft);font-size:.9rem}
+  .score-hero h2{font-size:1.6rem;margin-bottom:6px}
+  .score-hero .msg{color:var(--ink-soft);margin:0 0 4px}
+  .score-hero .frac{font-variant-numeric:tabular-nums;font-weight:700;color:var(--accent-deep)}
+  .score-hero .retakeb{margin-top:18px}
+  .attempts{margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:baseline}
+  .attempts h3{width:100%;font-size:.95rem;color:var(--ink-soft);margin-bottom:2px}
+  .att{background:var(--field);border:1px solid var(--line);border-radius:999px;padding:4px 14px;font-size:.9rem;font-weight:700;font-variant-numeric:tabular-nums}
+  .att.best{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-deep)}
+  .past{color:var(--accent-deep);font-weight:700}
+
+  .review{margin-top:26px}
+  .review h3{font-size:1.2rem;margin-bottom:12px}
+  .rev-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:10px;display:grid;grid-template-columns:34px 1fr;gap:4px 14px;align-items:start}
+  .rev-item .mark{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:.9rem;margin-top:2px}
+  .rev-item.ok .mark{background:var(--good)}
+  .rev-item.no .mark{background:var(--bad)}
+  .rev-item.part .mark{background:var(--gold)}
+  .rev-item .q{font-weight:700;font-size:.98rem}
+  .rev-item .a{grid-column:2;font-size:.92rem;color:var(--ink-soft)}
+  .rev-item .a b{color:var(--ink)}
+  .rev-item.no .a .yours{color:var(--bad);font-weight:700}
+  .rev-item .a .right{color:var(--good);font-weight:700}
+  .essay-box{grid-column:2;background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:.95rem;white-space:pre-wrap;color:var(--ink)}
+  .rubric{grid-column:2;margin-top:6px;display:flex;flex-direction:column;gap:8px}
+  .rubric label{display:flex;gap:10px;align-items:flex-start;font-size:.92rem;color:var(--ink);cursor:pointer}
+  .rubric input{margin-top:4px;width:18px;height:18px;accent-color:var(--good)}
+  .rubric .pts{font-weight:800;color:var(--accent-deep);white-space:nowrap}
+  .rubric-total{grid-column:2;font-weight:800;color:var(--accent-deep);font-size:.95rem}
+  .again{display:flex;justify-content:center;margin:26px 0 10px}
+
+  @media (prefers-reduced-motion: reduce){.ring .fill{transition:none}*{transition:none!important}}
+  @media (max-width:520px){.qcard{padding:20px 16px 24px}}
+</style>
+
+<header class="bar" id="topbar" hidden>
+  <div class="bar-inner">
+    <div class="bar-top">
+      <h1>What Is Science? Test</h1>
+      <span class="who" id="who"></span>
+    </div>
+    <nav class="palette" id="palette" aria-label="Question list"></nav>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- helpers ---------- */
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}
+function norm(s){
+  return String(s==null?"":s).toLowerCase().trim()
+    .replace(/^(the|a|an)\s+/,"")
+    .replace(/[.,!?;:"'’]/g,"")
+    .replace(/\s+/g," ");
+}
+function wordEq(s, targets){
+  var n=norm(s); if(!n) return false;
+  return targets.some(function(t){return norm(t)===n;});
+}
+
+/* ---------- question data (exactly as written on the test) ---------- */
+var Q = [
+ /* Multiple Choice */
+ {n:1, sec:"Multiple Choice", type:"mc",
+  prompt:'For her science project, a student collects data on deer spotted in a field each day. For the first five days of her study, she counted 23, 16, 18, 27, and 19 deer. What type of observation do these data represent?',
+  opts:['an inferred observation','a quantitative observation','a qualitative observation','a classified observation'], answer:1,
+  correct:"b. a quantitative observation", short:"Deer counts — what type of observation?"},
+ {n:2, sec:"Multiple Choice", type:"mc",
+  prompt:'Explaining or interpreting the things you observe based on reasoning from what you already know is called',
+  opts:['observing.','inferring.','predicting.','classifying.'], answer:1,
+  correct:"b. inferring.", short:"Explaining what you observe is called…"},
+ {n:3, sec:"Multiple Choice", type:"mc",
+  prompt:'If you conduct an experiment and draw conclusions that are based on your beliefs rather than the facts, you are using',
+  opts:['objective reasoning.','deductive reasoning.','inductive reasoning.','subjective reasoning.'], answer:3,
+  correct:"d. subjective reasoning.", short:"Conclusions based on beliefs, not facts"},
+ {n:4, sec:"Multiple Choice", type:"mc",
+  prompt:'Which is an example of using ethics in experiments?',
+  opts:['making sure other scientists can repeat the experiment','taking care that no animals are harmed','storing samples under controlled conditions','making sure that only useful data are collected'], answer:1,
+  correct:"b. taking care that no animals are harmed", short:"Example of ethics in experiments"},
+ {n:5, sec:"Multiple Choice", type:"mc",
+  prompt:'Callie notices that every time she uses a certain bird food in her bird feeder, blue jays land on the feeder. She concludes that blue jays prefer this food more than other birds do. What type of reasoning is Callie using?',
+  opts:['inductive reasoning','subjective reasoning','deductive reasoning','faulty reasoning'], answer:0,
+  correct:"a. inductive reasoning", short:"Callie and the blue jays — type of reasoning"},
+ {n:6, sec:"Multiple Choice", type:"mc",
+  prompt:'Observations that deal with descriptions that cannot be expressed in numbers are called',
+  opts:['relative observations.','quantitative observations.','qualitative observations.','evidence observations.'], answer:2,
+  correct:"c. qualitative observations.", short:"Observations that can't be expressed in numbers"},
+ {n:7, sec:"Multiple Choice", type:"mc",
+  prompt:'Trying to explain why a solar eclipse occurs is an example of',
+  opts:['a prediction.','an experiment.','scientific inquiry.','classification.'], answer:2,
+  correct:"c. scientific inquiry.", short:"Explaining why a solar eclipse occurs"},
+ {n:8, sec:"Multiple Choice", type:"mc",
+  prompt:'Which of the following is a valid reason why a scientist might reject a scientific theory?',
+  opts:['Some people disagree with it.','It covers too broad a topic.','New evidence contradicts it.','It was proposed by another scientist.'], answer:2,
+  correct:"c. New evidence contradicts it.", short:"Valid reason to reject a theory"},
+ {n:9, sec:"Multiple Choice", type:"mc",
+  prompt:'Scientific knowledge changes with',
+  opts:['new magazine articles.','careful reading of facts.','repeated experiments.','new evidence or new interpretations.'], answer:3,
+  correct:"d. new evidence or new interpretations.", short:"Scientific knowledge changes with…"},
+ {n:10, sec:"Multiple Choice", type:"mc",
+  prompt:'In science, a fact is',
+  opts:['not testable.','the same as a variable.','a strong hypothesis.','a confirmed observation.'], answer:3,
+  correct:"d. a confirmed observation.", short:"In science, a fact is…"},
+
+ /* Completion */
+ {n:11, sec:"Completion", type:"fill",
+  prompt:'Scientists who possess the attitude of <span class="blank"></span> are eager to learn more about the topics they study.',
+  accept:["curiosity","curious"], correct:"curiosity", short:"Attitude of eager-to-learn scientists"},
+ {n:12, sec:"Completion", type:"fill",
+  prompt:'Making <span class="blank"></span> involves creating representations of complex objects or processes to help people study and understand things that cannot be observed directly.',
+  accept:["models","model"], correct:"models", short:"Making ___ (representations of complex things)"},
+ {n:13, sec:"Completion", type:"fill",
+  prompt:'A mistake in the design of an experiment that makes a certain result more likely is called experimental <span class="blank"></span>.',
+  accept:["bias"], correct:"bias", short:"Experimental ___ (design mistake)"},
+ {n:14, sec:"Completion", type:"fill",
+  prompt:'<span class="blank"></span> is the process of grouping together items that have similar characteristics.',
+  accept:["classifying","classification","classify"], correct:"classifying", short:"Grouping items with similar characteristics"},
+ {n:15, sec:"Completion", type:"fill",
+  prompt:'Scientists who possess the attitude of <span class="blank"></span> always report their observations and results truthfully.',
+  accept:["honesty","honest"], correct:"honesty", short:"Attitude of scientists who report truthfully"},
+
+ /* True or False */
+ {n:16, sec:"True or False", type:"tf",
+  prompt:'Galileo used his telescope to collect evidence that planets revolved around <u>Earth</u>.',
+  answer:false, accept:["the sun","sun"], correct:"False — the Sun", short:"Galileo: planets revolve around Earth"},
+ {n:17, sec:"True or False", type:"tf",
+  prompt:'Unlike a scientific theory, a scientific <u>hypothesis</u> describes an observed pattern in nature without attempting to explain it.',
+  answer:false, accept:["law","scientific law"], correct:"False — law", short:"A scientific hypothesis describes a pattern without explaining it"},
+ {n:18, sec:"True or False", type:"tf",
+  prompt:'Proposing an explanation for the changing colors of the sky is an example of a <u>controlled variable</u>.',
+  answer:false, accept:["hypothesis"], correct:"False — hypothesis", short:"Proposing an explanation is a controlled variable"},
+ {n:19, sec:"True or False", type:"tf",
+  prompt:'An ever-growing collection of <u>hypotheses</u> about the natural world forms the basis of scientific knowledge.',
+  answer:false, accept:["facts","fact"], correct:"False — facts", short:"Collection of hypotheses forms scientific knowledge"},
+ {n:20, sec:"True or False", type:"tf",
+  prompt:'One characteristic of a scientific theory is that it is well-tested.',
+  answer:true, correct:"True", short:"A scientific theory is well-tested"},
+
+ /* Essay — 21–27 are intentionally skipped */
+ {n:28, sec:"Essay", type:"essay",
+  prompt:'Define faulty reasoning. Explain why scientists should take care not to use faulty reasoning when making conclusions.',
+  model:"Faulty reasoning uses incorrect, incomplete, biased, or misinterpreted information to reach a conclusion. Scientists must avoid it because scientific conclusions need to be supported by accurate facts and evidence.",
+  rubric:[{pts:5,text:"Defines faulty reasoning and explains why scientists must avoid it"},
+          {pts:3,text:"At least three relevant sentences"},
+          {pts:2,text:"Correct capitalization and punctuation"}],
+  correct:"See the model answer and rubric", short:"Essay: define faulty reasoning"}
+];
+var ESSAY_PTS=10;
+var OBJ_COUNT=Q.filter(function(q){return q.type!=="essay";}).length;   // 20
+var TOTAL_PTS=OBJ_COUNT+ESSAY_PTS;                                        // 30
+
+/* per-question help: [mini-lesson during the test, explanation in review] */
+var HELP={
+ 1:["Quantitative = quantity = numbers you can count or measure. Qualitative = qualities you describe with words (color, smell, texture). Look for numbers in the data!",
+    "23, 16, 18, 27, 19 are counts, so the data are a quantitative observation."],
+ 2:["Observing is what your senses collect. Inferring is when you use what you already know to explain what you observed. Predicting is guessing what will happen next.",
+    "Interpreting observations using what you already know is inferring."],
+ 3:["Objective reasoning sticks to the facts. Subjective reasoning is shaped by personal feelings, opinions, or beliefs — 'subject' as in the person doing the thinking.",
+    "Conclusions based on beliefs instead of facts come from subjective reasoning."],
+ 4:["Ethics are rules about right and wrong. In experiments that means not harming people, animals, or the environment, and being honest. The other choices are about good technique, not right and wrong.",
+    "Making sure no animals are harmed is an ethical rule for experiments."],
+ 5:["Inductive reasoning goes from specific observations to a general conclusion ('every time I see X, Y happens, so X causes Y'). Deductive reasoning starts from a general rule and applies it to a specific case.",
+    "Callie made a general conclusion from several specific observations — inductive reasoning."],
+ 6:["'Qualitative' comes from 'quality' — descriptions in words, like 'the rock is rough and gray.' 'Quantitative' comes from 'quantity' — numbers.",
+    "Descriptions that can't be expressed in numbers are qualitative observations."],
+ 7:["Scientific inquiry is the whole process of asking questions about the natural world and trying to explain what you see. A prediction is a guess about the future; an experiment is one tool used during inquiry.",
+    "Trying to explain why something in nature happens is scientific inquiry."],
+ 8:["A theory is a well-tested explanation. Scientists only reject one for a scientific reason — new evidence that doesn't fit. Opinions, popularity, or who proposed it don't count.",
+    "New evidence that contradicts a theory is a valid reason to reject it."],
+ 9:["Science is always open to change, but only for a good reason: new evidence, or a new way of interpreting the evidence we already have.",
+    "Scientific knowledge changes with new evidence or new interpretations."],
+ 10:["In everyday talk 'fact' is loose, but in science a fact is an observation that has been confirmed over and over. It's not a guess (hypothesis) and not something that changes (variable).",
+    "A scientific fact is a confirmed observation."],
+ 11:["Scientific attitudes include curiosity, honesty, open-mindedness, skepticism, and creativity. Which one means wanting to learn more?",
+    "Curiosity is the attitude of being eager to learn more."],
+ 12:["When something is too big, too small, too slow, or too dangerous to look at directly, scientists build a representation of it — a diagram, a computer simulation, a globe.",
+    "Those representations are models."],
+ 13:["Bias is anything in the design of an experiment that tips the result one way. For example, testing a fertilizer only on the plants that already looked healthiest.",
+    "A design mistake that makes one result more likely is experimental bias."],
+ 14:["Sorting things into groups by shared traits — like sorting rocks by how they formed, or animals by what they eat — is one of the basic science skills.",
+    "Grouping items with similar characteristics is classifying."],
+ 15:["Reporting exactly what you observed, even when it isn't what you hoped for, is honesty. Science can't work without it.",
+    "Honesty is the attitude of reporting observations and results truthfully."],
+ 16:["Before Galileo, most people believed everything revolved around Earth. His telescope observations (like the moons of Jupiter and the phases of Venus) supported the idea that the planets revolve around the Sun.",
+    "False — Galileo's evidence showed planets revolve around the Sun."],
+ 17:["A scientific law describes a pattern that always happens (like gravity making things fall) without explaining WHY. A theory explains why. A hypothesis is a testable idea, not a description of a pattern.",
+    "False — a scientific law describes a pattern without explaining it."],
+ 18:["A hypothesis is a possible explanation for something you observe that you can test. A controlled variable is something you keep the same during an experiment.",
+    "False — proposing an explanation is a hypothesis."],
+ 19:["Scientific knowledge is built from confirmed observations — facts. Hypotheses are still untested ideas, so they can't be the foundation.",
+    "False — a growing collection of facts forms the basis of scientific knowledge."],
+ 20:["A theory in science isn't a guess. It's an explanation that has been tested many times with lots of evidence. Well-tested is one of its main characteristics.",
+    "True — scientific theories are well-tested."],
+ 28:["Write it like a short paragraph: 1) say what faulty reasoning IS (it uses incorrect, incomplete, biased, or misinterpreted information), 2) say what it leads to (wrong conclusions), 3) say why scientists must avoid it (conclusions have to rest on accurate facts and evidence). Use capital letters and end every sentence with punctuation.",
+    "Model answer: Faulty reasoning uses incorrect, incomplete, biased, or misinterpreted information to reach a conclusion. Scientists must avoid it because scientific conclusions need to be supported by accurate facts and evidence."]
+};
+
+/* ---------- state ---------- */
+var KEY="what-is-science-test-v1";
+var state={name:"", cur:0, started:false, submitted:false, history:[], answers:{}, essayPts:null};
+try{ var saved=JSON.parse(localStorage.getItem(KEY)||"null"); if(saved && saved.answers) state=saved; }catch(e){}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+var openTeach=new Set();
+
+function answered(i){
+  var q=Q[i], a=state.answers[q.n];
+  if(q.type==="mc") return typeof a==="number";
+  if(q.type==="tf") return !!a && (a.v===true || (a.v===false && String(a.fix||"").trim()!==""));
+  return a!=null && String(a).trim()!=="";
+}
+function isCorrect(q){
+  var a=state.answers[q.n];
+  if(q.type==="mc") return a===q.answer;
+  if(q.type==="fill") return wordEq(a, q.accept);
+  if(q.type==="tf"){
+    if(!a) return false;
+    if(q.answer===true) return a.v===true;
+    return a.v===false && wordEq(a.fix, q.accept);
+  }
+  return false;
+}
+function yourAnswerText(q){
+  var a=state.answers[q.n];
+  if(q.type==="mc") return typeof a==="number" ? "abcd"[a]+". "+q.opts[a] : "no answer";
+  if(q.type==="tf"){
+    if(!a || a.v==null) return "no answer";
+    return a.v ? "True" : "False — "+((a.fix||"").trim()||"(no correction written)");
+  }
+  return (a&&String(a).trim())||"no answer";
+}
+
+/* essay: automatic first pass at the rubric; the student can adjust the checkboxes on the results page */
+function essayAuto(text){
+  var t=String(text||"").trim();
+  var sentences=t.split(/[.!?]+/).map(function(s){return s.trim();}).filter(function(s){return s.length>3;});
+  var low=t.toLowerCase();
+  var defines=/incorrect|wrong|incomplete|bias|misinterpret|mistake|not (true|accurate|correct)|bad (information|evidence)/.test(low);
+  var why=/evidence|fact|accurate|support|prove|reliable|trust|conclusion/.test(low);
+  var caps = sentences.length>0 && sentences.every(function(s){return /^[A-Z"“(]/.test(s);});
+  var punct = /[.!?]["”)]?\s*$/.test(t);
+  return [defines&&why, sentences.length>=3, caps&&punct];
+}
+function essayPoints(){
+  var q=Q[Q.length-1];
+  var checks=state.essayPts || essayAuto(state.answers[28]);
+  return q.rubric.reduce(function(s,r,i){return s+(checks[i]?r.pts:0);},0);
+}
+function scoreNow(){
+  var objRight=Q.filter(function(q){return q.type!=="essay" && isCorrect(q);}).length;
+  var e=essayPoints();
+  return {objRight:objRight, essay:e, pts:objRight+e, pct:Math.round((objRight+e)/TOTAL_PTS*100)};
+}
+
+/* ---------- rendering ---------- */
+var main=document.getElementById("main"), topbar=document.getElementById("topbar");
+var palette=document.getElementById("palette"), who=document.getElementById("who");
+
+function renderPalette(){
+  palette.innerHTML="";
+  Q.forEach(function(q,i){
+    if(q.n===28){ var g=document.createElement("span"); g.className="gap"; g.textContent="21–27 skipped"; palette.appendChild(g); }
+    var b=document.createElement("button");
+    b.textContent=q.n;
+    b.setAttribute("aria-label","Question "+q.n+(answered(i)?", answered":""));
+    if(answered(i)) b.classList.add("done");
+    if(i===state.cur) b.classList.add("cur");
+    b.onclick=function(){ state.cur=i; save(); renderQuestion(); };
+    palette.appendChild(b);
+  });
+}
+
+function renderStart(){
+  topbar.hidden=true;
+  main.innerHTML=
+   '<div class="start">'+
+    '<div class="logo">🔬</div>'+
+    '<h1>What Is Science?</h1>'+
+    '<div class="parts"><span>10 multiple choice</span><span>5 fill in the blank</span><span>5 true or false</span><span>1 essay</span></div>'+
+    '<p>21 questions on observing, inferring, reasoning, and how scientific knowledge works. '+
+    'Questions 21–27 are skipped on purpose, so the essay is question 28. '+
+    'Answer everything, then press <b>Submit</b> to see your score. You can take it as many times as you want.</p>'+
+    ((state.history||[]).length ?
+      '<p class="past">Best score so far: '+Math.max.apply(null,state.history.map(function(a){return a.pct;}))+
+      '% · '+state.history.length+(state.history.length>1?' tries':' try')+'</p>' : '')+
+    '<input class="ans-input" id="nm" type="text" placeholder="Type your name" value="'+esc(state.name)+'" autocomplete="off">'+
+    '<div><button class="btn primary" id="go">'+((state.history||[]).length?'Take the test again':'Start the test')+'</button></div>'+
+    '<a class="back" href="index.html">← All tests</a>'+
+   '</div>';
+  var nm=document.getElementById("nm");
+  var go=function(){ state.name=nm.value.trim(); state.started=true; save(); renderQuestion(); };
+  document.getElementById("go").onclick=go;
+  nm.addEventListener("keydown",function(e){ if(e.key==="Enter") go(); });
+  nm.focus();
+}
+
+var DIRECTIONS={
+  "Multiple Choice":"Choose the best answer.",
+  "Completion":"Fill in the blank with the word that completes the sentence.",
+  "True or False":"If the statement is true, choose <b>True</b>. If it is false, choose <b>False</b> and change the <u>underlined</u> word or words to make the statement true.",
+  "Essay":"Write your answer in complete sentences. Question 28 is worth 10 points."
+};
+
+function renderQuestion(){
+  if(state.submitted){ renderResults(false); return; }
+  topbar.hidden=false;
+  who.textContent = state.name || "";
+  renderPalette();
+  var i=state.cur, q=Q[i];
+  var h='<section class="qcard" aria-labelledby="qp">';
+  h+='<span class="qnum">Question '+q.n+'</span><span class="section-tag">'+q.sec+'</span>';
+  if(i===0 || Q[i-1].sec!==q.sec) h+='<div class="directions">'+DIRECTIONS[q.sec]+'</div>';
+  h+='<p class="prompt" id="qp">'+q.prompt+'</p>';
+
+  if(q.type==="mc"){
+    h+='<div class="choices" role="radiogroup">';
+    q.opts.forEach(function(o,oi){
+      var sel=state.answers[q.n]===oi;
+      h+='<button class="choice'+(sel?' sel':'')+'" role="radio" aria-checked="'+sel+'" data-oi="'+oi+'">'+
+         '<span class="dot" aria-hidden="true"></span><span class="letter">'+"abcd"[oi]+'.</span><span>'+esc(o)+'</span></button>';
+    });
+    h+='</div>';
+  }
+  else if(q.type==="fill"){
+    h+='<input class="ans-input" id="ai" type="text" autocomplete="off" autocapitalize="off" placeholder="Type the missing word" value="'+esc(state.answers[q.n]||"")+'" aria-label="Your answer">';
+  }
+  else if(q.type==="tf"){
+    var a=state.answers[q.n]||{};
+    h+='<div class="choices row" role="radiogroup">';
+    [["True",true],["False",false]].forEach(function(o){
+      var sel=a.v===o[1];
+      h+='<button class="choice'+(sel?' sel':'')+'" role="radio" aria-checked="'+sel+'" data-tf="'+o[1]+'">'+
+         '<span class="dot" aria-hidden="true"></span><span>'+o[0]+'</span></button>';
+    });
+    h+='</div>';
+    if(a.v===false){
+      h+='<div class="fix"><label for="fix">Change the underlined word or words to:</label>'+
+         '<input class="ans-input" id="fix" type="text" autocomplete="off" autocapitalize="off" placeholder="Write the correct word(s)" value="'+esc(a.fix||"")+'"></div>';
+    }
+  }
+  else if(q.type==="essay"){
+    var t=state.answers[q.n]||"";
+    h+='<textarea class="ans-input" id="ai" placeholder="Write at least three complete sentences…" aria-label="Your essay">'+esc(t)+'</textarea>'+
+       '<div class="wc" id="wc"></div>'+
+       '<p class="hint">Scoring: 5 points for defining and explaining faulty reasoning · 3 points for at least three relevant sentences · 2 points for correct capitalization and punctuation.</p>';
+  }
+
+  h+='<button class="teach-btn" id="teachbtn">🎓 Teach me — I don&#39;t know this one</button>'+
+     '<div class="lesson" id="lesson" '+(openTeach.has(q.n)?'':'hidden')+'>'+HELP[q.n][0]+'</div>';
+  h+='<div class="nav">';
+  h+= i>0 ? '<button class="btn ghost" id="prev">← Back</button>' : '<span></span>';
+  h+= i<Q.length-1 ? '<button class="btn primary" id="next">Next →</button>' : '<button class="btn submit" id="submit">Submit test</button>';
+  h+='</div><div id="confirmArea"></div></section>';
+  main.innerHTML=h;
+  window.scrollTo(0,0);
+
+  var ai=document.getElementById("ai");
+  if(ai){
+    var wc=document.getElementById("wc");
+    var updWc=function(){ if(wc){ var n=ai.value.split(/[.!?]+/).filter(function(s){return s.trim().length>3;}).length; wc.textContent=n+" sentence"+(n===1?"":"s")+" so far"; } };
+    ai.addEventListener("input",function(){ state.answers[q.n]=ai.value; save(); renderPalette(); updWc(); });
+    if(q.type!=="essay") ai.addEventListener("keydown",function(e){ if(e.key==="Enter"){ var nx=document.getElementById("next")||document.getElementById("submit"); if(nx) nx.click(); } });
+    updWc();
+    if(!('ontouchstart' in window)) ai.focus();
+  }
+  main.querySelectorAll(".choice[data-oi]").forEach(function(b){
+    b.onclick=function(){ state.answers[q.n]=+b.dataset.oi; save(); renderQuestion(); };
+  });
+  main.querySelectorAll(".choice[data-tf]").forEach(function(b){
+    b.onclick=function(){
+      var prev=state.answers[q.n]||{};
+      state.answers[q.n]={v:b.dataset.tf==="true", fix:prev.fix||""};
+      save(); renderQuestion();
+      var f=document.getElementById("fix"); if(f && !('ontouchstart' in window)) f.focus();
+    };
+  });
+  var fix=document.getElementById("fix");
+  if(fix){
+    fix.addEventListener("input",function(){ state.answers[q.n]={v:false, fix:fix.value}; save(); renderPalette(); });
+    fix.addEventListener("keydown",function(e){ if(e.key==="Enter"){ var nx=document.getElementById("next")||document.getElementById("submit"); if(nx) nx.click(); } });
+  }
+  var tb=document.getElementById("teachbtn");
+  if(tb) tb.onclick=function(){ if(openTeach.has(q.n)) openTeach.delete(q.n); else openTeach.add(q.n); document.getElementById("lesson").hidden=!openTeach.has(q.n); };
+  var prev=document.getElementById("prev"); if(prev) prev.onclick=function(){ state.cur--; save(); renderQuestion(); };
+  var next=document.getElementById("next"); if(next) next.onclick=function(){ state.cur++; save(); renderQuestion(); };
+  var sub=document.getElementById("submit"); if(sub) sub.onclick=trySubmit;
+}
+
+/* ---------- submit + results ---------- */
+function trySubmit(){
+  var missing=Q.filter(function(q,i){return !answered(i);}).map(function(q){return q.n;});
+  if(missing.length){
+    var area=document.getElementById("confirmArea");
+    area.innerHTML='<div class="confirm" role="alert">'+
+      '<p><b>Hold on — '+missing.length+' question'+(missing.length>1?'s are':' is')+' blank:</b> '+missing.join(", ")+'</p>'+
+      '<div class="row"><button class="btn ghost" id="goback">Go finish them</button>'+
+      '<button class="btn submit" id="really">Submit anyway</button></div></div>';
+    document.getElementById("goback").onclick=function(){ state.cur=Q.findIndex(function(q,i){return !answered(i);}); save(); renderQuestion(); };
+    document.getElementById("really").onclick=doSubmit;
+    return;
+  }
+  doSubmit();
+}
+function doSubmit(){
+  state.essayPts=essayAuto(state.answers[28]);
+  var s=scoreNow();
+  state.history=(state.history||[]).concat([{pts:s.pts,pct:s.pct}]);
+  state.submitted=true; save(); renderResults(true);
+}
+function renderResults(animate){
+  topbar.hidden=true;
+  var s=scoreNow(), pct=s.pct;
+  var msg = pct===100 ? "Perfect score! You crushed it." :
+            pct>=90 ? "Excellent work — you really know this!" :
+            pct>=80 ? "Nice job! Just a couple to review." :
+            pct>=70 ? "Good effort — look over the ones you missed." :
+            pct>=50 ? "Keep practicing — review the missed ones below." :
+                      "Tough round — go through the answers below and try again.";
+  var C=2*Math.PI*70;
+  var h='<div class="score-hero">'+
+    '<div class="ring"><svg width="170" height="170" viewBox="0 0 170 170">'+
+    '<circle class="track" cx="85" cy="85" r="70" fill="none" stroke-width="14"/>'+
+    '<circle class="fill" id="ringfill" cx="85" cy="85" r="70" fill="none" stroke-width="14" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+C+'"/></svg>'+
+    '<div class="pct"><span class="big" id="pctbig">'+pct+'%</span><span class="small">score</span></div></div>'+
+    '<h2>'+(state.name? esc(state.name)+", you":"You")+' got <span class="frac" id="fracnow">'+s.pts+' out of '+TOTAL_PTS+' points</span></h2>'+
+    '<p class="msg" id="msgnow">'+msg+'</p>'+
+    '<p class="msg">'+s.objRight+' of '+OBJ_COUNT+' questions right · essay '+s.essay+'/'+ESSAY_PTS+' points</p>';
+  var hist=state.history||[];
+  if(hist.length>1){
+    var best=Math.max.apply(null,hist.map(function(a){return a.pct;}));
+    h+='<div class="attempts"><h3>Your tries</h3>'+hist.map(function(a,i){
+      return '<span class="att'+(a.pct===best?' best':'')+'">Try '+(i+1)+': '+a.pct+'%'+(a.pct===best?' ★':'')+'</span>';
+    }).join("")+'</div>';
+  }
+  h+='<button class="btn primary retakeb">Take the test again</button></div>';
+
+  h+='<div class="review"><h3>Question review</h3>';
+  Q.forEach(function(q){
+    if(q.type==="essay"){
+      var checks=state.essayPts||essayAuto(state.answers[28]);
+      var pts=essayPoints();
+      h+='<div class="rev-item '+(pts===ESSAY_PTS?'ok':pts>0?'part':'no')+'" id="essayItem">'+
+        '<span class="mark">'+pts+'</span><span class="q">'+q.n+'. '+esc(q.short)+' <span style="font-weight:400;color:var(--ink-soft)">('+ESSAY_PTS+' points)</span></span>'+
+        '<div class="essay-box">'+(esc(state.answers[28]||"")||'<i>no answer</i>')+'</div>'+
+        '<span class="a">💡 <b>Model answer:</b> '+esc(q.model)+'</span>'+
+        '<span class="a">Check each part you earned. The score updates as you go.</span>'+
+        '<div class="rubric">'+q.rubric.map(function(r,i){
+          return '<label><input type="checkbox" data-ri="'+i+'" '+(checks[i]?'checked':'')+'><span><span class="pts">'+r.pts+' pts</span> — '+esc(r.text)+'</span></label>';
+        }).join("")+'</div>'+
+        '<span class="rubric-total" id="rubricTotal">Essay: '+pts+' / '+ESSAY_PTS+' points</span>'+
+        '</div>';
+      return;
+    }
+    var ok=isCorrect(q);
+    h+='<div class="rev-item '+(ok?'ok':'no')+'">'+
+      '<span class="mark" aria-label="'+(ok?'correct':'incorrect')+'">'+(ok?'✓':'✗')+'</span>'+
+      '<span class="q">'+q.n+'. '+esc(q.short)+'</span>'+
+      '<span class="a">Your answer: <span class="yours">'+esc(yourAnswerText(q))+'</span>'+
+      (ok?'':' &nbsp;·&nbsp; Correct answer: <span class="right">'+esc(q.correct)+'</span>')+'</span>'+
+      (ok?'':'<span class="a why">💡 '+HELP[q.n][1]+'</span>')+
+      '</div>';
+  });
+  h+='</div><div class="again"><button class="btn primary retakeb">Take the test again</button></div>';
+  main.innerHTML=h;
+  window.scrollTo(0,0);
+
+  main.querySelectorAll(".rubric input").forEach(function(cb){
+    cb.onchange=function(){
+      var checks=(state.essayPts||essayAuto(state.answers[28])).slice();
+      checks[+cb.dataset.ri]=cb.checked;
+      state.essayPts=checks;
+      var s2=scoreNow();
+      if(state.history.length) state.history[state.history.length-1]={pts:s2.pts,pct:s2.pct};
+      save();
+      var pts=essayPoints();
+      document.getElementById("rubricTotal").textContent="Essay: "+pts+" / "+ESSAY_PTS+" points";
+      var item=document.getElementById("essayItem");
+      item.className="rev-item "+(pts===ESSAY_PTS?'ok':pts>0?'part':'no');
+      item.querySelector(".mark").textContent=pts;
+      document.getElementById("pctbig").textContent=s2.pct+"%";
+      document.getElementById("fracnow").textContent=s2.pts+" out of "+TOTAL_PTS+" points";
+      document.getElementById("ringfill").style.strokeDashoffset=C*(1-s2.pct/100);
+    };
+  });
+  main.querySelectorAll(".retakeb").forEach(function(b){
+    b.onclick=function(){
+      state={name:state.name,history:state.history||[],cur:0,started:true,submitted:false,answers:{},essayPts:null};
+      save(); renderQuestion();
+    };
+  });
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    var f=document.getElementById("ringfill");
+    f.style.strokeDashoffset = C*(1-pct/100);
+    if(!animate) f.style.transition="none";
+  }); });
+}
+
+/* ---------- boot ---------- */
+if(state.submitted) renderResults(false);
+else if(state.started) renderQuestion();
+else renderStart();
+})();
+</script>

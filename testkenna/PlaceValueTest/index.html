@@ -1,0 +1,56 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice Tests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+  :root{--ink:#1C2B3A;--ink-soft:#5A6B7E;--line:#DDE4EB;--field:#F7F9FB;--shadow:0 2px 12px rgba(28,43,58,.07)}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);font-family:"Nunito",system-ui,sans-serif;font-size:17px;line-height:1.5}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 16px 80px}
+  h1{font-weight:800;font-size:2rem;margin:0 0 6px}
+  .sub{color:var(--ink-soft);margin:0 0 28px}
+  .list{display:grid;gap:14px}
+  a.test{display:grid;grid-template-columns:56px 1fr auto;gap:16px;align-items:center;text-decoration:none;color:inherit;
+    background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:18px 20px;transition:border-color .12s,transform .12s}
+  a.test:hover{border-color:var(--accent);transform:translateY(-2px)}
+  a.test:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .icon{width:56px;height:56px;border-radius:12px;display:grid;place-items:center;font-size:1.7rem;background:var(--field)}
+  .test h2{font-size:1.15rem;font-weight:800;margin:0 0 2px}
+  .test p{margin:0;color:var(--ink-soft);font-size:.92rem}
+  .best{font-weight:800;font-size:.9rem;white-space:nowrap;padding:5px 12px;border-radius:999px;background:var(--field);color:var(--ink-soft)}
+  .best.has{background:#E2F2E9;color:#2F8A5B}
+  .go{font-weight:800;color:var(--ink-soft)}
+  .math{--accent:#3D74C4} .sci{--accent:#2E8B6E}
+  .math .icon{background:#EAF1FA} .sci .icon{background:#E6F4EE}
+</style>
+<div class="wrap">
+  <h1>Practice Tests</h1>
+  <p class="sub">Pick a test. Every one grades itself, shows what you missed, and lets you retake it as many times as you want.</p>
+  <div class="list">
+    <a class="test sci" href="what-is-science-test.html">
+      <span class="icon">🔬</span>
+      <span><h2>What Is Science?</h2><p>Science · 21 questions: multiple choice, fill in the blank, true or false, and an essay</p></span>
+      <span class="best" data-key="what-is-science-test-v1">Not taken yet</span>
+    </a>
+    <a class="test math" href="place-value-test.html">
+      <span class="icon">💯</span>
+      <span><h2>Place Value &amp; Decimals — Form A</h2><p>Math · 25 questions on powers of ten, place value, and comparing decimals</p></span>
+      <span class="best" data-key="pv-decimals-test-v1">Not taken yet</span>
+    </a>
+    <a class="test math" href="place-value-test-b.html">
+      <span class="icon">💯</span>
+      <span><h2>Place Value &amp; Decimals — Form B</h2><p>Math · same 25 skills with different numbers</p></span>
+      <span class="best" data-key="pv-decimals-test-b-v1">Not taken yet</span>
+    </a>
+  </div>
+</div>
+<script>
+  document.querySelectorAll('.best[data-key]').forEach(function(el){
+    try{
+      var s=JSON.parse(localStorage.getItem(el.dataset.key)||'null');
+      var h=s&&s.history||[];
+      if(h.length){ var best=Math.max.apply(null,h.map(function(a){return a.pct;})); el.textContent='Best: '+best+'% · '+h.length+(h.length>1?' tries':' try'); el.classList.add('has'); }
+    }catch(e){}
+  });
+</script>
