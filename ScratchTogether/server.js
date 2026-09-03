@@ -221,13 +221,14 @@ const MIME = {svg: 'image/svg+xml', png: 'image/png', jpg: 'image/jpeg', jpeg: '
     bmp: 'image/bmp', wav: 'audio/wav', mp3: 'audio/mpeg'};
 
 // A usable project has a stage; never let an empty/broken snapshot overwrite a good one.
-function validProject (str) {
-    if (typeof str !== 'string' || str.length < 2) return false;
+function parseProject (str) {
+    if (typeof str !== 'string' || str.length < 2 || str.length > 60 * 1024 * 1024) return null;
     try {
         const p = JSON.parse(str);
-        return Array.isArray(p.targets) && p.targets.some(t => t && t.isStage);
-    } catch (e) { return false; }
+        return (Array.isArray(p.targets) && p.targets.some(t => t && t.isStage)) ? p : null;
+    } catch (e) { return null; }
 }
+const validProject = str => !!parseProject(str);
 
 function hostOf (room) {
     for (const c of room.clients) if (c.readyState === 1) return c;
@@ -348,6 +349,7 @@ app.post('/api/rooms/:code/assets/:file', express.raw({type: () => true, limit: 
 app.put('/api/rooms/:code/assets/:file', express.raw({type: () => true, limit: '60mb'}), uploadAsset);
 
 app.get('/api/config', (req, res) => res.json({cloudHost: CLOUD_HOST}));
+app.get('/api/health', (req, res) => res.json({ok: true, rooms: rooms.size, uptime: Math.round(process.uptime())}));
 
 // ---------- backpack (same API scratch-gui expects from Scratch's backpack server) ----------
 const BP_MIME_EXT = {'image/svg+xml': 'svg', 'image/png': 'png', 'audio/x-wav': 'wav', 'audio/wav': 'wav',
@@ -523,11 +525,13 @@ wss.on('connection', async (ws, req) => {
         try { msg = JSON.parse(raw); } catch (e) { return; }
         switch (msg.type) {
         case 'snapshot': // host keeps the server's copy fresh
-            if (validProject(msg.project)) {
+            {
+                const parsed = parseProject(msg.project);
+                if (!parsed) return;
                 room.project = msg.project;
                 if (msg.title) room.meta.title = msg.title;
                 room.meta.updated = Date.now();
-                try { room.meta.sprites = JSON.parse(msg.project).targets.filter(t => !t.isStage).length; } catch (e) { /* ignore */ }
+                room.meta.sprites = parsed.targets.filter(t => !t.isStage).length;
                 saveRoom(room);
                 const waiters = room.snapshotWaiters.splice(0);
                 waiters.forEach(fn => fn());
@@ -565,6 +569,9 @@ wss.on('connection', async (ws, req) => {
         broadcast(room, {type: 'users', users: usersOf(room)});
     });
 });
+
+process.on('uncaughtException', e => console.error('uncaught', e && e.stack || e));
+process.on('unhandledRejection', e => console.error('unhandled', e && e.stack || e));
 
 store.init().catch(e => { console.error('storage init failed', e); process.exit(1); }).then(() => server.listen(PORT, () => {
     const ips = Object.values(os.networkInterfaces()).flat()

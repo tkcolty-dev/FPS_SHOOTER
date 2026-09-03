@@ -6,5 +6,8 @@ applications:
   buildpacks:
   - nodejs_buildpack
   command: node server.js
+  health-check-type: http
+  health-check-http-endpoint: /api/health
+  health-check-invocation-timeout: 10
   services:
   - scratch-together-db
