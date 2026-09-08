@@ -1,0 +1,632 @@
+{
+ "mig-23-flogger-in": {
+  "file": "mig-23-flogger-in.svg",
+  "rx": 138.65570068359375,
+  "ry": 72.43357849121094,
+  "orig": "Mig-23 'Flogger' In"
+ },
+ "mig-23-flogger-out": {
+  "file": "mig-23-flogger-out.svg",
+  "rx": 138.65570068359375,
+  "ry": 117.65229797363281,
+  "orig": "Mig-23 'Flogger' out"
+ },
+ "il-28-beagle": {
+  "file": "il-28-beagle.svg",
+  "rx": 112.71666,
+  "ry": 118.500286149502,
+  "orig": "IL-28 'Beagle'"
+ },
+ "f-104c-starfighter": {
+  "file": "f-104c-starfighter.svg",
+  "rx": 140.1979217529297,
+  "ry": 57.44731521606445,
+  "orig": "F-104C 'Starfighter'"
+ },
+ "a-10-warthog": {
+  "file": "a-10-warthog.svg",
+  "rx": 122.05387878417969,
+  "ry": 113.22444152832031,
+  "orig": "A-10 'Warthog'"
+ },
+ "t-28-trojan": {
+  "file": "t-28-trojan.svg",
+  "rx": 89.49189758300781,
+  "ry": 106.7130355834961,
+  "orig": "T-28 'Trojan'"
+ },
+ "eurofighter": {
+  "file": "eurofighter.svg",
+  "rx": 119.51056671142578,
+  "ry": 78.49168395996094,
+  "orig": "Eurofighter"
+ },
+ "ilyushin-il-2-sturmovik-blueprint-2": {
+  "file": "ilyushin-il-2-sturmovik-blueprint-2.svg",
+  "rx": 88.99771118164062,
+  "ry": 111.2867431640625,
+  "orig": "Ilyushin_Il-2_Sturmovik_blueprint_2"
+ },
+ "he-112": {
+  "file": "he-112.svg",
+  "rx": 100.25131225585938,
+  "ry": 98.7040023803711,
+  "orig": "He-112"
+ },
+ "md-450-ouragan": {
+  "file": "md-450-ouragan.svg",
+  "rx": 96.90979766845703,
+  "ry": 109.63699340820312,
+  "orig": "MD.450 Ouragan"
+ },
+ "mb-200": {
+  "file": "mb-200.svg",
+  "rx": 108.61577606201172,
+  "ry": 146.7708740234375,
+  "orig": "MB.200"
+ },
+ "mirage-iii-e": {
+  "file": "mirage-iii-e.svg",
+  "rx": 125.02487182617188,
+  "ry": 73.06682586669922,
+  "orig": "Mirage III E"
+ },
+ "d-520": {
+  "file": "d-520.svg",
+  "rx": 93.49095153808594,
+  "ry": 109.29638671875,
+  "orig": "D.520"
+ },
+ "j-21r": {
+  "file": "j-21r.svg",
+  "rx": 115.55119323730469,
+  "ry": 125.65599060058594,
+  "orig": "J 21R"
+ },
+ "j-21": {
+  "file": "j-21.svg",
+  "rx": 113.8701171875,
+  "ry": 125.65599060058594,
+  "orig": "J 21"
+ },
+ "saab-35-draken": {
+  "file": "saab-35-draken.svg",
+  "rx": 149.5708465576172,
+  "ry": 88.76666259765625,
+  "orig": "Saab 35 'Draken'"
+ },
+ "me-262a-1-swallow": {
+  "file": "me-262a-1-swallow.svg",
+  "rx": 118.90660858154297,
+  "ry": 139.4589385986328,
+  "orig": "Me-262A-1 'Swallow'"
+ },
+ "mig-25a-foxbat-a": {
+  "file": "mig-25a-foxbat-a.svg",
+  "rx": 148.01124572753906,
+  "ry": 96.33768463134766,
+  "orig": "Mig-25A 'Foxbat-A'"
+ },
+ "su-9-1946": {
+  "file": "su-9-1946.svg",
+  "rx": 115.7146224975586,
+  "ry": 129.66380310058594,
+  "orig": "Su-9 (1946)"
+ },
+ "do-335a-0": {
+  "file": "do-335a-0.svg",
+  "rx": 120.58682250976562,
+  "ry": 122.308837890625,
+  "orig": "Do-335A-0"
+ },
+ "do-217z": {
+  "file": "do-217z.svg",
+  "rx": 113.90394592285156,
+  "ry": 121.95745086669922,
+  "orig": "Do-217Z"
+ },
+ "b-52h-stratofortess-2": {
+  "file": "b-52h-stratofortess-2.svg",
+  "rx": 120.99999,
+  "ry": 134.72273462690617,
+  "orig": "B-52H 'Stratofortess'  2"
+ },
+ "horten-229a-0": {
+  "file": "horten-229a-0.svg",
+  "rx": 193.7025146484375,
+  "ry": 85.13427734375,
+  "orig": "Horten-229A-0 "
+ },
+ "a6m": {
+  "file": "a6m.svg",
+  "rx": 90.73077392578125,
+  "ry": 118.40670776367188,
+  "orig": "A6M"
+ },
+ "f-15c-eagle": {
+  "file": "f-15c-eagle.svg",
+  "rx": 161.3180694580078,
+  "ry": 106.59827562065887,
+  "orig": "F-15C Eagle"
+ },
+ "mig-29a": {
+  "file": "mig-29a.svg",
+  "rx": 132.16885375976562,
+  "ry": 91.66815185546875,
+  "orig": "Mig-29A"
+ },
+ "me-264": {
+  "file": "me-264.svg",
+  "rx": 194.41111755371094,
+  "ry": 105.55786895751953,
+  "orig": "Me-264"
+ },
+ "su-7-fitter-a": {
+  "file": "su-7-fitter-a.svg",
+  "rx": 125.02623748779297,
+  "ry": 70.0903549194336,
+  "orig": "Su-7 'Fitter-A'"
+ },
+ "f-4b-phantom": {
+  "file": "f-4b-phantom.svg",
+  "rx": 125.69869232177734,
+  "ry": 81.51294708251953,
+  "orig": "F-4B 'Phantom'"
+ },
+ "f-86a-sabre": {
+  "file": "f-86a-sabre.svg",
+  "rx": 101.92999267578125,
+  "ry": 101.88329315185547,
+  "orig": "F-86A 'Sabre'"
+ },
+ "p-40c-curtis": {
+  "file": "p-40c-curtis.svg",
+  "rx": 118.19528198242188,
+  "ry": 100.43180084228516,
+  "orig": "P-40C 'Curtis'"
+ },
+ "mig-19p-farmer": {
+  "file": "mig-19p-farmer.svg",
+  "rx": 127.92682647705078,
+  "ry": 90.74170684814453,
+  "orig": "Mig-19P 'Farmer'"
+ },
+ "mig-21pf-fishbed-d": {
+  "file": "mig-21pf-fishbed-d.svg",
+  "rx": 163.9150206268555,
+  "ry": 77.56608499999999,
+  "orig": "Mig-21PF 'Fishbed-D'"
+ },
+ "mig-9m-fargo": {
+  "file": "mig-9m-fargo.svg",
+  "rx": 122.77041625976562,
+  "ry": 117.65812683105469,
+  "orig": "Mig-9M 'Fargo'"
+ },
+ "p-59-a-airacomet": {
+  "file": "p-59-a-airacomet.svg",
+  "rx": 117.37559509277344,
+  "ry": 98.88101959228516,
+  "orig": "P-59 A Airacomet"
+ },
+ "gloster-meteor-mk1": {
+  "file": "gloster-meteor-mk1.svg",
+  "rx": 119.4653147547154,
+  "ry": 115.9971761175648,
+  "orig": "Gloster Meteor Mk1"
+ },
+ "vickers-wellington-2": {
+  "file": "vickers-wellington-2.svg",
+  "rx": 104.94229125976562,
+  "ry": 147.5201416015625,
+  "orig": "Vickers Wellington 2"
+ },
+ "vickers-wellington": {
+  "file": "vickers-wellington.svg",
+  "rx": 104.94229125976562,
+  "ry": 147.5201416015625,
+  "orig": "Vickers Wellington "
+ },
+ "avro-lancaster-b1": {
+  "file": "avro-lancaster-b1.svg",
+  "rx": 177.90921020507812,
+  "ry": 120.38201904296875,
+  "orig": "Avro Lancaster B1"
+ },
+ "spitfire-mk1a": {
+  "file": "spitfire-mk1a.svg",
+  "rx": 115.14210510253906,
+  "ry": 94.71257781982422,
+  "orig": "Spitfire Mk1A"
+ },
+ "p-51d-mustang": {
+  "file": "p-51d-mustang.svg",
+  "rx": 122.48945302177086,
+  "ry": 103.13220149699528,
+  "orig": "P-51D Mustang"
+ },
+ "me-163b-komet": {
+  "file": "me-163b-komet.svg",
+  "rx": 119.75930891812718,
+  "ry": 75.26316125548612,
+  "orig": "Me-163B Komet"
+ },
+ "ta-152-c-1": {
+  "file": "ta-152-c-1.svg",
+  "rx": 122.827880859375,
+  "ry": 110.54975128173828,
+  "orig": "Ta-152 C-1"
+ },
+ "ta-152-h-1": {
+  "file": "ta-152-h-1.svg",
+  "rx": 148.82716369628906,
+  "ry": 110.54975128173828,
+  "orig": "Ta-152 H-1"
+ },
+ "fw-190d-1": {
+  "file": "fw-190d-1.svg",
+  "rx": 123.34314727783203,
+  "ry": 104.38919830322266,
+  "orig": "Fw-190D-1"
+ },
+ "bf-109e": {
+  "file": "bf-109e.svg",
+  "rx": 122.29137420654297,
+  "ry": 110.80291748046875,
+  "orig": "Bf-109E"
+ },
+ "bf-109e-squadron-leader": {
+  "file": "bf-109e-squadron-leader.svg",
+  "rx": 122.29137420654297,
+  "ry": 110.88156127929688,
+  "orig": "Bf-109E Squadron leader"
+ },
+ "p-61a-blackwidow-day": {
+  "file": "p-61a-blackwidow-day.svg",
+  "rx": 103.96759,
+  "ry": 133.63695480388103,
+  "orig": "P-61A Blackwidow  day"
+ },
+ "p-61a-blackwidow-night": {
+  "file": "p-61a-blackwidow-night.svg",
+  "rx": 103.96759,
+  "ry": 133.63695480388103,
+  "orig": "P-61A Blackwidow night"
+ },
+ "yak-1": {
+  "file": "yak-1.svg",
+  "rx": 114.47974059105061,
+  "ry": 98.18531504835987,
+  "orig": "Yak-1"
+ },
+ "yak-3": {
+  "file": "yak-3.svg",
+  "rx": 114.48081134438877,
+  "ry": 98.18621558708992,
+  "orig": "Yak-3"
+ },
+ "yak-7": {
+  "file": "yak-7.svg",
+  "rx": 114.48081,
+  "ry": 98.186205,
+  "orig": "Yak-7"
+ },
+ "he-177-grief": {
+  "file": "he-177-grief.svg",
+  "rx": 116.96273707310156,
+  "ry": 176.31971459680213,
+  "orig": "He-177 Grief"
+ },
+ "he-177-grief-camo": {
+  "file": "he-177-grief-camo.svg",
+  "rx": 116.96274392379256,
+  "ry": 176.3197114831671,
+  "orig": "He-177 Grief Camo"
+ },
+ "b-25j-1": {
+  "file": "b-25j-1.svg",
+  "rx": 148.94078063964844,
+  "ry": 117.55113220214844,
+  "orig": "B-25J-1"
+ },
+ "p-63a-5": {
+  "file": "p-63a-5.svg",
+  "rx": 125.98040990812812,
+  "ry": 104.66650612646042,
+  "orig": "P-63A-5"
+ },
+ "p-39q": {
+  "file": "p-39q.svg",
+  "rx": 103.49149192186036,
+  "ry": 93.26872542306452,
+  "orig": "P-39Q"
+ },
+ "b-36-a": {
+  "file": "b-36-a.svg",
+  "rx": 209.2637656066011,
+  "ry": 146.78762488777397,
+  "orig": "B-36 A"
+ },
+ "b-17e-flying-fortress": {
+  "file": "b-17e-flying-fortress.svg",
+  "rx": 113.72724151611328,
+  "ry": 162.2438201904297,
+  "orig": "B-17E Flying Fortress"
+ },
+ "b-24-liberator2": {
+  "file": "b-24-liberator2.svg",
+  "rx": 110.04945194796093,
+  "ry": 181.0858211081084,
+  "orig": "B-24 Liberator2"
+ },
+ "f-14b-tomcat-wings-in": {
+  "file": "f-14b-tomcat-wings-in.svg",
+  "rx": 148.8976043268469,
+  "ry": 92.21472720996617,
+  "orig": "F-14B 'Tomcat' wings in "
+ },
+ "f-14b-tomcat-wings-out": {
+  "file": "f-14b-tomcat-wings-out.svg",
+  "rx": 148.78802253768384,
+  "ry": 153.22796959253236,
+  "orig": "F-14B 'Tomcat' wings out"
+ },
+ "aim-4a-falcon": {
+  "file": "aim-4a-falcon.svg",
+  "rx": 129.3746796870774,
+  "ry": 33.85246999999998,
+  "orig": "AIM-4A 'Falcon'"
+ },
+ "aim-4g-falcon": {
+  "file": "aim-4g-falcon.svg",
+  "rx": 129.3746646836192,
+  "ry": 37.990700000000004,
+  "orig": "AIM-4G 'Falcon'"
+ },
+ "aim-7b-sparrow": {
+  "file": "aim-7b-sparrow.svg",
+  "rx": 120.29205999999994,
+  "ry": 24.85819965967761,
+  "orig": "AIM-7B 'Sparrow'"
+ },
+ "aim-9b-sidewinder": {
+  "file": "aim-9b-sidewinder.svg",
+  "rx": 109.05601244694432,
+  "ry": 19.661295000000024,
+  "orig": "AIM-9B 'Sidewinder'"
+ },
+ "aim-9d-sidewinder": {
+  "file": "aim-9d-sidewinder.svg",
+  "rx": 113.22266989388869,
+  "ry": 19.661294999999996,
+  "orig": "AIM-9D 'Sidewinder'"
+ },
+ "aim-9e-sidewinder": {
+  "file": "aim-9e-sidewinder.svg",
+  "rx": 122.55951999999999,
+  "ry": 19.661294999999996,
+  "orig": "AIM-9E 'Sidewinder'"
+ },
+ "aim-120-amraam": {
+  "file": "aim-120-amraam.svg",
+  "rx": 161.0000000000001,
+  "ry": 25.838225800703214,
+  "orig": "AIM-120 'Amraam'"
+ },
+ "aim-54c-phoenix": {
+  "file": "aim-54c-phoenix.svg",
+  "rx": 159.75,
+  "ry": 37.95094082024127,
+  "orig": "AIM-54C 'Phoenix'"
+ },
+ "r-3s-aa-2-atoll": {
+  "file": "r-3s-aa-2-atoll.svg",
+  "rx": 87.5560198938887,
+  "ry": 18.594086851376403,
+  "orig": "R-3S / AA-2 'Atoll'"
+ },
+ "k-13r-aa-2c-atoll": {
+  "file": "k-13r-aa-2c-atoll.svg",
+  "rx": 118.66629589152791,
+  "ry": 18.594091768544104,
+  "orig": "K-13R / AA-2C 'Atoll'"
+ },
+ "k-8-kalingrad-aa-3-anab": {
+  "file": "k-8-kalingrad-aa-3-anab.svg",
+  "rx": 147.27415000000002,
+  "ry": 30.144595343168163,
+  "orig": "K-8 Kalingrad / AA-3 'Anab'"
+ },
+ "r-4t-aa-5-ash": {
+  "file": "r-4t-aa-5-ash.svg",
+  "rx": 124.44425593321957,
+  "ry": 27.857480542364357,
+  "orig": "R-4T / AA-5 'Ash'"
+ },
+ "r-40-aa-6-acrid": {
+  "file": "r-40-aa-6-acrid.svg",
+  "rx": 145.08863000927562,
+  "ry": 41.01794491774274,
+  "orig": "R-40 / AA-6 'Acrid'"
+ },
+ "vympel-r-23-aa-7-apex": {
+  "file": "vympel-r-23-aa-7-apex.svg",
+  "rx": 138.3523991406916,
+  "ry": 28.72244700101359,
+  "orig": "Vympel R-23 / AA-7 'Apex'"
+ },
+ "r-60-vympel-aa-8-aphid": {
+  "file": "r-60-vympel-aa-8-aphid.svg",
+  "rx": 63.506898300865686,
+  "ry": 12.18306168024128,
+  "orig": "R-60 Vympel / AA-8 'Aphid'"
+ },
+ "bright-lamp": {
+  "file": "bright-lamp.svg",
+  "rx": 111.6526962092191,
+  "ry": 37.75345711513856,
+  "orig": "Bright Lamp"
+ },
+ "mcdonnell-douglas-f-15-eagle": {
+  "file": "mcdonnell-douglas-f-15-eagle.svg",
+  "rx": 56.731935037841794,
+  "ry": 78.5909417368492,
+  "orig": "McDonnell Douglas F-15 eagle "
+ },
+ "mcdonnell-f2h-banshee": {
+  "file": "mcdonnell-f2h-banshee.svg",
+  "rx": 77.30775267828719,
+  "ry": 66.95243072509768,
+  "orig": "McDonnell F2H Banshee "
+ },
+ "screenshot-2023-02-01-11": {
+  "file": "screenshot-2023-02-01-11.svg",
+  "rx": 125.41511535644528,
+  "ry": 95.04942444342922,
+  "orig": "Screenshot 2023-02-01 11"
+ },
+ "slide-1": {
+  "file": "slide-1.svg",
+  "rx": 28.832842523150504,
+  "ry": 38.63520708986954,
+  "orig": "Slide 1"
+ },
+ "slide-4": {
+  "file": "slide-4.svg",
+  "rx": 41.572189176107486,
+  "ry": 36.22142034246747,
+  "orig": "Slide 4"
+ },
+ "slide-2": {
+  "file": "slide-2.svg",
+  "rx": 41.572189176107486,
+  "ry": 36.72843499999999,
+  "orig": "Slide 2"
+ },
+ "slide-5": {
+  "file": "slide-5.svg",
+  "rx": 28.403412406628462,
+  "ry": 30.86525499999999,
+  "orig": "Slide 5"
+ },
+ "slide-3": {
+  "file": "slide-3.svg",
+  "rx": 35.95488000000003,
+  "ry": 35.58909,
+  "orig": "Slide 3"
+ },
+ "slide-6": {
+  "file": "slide-6.svg",
+  "rx": 39.19999999999999,
+  "ry": 35.019045241497906,
+  "orig": "Slide 6"
+ },
+ "costume1": {
+  "file": "costume1.svg",
+  "rx": 0,
+  "ry": 0,
+  "orig": "costume1"
+ },
+ "costume2": {
+  "file": "costume2.svg",
+  "rx": 307.05707,
+  "ry": 234.23423,
+  "orig": "costume2"
+ },
+ "costume3": {
+  "file": "costume3.svg",
+  "rx": 131.33727439754662,
+  "ry": 71.55851997093202,
+  "orig": "costume3"
+ },
+ "thumb": {
+  "file": "thumb.svg",
+  "rx": 277.069315,
+  "ry": 211.348465,
+  "orig": "Thumb"
+ },
+ "hi": {
+  "file": "hi.svg",
+  "rx": 341.5915832519531,
+  "ry": 253.75375366210938,
+  "orig": "hi"
+ },
+ "f2h3bt": {
+  "file": "f2h3bt.svg",
+  "rx": 247.54275512695312,
+  "ry": 166.64849942750385,
+  "orig": "f2h3bt"
+ },
+ "f-8-ii": {
+  "file": "f-8-ii.svg",
+  "rx": 238.00454887218046,
+  "ry": 134,
+  "orig": "F-8 II"
+ },
+ "costume4": {
+  "file": "costume4.svg",
+  "rx": 0,
+  "ry": 0,
+  "orig": "costume4"
+ },
+ "b-52": {
+  "file": "b-52.svg",
+  "rx": 238,
+  "ry": 188.5,
+  "orig": "B-52"
+ },
+ "challenger-2-tank2": {
+  "file": "challenger-2-tank2.svg",
+  "rx": 365.35133999999994,
+  "ry": 216.50450500000005,
+  "orig": "Challenger 2 tank2"
+ },
+ "challenger-2-tank3": {
+  "file": "challenger-2-tank3.svg",
+  "rx": 365.3513488769531,
+  "ry": 216.50450134277344,
+  "orig": "Challenger 2 tank3"
+ },
+ "challenger-2-tank4": {
+  "file": "challenger-2-tank4.svg",
+  "rx": 365.3513488769531,
+  "ry": 216.50450134277344,
+  "orig": "Challenger 2 tank4"
+ },
+ "costume2-2": {
+  "file": "costume2-2.svg",
+  "rx": 238,
+  "ry": 188.5,
+  "orig": "costume2"
+ },
+ "backdrop1": {
+  "file": "backdrop1.svg",
+  "rx": 307.05707,
+  "ry": 234.23423000000003,
+  "orig": "backdrop1"
+ },
+ "top-gun-maverick-helmet-wallpaper-for-pc": {
+  "file": "top-gun-maverick-helmet-wallpaper-for-pc.svg",
+  "rx": 366,
+  "ry": 183,
+  "orig": "Top Gun Maverick Helmet Wallpaper for PC"
+ },
+ "costume3-2": {
+  "file": "costume3-2.svg",
+  "rx": 240,
+  "ry": 166,
+  "orig": "costume3"
+ },
+ "f-16cockpit": {
+  "file": "f-16cockpit.svg",
+  "rx": 244.99012756347656,
+  "ry": 167.3292694091797,
+  "orig": "f-16cockpit"
+ },
+ "backdrop2": {
+  "file": "backdrop2.svg",
+  "rx": 0,
+  "ry": 0,
+  "orig": "backdrop2"
+ }
+}
