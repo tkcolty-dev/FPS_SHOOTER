@@ -80,13 +80,19 @@ export const SMART = [
     build(p){ return obj('text', 'Sign', [p[0], 2, p[2]], { color:'', physics:{ enabled:false, type:'static', mass:1, bounce:0, friction:0, upright:false }, text:{ content:'Welcome!', size:0.8, color:'#ffffff', bg:'' } }); } },
 ];
 
+// A new project is just a floor and a drivable Player — build the rest yourself
 export function newProjectData(){
   const player = SMART[0].build([0, 0.6, 0]);
+  return { version:2, name:'My Game', stage:{ style:'auto', time:12, sky:'#8fd3ff', gravity:9.8, sun:1, fog:true, ambient:1, workspace:null }, variables:[], lists:[], sounds:[], ui:[], groups:[], objects:[ground(), player], camera:{ position:[9,6,11], target:[0,1,0] } };
+}
+// The first thing you see the very first time: a small playground to poke at
+export function starterProjectData(){
+  const p = newProjectData(); p.name = 'My Game';
   const ball = obj('sphere', 'Ball', [3, 4, 2], { color:'#ff5a5f', material:'shiny', physics:{ enabled:true, type:'dynamic', mass:0.5, bounce:0.8, friction:0.3, upright:false },
     workspace: ws(chain([['event_whentouch', { TARGET:'Player' }], ['sound_play', { NAME:'pop' }], ['fx_particles', { COLOR:'#ff5a5f' }, { N:20, S:3 }], ['physics_pushdir', { DIR:'up' }, { V:5 }]])) });
   const crate = obj('box', 'Crate', [-3, 0.5, -2], { color:'#ffffff', texture:'planks', physics:{ enabled:true, type:'dynamic', mass:2, bounce:0.1, friction:0.6, upright:false } });
   const ramp = obj('wedge', 'Ramp', [5, 0.75, -4], { color:'#ffffff', texture:'stone', scale:[3,1.5,4], physics:STATIC });
-  return { version:2, name:'My Game', stage:{ style:'auto', time:12, sky:'#8fd3ff', gravity:9.8, sun:1, fog:true, ambient:1, workspace:null }, variables:[], lists:[], sounds:[], objects:[ground(), player, ball, crate, ramp], camera:{ position:[9,6,11], target:[0,1,0] } };
+  p.objects.push(ball, crate, ramp); return p;
 }
 
 export const EXAMPLES = [

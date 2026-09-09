@@ -293,7 +293,8 @@ input[type=range] { accent-color:var(--violet-deep); width:100%; }
 .ui-item .eye { opacity:.5; }
 .bw-ui { position:absolute; inset:0; pointer-events:none; }
 .bw-ui.live .bw-button { pointer-events:auto; cursor:pointer; }
-.bw-ui.editing .bw-el { pointer-events:auto; cursor:move; outline:1px dashed rgba(255,255,255,.35); }
+.bw-ui:not(.live) .bw-el { pointer-events:auto; cursor:move; }
+.bw-ui.editing .bw-el { outline:1px dashed rgba(255,255,255,.35); }
 .bw-ui.editing .bw-el.sel { outline:2px solid var(--violet); }
 .bw-ui.editing .bw-el.sel .bw-rs { display:block; }
 .bw-el { position:absolute; box-sizing:border-box; display:flex; align-items:center; justify-content:center; font-family:"Helvetica Neue", Helvetica, Arial, sans-serif; font-weight:800; text-shadow:0 2px 6px rgba(0,0,0,.5); overflow:hidden; padding:0 .4em; line-height:1.1; user-select:none; }
@@ -305,3 +306,16 @@ input[type=range] { accent-color:var(--violet-deep); width:100%; }
 .bw-bar .lbl { position:relative; width:100%; text-align:center; font-size:.8em; }
 .bw-image { background-size:contain; background-repeat:no-repeat; background-position:center; }
 .bw-panel .lbl { align-self:flex-start; padding-top:.3em; }
+
+/* ---------- multi-select & groups ---------- */
+.marquee { position:absolute; border:1px solid var(--violet); background:rgba(167,139,250,.15); pointer-events:none; z-index:6; }
+.obj-tile.group .thumb { filter:none; }
+.obj-tile.group { background:linear-gradient(180deg, var(--raised), #2a2540); }
+.obj-tile .cnt { position:absolute; left:6px; top:6px; font-size:10px; background:var(--violet-deep); color:#fff; border-radius:8px; padding:1px 6px; font-weight:700; }
+.obj-tile.member { width:64px; height:74px; opacity:.9; }
+.obj-tile.member .thumb { width:40px; height:40px; }
+.obj-tile.member .nm { font-size:10px; }
+.group-stack { position:relative; width:60px; height:60px; }
+.group-stack img { position:absolute; width:44px; height:44px; object-fit:contain; filter:drop-shadow(0 4px 4px rgba(0,0,0,.4)); }
+.group-stack img:nth-child(1){ left:0; top:12px; } .group-stack img:nth-child(2){ left:14px; top:4px; } .group-stack img:nth-child(3){ left:22px; top:16px; }
+.ip-multi { font-size:12px; color:var(--violet); font-weight:700; }

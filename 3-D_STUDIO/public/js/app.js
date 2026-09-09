@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { Engine, defaultObject, newId } from './engine.js';
-import { EXAMPLES, SMART, newProjectData } from './examples.js';
+import { EXAMPLES, SMART, newProjectData, starterProjectData } from './examples.js';
 import { TEXTURE_NAMES, textureThumb } from './textures.js';
 
 const $ = s => document.querySelector(s);
@@ -29,7 +29,7 @@ const engine = new Engine({ canvas: $('#view'), hud: $('#hud'), editor: true });
 engine.onError = m => toast('Script error — ' + m, true);
 engine.onPlayState = on => {
   $('#btn-play').classList.toggle('active', on); $('#info-bar').classList.toggle('disabled', on); $('#viewport-wrap').classList.toggle('playing', on);
-  if (on) gizmo.detach(); else { if (selected) gizmo.attach(selected.root); engine.controls.enabled = true; scheduleThumbs(); refreshInfo(); refreshForm(); }
+  if (on) gizmo.detach(); else { attachGizmo(); engine.setSelection(sel()); engine.controls.enabled = true; scheduleThumbs(); refreshInfo(); refreshForm(); }
 };
 setInterval(() => { $('#fps').textContent = engine.fps + ' fps'; $('#fps').title = engine.stats.objects + ' objects · ' + engine.stats.bodies + ' physics bodies · ' + engine.stats.threads + ' running scripts'; }, 500);
 
@@ -53,6 +53,10 @@ window.BW_hooks.procNames = () => workspace.getBlocksByType('custom_define', fal
 
 /* ---------------- state ---------------- */
 let selected = null, editingStage = false, loadingWorkspace = false, dirty = false;
+const selection = new Set();   // every selected SceneObject (selected = the primary one, whose code is shown)
+let activeGroup = null;         // the group when the selection is exactly one whole group
+const groupById = id => (engine.project.groups || []).find(g => g.id === id);
+const membersOf = id => engine.objects.filter(o => !o.isClone && o.data.groupId === id);
 
 function ensureVariables(){
   const vm = workspace.getVariableMap();
@@ -83,10 +87,21 @@ workspace.addChangeListener(e => {
 });
 function updateEmptyHint(){ const empty = workspace.getTopBlocks(false).length === 0; $('#ws-empty').classList.toggle('hidden', !empty); $('#ws-empty-name').textContent = editingStage ? 'the Stage' : (selected ? selected.name : ''); }
 
-function select(target){
+function select(target, mode='set'){
   saveCurrentWorkspace();
-  if (target === 'stage' || target == null){ editingStage = true; selected = null; gizmo.detach(); engine.select(null); }
-  else { editingStage = false; selected = target; engine.select(target); if (!engine.playing) gizmo.attach(target.root); }
+  if (target === 'stage' || target == null){ selection.clear(); activeGroup = null; editingStage = true; selected = null; }
+  else {
+    const members = (mode !== 'only' && target.data.groupId) ? membersOf(target.data.groupId) : [target];
+    if (mode === 'add' || mode === 'toggle'){
+      const allIn = members.every(m => selection.has(m));
+      if (mode === 'toggle' && allIn) members.forEach(m => selection.delete(m)); else members.forEach(m => selection.add(m));
+      if (!selection.size) return select('stage');
+      selected = selection.has(target) ? target : [...selection][0];
+    } else { selection.clear(); members.forEach(m => selection.add(m)); selected = target; }
+    editingStage = false;
+    const gid = selected.data.groupId; activeGroup = gid && [...selection].every(m => m.data.groupId === gid) && membersOf(gid).length === selection.size ? groupById(gid) : null;
+  }
+  engine.select(selected); engine.setSelection([...selection]); attachGizmo();
   loadWorkspaceFor(editingStage ? 'stage' : selected);
   $('#editing-name').textContent = editingStage ? 'Stage' : selected.name;
   $('#editing-thumb').src = editingStage ? '' : (thumbs.get(selected.id) || '');
@@ -95,11 +110,21 @@ function select(target){
   if (typeof sculptMode !== 'undefined' && sculptMode && (!selected || selected.kind !== 'terrain')) setGizmoMode('translate');
   $('#gz-sculpt').classList.toggle('avail', !!selected && selected.kind === 'terrain');
 }
+function selectMany(list){
+  list = list.filter(o => o && !o.isClone); if (!list.length) return select('stage');
+  saveCurrentWorkspace(); selection.clear(); list.forEach(o => selection.add(o)); selected = list[0]; editingStage = false;
+  const gid = selected.data.groupId; activeGroup = gid && list.every(m => m.data.groupId === gid) && membersOf(gid).length === list.length ? groupById(gid) : null;
+  engine.select(selected); engine.setSelection(list); attachGizmo();
+  loadWorkspaceFor(selected); $('#editing-name').textContent = selected.name; $('#editing-thumb').src = thumbs.get(selected.id) || '';
+  $('#obj-form').style.display = ''; $('#stage-form').style.display = 'none';
+  renderTiles(); refreshInfo(); refreshForm();
+}
+const sel = () => [...selection];
 
 /* ---------------- history (undo / redo) ---------------- */
 const history = { undo: [], redo: [] };
 function commitTerrains(){ for (const o of engine.objects) if (o.kind === 'terrain' && o.commitTerrain) o.commitTerrain(); }
-function snapshot(){ saveCurrentWorkspace(); commitTerrains(); return JSON.stringify({ objects: engine.project.objects, stage: engine.project.stage, variables: engine.project.variables, lists: engine.project.lists, sounds: engine.project.sounds, ui: engine.project.ui || [] }); }
+function snapshot(){ saveCurrentWorkspace(); commitTerrains(); return JSON.stringify({ objects: engine.project.objects, stage: engine.project.stage, variables: engine.project.variables, lists: engine.project.lists, sounds: engine.project.sounds, ui: engine.project.ui || [], groups: engine.project.groups || [] }); }
 let histPending = false, histT;
 function pushHistory(){
   if (engine.playing) return;
@@ -111,10 +136,10 @@ async function restoreSnapshot(json){
   const currentWs = new Map(engine.project.objects.map(o => [o.id, o.workspace]));
   engine.stop(); engine.clear();
   for (const o of snap.objects) if (currentWs.has(o.id)) o.workspace = currentWs.get(o.id);
-  engine.project.objects = snap.objects; Object.assign(engine.project.stage, snap.stage, { workspace: engine.project.stage.workspace }); engine.project.variables = snap.variables; engine.project.lists = snap.lists; engine.project.sounds = snap.sounds; engine.project.ui = snap.ui || []; engine.renderUI(false); uiSelected = null; renderUIList(); refreshUIForm();
+  engine.project.objects = snap.objects; Object.assign(engine.project.stage, snap.stage, { workspace: engine.project.stage.workspace }); engine.project.variables = snap.variables; engine.project.lists = snap.lists; engine.project.sounds = snap.sounds; engine.project.ui = snap.ui || []; engine.project.groups = snap.groups || []; engine.renderUI(false); uiSelected = null; renderUIList(); refreshUIForm();
   engine.applyStage();
   await Promise.all(engine.project.objects.map(d => engine.addObject(d, false)));
-  thumbs.clear(); const o = engine.byId.get(selId); o ? select(o) : select('stage'); markDirty(false); scheduleThumbs();
+  thumbs.clear(); selection.clear(); const o = engine.byId.get(selId); o ? select(o) : select('stage'); markDirty(false); scheduleThumbs();
 }
 async function undo(){ if (!history.undo.length) return; history.redo.push(snapshot()); await restoreSnapshot(history.undo.pop()); updateHistoryButtons(); toast('Undo'); }
 async function redo(){ if (!history.redo.length) return; history.undo.push(snapshot()); await restoreSnapshot(history.redo.pop()); updateHistoryButtons(); toast('Redo'); }
@@ -129,19 +154,38 @@ function refreshThumbs(){
   if (engine.playing) return;
   for (const o of engine.objects){ if (o.isClone || !o.ready) continue; try { thumbs.set(o.id, engine.thumbnail(o)); } catch (e) { console.warn('thumb', e); } }
   try { $('#stage-thumb').src = engine.sceneThumbnail(); } catch (e) {}
-  $$('.obj-tile').forEach(t => { const src = thumbs.get(t.dataset.id); if (src) t.querySelector('.thumb').src = src; });
+  $$('.obj-tile').forEach(t => { const src = thumbs.get(t.dataset.id); if (src && t.querySelector('.thumb')) t.querySelector('.thumb').src = src; }); if ($('.obj-tile.group')) renderTiles();
   if (selected) $('#editing-thumb').src = thumbs.get(selected.id) || '';
 }
 function renderTiles(){
   const list = $('#objects-list'); list.innerHTML = '';
-  for (const o of engine.objects.filter(o => !o.isClone)){
-    const t = document.createElement('div'); t.className = 'obj-tile' + (o === selected ? ' selected' : '') + (o.data.visible === false ? ' hiddenobj' : ''); t.dataset.id = o.id; t.title = o.name; t.draggable = true;
+  const shownGroups = new Set();
+  const tile = (o, cls) => {
+    const t = document.createElement('div'); t.className = 'obj-tile ' + cls + (selection.has(o) ? ' selected' : '') + (o.data.visible === false ? ' hiddenobj' : ''); t.dataset.id = o.id; t.title = o.name;
     const pic = document.createElement('img'); pic.className = 'thumb'; pic.alt = ''; pic.src = thumbs.get(o.id) || '';
     const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = o.name;
-    const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.title = 'Delete ' + o.name; x.onclick = ev => { ev.stopPropagation(); deleteObject(o); };
-    t.append(pic, nm, x); t.onclick = () => select(o); t.ondblclick = () => focusOn(o);
-    t.oncontextmenu = ev => { ev.preventDefault(); select(o); showContextMenu(ev.clientX, ev.clientY, o); };
-    list.appendChild(t);
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.title = 'Delete ' + o.name; x.onclick = ev => { ev.stopPropagation(); deleteObjects([o]); };
+    t.append(pic, nm, x);
+    t.onclick = ev => select(o, ev.metaKey || ev.ctrlKey || ev.shiftKey ? 'toggle' : (cls === 'member' ? 'only' : 'set'));
+    t.ondblclick = () => focusOn(o);
+    t.oncontextmenu = ev => { ev.preventDefault(); if (!selection.has(o)) select(o, cls === 'member' ? 'only' : 'set'); showContextMenu(ev.clientX, ev.clientY, o); };
+    return t;
+  };
+  for (const o of engine.objects.filter(o => !o.isClone)){
+    const gid = o.data.groupId, g = gid && groupById(gid);
+    if (g){
+      if (shownGroups.has(gid)) continue; shownGroups.add(gid);
+      const members = membersOf(gid);
+      const t = document.createElement('div'); t.className = 'obj-tile group' + (members.every(m => selection.has(m)) ? ' selected' : ''); t.dataset.gid = gid; t.title = g.name + ' (' + members.length + ' objects)';
+      const stack = document.createElement('div'); stack.className = 'group-stack'; members.slice(0, 3).forEach(m => { const im = document.createElement('img'); im.src = thumbs.get(m.id) || ''; im.alt = ''; stack.appendChild(im); });
+      const cnt = document.createElement('span'); cnt.className = 'cnt'; cnt.textContent = members.length;
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = g.name;
+      const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.title = 'Delete group'; x.onclick = ev => { ev.stopPropagation(); deleteObjects(members); };
+      t.append(stack, cnt, nm, x); t.onclick = () => selectMany(members); t.ondblclick = () => focusOn(members[0]);
+      t.oncontextmenu = ev => { ev.preventDefault(); selectMany(members); showContextMenu(ev.clientX, ev.clientY, members[0]); };
+      list.appendChild(t);
+      if (members.some(m => selection.has(m))) for (const m of members) list.appendChild(tile(m, 'member'));
+    } else list.appendChild(tile(o, ''));
   }
   $('#stage-tile').classList.toggle('selected', editingStage);
   if (engine.objects.some(o => !o.isClone && !thumbs.has(o.id))) scheduleThumbs();
@@ -152,7 +196,10 @@ $('#stage-tile').onclick = () => select('stage');
 function refreshInfo(){
   const o = selected; const bar = $('#info-bar');
   bar.querySelectorAll('input, button').forEach(i => i.disabled = !o);
-  $('#ib-name').value = o ? o.name : 'Stage';
+  const multi = selection.size > 1;
+  $('#ib-name').value = o ? (activeGroup ? activeGroup.name : multi ? selection.size + ' objects selected' : o.name) : 'Stage';
+  $('#ib-name').disabled = !o || (multi && !activeGroup);
+  ['#ib-x','#ib-y','#ib-z','#ib-ry','#ib-size'].forEach(s => $(s).disabled = !o || multi);
   if (!o) return;
   $('#ib-x').value = fmt(o.data.position[0]); $('#ib-y').value = fmt(o.data.position[1]); $('#ib-z').value = fmt(o.data.position[2]);
   $('#ib-ry').value = fmt(o.data.rotation[1]); $('#ib-size').value = fmt(o.data.scale[1]);
@@ -184,7 +231,12 @@ async function applyFromInputs(ev){
   d.physics.enabled = $('#p-phys').checked; d.physics.type = $('#p-ptype').value; d.physics.mass = Math.max(0.01, n('#p-mass')); d.physics.bounce = n('#p-bounce'); d.physics.friction = n('#p-friction'); d.physics.upright = $('#p-upright').checked; d.collide = $('#p-collide').checked;
   if (o.isLight){ Object.assign(d.light, { color: $('#p-lcolor').value, intensity: n('#p-lint'), distance: n('#p-ldist'), angle: n('#p-langle'), shadow: $('#p-lshadow').checked }); }
   if (d.kind === 'text'){ const bg = $('#p-tbg').value; Object.assign(d.text, { content: $('#p-tcontent').value, size: n('#p-tsize'), color: $('#p-tcolor').value, bg: bg === '#000000' && !d.text.bg ? '' : bg }); }
-  if (d.kind === 'terrain'){ const T = d.terrain; const changed = T.size !== n('#p-trsize') || T.height !== n('#p-trheight') || T.seed !== n('#p-trseed') || T.detail !== n('#p-trdetail'); Object.assign(T, { size: n('#p-trsize'), height: n('#p-trheight'), seed: n('#p-trseed'), detail: n('#p-trdetail') }); if (changed && ev && ev.type === 'change') { if (T.size !== o.terrainInfo.size || T.detail !== o.terrainInfo.n) o.resetTerrain(); else { o.resetTerrain(); } await o.build(); } }
+  if (d.kind === 'terrain' && ev && ev.type === 'change'){
+    const T = d.terrain, want = { size: n('#p-trsize'), height: n('#p-trheight'), seed: n('#p-trseed'), detail: n('#p-trdetail') };
+    if (want.seed !== T.seed){ if (!Array.isArray(T.heights) || confirm('New seed = brand new hills. Replace your sculpting?')){ o.resetTerrain(); await o.reshapeTerrain(want); } else $('#p-trseed').value = T.seed; }
+    else if (want.size !== T.size || want.height !== T.height || want.detail !== T.detail) await o.reshapeTerrain(want);
+    engine.applyStage();
+  }
   o.applyProps(); refreshInfo(); renderTiles(); markDirty();
 }
 $$('#obj-form input, #obj-form select').forEach(el => { if (el.id === 'p-name') return; el.addEventListener('input', applyFromInputs); el.addEventListener('change', applyFromInputs); });
@@ -199,17 +251,17 @@ function infoApply(){
   pushHistoryDebounced();
   d.position = [n('#ib-x'), n('#ib-y'), n('#ib-z')]; d.rotation[1] = n('#ib-ry');
   const sz = Math.max(0.01, n('#ib-size')), k = sz / (d.scale[1] || 1); d.scale = d.scale.map(v => Math.max(0.01, v * k));
-  if (!o.isLight) d.color = $('#ib-color').value; else d.light.color = $('#ib-color').value;
+  for (const x of sel()){ if (!x.isLight) x.data.color = $('#ib-color').value; else x.data.light.color = $('#ib-color').value; if (x !== o) x.applyProps(); }
   o.applyProps(); refreshForm(); refreshInfo(); markDirty();
 }
 $$('#info-bar input[type=number], #info-bar input[type=color]').forEach(el => { el.addEventListener('input', infoApply); el.addEventListener('change', infoApply); });
-$('#ib-name').addEventListener('change', () => renameObject(selected, $('#ib-name').value));
+$('#ib-name').addEventListener('change', () => { if (activeGroup){ const n = $('#ib-name').value.trim().slice(0, 40); if (n){ pushHistory(); activeGroup.name = n; renderTiles(); markDirty(false); } refreshInfo(); } else renameObject(selected, $('#ib-name').value); });
 $('#ib-name').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
-$('#ib-show').onclick = () => { if (!selected) return; pushHistory(); selected.data.visible = selected.data.visible === false; selected.applyProps(); refreshInfo(); refreshForm(); renderTiles(); markDirty(); };
-$('#ib-phys').onclick = () => { if (!selected) return; pushHistory(); selected.data.physics.enabled = !selected.data.physics.enabled; refreshInfo(); refreshForm(); markDirty(); };
-$('#p-dup').onclick = () => selected && duplicateObject(selected);
-$('#p-del').onclick = () => selected && deleteObject(selected);
-$('#p-drop').onclick = () => { if (!selected) return; pushHistory(); engine.dropToGround(selected); refreshInfo(); refreshForm(); markDirty(); };
+$('#ib-show').onclick = () => { if (!selected) return; pushHistory(); const v = selected.data.visible === false; for (const o of sel()){ o.data.visible = v; o.applyProps(); } refreshInfo(); refreshForm(); renderTiles(); markDirty(); };
+$('#ib-phys').onclick = () => { if (!selected) return; pushHistory(); const v = !selected.data.physics.enabled; for (const o of sel()) if (!o.isLight) o.data.physics.enabled = v; refreshInfo(); refreshForm(); markDirty(); };
+$('#p-dup').onclick = () => selected && duplicateObjects(sel());
+$('#p-del').onclick = () => selected && deleteObjects(sel());
+$('#p-drop').onclick = () => { if (!selected) return; pushHistory(); for (const o of sel()) engine.dropToGround(o); refreshInfo(); refreshForm(); markDirty(); };
 
 function uniqueName(base){
   base = base.replace(/\d+$/, '') || 'Object'; const names = new Set(engine.project.objects.map(o => o.name));
@@ -225,18 +277,45 @@ function renameObject(o, name){
   loadWorkspaceFor(editingStage ? 'stage' : selected);
   $('#editing-name').textContent = name; renderTiles(); refreshInfo(); refreshForm(); markDirty();
 }
-function deleteObject(o){
-  if (!o || engine.playing) return;
+function deleteObjects(list){
+  list = list.filter(o => o && !o.isClone); if (!list.length || engine.playing) return;
   pushHistory();
-  engine.removeObject(o);
-  if (selected === o) { selected = null; gizmo.detach(); const next = engine.objects.find(x => !x.isClone && x.kind !== 'plane' && x.kind !== 'terrain') || engine.objects[0]; next ? select(next) : select('stage'); } else renderTiles();
-  markDirty(); toast('Deleted ' + o.name);
+  for (const o of list){ engine.removeObject(o); selection.delete(o); }
+  const gids = new Set((engine.project.groups || []).map(g => g.id)); engine.project.groups = (engine.project.groups || []).filter(g => membersOf(g.id).length > 0);
+  if (!selection.size || !selection.has(selected)){ const next = engine.objects.find(x => !x.isClone && x.kind !== 'plane' && x.kind !== 'terrain') || engine.objects[0]; next ? select(next) : select('stage'); } else selectMany(sel());
+  markDirty(); toast(list.length === 1 ? 'Deleted ' + list[0].name : 'Deleted ' + list.length + ' objects');
 }
-async function duplicateObject(o){
+const deleteObject = o => deleteObjects([o]);
+async function duplicateObjects(list){
+  list = list.filter(o => o && !o.isClone); if (!list.length) return;
   pushHistory();
-  const data = JSON.parse(JSON.stringify(o.data)); data.id = newId(); data.name = uniqueName(o.name); data.position[0] += 1.5;
-  const c = await engine.addObject(data); select(c); markDirty();
+  const gmap = new Map(); const made = [];
+  for (const o of list){
+    const data = JSON.parse(JSON.stringify(o.data)); data.id = newId(); data.name = uniqueName(o.name); data.position[0] += 1.5;
+    if (data.groupId){ if (!gmap.has(data.groupId)){ const g = groupById(data.groupId); const ng = { id: newId(), name: uniqueGroupName(g ? g.name : 'Group') }; engine.project.groups.push(ng); gmap.set(data.groupId, ng.id); } data.groupId = gmap.get(data.groupId); }
+    made.push(await engine.addObject(data));
+  }
+  selectMany(made); markDirty();
 }
+const duplicateObject = o => duplicateObjects([o]);
+function uniqueGroupName(base){ base = base.replace(/\d+$/, '') || 'Group'; const names = new Set((engine.project.groups || []).map(g => g.name)); if (!names.has(base)) return base; let i = 2; while (names.has(base + i)) i++; return base + i; }
+function groupSelection(){
+  const list = sel(); if (list.length < 2) return toast('Select 2 or more objects first (⌘-click or ⇧-drag a box)', true);
+  pushHistory();
+  const old = new Set(list.map(o => o.data.groupId).filter(Boolean));
+  const g = { id: newId(), name: uniqueGroupName('Group') }; engine.project.groups.push(g);
+  for (const o of list) o.data.groupId = g.id;
+  engine.project.groups = engine.project.groups.filter(x => !old.has(x.id) || membersOf(x.id).length > 0);
+  selectMany(list); markDirty(false); toast('Grouped as "' + g.name + '" — it now moves as one');
+}
+function ungroupSelection(){
+  const ids = new Set(sel().map(o => o.data.groupId).filter(Boolean)); if (!ids.size) return toast('That is not a group', true);
+  pushHistory();
+  for (const o of engine.objects) if (ids.has(o.data.groupId)) delete o.data.groupId;
+  engine.project.groups = engine.project.groups.filter(g => !ids.has(g.id));
+  selectMany(sel()); markDirty(false); toast('Ungrouped');
+}
+function selectAll(){ selectMany(engine.objects.filter(o => !o.isClone)); }
 function focusOn(o){ const box = o.worldBox(); const c = new THREE.Vector3(); box.getCenter(c); const sz = new THREE.Vector3(); box.getSize(sz); engine.controls.target.copy(c); const d = Math.max(3, sz.length() * 1.4); engine.camera.position.copy(c).add(new THREE.Vector3(d * 0.7, d * 0.6, d * 0.9)); }
 
 /* ---------------- add objects ---------------- */
@@ -335,22 +414,39 @@ const gizmo = new TransformControls(engine.camera, engine.canvas);
 gizmo.setSize(0.85); const gizmoHelper = gizmo.getHelper ? gizmo.getHelper() : gizmo; engine.scene.add(gizmoHelper); engine._gizmoHelper = gizmoHelper;
 // drop the plane/center handles of the move tool: objects are dragged directly, arrows are for exact axis moves
 try { const g = gizmo._gizmo; for (const grp of [g.gizmo.translate, g.picker.translate, g.helper.translate]) for (const ch of grp.children.slice()) if (['XY','YZ','XZ','XYZ'].includes(ch.name)) grp.remove(ch); } catch (e) { console.warn('gizmo trim', e); }
-gizmo.addEventListener('dragging-changed', e => { engine.controls.enabled = !e.value; if (e.value) pushHistory(); else if (selected) syncFromGizmo(true); });
-gizmo.addEventListener('objectChange', () => { if (selected) syncFromGizmo(false); });
-function syncFromGizmo(final=true){
-  const o = selected, r = o.root; o.data.position = r.position.toArray().map(fmt); o.data.rotation = [r.rotation.x, r.rotation.y, r.rotation.z].map(v => fmt(v * 180 / Math.PI));
-  o.data.scale = r.scale.toArray().map(v => Math.max(0.01, fmt(v))); if (o.data.texture || o.kind === 'terrain') o.applyLook(); refreshInfo(); if (final) { refreshForm(); markDirty(); }
+const pivot = new THREE.Object3D(); engine.scene.add(pivot); let pivotStart = null;
+function attachGizmo(){
+  if (engine.playing || !selected || (typeof sculptMode !== 'undefined' && sculptMode)){ gizmo.detach(); return; }
+  if (selection.size > 1){ const c = new THREE.Vector3(); for (const o of selection) c.add(o.root.position); c.divideScalar(selection.size); pivot.position.copy(c); pivot.rotation.set(0, 0, 0); pivot.scale.set(1, 1, 1); gizmo.attach(pivot); }
+  else gizmo.attach(selected.root);
 }
+gizmo.addEventListener('dragging-changed', e => {
+  engine.controls.enabled = !e.value;
+  if (e.value){ pushHistory(); if (gizmo.object === pivot) pivotStart = { pos: pivot.position.clone(), members: sel().map(o => ({ o, pos: o.root.position.clone(), quat: o.root.quaternion.clone(), scale: o.root.scale.clone() })) }; }
+  else if (selected){ syncRoots(sel(), true); pivotStart = null; attachGizmo(); }
+});
+gizmo.addEventListener('objectChange', () => {
+  if (!selected) return;
+  if (gizmo.object === pivot && pivotStart){
+    for (const m of pivotStart.members){ const rel = m.pos.clone().sub(pivotStart.pos).multiply(pivot.scale).applyQuaternion(pivot.quaternion); m.o.root.position.copy(pivot.position).add(rel); m.o.root.quaternion.copy(pivot.quaternion).multiply(m.quat); m.o.root.scale.copy(m.scale).multiply(pivot.scale); }
+    syncRoots(sel(), false);
+  } else syncFromGizmo(false);
+});
+function syncRoots(list, final){
+  for (const o of list){ const r = o.root; o.data.position = r.position.toArray().map(fmt); o.data.rotation = [r.rotation.x, r.rotation.y, r.rotation.z].map(v => fmt(v * 180 / Math.PI)); o.data.scale = r.scale.toArray().map(v => Math.max(0.01, fmt(v))); if (o.data.texture || o.kind === 'terrain') o.applyLook(); }
+  refreshInfo(); if (final){ refreshForm(); markDirty(); }
+}
+function syncFromGizmo(final=true){ syncRoots([selected], final); }
 let snap = false;
 let sculptMode = false;
 const terrainTool = { tool: 'raise', size: 5, strength: 4, color: '#6fb04a' };
 function setGizmoMode(m){
   sculptMode = m === 'sculpt';
   if (sculptMode){ if (!selected || selected.kind !== 'terrain'){ const t = engine.objects.find(o => o.kind === 'terrain' && !o.isClone); if (t) select(t); else { toast('Add a Terrain first (+ → World → Terrain)', true); return setGizmoMode('translate'); } } gizmo.detach(); }
-  else { gizmo.setMode(m); if (selected && !engine.playing) gizmo.attach(selected.root); }
+  else { gizmo.setMode(m); }
   $$('.gz[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
   $('#terrain-tools').classList.toggle('hidden', !sculptMode); $('#viewport-wrap').classList.toggle('sculpting', sculptMode);
-  engine.brush.visible = false; engine.controls.enabled = true;
+  engine.brush.visible = false; engine.controls.enabled = true; attachGizmo();
 }
 $$('#terrain-tools [data-tool]').forEach(b => b.onclick = () => { terrainTool.tool = b.dataset.tool; $$('#terrain-tools [data-tool]').forEach(x => x.classList.toggle('on', x === b)); $('#tt-paint-row').style.display = ''; });
 $('#tt-size').oninput = e => terrainTool.size = parseFloat(e.target.value); $('#tt-strength').oninput = e => terrainTool.strength = parseFloat(e.target.value);
@@ -377,21 +473,25 @@ $('#gz-focus').onclick = () => selected && focusOn(selected);
 $('#gz-drop').onclick = () => $('#p-drop').click();
 
 const canvas = engine.canvas;
-let drag = null;   // { obj, plane, offset, moved, start:[x,y], vertical }
+let drag = null;   // { obj, objs, plane, offset, moved, start:[x,y], vertical, starts }
 let look = null;   // right-drag look-around { x, y, moved }
+let marquee = null; // ⇧-drag box select { x0, y0 }
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('pointermove', e => {
   if (engine.playing) return;
   if (sculptMode && !look){ sculptAt(e); if (sculpting) return; }
   if (look){ const dx = e.clientX - look.x, dy = e.clientY - look.y; look.x = e.clientX; look.y = e.clientY; if (Math.abs(dx) + Math.abs(dy) > 0) look.moved = true; engine.lookAround(dx, dy); return; }
-  if (drag){
-    if (!drag.moved){ if (Math.hypot(e.clientX - drag.start[0], e.clientY - drag.start[1]) < 4) return; drag.moved = true; engine.controls.enabled = false; pushHistory(); }
+  if (marquee){ const m = $('#marquee'), r = $('#viewport-wrap').getBoundingClientRect(); const x0 = Math.min(marquee.x0, e.clientX) - r.left, y0 = Math.min(marquee.y0, e.clientY) - r.top; m.classList.remove('hidden'); Object.assign(m.style, { left: x0 + 'px', top: y0 + 'px', width: Math.abs(e.clientX - marquee.x0) + 'px', height: Math.abs(e.clientY - marquee.y0) + 'px' }); return; }
+  if (drag && drag.obj){
+    if (!drag.moved){ if (Math.hypot(e.clientX - drag.start[0], e.clientY - drag.start[1]) < 4) return; drag.moved = true; engine.controls.enabled = false; pushHistory(); drag.starts = drag.objs.map(o => o.root.position.clone()); }
     const vertical = e.shiftKey;
     if (vertical !== drag.vertical){ drag.vertical = vertical; drag.plane = dragPlane(drag.obj, vertical); const hit = rayPlane(e, drag.plane); if (hit) drag.offset = hit.sub(drag.obj.root.position); }
     const hit = rayPlane(e, drag.plane); if (!hit) return;
-    const p = hit.sub(drag.offset); const o = drag.obj;
-    if (vertical) o.data.position[1] = snap ? Math.round(p.y * 2) / 2 : fmt(p.y); else { o.data.position[0] = snap ? Math.round(p.x * 2) / 2 : fmt(p.x); o.data.position[2] = snap ? Math.round(p.z * 2) / 2 : fmt(p.z); }
-    o.applyProps(); refreshInfo(); canvas.style.cursor = vertical ? 'ns-resize' : 'move';
+    const p = hit.sub(drag.offset); const o = drag.obj; const startPrimary = drag.starts[drag.objs.indexOf(o)];
+    const target = vertical ? new THREE.Vector3(startPrimary.x, snap ? Math.round(p.y * 2) / 2 : p.y, startPrimary.z) : new THREE.Vector3(snap ? Math.round(p.x * 2) / 2 : p.x, startPrimary.y, snap ? Math.round(p.z * 2) / 2 : p.z);
+    const delta = target.sub(startPrimary);
+    drag.objs.forEach((x, i) => { const np = drag.starts[i].clone().add(delta); x.data.position = [fmt(np.x), fmt(np.y), fmt(np.z)]; x.applyProps(); });
+    refreshInfo(); canvas.style.cursor = vertical ? 'ns-resize' : 'move';
     return;
   }
   if (gizmo.dragging) return;
@@ -408,20 +508,38 @@ canvas.addEventListener('pointerdown', e => {
   if (e.button !== 0 || gizmo.axis) return;
   if (sculptMode){ const t = selected && selected.kind === 'terrain' && engine.pickTerrain(selected, e.clientX, e.clientY); if (t){ pushHistory(); sculpting = { flattenTo: null }; engine.controls.enabled = false; canvas.setPointerCapture(e.pointerId); sculptAt(e); } return; }
   const o = engine.pick(e.clientX, e.clientY);
-  if (o){ const plane = dragPlane(o, e.shiftKey); const hit = rayPlane(e, plane); drag = { obj: o, plane, offset: hit ? hit.sub(o.root.position) : new THREE.Vector3(), moved: false, start: [e.clientX, e.clientY], vertical: e.shiftKey }; }
+  if (o){
+    const add = e.metaKey || e.ctrlKey;
+    if (!add && !selection.has(o)) select(o, e.altKey ? 'only' : 'set');
+    const objs = selection.has(o) ? sel() : [o];
+    const plane = dragPlane(o, e.shiftKey); const hit = rayPlane(e, plane);
+    drag = { obj: o, objs, plane, offset: hit ? hit.sub(o.root.position) : new THREE.Vector3(), moved: false, start: [e.clientX, e.clientY], vertical: e.shiftKey, add, alt: e.altKey };
+  }
+  else if (e.shiftKey){ marquee = { x0: e.clientX, y0: e.clientY }; engine.controls.enabled = false; canvas.setPointerCapture(e.pointerId); }
   else drag = { obj: null, start: [e.clientX, e.clientY], moved: false };
 });
 canvas.addEventListener('pointerup', e => {
   if (sculpting){ sculpting = null; engine.controls.enabled = true; try { canvas.releasePointerCapture(e.pointerId); } catch (x) {} if (selected && selected.commitTerrain) selected.commitTerrain(); markDirty(); return; }
   if (look){ const moved = look.moved; look = null; engine.controls.enabled = true; engine.fly.keys.clear(); try { canvas.releasePointerCapture(e.pointerId); } catch (x) {}
     if (!moved){ const o = engine.pick(e.clientX, e.clientY); if (o) { select(o); showContextMenu(e.clientX, e.clientY, o); } } return; }
+  if (marquee){
+    const m = marquee; marquee = null; $('#marquee').classList.add('hidden'); engine.controls.enabled = true; try { canvas.releasePointerCapture(e.pointerId); } catch (x) {}
+    const x0 = Math.min(m.x0, e.clientX), x1 = Math.max(m.x0, e.clientX), y0 = Math.min(m.y0, e.clientY), y1 = Math.max(m.y0, e.clientY);
+    if (x1 - x0 < 4 && y1 - y0 < 4) return;
+    const r = canvas.getBoundingClientRect(); const inBox = [];
+    for (const o of engine.objects){ if (o.isClone) continue; const v = o.root.position.clone().project(engine.camera); if (v.z > 1) continue; const sx = r.left + (v.x + 1) / 2 * r.width, sy = r.top + (1 - v.y) / 2 * r.height; if (sx >= x0 && sx <= x1 && sy >= y0 && sy <= y1) inBox.push(o); }
+    // whole groups come along
+    const gids = new Set(inBox.map(o => o.data.groupId).filter(Boolean)); for (const o of engine.objects) if (!o.isClone && gids.has(o.data.groupId) && !inBox.includes(o)) inBox.push(o);
+    if (inBox.length) selectMany(inBox); else select('stage');
+    return;
+  }
   if (!drag) return;
   const d = drag; drag = null; canvas.style.cursor = ''; engine.controls.enabled = !gizmo.axis;
-  if (d.obj && d.moved){ syncFromGizmo(true); return; }
+  if (d.obj && d.moved){ syncRoots(d.objs, true); attachGizmo(); return; }
   if (Math.hypot(e.clientX - d.start[0], e.clientY - d.start[1]) > 4) return;      // orbited, not a click
-  if (d.obj) select(d.obj.original.isClone ? d.obj : d.obj.original); else select('stage');
+  if (d.obj){ const o = d.obj.original.isClone ? d.obj : d.obj.original; select(o, d.add ? 'toggle' : d.alt ? 'only' : 'set'); } else select('stage');
 });
-window.addEventListener('pointerup', () => { setTimeout(() => { if (!gizmo.dragging && !drag && !look && !engine.playing) engine.controls.enabled = true; }, 0); });
+window.addEventListener('pointerup', () => { setTimeout(() => { if (!gizmo.dragging && !drag && !look && !marquee && !engine.playing) engine.controls.enabled = true; }, 0); });
 canvas.addEventListener('dblclick', e => { if (sculptMode) return; const o = engine.pick(e.clientX, e.clientY); if (o) focusOn(o); });
 canvas.addEventListener('pointerleave', () => { engine.brush.visible = false; });
 // scroll-zoom stays with OrbitControls; keys:
@@ -434,23 +552,28 @@ window.addEventListener('keydown', e => {
   if (!inViewport) return;
   const k = e.key.toLowerCase();
   if ((e.metaKey || e.ctrlKey) && k === 'z'){ e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-  if ((e.metaKey || e.ctrlKey) && k === 'd' && selected){ e.preventDefault(); duplicateObject(selected); return; }
+  if ((e.metaKey || e.ctrlKey) && k === 'd' && selected){ e.preventDefault(); duplicateObjects(sel()); return; }
+  if ((e.metaKey || e.ctrlKey) && k === 'a'){ e.preventDefault(); selectAll(); return; }
+  if ((e.metaKey || e.ctrlKey) && k === 'g'){ e.preventDefault(); e.shiftKey ? ungroupSelection() : groupSelection(); return; }
   if (k === 'w') setGizmoMode('translate'); else if (k === 'e') setGizmoMode('rotate'); else if (k === 'r') setGizmoMode('scale'); else if (k === 't') setGizmoMode('sculpt');
   else if (k === 'f' && selected) focusOn(selected); else if (k === 'g') setSnap(!snap);
   else if (k === 'escape') select('stage');
-  else if ((e.key === 'Delete' || e.key === 'Backspace') && selected){ e.preventDefault(); deleteObject(selected); }
+  else if ((e.key === 'Delete' || e.key === 'Backspace') && selected){ e.preventDefault(); deleteObjects(sel()); }
 });
 window.addEventListener('keyup', e => { const k = e.key.toLowerCase(); engine.fly.keys.delete(k); });
 // context menu
 function showContextMenu(x, y, o){
   const m = $('#ctx-menu'); m.classList.remove('hidden'); m.style.left = Math.min(x, innerWidth - 200) + 'px'; m.style.top = Math.min(y, innerHeight - 260) + 'px';
-  m.querySelector('.ctx-title').textContent = o.name;
+  m.querySelector('.ctx-title').textContent = selection.size > 1 && selection.has(o) ? (activeGroup ? activeGroup.name : selection.size + ' objects') : o.name;
+  m.querySelector('[data-act=group]').style.display = selection.size > 1 ? '' : 'none'; m.querySelector('[data-act=ungroup]').style.display = sel().some(x => x.data.groupId) ? '' : 'none';
   m.onclick = ev => { const b = ev.target.closest('button'); if (!b) return; m.classList.add('hidden');
+    const list = selection.has(o) ? sel() : [o];
     switch (b.dataset.act){
-      case 'dup': duplicateObject(o); break; case 'del': deleteObject(o); break; case 'focus': focusOn(o); break;
-      case 'drop': pushHistory(); engine.dropToGround(o); refreshInfo(); refreshForm(); markDirty(); break;
-      case 'reset': pushHistory(); o.data.rotation = [0,0,0]; o.applyProps(); refreshInfo(); refreshForm(); markDirty(); break;
-      case 'hide': pushHistory(); o.data.visible = o.data.visible === false; o.applyProps(); refreshInfo(); refreshForm(); renderTiles(); markDirty(); break;
+      case 'dup': duplicateObjects(list); break; case 'del': deleteObjects(list); break; case 'focus': focusOn(o); break;
+      case 'group': groupSelection(); break; case 'ungroup': ungroupSelection(); break; case 'selectall': selectAll(); break;
+      case 'drop': pushHistory(); for (const x of list) engine.dropToGround(x); refreshInfo(); refreshForm(); markDirty(); break;
+      case 'reset': pushHistory(); for (const x of list){ x.data.rotation = [0,0,0]; x.applyProps(); } refreshInfo(); refreshForm(); markDirty(); break;
+      case 'hide': pushHistory(); { const v = o.data.visible === false; for (const x of list){ x.data.visible = v; x.applyProps(); } } refreshInfo(); refreshForm(); renderTiles(); markDirty(); break;
       case 'rename': ask('Rename object:', o.name).then(n => n && renameObject(o, n)); break;
       case 'code': select(o); $$('.tab')[0].click(); break; case 'settings': select(o); $$('.tab')[1].click(); break;
     } };
@@ -506,15 +629,16 @@ function markDirty(thumb=true){ dirty = true; $('#save-status').textContent = 'U
 let autosaveT; function scheduleAutosave(){ clearTimeout(autosaveT); autosaveT = setTimeout(() => { try { localStorage.setItem('bw3d_draft', JSON.stringify(serialize())); } catch(e){} }, 1500); }
 function serialize(){ saveCurrentWorkspace(); commitTerrains(); engine.project.name = $('#project-name').value.trim() || 'My Game'; engine.project.camera = { position: engine.camera.position.toArray(), target: engine.controls.target.toArray() }; return engine.project; }
 async function loadProject(p){
-  engine.stop(); selected = null; editingStage = false; gizmo.detach(); history.undo.length = 0; history.redo.length = 0; updateHistoryButtons();
+  engine.stop(); selected = null; selection.clear(); activeGroup = null; editingStage = false; gizmo.detach(); history.undo.length = 0; history.redo.length = 0; updateHistoryButtons();
   await engine.loadProject(p);
   $('#project-name').value = engine.project.name || 'My Game';
   const first = engine.objects.find(o => o.name === 'Player') || engine.objects.find(o => o.kind !== 'plane' && o.kind !== 'terrain') || engine.objects[0];
   first ? select(first) : select('stage');
-  if (!engine.project.ui) engine.project.ui = []; uiSelected = null; if (typeof renderUIList === 'function'){ renderUIList(); refreshUIForm(); }
+  if (!engine.project.ui) engine.project.ui = []; if (!engine.project.groups) engine.project.groups = []; uiSelected = null; if (typeof renderUIList === 'function'){ renderUIList(); refreshUIForm(); }
   dirty = false; $('#save-status').textContent = ''; thumbs.clear(); scheduleThumbs();
+  try { localStorage.setItem('bw3d_draft', JSON.stringify(serialize())); } catch (e) {}   // reloading brings back THIS project, not the previous one
 }
-async function newProject(){ if (dirty && !confirm('Start a new project? Your current one stays in File → Open if you saved it.')) return; await loadProject(newProjectData()); }
+async function newProject(){ if (dirty && !confirm('Start a new project? Your current one stays in File → Open if you saved it.')) return; await loadProject(newProjectData()); $('#project-name').value = 'Untitled'; engine.project.name = 'Untitled'; toast('New empty project — press + to add things'); }
 const LOCAL_KEY = 'bw3d_projects';
 function localProjects(){ try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}'); } catch (e) { return {}; } }
 function saveLocal(p){ const all = localProjects(); all[p.name] = { data: p, modified: Date.now() }; try { localStorage.setItem(LOCAL_KEY, JSON.stringify(all)); return true; } catch (e) { return false; } }
@@ -611,7 +735,8 @@ $('#file-image').onchange = async e => {
 // drag / resize UI elements on the viewport
 { let ud = null;
   $('#hud').addEventListener('pointerdown', e => {
-    if (!uiEdit || engine.playing) return; const d = e.target.closest('.bw-el'); if (!d) return;
+    if (engine.playing) return; const d = e.target.closest('.bw-el'); if (!d) return;
+    if (!uiEdit) $('.tab[data-tab="ui"]').click();
     const u = engine.project.ui.find(x => x.id === d.dataset.id); if (!u) return; e.preventDefault(); e.stopPropagation();
     selectUI(u); pushHistory();
     const r = $('#hud').getBoundingClientRect();
@@ -632,10 +757,10 @@ engine.onPlayState = (orig => on => { orig(on); const box = $('#hud .bw-ui'); if
 /* ---------------- boot ---------------- */
 (async () => {
   let draft = null; try { draft = JSON.parse(localStorage.getItem('bw3d_draft') || 'null'); } catch(e){}
-  await loadProject(draft && draft.objects && draft.objects.length ? draft : newProjectData());
+  await loadProject(draft && draft.objects && draft.objects.length ? draft : starterProjectData());
   if (draft) $('#save-status').textContent = 'Restored your last session';
   renderUIList(); refreshUIForm();
   new ResizeObserver(() => Blockly.svgResize(workspace)).observe($('#blockly'));
   updateHistoryButtons();
-  window.BW = { engine, workspace, select, addShape, addSmart, addModel, play, loadProject, compileAll, serialize, undo, redo, gizmo, state: () => ({ sculptMode, sculpting: !!sculpting, look: !!look, drag: !!drag, axis: gizmo.axis }) };
+  window.BW = { engine, workspace, select, selectMany, groupSelection, ungroupSelection, selection, addShape, addSmart, addModel, play, loadProject, compileAll, serialize, undo, redo, gizmo, state: () => ({ sculptMode, sculpting: !!sculpting, look: !!look, drag: !!drag, axis: gizmo.axis }) };
 })();

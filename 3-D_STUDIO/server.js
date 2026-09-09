@@ -38,6 +38,48 @@ const K = (name, file, tags, anim) => ({
   thumb: THUMB_EXT[name] ? KHRONOS + name + '/screenshot/screenshot.' + THUMB_EXT[name] : '',
   creator: 'Khronos Group', license: 'CC0 / permissive', tags, animated: !!anim, source: 'Khronos samples'
 });
+const SRC = {
+  khronos: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/',
+  khronosOld: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/',
+  three: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/',
+  mv: 'https://raw.githubusercontent.com/google/model-viewer/master/packages/shared-assets/models/'
+};
+const title = n => n.replace(/[_-]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/\.\w+$/, '').trim();
+// three.js example models (MIT repo; model licences CC0 / CC-BY, see the three.js repo)
+const THREE_MODELS = [
+  ['gltf/Flamingo.glb',['bird','animal','animated'],1], ['gltf/Parrot.glb',['bird','animal','animated'],1], ['gltf/Stork.glb',['bird','animal','animated'],1], ['gltf/Horse.glb',['animal','animated'],1],
+  ['gltf/Soldier.glb',['character','person','animated'],1], ['gltf/Xbot.glb',['character','robot','animated'],1], ['gltf/Michelle.glb',['character','person','animated'],1], ['gltf/RobotExpressive/RobotExpressive.glb',['robot','character','animated'],1],
+  ['gltf/LittlestTokyo.glb',['building','city','showcase','animated'],1], ['gltf/duck.glb',['toy','animal'],0], ['gltf/gears.glb',['machine','animated'],1], ['gltf/coffeeMug.glb',['prop','kitchen'],0], ['gltf/coffeemat.glb',['prop','kitchen'],0],
+  ['gltf/ShaderBall.glb',['test','sphere'],0], ['gltf/ShaderBall2.glb',['test','sphere'],0], ['gltf/BoomBox.glb',['prop','music'],0], ['gltf/SheenChair.glb',['furniture'],0], ['gltf/IridescenceLamp.glb',['furniture','light'],0],
+  ['gltf/AnisotropyBarnLamp.glb',['light','prop'],0], ['gltf/CarbonFrameBike.glb',['vehicle','bike'],0], ['gltf/DragonAttenuation.glb',['dragon','fantasy'],0], ['gltf/IridescentDishWithOlives.glb',['food','prop'],0],
+  ['gltf/PrimaryIonDrive.glb',['scifi','engine','animated'],1], ['gltf/ferrari.glb',['vehicle','car'],0], ['gltf/Nefertiti/Nefertiti.glb',['statue','art'],0], ['gltf/LeePerrySmith/LeePerrySmith.glb',['head','character'],0],
+  ['gltf/Flower/Flower.glb',['plant','nature'],0], ['gltf/collision-world.glb',['level','world'],0], ['gltf/dungeon_warkarma.glb',['level','dungeon','fantasy'],0], ['gltf/space_ship_hallway.glb',['level','scifi'],0],
+  ['gltf/kira.glb',['character','anime'],0], ['gltf/nemetona.glb',['character','fantasy','animated'],1], ['gltf/pool.glb',['level','room'],0], ['gltf/bath_day.glb',['level','room'],0], ['gltf/readyplayer.me.glb',['character','avatar'],0],
+  ['gltf/rolex.glb',['prop','watch'],0], ['gltf/steampunk_camera.glb',['prop','camera'],0], ['gltf/tennyson-bust.glb',['statue','art'],0], ['gltf/venice_mask.glb',['prop','mask'],0], ['gltf/godrays_demo.glb',['test'],0],
+  ['gltf/facecap.glb',['head','animated'],1], ['gltf/DispersionTest.glb',['test','glass'],0], ['gltf/ShadowmappableMesh.glb',['test'],0],
+  ['fbx/Samba Dancing.fbx',['character','dance','animated'],1], ['obj/walt/WaltHead.obj',['head','statue'],0], ['obj/male02/male02.obj',['character','person'],0], ['obj/female02/female02.obj',['character','person'],0], ['obj/tree.obj',['plant','nature'],0], ['obj/cerberus/Cerberus.obj',['weapon','gun'],0], ['obj/ninja/ninjaHead_Low.obj',['head'],0]
+];
+const MV_MODELS = [
+  ['Astronaut.glb',['character','space'],0], ['NeilArmstrong.glb',['character','space'],0], ['RobotExpressive.glb',['robot','animated'],1], ['Horse.glb',['animal','animated'],1], ['RocketShip.glb',['vehicle','space'],0],
+  ['shishkebab.glb',['food'],0], ['soldier.glb',['character','animated'],1], ['coffeemat.glb',['prop'],0], ['pbr-spheres.glb',['test'],0], ['MacbethBalls.glb',['test'],0], ['sphere.glb',['test','sphere'],0], ['radiance.glb',['test'],0], ['manifold.glb',['test'],0], ['odd-shape.glb',['test'],0]
+];
+let catalogCache = null;
+async function buildCatalog(){
+  const file = path.join(ROOT, 'cache', 'catalog.json');
+  try { const c = JSON.parse(fs.readFileSync(file, 'utf8')); if (Date.now() - c.time < 86400e3 && c.items.length > 100) return c.items; } catch (e) {}
+  const items = [];
+  const addK = (base, src, m) => { const bin = m.variants && m.variants['glTF-Binary']; if (!bin) return; if (items.some(i => i.title === title(m.name))) return;
+    const tags = (m.tags || []).filter(t => !['written','issues','video'].includes(t)); const isTest = tags.includes('testing') && !tags.includes('showcase') && !tags.includes('core');
+    items.push({ id: 'k-' + m.name, title: title(m.label || m.name), url: base + m.name + '/glTF-Binary/' + bin, thumb: m.screenshot ? base + m.name + '/' + m.screenshot : '', creator: 'Khronos Group', license: 'CC0 / permissive', tags: tags.concat(m.name.toLowerCase().match(/[a-z]+/g) || []), animated: /anim|fox|cesiumman|brainstem|rigged|milktruck|morph|skin/i.test(m.name), source: src, rank: tags.includes('showcase') ? 0 : isTest ? 3 : 1 }); };
+  try { const { buf } = await fetchBuffer(SRC.khronos + 'model-index.json'); JSON.parse(buf.toString('utf8')).forEach(m => addK(SRC.khronos, 'Khronos samples', m)); } catch (e) { console.warn('catalog: khronos', e.message); }
+  try { const { buf } = await fetchBuffer(SRC.khronosOld + 'model-index.json'); JSON.parse(buf.toString('utf8')).forEach(m => addK(SRC.khronosOld, 'Khronos samples', m)); } catch (e) { console.warn('catalog: khronos-old', e.message); }
+  for (const [f, tags, anim] of THREE_MODELS) items.push({ id: 't-' + f, title: title(path.basename(f)), url: SRC.three + f.split('/').map(encodeURIComponent).join('/'), thumb: '', creator: 'three.js examples', license: 'see three.js repo (CC0 / CC-BY)', tags: tags.concat(['threejs']), animated: !!anim, source: 'three.js', rank: tags.includes('test') ? 3 : 1 });
+  for (const [f, tags, anim] of MV_MODELS) items.push({ id: 'm-' + f, title: title(f), url: SRC.mv + f, thumb: '', creator: 'Google model-viewer', license: 'Apache-2.0 / CC', tags: tags.concat(['google']), animated: !!anim, source: 'model-viewer', rank: tags.includes('test') ? 3 : 1 });
+  if (items.length < 20) return CATALOG.map(c => Object.assign({ rank: 1 }, c));
+  items.sort((a, b) => a.rank - b.rank || (b.animated - a.animated) || a.title.localeCompare(b.title));
+  try { fs.writeFileSync(file, JSON.stringify({ time: Date.now(), items })); } catch (e) {}
+  return items;
+}
 const CATALOG = [
   K('Duck', null, ['animal','toy'], false),
   K('Fox', null, ['animal'], true),
@@ -117,7 +159,8 @@ function fetchBuffer(url, headers = {}, redirects = 0) {
 
 app.get('/api/workshop/search', async (req, res) => {
   const q = String(req.query.q || '').toLowerCase().trim();
-  let results = CATALOG.filter(m => !q || m.title.toLowerCase().includes(q) || m.tags.some(t => t.includes(q)));
+  if (!catalogCache) catalogCache = await buildCatalog();
+  let results = catalogCache.filter(m => !q || m.title.toLowerCase().includes(q) || m.tags.some(t => t.includes(q)) || m.source.toLowerCase().includes(q));
   let polyError = null;
   if (POLY_KEY && q) {
     try {
@@ -131,7 +174,7 @@ app.get('/api/workshop/search', async (req, res) => {
       results = results.concat(items);
     } catch (e) { polyError = e.message; }
   }
-  res.json({ results, polyEnabled: !!POLY_KEY, polyError });
+  res.json({ results, total: catalogCache.length, polyEnabled: !!POLY_KEY, polyError });
 });
 
 // Download (once) into the cache and hand back a local URL the browser can load.
@@ -203,6 +246,8 @@ app.post('/api/export', async (req, res) => {
       if (snd.url && snd.url.startsWith('/models/')){ const f = path.join(MODEL_CACHE, path.basename(snd.url)); if (fs.existsSync(f)){ const ext = path.extname(f).slice(1); const mime = { mp3:'audio/mpeg', wav:'audio/wav', ogg:'audio/ogg', m4a:'audio/mp4' }[ext] || 'audio/mpeg'; snd.url = 'data:' + mime + ';base64,' + fs.readFileSync(f).toString('base64'); } }
     }
     const safe = s => s.replace(/<\/script/gi, '<\\/script');
+    const hasModels = (proj.objects || []).some(o => o.kind === 'model' && o.modelUrl);
+    const dracoJs = hasModels ? fs.readFileSync(path.join(ROOT, 'public', 'vendor', 'three', 'jsm', 'libs', 'draco', 'gltf', 'draco_decoder.js'), 'utf8') : '';
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${String(proj.name || 'Game').replace(/[<>&]/g, '')}</title>
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:Helvetica,Arial,sans-serif}#view{width:100%;height:100%;display:block;outline:none}#hud{position:absolute;inset:0;pointer-events:none}
 .bw-monitors{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px}.bw-monitor{display:flex;align-items:center;gap:8px;background:#e6f0ff;border:1px solid #c3d4f5;border-radius:6px;padding:3px 3px 3px 8px;font-size:14px;font-weight:600;color:#575e75}.bw-monitor .v{background:#4c97ff;color:#fff;border-radius:4px;padding:2px 8px;min-width:36px;text-align:center}
@@ -212,7 +257,7 @@ app.post('/api/export', async (req, res) => {
 .bw-ui{position:absolute;inset:0;pointer-events:none}.bw-ui.live .bw-button{pointer-events:auto;cursor:pointer}.bw-el{position:absolute;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-family:Helvetica,Arial,sans-serif;font-weight:800;text-shadow:0 2px 6px rgba(0,0,0,.5);overflow:hidden;padding:0 .4em;line-height:1.1;user-select:none}.bw-el .bw-rs{display:none}.bw-button{box-shadow:0 4px 0 rgba(0,0,0,.3);text-shadow:none}.bw-button.down{transform:translateY(3px);box-shadow:none}.bw-bar{padding:0;justify-content:flex-start}.bw-bar .fill{position:absolute;left:0;top:0;bottom:0;transition:width .15s}.bw-bar .lbl{position:relative;width:100%;text-align:center;font-size:.8em}.bw-image{background-size:contain;background-repeat:no-repeat;background-position:center}.bw-panel .lbl{align-self:flex-start;padding-top:.3em}#credit{position:absolute;bottom:8px;right:10px;color:#fff;opacity:.5;font-size:11px}</style></head>
 <body><canvas id="view" tabindex="0"></canvas><div id="hud"></div><button id="restart">↻ Restart</button><div id="err"></div><div id="credit">made with BlockWorld 3D</div>
 <div id="start"><h1>${String(proj.name || 'Game').replace(/[<>&]/g, '')}</h1><div class="b">▶ Play</div></div>
-<script>window.BW_GAME=${safe(JSON.stringify({ project: proj, scripts }))};</script>
+<script>window.BW_GAME=${safe(JSON.stringify({ project: proj, scripts }))};${dracoJs ? 'window.__DRACO_JS__=' + safe(JSON.stringify(dracoJs)) + ';' : ''}</script>
 <script>${safe(bundleCache)}</script></body></html>`;
     res.set('Content-Disposition', 'attachment; filename="' + String(proj.name || 'game').replace(/[^\w\- ]/g, '') + '.html"').type('html').send(html);
   } catch (e) { console.error(e); res.status(500).json({ error: e.message }); }
@@ -223,5 +268,6 @@ app.get('/api/health', (req, res) => res.json({ ok: true, poly: !!POLY_KEY }));
 app.listen(PORT, () => {
   console.log('\n  ◆ BlockWorld 3D Studio  →  http://localhost:' + PORT);
   console.log('    projects: ' + PROJECTS);
-  console.log('    workshop: ' + (POLY_KEY ? 'Khronos + poly.pizza' : 'Khronos samples (set POLY_PIZZA_KEY for thousands more)') + '\n');
+  console.log('    workshop: Khronos + three.js + model-viewer' + (POLY_KEY ? ' + poly.pizza' : '') + '\n');
+  buildCatalog().then(items => { catalogCache = items; console.log('    catalog: ' + items.length + ' models ready'); }).catch(() => {});
 });

@@ -195,7 +195,8 @@
     <div class="viewport-wrap" id="viewport-wrap">
       <canvas id="view" tabindex="0"></canvas>
       <div id="hud" class="hud"></div>
-      <div id="view-hint" class="view-hint">Click to select · drag objects to move them (⇧ = up/down) · left-drag orbits · right-drag looks around + WASD flies · scroll zooms</div>
+      <div id="marquee" class="marquee hidden"></div>
+      <div id="view-hint" class="view-hint">Click to select (⌘-click adds, ⇧-drag boxes) · drag objects to move · ⌘G groups · right-drag looks around + WASD flies</div>
     </div>
     <div class="info-panel" id="info-bar">
       <div class="ip-row">
@@ -274,7 +275,7 @@
       <div class="help-col">
         <h3>1 · Put things in the world</h3>
         <p>Press the big <b>+</b> under the 3D view to add shapes, or open the <b>🧩 Model Workshop</b> to download real models — they arrive with animations you can play.</p>
-        <p>Click an object to select it and just drag it across the ground (hold <kbd>⇧</kbd> to lift it). Right-click for a menu. <kbd>W</kbd> move · <kbd>E</kbd> turn · <kbd>R</kbd> size · <kbd>G</kbd> snap · <kbd>F</kbd> focus · <kbd>⌘Z</kbd> undo · <kbd>⌘D</kbd> duplicate · <kbd>Del</kbd> delete.</p><p>Fly around: hold the right mouse button to look, and use <kbd>W A S D</kbd> (<kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>⇧</kbd> fast) while holding it.</p>
+        <p>Click an object to select it and just drag it across the ground (hold <kbd>⇧</kbd> to lift it). <kbd>⌘</kbd>-click adds more objects to the selection, <kbd>⇧</kbd>-drag on empty ground draws a selection box, <kbd>⌘A</kbd> selects everything. <kbd>⌘G</kbd> groups the selection so it moves, turns and scales as one thing (<kbd>⇧⌘G</kbd> ungroups, <kbd>⌥</kbd>-click picks one member). Right-click for a menu. <kbd>W</kbd> move · <kbd>E</kbd> turn · <kbd>R</kbd> size · <kbd>G</kbd> snap · <kbd>F</kbd> focus · <kbd>⌘Z</kbd> undo · <kbd>⌘D</kbd> duplicate · <kbd>Del</kbd> delete.</p><p>Fly around: hold the right mouse button to look, and use <kbd>W A S D</kbd> (<kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>⇧</kbd> fast) while holding it.</p>
         <h3>Smart objects</h3><p>The <b>+</b> menu also has ready-made objects with code inside: a drivable <b>Player</b>, <b>Coin</b>, chasing <b>Enemy</b>, <b>Moving platform</b>, <b>Spawner</b>, <b>Goal</b>, <b>Button</b>, <b>Lamp</b>, <b>Sign</b>. Add them, press ▶, then open their code to see how they work.</p><h3>Terrain maker</h3><p>Add <b>Terrain</b> from the + menu (World). The <b>Sculpt</b> tool turns on: drag on the ground to raise it, hold <kbd>⇧</kbd> to dig, use Smooth / Flatten to tidy up, and Paint to color paths, sand, snow or lava. Objects fall, roll and walk on it for real. <b>🎲 New hills</b> rerolls the shape.</p><h3>UI maker</h3><p>The <b>UI</b> tab adds labels, buttons, bars, panels and images on top of the game. Drag them around on the 3D view, then use <b>UI</b> blocks: <span class="pill" style="background:#2EC4B6">when UI button clicked</span> <span class="pill" style="background:#2EC4B6">set UI text to</span> <span class="pill" style="background:#2EC4B6">set UI bar to %</span></p><h3>2 · Give it code</h3>
         <p>Every object has its own scripts, just like sprites in Scratch. Drag blocks from the categories on the left. Scripts start with a hat block: <span class="pill events">when ▶ clicked</span> <span class="pill events">when key pressed</span> <span class="pill events">when this touches…</span></p>
         <h3>3 · Press ▶</h3>
@@ -300,6 +301,7 @@
   <div class="ctx-title"></div>
   <button data-act="code">Edit code</button><button data-act="settings">Settings</button><hr>
   <button data-act="dup">Duplicate <kbd>⌘D</kbd></button><button data-act="rename">Rename…</button><button data-act="hide">Show / hide</button><hr>
+  <button data-act="group">Group selected <kbd>⌘G</kbd></button><button data-act="ungroup">Ungroup <kbd>⇧⌘G</kbd></button><button data-act="selectall">Select all <kbd>⌘A</kbd></button><hr>
   <button data-act="focus">Focus camera <kbd>F</kbd></button><button data-act="drop">Drop onto ground</button><button data-act="reset">Reset rotation</button><hr>
   <button data-act="del" class="danger">Delete <kbd>⌫</kbd></button>
 </div>

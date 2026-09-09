@@ -9,6 +9,8 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { getTexture, TEXTURE_PROPS } from './textures.js';
@@ -42,7 +44,7 @@ export function defaultProject(){
   return {
     version: 2, name: 'My Game',
     stage: { style: 'auto', time: 12, sky: '#8fd3ff', gravity: 9.8, sun: 1.0, fog: true, ambient: 1.0, workspace: null },
-    variables: [], lists: [], sounds: [], ui: [],
+    variables: [], lists: [], sounds: [], ui: [], groups: [],
     objects: [],
     camera: { position: [9, 6, 11], target: [0, 1, 0] }
   };
@@ -96,10 +98,16 @@ class Synth {
 /* ----------------------------- Model cache ----------------------------- */
 const gltfLoader = new GLTFLoader();
 const objLoader = new OBJLoader();
+const fbxLoader = new FBXLoader();
+const draco = new DRACOLoader();
+if (typeof window !== 'undefined' && window.__DRACO_JS__){ draco.setDecoderConfig({ type: 'js' }); draco._loadLibrary = () => Promise.resolve(window.__DRACO_JS__); }
+else draco.setDecoderPath('vendor/three/jsm/libs/draco/gltf/');
+gltfLoader.setDRACOLoader(draco);
 const modelCache = new Map();
 export function loadModel(url){
   if (!modelCache.has(url)){
-    const p = (/\.obj$/i.test(url.split('?')[0]) ? objLoader.loadAsync(url).then(g => ({ scene: g, animations: [] })) : gltfLoader.loadAsync(url))
+    const clean = url.split('?')[0];
+    const p = (/\.obj$/i.test(clean) ? objLoader.loadAsync(url).then(g => ({ scene: g, animations: [] })) : /\.fbx$/i.test(clean) ? fbxLoader.loadAsync(url).then(g => ({ scene: g, animations: g.animations || [] })) : gltfLoader.loadAsync(url))
       .then(g => {
         const root = g.scene || g.scenes[0];
         root.updateMatrixWorld(true);
@@ -361,6 +369,26 @@ export class SceneObject {
     this.terrainDirty = false;
   }
   resetTerrain(){ const T = this.data.terrain; T.heights = null; T.colors = null; }
+  // change size / detail / height while keeping what was sculpted
+  async reshapeTerrain(next){
+    const T = this.data.terrain, ti = this.terrainInfo; if (!ti) return;
+    const oldSize = ti.size, oldN = ti.n, oldH = toNum(T.height);
+    const sculpted = Array.isArray(T.heights);
+    const newSize = clamp(toNum(next.size) || oldSize, 5, 2000), newN = clamp(Math.round(toNum(next.detail) || oldN), 8, 256), newH = toNum(next.height);
+    if (sculpted && (newSize !== oldSize || newN !== oldN)){
+      const w = newN + 1, es = newSize / newN, heights = new Array(w * w), colors = new Uint8Array(w * w * 3);
+      for (let iy = 0; iy <= newN; iy++) for (let ix = 0; ix <= newN; ix++){
+        const x = -newSize/2 + ix * es, z = -newSize/2 + iy * es;
+        heights[iy * w + ix] = Math.round(this.heightAt(clamp(x, -oldSize/2, oldSize/2), clamp(z, -oldSize/2, oldSize/2)) * 100) / 100;
+        const ox = clamp(Math.round((x + oldSize/2) / (oldSize / oldN)), 0, oldN), oz = clamp(Math.round((z + oldSize/2) / (oldSize / oldN)), 0, oldN), oi = oz * (oldN + 1) + ox;
+        for (let k = 0; k < 3; k++) colors[(iy * w + ix) * 3 + k] = Math.round(clamp(ti.colors[oi * 3 + k], 0, 1) * 255);
+      }
+      T.heights = heights; let bin = ''; for (let i = 0; i < colors.length; i++) bin += String.fromCharCode(colors[i]); T.colors = btoa(bin);
+    }
+    if (sculpted && newH !== oldH && oldH !== 0){ const k = newH / oldH; T.heights = T.heights.map(v => Math.round(v * k * 100) / 100); }
+    T.size = newSize; T.detail = newN; T.height = newH; if (next.seed != null) T.seed = next.seed;
+    await this.build();
+  }
   applyProps(){
     const d = this.data;
     this.root.position.fromArray(d.position);
@@ -819,7 +847,7 @@ export class Engine {
     const def = defaultProject();
     this.project = Object.assign(def, p);
     this.project.stage = Object.assign(def.stage, p.stage || {});
-    this.project.lists = p.lists || []; this.project.sounds = p.sounds || [];
+    this.project.lists = p.lists || []; this.project.sounds = p.sounds || []; this.project.groups = p.groups || []; this.project.ui = p.ui || [];
     this.applyStage();
     if (p.camera){ this.camera.position.fromArray(p.camera.position); this.controls.target.fromArray(p.camera.target); this.controls.update(); }
     await Promise.all((this.project.objects || []).map(d => this.addObject(d, false)));
@@ -869,6 +897,12 @@ export class Engine {
   }
   /* ---------- editor selection ---------- */
   select(o){ this.selected = o; this.selBox.visible = !!o && !this.playing; }
+  setSelection(list){   // extra outlines for multi-select (primary keeps the bright box)
+    this._selPool = this._selPool || [];
+    const extra = list.filter(o => o !== this.selected);
+    while (this._selPool.length < extra.length){ const h = new THREE.BoxHelper(new THREE.Mesh(new THREE.BoxGeometry(1,1,1)), 0xa78bfa); h.material.depthTest = false; h.material.transparent = true; h.material.opacity = 0.6; h.renderOrder = 998; this.scene.add(h); this._selPool.push(h); }
+    this._selPool.forEach((h, i) => { h.userData.obj = extra[i] || null; h.visible = !!extra[i]; });
+  }
   dropToGround(o){
     o.root.updateMatrixWorld(true); const box = o.worldBox();
     this.raycaster.set(new THREE.Vector3(o.root.position.x, box.max.y + 200, o.root.position.z), new THREE.Vector3(0, -1, 0)); this.raycaster.far = 1000;
@@ -890,7 +924,7 @@ export class Engine {
     for (const k of Object.getOwnPropertyNames(SceneObject.prototype)){ if (k === 'constructor' || this.stageObj[k]) continue; const d = Object.getOwnPropertyDescriptor(SceneObject.prototype, k); if (typeof d.value === 'function') this.stageObj[k] = d.value.constructor.name === 'GeneratorFunction' ? gen : noop; }
     this.physicsActive = true;
     for (const o of this.objects){ o.scripts = scriptsById[o.id] || []; o.sizePct = 100; o.baseScale = o.data.scale.slice(); o.applyProps(); o.rebuildBody(); }
-    this.grid.visible = false; this.selBox.visible = false; this.hoverBox.visible = false; this.playing = true; this.hudDirty = true;
+    this.grid.visible = false; this.selBox.visible = false; this.hoverBox.visible = false; if (this._selPool) this._selPool.forEach(h => h.visible = false); this.playing = true; this.hudDirty = true;
     rt.cam.reset(); rt.synth.ensure();
     this.showBigText(''); this.renderUI(true);
     rt.startHats('flag');
@@ -1088,6 +1122,7 @@ export class Engine {
     } else {
       this.flyStep(raw);
       if (this.selected && this.selected.root.parent){ this.selBox.setFromObject(this.selected.root); this.selBox.visible = true; } else this.selBox.visible = false;
+      if (this._selPool) for (const h of this._selPool){ if (h.userData.obj && h.userData.obj.root.parent){ h.setFromObject(h.userData.obj.root); h.visible = true; } else h.visible = false; }
       if (this.hovered && this.hovered !== this.selected && this.hovered.root.parent){ this.hoverBox.setFromObject(this.hovered.root); this.hoverBox.visible = true; } else this.hoverBox.visible = false;
     }
     if (this.controls.enabled) this.controls.update();
