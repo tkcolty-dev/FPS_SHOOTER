@@ -441,13 +441,15 @@ function simCloud (client, room) {
                 const lines = Object.entries(room.meta.cloudVars).map(([name, value]) => JSON.stringify({method: 'set', name, value}));
                 if (lines.length && client.readyState === 1) client.send(`${lines.join('\n')}\n`);
             } else if ((msg.method === 'set' || msg.method === 'create') && typeof msg.name === 'string') {
-                const value = String(msg.value === undefined ? 0 : msg.value).slice(0, 256);
+                // Same rule as scratch.mit.edu: only number-looking values up to 256 characters are accepted
+                const value = String(msg.value === undefined ? 0 : msg.value);
+                if (!/^-?\d+(\.\d+)?$/.test(value) || value.length > 256) continue;
                 room.meta.cloudVars[msg.name] = value;
                 saveRoom(room);
                 const out = `${JSON.stringify({method: 'set', name: msg.name, value})}\n`;
                 for (const p of peers) if (p !== client && p.readyState === 1) p.send(out);
             } else if (msg.method === 'rename' && msg.name && msg.new_name) {
-                room.meta.cloudVars[msg.new_name] = room.meta.cloudVars[msg.name]; delete room.meta.cloudVars[msg.name]; saveRoom(room);
+                if (msg.name in room.meta.cloudVars) { room.meta.cloudVars[msg.new_name] = room.meta.cloudVars[msg.name]; delete room.meta.cloudVars[msg.name]; saveRoom(room); }
             } else if (msg.method === 'delete' && msg.name) {
                 delete room.meta.cloudVars[msg.name]; saveRoom(room);
             }
@@ -472,7 +474,9 @@ cloudWss.on('connection', async (client, req) => {
     up.on('message', d => { if (client.readyState === 1) client.send(d.toString()); });
     up.on('close', () => { if (client.readyState === 1) client.close(1012, 'cloud server closed'); });
     up.on('error', e => { console.warn('cloud upstream error', e.message); if (client.readyState === 1) client.close(1011); });
-    client.on('message', d => { const s = d.toString(); if (up.readyState === 1) up.send(s); else if (up.readyState === 0) pending.push(s); });
+    // Scratch's rule: ☁ variables only take number-looking values up to 256 characters — drop anything else before it reaches the cloud server
+    const scratchOk = line => { let m; try { m = JSON.parse(line); } catch (e) { return false; } if (m.method !== 'set' && m.method !== 'create') return true; const v = String(m.value === undefined ? 0 : m.value); return v.length <= 256 && /^-?\d+(\.\d+)?$/.test(v); };
+    client.on('message', d => { const s = d.toString().split('\n').filter(l => l.trim() && scratchOk(l)).join('\n'); if (!s) return; const out = s + '\n'; if (up.readyState === 1) up.send(out); else if (up.readyState === 0) pending.push(out); });
     client.on('close', () => { try { up.close(); } catch (e) { /* ignore */ } });
     client.on('error', () => {});
 });

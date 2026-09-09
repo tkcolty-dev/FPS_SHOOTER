@@ -460,6 +460,17 @@ wss.on('connection', (ws, req) => {
           const b = bridges.get(projectId);
           if (b) b.pushSet(msg.name, String(msg.value));
         }
+      } else if (msg.method === 'rename' && projectId && msg.name && msg.new_name) {
+        // Scratch's editor sends these when a ☁ variable is renamed / deleted — keep the stored value in step
+        const p = getProject(projectId);
+        if (p && p.vars[msg.name] && msg.name !== msg.new_name) {
+          p.vars[msg.new_name] = p.vars[msg.name]; delete p.vars[msg.name];
+          p.history.push({ t: Date.now(), name: msg.new_name, value: p.vars[msg.new_name].value, source: user + ' (renamed from ' + msg.name + ')' });
+          saveSoon(); tellDashboards({ type: 'refresh' });
+        }
+      } else if (msg.method === 'delete' && projectId && msg.name) {
+        const p = getProject(projectId);
+        if (p && p.vars[msg.name]) { delete p.vars[msg.name]; saveSoon(); tellDashboards({ type: 'refresh' }); }
       }
     }
   });
