@@ -19,8 +19,8 @@ window.Game = (function(){
   const A = (who)=>{
     const mine = who ? !!who.isPlayer : true;
     if (mine) return settings.assist==='easy'
-      ? {cone:1.5, lockT:0.6, g:1.7, gimbal:1.4, rearFree:true, noise:0.25, range:1.35, decoy:0.6}
-      : {cone:1.0, lockT:1.0, g:1.0, gimbal:1.0, rearFree:false, noise:1.0, range:1.0, decoy:1.0};
+      ? {cone:1.6, lockT:0.5, g:2.6, gimbal:1.7, rearFree:true, noise:0.15, range:1.45, decoy:0.5}
+      : {cone:1.1, lockT:0.9, g:1.35, gimbal:1.15, rearFree:false, noise:0.7, range:1.1, decoy:0.85};
     return {cone:0.9, lockT:1.3, g:1.0, gimbal:1.0, rearFree:false, noise:1.0, range:0.7, decoy:1.7};
   };
   let onEnd=null;
@@ -104,6 +104,7 @@ window.Game = (function(){
     S.planes.forEach(p=>spawnAt(p, true));
     S.cam.x=player.x; S.cam.y=player.y; S.cam.alt=player.alt;
     S.mini = makeMinimap(world);
+    setTimeout(()=>{ try{ world.overview(); }catch(e){} }, 30);
     Audio2.ensure(); Audio2.engineStart(pdef.jet, pdef.ab); Audio2.music('battle'); Audio2.duck(true);
     feed('Battle started: '+ (mode==='air'?'Air Battle':mode==='ground'?'Ground Strike':'Test Flight') +' · '+theme);
     lastT=performance.now(); acc=0;
@@ -111,7 +112,7 @@ window.Game = (function(){
   function nearLand(x,y,rmin,rmax,R){ for (let i=0;i<80;i++){ const a=R()*TAU, r=rmin+R()*(rmax-rmin); const px=clamp(x+Math.cos(a)*r,150,S.size-150), py=clamp(y+Math.sin(a)*r,150,S.size-150); if (S.world.isLand(px,py)) return {x:px,y:py}; } return {x,y}; }
   function mkBase(team,x,y,hd){ return {kind:'base',team,x,y,alt:0,hd,hp:2600,maxhp:2600,alive:true,r:120,w:340,h:170}; }
   function mkPlane(def, team, name, isPlayer){
-    const p={ def, team, name, isPlayer, x:0,y:0,alt:0,vz:0,climbCmd:0, hd:0, speed:0, throttle:1, hp:def.hp, maxhp:def.hp, alive:true, ammo:0, maxAmmo:0, ammo2:0, maxAmmo2:0, heat:0, cd:0, cd2:0, tcd:0, missiles:[], missileIdx:0, mcd:0, flares:def.flares||0, maxFlares:def.flares||0, fcd:0, bombs:def.bombs?def.bombs.n:0, bcd:0, target:null, lockT:0, locked:false, dmgBy:new Map(), lastHitBy:null, lastHitT:-99, kills:0, spawnProt:0, ai:{ state:'hunt', retarget:0, evadeDir:1, evadeT:0, jinkT:0, gtarget:null, vDir:0, rtb:false }, prop:0, omega:0, sprite:null, wreck:null, respawns:0, smokeT:0, gunSoundT:0, hitFlash:0, fuel:def.fuel, maxFuel:def.fuel, dmg:{engine:0,controls:0,leak:false,fire:0}, takeoff:false, landed:false, repairT:0, onGround:false, stall:false, turnCmd:0 };
+    const p={ def, team, name, isPlayer, x:0,y:0,alt:0,vz:0,climbCmd:0, hd:0, speed:0, throttle:1, hp:def.hp, maxhp:def.hp, alive:true, ammo:0, maxAmmo:0, ammo2:0, maxAmmo2:0, heat:0, cd:0, cd2:0, tcd:0, missiles:[], missileIdx:0, mcd:0, flares:def.flares||0, maxFlares:def.flares||0, fcd:0, bombs:def.bombs?def.bombs.n:0, bcd:0, target:null, lockT:0, locked:false, dmgBy:new Map(), lastHitBy:null, lastHitT:-99, kills:0, spawnProt:0, ai:{ state:'hunt', retarget:0, evadeDir:1, evadeT:0, jinkT:0, gtarget:null, vDir:0, rtb:false }, prop:0, omega:0, sprite:null, wreck:null, respawns:0, smokeT:0, gunSoundT:0, hitFlash:0, fuel:def.fuel, maxFuel:def.fuel, dmg:{engine:0,controls:0,leak:false,fire:0}, takeoff:false, landed:false, repairT:0, onGround:false, stall:false, turnCmd:0, gLoad:1, gStress:0, gloc:false, burstUsed:0 };
     if (def.guns){ p.ammo = Math.max(150, Math.round(def.guns.rof*30)); p.maxAmmo=p.ammo; }
     if (def.guns2){ p.ammo2 = Math.max(200, Math.round(def.guns2.rof*30)); p.maxAmmo2=p.ammo2; }
     if (def.missiles) p.missiles = def.missiles.map(([key,n])=>({key,n,max:n}));
@@ -311,6 +312,7 @@ window.Game = (function(){
     const m=250; if (p.x<m||p.y<m||p.x>S.size-m||p.y>S.size-m) want=Math.atan2(S.size/2-p.x,-(S.size/2-p.y));
     for (const o of S.planes){ if (o===p||!o.alive) continue; if (Math.abs(o.alt-p.alt)>80) continue; const d=dist(p,o); if (d<60){ const a=Math.atan2(o.x-p.x,-(o.y-p.y)); const s=norm(a-p.hd); want=p.hd-(s>0?1:-1)*1.0; wantAlt=p.alt+(o.alt>p.alt?-200:200); break; } }
     p.turnCmd=clamp(norm(want-p.hd)*3,-1,1);
+    if ((p.gStress||0)>2.0) p.turnCmd*=0.55;      // ease off before greying out
     p.throttle=lerp(p.throttle,thr,dt*2);
     if (p.speed<def.speed*0.4){ p.throttle=1; wantAlt=Math.min(wantAlt,p.alt-100); }
     if (p.alt<200) wantAlt=Math.max(wantAlt,340);
@@ -323,7 +325,7 @@ window.Game = (function(){
     const def=p.def;
     if (!p.alive){ if (p.wreck) updateWreck(p, dt); return; }
     p.spawnProt=Math.max(0,p.spawnProt-dt); p.cd-=dt; p.cd2-=dt; p.mcd-=dt; p.fcd-=dt; p.bcd-=dt; p.tcd-=dt; p.heat=Math.max(0,p.heat-dt*0.35);
-    const vmax=def.speed, vmin=vmax*0.32;
+    const vmax=def.speed, vmin=vmax*0.26;
     const abOn = def.ab && p.throttle>0.92;
     if (p.fuel>0){ p.fuel -= (0.15+0.85*p.throttle*p.throttle)*(abOn?2.6:1)*dt; if (p.dmg.leak) p.fuel -= 4*dt; if (p.fuel<=0){ p.fuel=0; if (p.isPlayer) toast('ENGINE OUT — no fuel. Glide to your airfield'); } }
     const power = (p.fuel>0?1:0)*(1-0.6*p.dmg.engine);
@@ -341,14 +343,41 @@ window.Game = (function(){
     // n = G pulled, omega = n*g/v — so you turn best at corner speed, and badly when very fast.
     const sf=p.speed/vmax;
     const vc=def.vCorner, nMax=def.gMax;
-    const n = Math.min(nMax, nMax*Math.pow(Math.max(p.speed,1)/vc, 2));
-    let turnAvail = (n*G/Math.max(p.speed,25))*(1-0.5*p.dmg.controls);
+    // A hard yank buys a brief burst above the sustained limit, then the wing runs out of lift.
+    const burst = 1 + 0.18*clamp(1-(p.burstUsed||0),0,1);
+    const n = Math.min(nMax*burst, nMax*burst*Math.pow(Math.max(p.speed,1)/vc, 2));
+    let turnAvail = n*G/Math.max(p.speed,25);
+    const cornerOmega = nMax*G/vc;
+    if (p.speed > vmin*0.9) turnAvail = Math.max(turnAvail, cornerOmega*(def.jet?0.85:0.62));
+    turnAvail *= (1-0.5*p.dmg.controls);
     if (p.onGround) turnAvail*=0.10;
-    p.gPulled = n;
-    const omega = clamp(p.turnCmd||0,-1,1)*turnAvail; p.omega=omega;
+
+    let omega = clamp(p.turnCmd||0,-1,1)*turnAvail;
+    // ---- G force. n = omega * v / g. Grey-out and blackout come from how long you hold it,
+    // and a blacked-out pilot stops pulling, so the load falls and you come round.
+    if (p.gloc) omega *= 0.18;
+    else if ((p.gStress||0) > 1.5) omega *= 1 - Math.min(0.35, ((p.gStress-1.5)/1.3)*0.35);
+    p.omega = omega;
+    // The arcade turn floor would read as absurd G at Mach speeds, so the load the pilot feels is
+    // capped at what the airframe could actually pull.
+    const gPhys = Math.abs(omega)*Math.max(p.speed,25)/G;
+    const gNow = clamp(gPhys, 1, nMax*1.2);
+    p.gLoad = lerp(p.gLoad||1, gNow, 1-Math.pow(0.02,dt));
+    p.burstUsed = clamp((p.burstUsed||0) + (gNow>nMax*0.95 ? dt*0.8 : -dt*0.5), 0, 1);
+    const tol = (p.isPlayer?7.6:8.2) * (def.jet?1.2:1);       // G-suits help the jet crews
+    const rise = p.gLoad>tol ? (p.gLoad-tol)*dt*0.15 : -dt*1.35;
+    p.gStress = clamp((p.gStress||0) + rise, 0, 3.2);
+    if (!p.gloc && p.gStress>2.6){ p.gloc=true; if (p.isPlayer){ toast('G-LOC — you blacked out'); Audio2.died(); } }
+    else if (p.gloc && p.gStress<0.8){ p.gloc=false; if (p.isPlayer) toast('Vision returning'); }
+    if (p.gloc) p.throttle=Math.min(p.throttle,0.65);
+    if (gPhys > nMax*1.35 && p.speed < vc*1.6 && Math.random()<dt*1.6){
+      p.dmg.controls=Math.min(1,p.dmg.controls+0.10); p.hp-=p.maxhp*0.012;
+      if (p.isPlayer){ toast('OVER-G — airframe strain'); S.cam.shake=Math.max(S.cam.shake,5); }
+      if (p.hp<=0){ killPlane(p,p.lastHitBy,'gun'); return; }
+    }
     p.hd=norm(p.hd+omega*dt);
     // induced drag: hard turns bleed energy, harder at high G
-    const nUsed = Math.abs(omega)*Math.max(p.speed,25)/G;
+    const nUsed = Math.abs(p.omega)*Math.max(p.speed,25)/G;
     p.speed -= (nUsed*nUsed)*0.30*dt;
     const stall = !p.onGround && p.speed < vmin*0.95; p.stall=stall;
     if (p.onGround){
@@ -557,7 +586,7 @@ window.Game = (function(){
               const dmgOut = md.dmg*(0.25+0.75*eff*eff);
               damagePlane(near, dmgOut, m.owner, 'missile');
               for (const o of S.planes){ if (o!==near&&o.alive&&o.team!==m.team&&dist3(o,m)<fuse*2.5) damagePlane(o,md.dmg*0.25,m.owner,'missile'); }
-              if (m.owner&&m.owner.isPlayer&&near.alive&&eff<0.45) toast('Near miss — fragment damage only');
+              if (m.owner&&m.owner.isPlayer){ if (!near.alive) {} else if (eff<0.45) toast('Near miss — fragment damage only'); else toast('MISSILE HIT'); }
             } else if (m.owner&&m.owner.isPlayer) toast('Missile missed');
             explosionFx(m.x,m.y,m.alt,0.55,false); Audio2.explosion((m.x-S.cam.x)/900, dist(m,S.player), 0.6);
             dead=true;
@@ -680,6 +709,10 @@ window.Game = (function(){
     ctx.setTransform(dpr,0,0,dpr,0,0);
     if (!S){ renderBackdrop(dtReal); return; }
     const cam=S.cam; shx=(Math.random()-0.5)*cam.shake; shy=(Math.random()-0.5)*cam.shake;
+    // stream terrain ahead of where the camera is going, one tile per frame
+    if (frameAvg < 26){ const v={x:Math.sin(S.player.hd)*(S.player.speed||0), y:-Math.cos(S.player.hd)*(S.player.speed||0)};
+      const s=scaleFor(0)*cam.zoom; const reach=Math.max(W,H)/s*0.75+700;
+      S.world.prefetch(cam.x+v.x*1.5, cam.y+v.y*1.5, reach); }
     const s0=drawTerrainCached();
     layer(0);
     drawCloudShadows();
@@ -705,13 +738,13 @@ window.Game = (function(){
     drawHUD(dtReal);
   }
   function drawTerrainCached(){
-    const cam=S.cam; const s0=scaleFor(0)*cam.zoom; const M=(W>2000?200:320);
+    const cam=S.cam; const s0=scaleFor(0)*cam.zoom; const M=(W>2000?300:440);
     // Cache the static terrain at a quantised scale so small zoom drift only rescales the blit
     // instead of re-rendering every tile, and only re-render when the camera slides off the margin.
-    const qs = Math.pow(2, Math.round(Math.log2(s0)*8)/8);
+    const qs = Math.pow(2, Math.round(Math.log2(s0)*4)/4);
     const b=S.bg;
     const stale = !b || b.w!==W || b.h!==H || b.qs!==qs
-      || Math.abs((b.x-cam.x)*s0)>M*0.7 || Math.abs((b.y-cam.y)*s0)>M*0.7;
+      || b.incomplete || Math.abs((b.x-cam.x)*s0)>M*0.7 || Math.abs((b.y-cam.y)*s0)>M*0.7;
     if (stale){
       const cw=Math.ceil((W+M*2)), ch=Math.ceil((H+M*2));
       const cv = (b&&b.cv&&b.cv.width===cw&&b.cv.height===ch) ? b.cv : document.createElement('canvas');
@@ -719,8 +752,8 @@ window.Game = (function(){
       const c=cv.getContext('2d');
       const vw=cw/qs, vh=ch/qs;                       // world span the cache covers at the cached scale
       c.setTransform(qs,0,0,qs, cw/2-cam.x*qs, ch/2-cam.y*qs);
-      S.world.draw(c, {x:cam.x,y:cam.y,zoom:qs}, cw, ch);
-      S.bg={cv,x:cam.x,y:cam.y,qs,w:W,h:H,M,cw,ch};
+      const missing = S.world.draw(c, {x:cam.x,y:cam.y,zoom:qs}, cw, ch, 1);
+      S.bg={cv,x:cam.x,y:cam.y,qs,w:W,h:H,M,cw,ch,incomplete:missing};
     }
     const bb=S.bg; const k=s0/bb.qs;                   // rescale factor for the current zoom
     const dx=(bb.x-cam.x)*s0, dy=(bb.y-cam.y)*s0;
@@ -729,6 +762,7 @@ window.Game = (function(){
     return s0;
   }
   function drawCloudShadows(){
+    if (settings.quality===0) return;
     const c=S.cam, wld=S.world; const s=scaleFor(0)*c.zoom; const vw=W/s/2+500, vh=H/s/2+500;
     const cw=wld.CW, ch=wld.CH;
     ctx.globalAlpha=0.30;
@@ -860,6 +894,16 @@ window.Game = (function(){
     if (S.killFlash){ const k=S.killFlash.t; const a=k<0.2?k/0.2:k>1.7?(2.2-k)/0.5:1; ctx.globalAlpha=a; ctx.fillStyle='#ffd35a'; ctx.font='800 36px '+getFont(); ctx.fillText(S.killFlash.text,W/2,H*0.3); ctx.font='600 16px '+getFont(); ctx.fillStyle='#fff'; ctx.fillText(S.killFlash.sub,W/2,H*0.3+28); ctx.globalAlpha=1; }
     // flight panel
     const bw=270*U, bh=150*U; const bx=pad, by=H-pad-bh; panel(bx,by,bw,bh);
+    // grey-out / blackout vignette
+    if (P.alive && (P.gStress||0)>1.5){
+      const k=clamp((P.gStress-1.5)/1.1,0,1);
+      const vg=ctx.createRadialGradient(W/2,H/2,H*0.5*(1-k*0.78),W/2,H/2,H*0.78);
+      vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,`rgba(0,0,0,${0.55+0.45*k})`);
+      ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+      if (P.gloc){ ctx.fillStyle='rgba(0,0,0,0.72)'; ctx.fillRect(0,0,W,H);
+        ctx.textAlign='center'; ctx.fillStyle='#ff6b6b'; ctx.font='800 34px '+getFont();
+        ctx.fillText('G-LOC — EASE OFF THE TURN', W/2, H*0.44); }
+    }
     ctx.textAlign='left';
     const nearCorner = Math.abs(P.speed-P.def.vCorner)/P.def.vCorner < 0.18;
     ctx.fillStyle = nearCorner ? '#7dff7d' : (P.speed>P.def.vCorner*1.5 ? '#ffd35a' : '#fff');
@@ -867,8 +911,14 @@ window.Game = (function(){
     ctx.font=`800 ${Math.round(28*U)}px `+getFont(); ctx.fillStyle=(P.alt<150&&P.vz<-40&&!P.onGround)?'#ff5a5a':'#fff'; ctx.textAlign='right'; ctx.fillText(Math.round(P.alt)+'', bx+bw-40*U, by+24*U); ctx.font=`600 ${Math.round(11*U)}px `+getFont(); ctx.fillStyle='#9aa3ad'; ctx.textAlign='left'; ctx.fillText('M '+(P.vz>15?'▲':P.vz<-15?'▼':'—'), bx+bw-36*U, by+28*U);
     ctx.font=`600 ${Math.round(11*U)}px `+getFont();
     ctx.fillStyle=nearCorner?'#7dff7d':'#9aa3ad'; ctx.fillText('BEST TURN '+Math.round(P.def.vCorner*3.6), bx+12, by+38*U);
+    { const gl=P.gLoad||1; const lim=P.def.gMax;
+      ctx.textAlign='right';
+      ctx.fillStyle = (P.gStress||0)>1.8 ? '#ff4d4d' : (P.gStress||0)>1.0 ? '#ffd35a' : '#9aa3ad';
+      ctx.font=`800 ${Math.round(15*U)}px `+getFont();
+      ctx.fillText(gl.toFixed(1)+' G', bx+bw-12, by+38*U);
+      ctx.font=`600 ${Math.round(11*U)}px `+getFont(); ctx.textAlign='left'; }
     ctx.fillStyle='#9aa3ad'; ctx.fillText('THROTTLE', bx+12, by+50*U); bar(bx+72*U,by+44*U,bw-84*U,9*U,P.throttle,P.def.ab&&P.throttle>0.92?'#8fd3ff':'#f3c14b');
-    { const vmin=P.def.speed*0.32; const f=clamp((P.def.vCorner-vmin)/(P.def.speed-vmin),0,1);
+    { const vmin=P.def.speed*0.26; const f=clamp((P.def.vCorner-vmin)/(P.def.speed-vmin),0,1);
       const mx2=bx+72*U+(bw-84*U)*f; ctx.fillStyle='#7dff7d'; ctx.fillRect(mx2-1,by+42*U,2,13*U); }
     ctx.fillStyle='#9aa3ad'; ctx.fillText('FUEL', bx+12, by+68*U); bar(bx+72*U,by+62*U,bw-84*U,9*U,P.fuel/P.maxFuel,P.fuel/P.maxFuel>0.25?'#7fd0ff':'#ff5a5a');
     ctx.fillStyle='#9aa3ad'; ctx.fillText('HULL', bx+12, by+86*U); bar(bx+72*U,by+80*U,bw-84*U,9*U,P.hp/P.maxhp,P.hp/P.maxhp>0.5?'#61d47a':P.hp/P.maxhp>0.25?'#f3c14b':'#ff4d4d');
@@ -908,7 +958,7 @@ window.Game = (function(){
     }
     if (P.alive && !P.onGround && P.alt<160 && P.vz<-50){ ctx.fillStyle=Math.sin(S.t*20)>0?'#ff4d4d':'#fff'; ctx.font='800 30px '+getFont(); ctx.fillText('PULL UP', W/2, H*0.38); }
     if (P.alive && P.landed){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(W/2-200,H*0.34-20,400,40); ctx.fillStyle='#7dff7d'; ctx.font='700 18px '+getFont(); ctx.fillText(P.repairT>0?`LANDED · repairing & rearming ${Math.ceil(P.repairT)} s`:'READY · hold W to take off', W/2, H*0.34); }
-    else if (P.alive && P.onGround){ ctx.fillStyle='#fff'; ctx.font='700 16px '+getFont(); ctx.fillText(`TAKEOFF ROLL · rotate at ${Math.round(P.def.speed*0.336*3.6)} km/h (Shift)`, W/2, H*0.34); }
+    else if (P.alive && P.onGround){ ctx.fillStyle='#fff'; ctx.font='700 16px '+getFont(); ctx.fillText(`TAKEOFF ROLL · rotate at ${Math.round(P.def.speed*0.273*3.6)} km/h (Shift)`, W/2, H*0.34); }
     if (P.alive && P.fuel<P.maxFuel*0.15 && P.fuel>0 && Math.sin(S.t*6)>0){ ctx.fillStyle='#ffd35a'; ctx.font='800 18px '+getFont(); ctx.fillText('LOW FUEL — return to your airfield and land', W/2, H*0.2); }
     if (!P.alive){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#ff5a5a'; ctx.font='800 44px '+getFont(); ctx.fillText(S.killedBy==='the ground'?'CRASHED':'SHOT DOWN', W/2, H*0.4); ctx.fillStyle='#fff'; ctx.font='600 18px '+getFont(); ctx.fillText('by '+(S.killedBy||'?'), W/2, H*0.4+36);
       if (S.tickets[0]>0){ ctx.fillStyle='#f3c14b'; ctx.font='700 20px '+getFont(); ctx.fillText(S.respawnT>0?'Respawn in '+Math.ceil(S.respawnT)+'…':(S.bases[0].alive?'Press SPACE / click to respawn on the runway':'Your airfield is destroyed — no respawns'), W/2, H*0.4+80); } }

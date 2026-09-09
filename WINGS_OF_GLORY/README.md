@@ -40,6 +40,12 @@ The HUD draws the seeker cone as a dashed wedge and fills a ring around the targ
 the lock survives a brief wobble instead of dropping instantly, and the game auto-selects whichever
 missile on the rails can actually take the shot you are lined up for.
 
+**G force is modelled.** Yank the stick and you pull real G, calculated from your turn rate and speed.
+Hold a hard turn too long and your vision greys out and tunnels, then you black out entirely (G-LOC)
+and the aircraft flies itself until you come round. Pull harder than the airframe can take at
+manoeuvring speed and you strain it. Current G is shown on the flight panel, amber when you are
+loading up and red when you are close to passing out.
+
 Every aircraft has a **best turn speed** shown on the flight panel and marked in green on the throttle
 bar. Sit on it and you turn hardest; run at full speed and you cannot follow anyone.
 

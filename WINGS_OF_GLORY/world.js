@@ -1,6 +1,6 @@
 // world.js — procedural terrain tiles (value noise → water/sand/grass/forest/fields/towns), cloud layer.
 window.World = (function(){
-  const TILE = 1024, BASE_RES = 4; // base colour computed every 4 world px, features drawn at full res
+  const TILE = 1024, BASE_RES = 8; // base colour computed every 4 world px, features drawn at full res
   const THEMES = {
     islands: { sea:0.47, deep:[14,52,92], shallow:[46,138,170], sand:[214,196,150], grass:[[96,142,66],[118,158,74],[84,130,60]], forest:[38,84,44], tree:[52,104,52], field:[[196,168,88],[160,140,70],[110,150,70],[184,150,60]], rock:[120,118,110], snowLine:2, town:[168,160,150], road:[86,82,78], river:false },
     plains:  { sea:0.30, deep:[18,60,100], shallow:[52,140,168], sand:[200,186,140], grass:[[108,150,66],[128,166,74],[96,140,60]], forest:[44,92,46], tree:[56,110,54], field:[[204,172,80],[168,140,66],[126,160,72],[190,150,58],[230,200,100]], rock:[120,118,110], snowLine:0.92, town:[172,166,156], road:[90,86,82], river:true },
@@ -59,7 +59,7 @@ window.World = (function(){
       // features
       const R = Art.rng(Art.hash(seed+':'+tx+','+ty));
       // fields
-      for (let k=0;k<24;k++){ const fx=ox+R()*TILE, fy=oy+R()*TILE; const h=height(fx,fy)-T.sea; const f=noiseC(fx*S*2.2, fy*S*2.2, 3);
+      for (let k=0;k<14;k++){ const fx=ox+R()*TILE, fy=oy+R()*TILE; const h=height(fx,fy)-T.sea; const f=noiseC(fx*S*2.2, fy*S*2.2, 3);
         if (h>0.02 && h<0.24 && f<0.5 && R()< (themeName==='plains'?0.9:0.45)){
           const w=60+R()*120, hh=40+R()*90, a=R()*Math.PI; const col=T.field[Math.floor(R()*T.field.length)];
           ctx.save(); ctx.translate(fx-ox,fy-oy); ctx.rotate(a); ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},0.85)`; ctx.fillRect(-w/2,-hh/2,w,hh);
@@ -67,15 +67,14 @@ window.World = (function(){
           ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.strokeRect(-w/2,-hh/2,w,hh); ctx.restore();
         } }
       // trees
-      const treeN = themeName==='desert'?160:1040;
+      const treeN = themeName==='desert'?70:340;
       for (let k=0;k<treeN;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; const h=height(px,py)-T.sea; if (h<0.014||h>0.34) continue; const f=noiseC(px*S*2.2, py*S*2.2, 3); if (f<0.55 && R()>0.06) continue;
         const r=2.5+R()*3.5; const c=T.tree; const sh=themeName==='winter'?0.9:0.75;
-        ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.arc(px-ox+r*0.6,py-oy+r*0.7,r,0,7); ctx.fill();
+        ctx.fillStyle='rgba(0,0,0,0.26)'; ctx.beginPath(); ctx.arc(px-ox+r*0.55,py-oy+r*0.65,r,0,7); ctx.fill();
         ctx.fillStyle=`rgb(${c[0]*sh|0},${c[1]*sh|0},${c[2]*sh|0})`; ctx.beginPath(); ctx.arc(px-ox,py-oy,r,0,7); ctx.fill();
-        ctx.fillStyle=`rgb(${Math.min(255,c[0]+30)},${Math.min(255,c[1]+34)},${Math.min(255,c[2]+20)})`; ctx.beginPath(); ctx.arc(px-ox-r*0.3,py-oy-r*0.3,r*0.5,0,7); ctx.fill();
       }
       // rocks in desert / mountains
-      for (let k=0;k<120;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; const h=height(px,py)-T.sea; if (!(h>0.28 || (themeName==='desert'&&h>0.05&&R()<0.3))) continue; const r=3+R()*6; ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(px-ox+2,py-oy+2,r,r*0.7,R()*3,0,7); ctx.fill(); ctx.fillStyle=`rgb(${T.rock[0]},${T.rock[1]},${T.rock[2]})`; ctx.beginPath(); ctx.ellipse(px-ox,py-oy,r,r*0.7,R()*3,0,7); ctx.fill(); }
+      for (let k=0;k<60;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; const h=height(px,py)-T.sea; if (!(h>0.28 || (themeName==='desert'&&h>0.05&&R()<0.3))) continue; const r=3+R()*6; ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(px-ox+2,py-oy+2,r,r*0.7,R()*3,0,7); ctx.fill(); ctx.fillStyle=`rgb(${T.rock[0]},${T.rock[1]},${T.rock[2]})`; ctx.beginPath(); ctx.ellipse(px-ox,py-oy,r,r*0.7,R()*3,0,7); ctx.fill(); }
       // town
       for (let town=0; town<3; town++) if (R()<0.5){ const cx=ox+80+R()*(TILE-160), cy=oy+80+R()*(TILE-160); const h=height(cx,cy)-T.sea; const f=noiseC(cx*S*2.2, cy*S*2.2, 3);
         if (h>0.02 && h<0.22 && f<0.6){ const nb=8+Math.floor(R()*14); const ang=R()*Math.PI; ctx.save(); ctx.translate(cx-ox,cy-oy); ctx.rotate(ang);
@@ -87,18 +86,72 @@ window.World = (function(){
           ctx.restore(); }
       }
       // shoreline foam / wave lines
-      if (themeName!=='plains' || true){ ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.2; for (let k=0;k<72;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; if (height(px,py)>T.sea-0.005) continue; const len=10+R()*30; ctx.beginPath(); ctx.moveTo(px-ox,py-oy); ctx.quadraticCurveTo(px-ox+len/2,py-oy-3,px-ox+len,py-oy); ctx.stroke(); } }
+      if (themeName!=='plains' || true){ ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.2; for (let k=0;k<36;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; if (height(px,py)>T.sea-0.005) continue; const len=10+R()*30; ctx.beginPath(); ctx.moveTo(px-ox,py-oy); ctx.quadraticCurveTo(px-ox+len/2,py-oy-3,px-ox+len,py-oy); ctx.stroke(); } }
       return cv;
     }
-    function tile(tx,ty){ const k=tx+','+ty; let t=tiles.get(k); if (!t){ t=renderTile(tx,ty); tiles.set(k,t); order.push(k); if (order.length>40){ tiles.delete(order.shift()); } } return t; }
-    function draw(ctx, cam, vw, vh){
+    let budget=0;
+    function tile(tx,ty,mayBuild){
+      const k=tx+','+ty; let t=tiles.get(k);
+      if (!t){
+        if (mayBuild===false || budget<=0) return null;      // defer: keeps one frame from stalling
+        budget--; t=renderTile(tx,ty); tiles.set(k,t); order.push(k);
+        if (order.length>40){ tiles.delete(order.shift()); }
+      }
+      return t;
+    }
+    // Build tiles ahead of the camera, one per frame, so a cache rebuild never has to make one.
+    function prefetch(cx,cy,radius){
+      const nT=Math.ceil(size/TILE);
+      const x0=Math.floor((cx-radius)/TILE), x1=Math.floor((cx+radius)/TILE);
+      const y0=Math.floor((cy-radius)/TILE), y1=Math.floor((cy+radius)/TILE);
+      let best=null, bd=1e18;
+      for (let ty=y0;ty<=y1;ty++) for (let tx=x0;tx<=x1;tx++){
+        if (tx<0||ty<0||tx>=nT||ty>=nT) continue;
+        if (tiles.has(tx+','+ty)) continue;
+        const d=(tx*TILE+TILE/2-cx)**2+(ty*TILE+TILE/2-cy)**2;
+        if (d<bd){ bd=d; best=[tx,ty]; }
+      }
+      if (best){ const k=best[0]+','+best[1]; tiles.set(k, renderTile(best[0],best[1])); order.push(k);
+        if (order.length>40){ tiles.delete(order.shift()); } return true; }
+      return false;
+    }
+    // A single low-detail image of the whole map. Zoomed out, drawing this once beats drawing
+    // dozens of full-detail tiles, which is what made zooming out stutter.
+    let overviewCv=null;
+    function overview(){
+      if (overviewCv) return overviewCv;
+      const n=512; const c=document.createElement('canvas'); c.width=n; c.height=n;
+      const x=c.getContext('2d'); const img=x.createImageData(n,n); const d=img.data;
+      for (let j=0;j<n;j++) for (let i=0;i<n;i++){
+        const col=baseColor((i+0.5)*size/n, (j+0.5)*size/n); const k=(j*n+i)*4;
+        d[k]=col[0]; d[k+1]=col[1]; d[k+2]=col[2]; d[k+3]=255;
+      }
+      x.putImageData(img,0,0); overviewCv=c; return c;
+    }
+    function flatColor(tx,ty){ const c=baseColor(tx*TILE+TILE/2, ty*TILE+TILE/2); return `rgb(${c[0]|0},${c[1]|0},${c[2]|0})`; }
+    function draw(ctx, cam, vw, vh, tileBudget){
+      budget = tileBudget===undefined ? 3 : tileBudget;
+      // wide views fall back to the overview image
+      if ((vw/cam.zoom)/TILE > 4.5){
+        const ov=overview();
+        ctx.imageSmoothingEnabled=true;
+        ctx.fillStyle=`rgb(${T.deep[0]},${T.deep[1]},${T.deep[2]})`;
+        const wx0=cam.x-vw/2/cam.zoom-TILE, wy0=cam.y-vh/2/cam.zoom-TILE;
+        ctx.fillRect(wx0, wy0, vw/cam.zoom+TILE*2, vh/cam.zoom+TILE*2);
+        ctx.drawImage(ov, 0, 0, size, size);
+        return false;
+      }
       const x0=Math.floor((cam.x - vw/2/cam.zoom)/TILE), x1=Math.floor((cam.x + vw/2/cam.zoom)/TILE);
       const y0=Math.floor((cam.y - vh/2/cam.zoom)/TILE), y1=Math.floor((cam.y + vh/2/cam.zoom)/TILE);
       const nT = Math.ceil(size/TILE);
+      let missing=false;
       for (let ty=y0;ty<=y1;ty++) for (let tx=x0;tx<=x1;tx++){
         if (tx<0||ty<0||tx>=nT||ty>=nT){ ctx.fillStyle=`rgb(${T.deep[0]},${T.deep[1]},${T.deep[2]})`; ctx.fillRect(tx*TILE,ty*TILE,TILE+1,TILE+1); continue; }
-        ctx.drawImage(tile(tx,ty), tx*TILE, ty*TILE, TILE+0.5, TILE+0.5);
+        const t=tile(tx,ty);
+        if (t) ctx.drawImage(t, tx*TILE, ty*TILE, TILE+0.5, TILE+0.5);
+        else { ctx.fillStyle=flatColor(tx,ty); ctx.fillRect(tx*TILE,ty*TILE,TILE+1,TILE+1); missing=true; }
       }
+      return missing;                                        // caller re-renders once the tiles exist
     }
     // ---- cloud layer: a few shapes are pre-rendered once, then blitted, so the per-frame cost is
     // one drawImage per cloud instead of a dozen radial gradients.
@@ -117,11 +170,11 @@ window.World = (function(){
       for (const [ox,oy,r] of parts){ sx.moveTo(ox+r*0.85,oy); sx.arc(ox,oy,r*0.85,0,Math.PI*2); }
       sx.fill(); cloudShadows.push(s);
     }
-    for (let i=0;i<Math.floor(size*size/(1500*1500));i++){
+    for (let i=0;i<Math.floor(size*size/(2100*2100));i++){
       clouds.push({x:R()*size, y:R()*size, spr:Math.floor(R()*cloudSprites.length), sc:0.8+R()*1.4, a:0.55+R()*0.3, vx:12+R()*10, vy:4+R()*6});
     }
     function findLand(R, tries){ for (let i=0;i<(tries||60);i++){ const x=size*0.15+R()*size*0.7, y=size*0.15+R()*size*0.7; if (isLand(x,y) && height(x,y)-T.sea<0.28) return {x,y}; } return {x:size/2,y:size/2}; }
-    return { theme:themeName, T, size, seed, TILE, tile, draw, height, isLand, clouds, cloudSprites, cloudShadows, CW, CH, findLand, noise };
+    return { theme:themeName, T, size, seed, TILE, tile, draw, prefetch, overview, height, isLand, clouds, cloudSprites, cloudShadows, CW, CH, findLand, noise };
   }
   return { create, THEMES, TILE };
 })();
