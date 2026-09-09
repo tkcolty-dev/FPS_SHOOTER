@@ -14,7 +14,7 @@ const PAL = {
   events:['#FFBF00','#E6AC00','#CC9900'], control:['#FFAB19','#EC9C13','#CF8B17'], sensing:['#5CB1D6','#47A8D1','#2E8EB8'],
   operators:['#59C059','#46B946','#389438'], variables:['#FF8C1A','#FF8000','#DB6E00'],
   physics:['#12B886','#0CA678','#099268'], camera:['#F26A5B','#E8503F','#D9432F'],
-  effects:['#FF6EB4','#F55AA2','#E04A91'], custom:['#FF6680','#FF4D6A','#FF3355']
+  effects:['#FF6EB4','#F55AA2','#E04A91'], custom:['#FF6680','#FF4D6A','#FF3355'], ui:['#2EC4B6','#22B0A3','#1A9A8E']
 };
 const C = {}; for (const k in PAL) C[k] = PAL[k][0];
 window.BW_COLORS = C;
@@ -44,8 +44,10 @@ window.BW_hooks = {
   listNames: () => [],                  // project lists
   soundNames: () => [],                 // uploaded sounds
   procNames: () => [],                  // "define" blocks in the current workspace
-  textureNames: () => []
+  textureNames: () => [],
+  uiNames: () => []
 };
+const uiOpts = () => { const n = window.BW_hooks.uiNames(); return n.length ? n.map(x => [x, x]) : [['(make UI first)', '']]; };
 const listOpts = () => { const n = window.BW_hooks.listNames(); return n.length ? n.map(x => [x, x]) : [['(make a list first)', '']]; };
 const soundOpts = () => [['jump','jump'],['coin','coin'],['hit','hit'],['boom','boom'],['laser','laser'],['pop','pop'],['powerup','powerup'],['lose','lose'],['win','win'],['click','click'],['whoosh','whoosh'],['splash','splash']].concat(window.BW_hooks.soundNames().map(x => [x, x]));
 const procOpts = () => { const n = window.BW_hooks.procNames(); return n.length ? n.map(x => [x, x]) : [['(define a block first)', '']]; };
@@ -282,6 +284,14 @@ def('data_listcontains', 'variables', '%1 contains %2 ?', [dd('LIST', listOpts),
 def('data_listshow', 'variables', 'show list %1', [dd('LIST', listOpts)]);
 def('data_listhide', 'variables', 'hide list %1', [dd('LIST', listOpts)]);
 def('sound_stopall', 'sound', 'stop all sounds', []);
+def('ui_whenclicked', 'ui', 'when UI button %1 clicked', [dd('NAME', uiOpts)], {kind:'hat'});
+def('ui_settext', 'ui', 'set UI %1 text to %2', [dd('NAME', uiOpts), anyv('V')]);
+def('ui_show', 'ui', '%1 UI %2', [dd('ON',[['show','show'],['hide','hide']]), dd('NAME', uiOpts)]);
+def('ui_setvalue', 'ui', 'set UI bar %1 to %2 %', [dd('NAME', uiOpts), num('V')]);
+def('ui_setcolor', 'ui', 'set UI %1 color to %2', [dd('NAME', uiOpts), {type:'field_colour', name:'COLOR', colour:'#ffffff'}]);
+def('ui_setpos', 'ui', 'move UI %1 to x: %2 % y: %3 %', [dd('NAME', uiOpts), num('X'), num('Y')]);
+def('ui_pressed', 'ui', 'UI button %1 pressed?', [dd('NAME', uiOpts)], {kind:'bool'});
+def('ui_text', 'ui', 'text of UI %1', [dd('NAME', uiOpts)], {kind:'rep', out:'String'});
 Blockly.defineBlocksWithJsonArray(defs);
 // dynamic sound list (built-ins + uploaded files)
 Blockly.Blocks['sound_play'].init = function(){ this.jsonInit({ type:'sound_play', message0:'play sound %1', args0:[{ type:'field_dropdown', name:'NAME', options: soundOpts }], previousStatement:null, nextStatement:null, style:'sound_blocks', inputsInline:true }); };
@@ -371,7 +381,8 @@ window.BW_TOOLBOX = { kind:'categoryToolbox', contents: [
     b('op_mod',{A:'',B:''}), b('op_round',{A:''}), b('op_math',{A:''})
   ]),
   cat('Variables', C.variables, [], { custom:'VARIABLE' }),
-  cat('My Blocks', C.custom, [ b('custom_define'), b('custom_call'), b('custom_callarg',{V:10}), b('custom_arg') ])
+  cat('My Blocks', C.custom, [ b('custom_define'), b('custom_call'), b('custom_callarg',{V:10}), b('custom_arg') ]),
+  cat('UI', C.ui, [ { kind:'label', text:'Design the screen in the UI tab' }, b('ui_whenclicked'), b('ui_pressed'), sep(), b('ui_settext',{V:'Score: 0'}), b('ui_setvalue',{V:50}), b('ui_setcolor'), b('ui_setpos',{X:50,Y:10}), b('ui_show'), b('ui_text') ])
 ]};
 // text shadows for operator inputs that take numbers: use math_number when value is ''
 for (const c of window.BW_TOOLBOX.contents){
@@ -445,7 +456,8 @@ const REP = (type, fn) => G.forBlock[type] = blk => [fn(blk), ATOMIC];
 const HATS = { event_whenflag: b=>({hat:'flag'}), event_whenkey: b=>({hat:'key', key:b.getFieldValue('KEY')}),
   event_whenclicked: b=>({hat:'click'}), event_whentouch: b=>({hat:'touch', target:b.getFieldValue('TARGET')}),
   event_whenbroadcast: b=>({hat:'broadcast', msg:String(b.getFieldValue('MSG')).toLowerCase()}), control_startclone: b=>({hat:'clone'}),
-  event_whentimer: b=>({hat:'timer', value: Number(G.valueToCode(b, 'V', NONE)) || 0}), custom_define: b=>({hat:'define', name:String(b.getFieldValue('NAME')).trim()}) };
+  event_whentimer: b=>({hat:'timer', value: Number(G.valueToCode(b, 'V', NONE)) || 0}), custom_define: b=>({hat:'define', name:String(b.getFieldValue('NAME')).trim()}),
+  ui_whenclicked: b=>({hat:'uiclick', name:b.getFieldValue('NAME')}) };
 window.BW_HATS = HATS;
 for (const t in HATS) S(t, () => '');
 
@@ -605,6 +617,13 @@ G.forBlock['data_listcontains'] = b => ['L.contains(' + field(b,'LIST') + ',' + 
 S('data_listshow', b => 'L.show(' + field(b,'LIST') + ',true);\n');
 S('data_listhide', b => 'L.show(' + field(b,'LIST') + ',false);\n');
 S('sound_stopall', b => 'R.stopSounds();\n');
+S('ui_settext', b => 'R.ui.set(' + field(b,'NAME') + ',"text",R.s(' + val(b,'V','""') + '));\n');
+S('ui_show', b => 'R.ui.set(' + field(b,'NAME') + ',"visible",' + (b.getFieldValue('ON') === 'show') + ');\n');
+S('ui_setvalue', b => 'R.ui.set(' + field(b,'NAME') + ',"value",' + n(b,'V') + ');\n');
+S('ui_setcolor', b => 'R.ui.set(' + field(b,'NAME') + ',"color",' + field(b,'COLOR') + ');\n');
+S('ui_setpos', b => 'R.ui.set(' + field(b,'NAME') + ',"x",' + n(b,'X') + ');R.ui.set(' + field(b,'NAME') + ',"y",' + n(b,'Y') + ');\n');
+G.forBlock['ui_pressed'] = b => ['R.ui.pressed(' + field(b,'NAME') + ')', ATOMIC];
+REP('ui_text', b => 'R.ui.get(' + field(b,'NAME') + ',"text")');
 
 /* Compile every script in a workspace → [{hat, ..., code}] */
 window.BW_compileWorkspace = function(workspace){

@@ -48,6 +48,7 @@ window.BW_hooks.animationNames = () => { const o = selected; return o && o.clips
 window.BW_hooks.listNames = () => engine.project.lists.map(l => l.name);
 window.BW_hooks.soundNames = () => engine.project.sounds.map(s => s.name);
 window.BW_hooks.textureNames = () => TEXTURE_NAMES;
+window.BW_hooks.uiNames = () => (engine.project.ui || []).map(u => u.name);
 window.BW_hooks.procNames = () => workspace.getBlocksByType('custom_define', false).map(b => String(b.getFieldValue('NAME')).trim()).filter(Boolean);
 
 /* ---------------- state ---------------- */
@@ -98,7 +99,7 @@ function select(target){
 /* ---------------- history (undo / redo) ---------------- */
 const history = { undo: [], redo: [] };
 function commitTerrains(){ for (const o of engine.objects) if (o.kind === 'terrain' && o.commitTerrain) o.commitTerrain(); }
-function snapshot(){ saveCurrentWorkspace(); commitTerrains(); return JSON.stringify({ objects: engine.project.objects, stage: engine.project.stage, variables: engine.project.variables, lists: engine.project.lists, sounds: engine.project.sounds }); }
+function snapshot(){ saveCurrentWorkspace(); commitTerrains(); return JSON.stringify({ objects: engine.project.objects, stage: engine.project.stage, variables: engine.project.variables, lists: engine.project.lists, sounds: engine.project.sounds, ui: engine.project.ui || [] }); }
 let histPending = false, histT;
 function pushHistory(){
   if (engine.playing) return;
@@ -110,7 +111,7 @@ async function restoreSnapshot(json){
   const currentWs = new Map(engine.project.objects.map(o => [o.id, o.workspace]));
   engine.stop(); engine.clear();
   for (const o of snap.objects) if (currentWs.has(o.id)) o.workspace = currentWs.get(o.id);
-  engine.project.objects = snap.objects; Object.assign(engine.project.stage, snap.stage, { workspace: engine.project.stage.workspace }); engine.project.variables = snap.variables; engine.project.lists = snap.lists; engine.project.sounds = snap.sounds;
+  engine.project.objects = snap.objects; Object.assign(engine.project.stage, snap.stage, { workspace: engine.project.stage.workspace }); engine.project.variables = snap.variables; engine.project.lists = snap.lists; engine.project.sounds = snap.sounds; engine.project.ui = snap.ui || []; engine.renderUI(false); uiSelected = null; renderUIList(); refreshUIForm();
   engine.applyStage();
   await Promise.all(engine.project.objects.map(d => engine.addObject(d, false)));
   thumbs.clear(); const o = engine.byId.get(selId); o ? select(o) : select('stage'); markDirty(false); scheduleThumbs();
@@ -252,7 +253,7 @@ async function addShape(kind){
   if (kind === 'capsule') data.position[1] = 0.6;
   if (kind === 'light' || kind === 'spot') data.position[1] = 3;
   if (kind === 'text') data.position[1] = 2;
-  if (kind === 'terrain') { data.position = [0, -0.5, 0]; data.color = '#ffffff'; }
+  if (kind === 'terrain') { data.position = [0, -0.5, 0]; data.color = '#ffffff'; data.terrain.size = 120; data.terrain.detail = 96; }
   const o = await addData(data); toast('Added ' + data.name + (kind === 'terrain' ? ' — Sculpt mode is on: drag on the ground to shape it' : '')); if (kind === 'terrain') setGizmoMode('sculpt'); return o;
 }
 async function addSmart(key){
@@ -490,7 +491,7 @@ $('#btn-big').onclick = () => { $('.layout').classList.toggle('big'); setTimeout
   sp.addEventListener('pointerup', () => { dragging = false; localStorage.setItem('bw3d_stagew', parseInt(stage.style.flexBasis) || 0); }); }
 
 /* ---------------- tabs / menus ---------------- */
-$$('.tab').forEach(t => t.onclick = () => { $$('.tab').forEach(x => x.classList.toggle('active', x === t)); $$('.tab-panel').forEach(p => p.classList.toggle('active', p.id === (t.dataset.tab === 'code' ? 'code-area' : 'object-panel'))); if (t.dataset.tab === 'code') Blockly.svgResize(workspace); else refreshForm(); });
+$$('.tab').forEach(t => t.onclick = () => { $$('.tab').forEach(x => x.classList.toggle('active', x === t)); const id = { code: 'code-area', object: 'object-panel', ui: 'ui-panel' }[t.dataset.tab]; $$('.tab-panel').forEach(p => p.classList.toggle('active', p.id === id)); setUIEdit(t.dataset.tab === 'ui'); if (t.dataset.tab === 'code') Blockly.svgResize(workspace); else if (t.dataset.tab === 'object') refreshForm(); else { renderUIList(); refreshUIForm(); } });
 $('#btn-file').onclick = e => { e.stopPropagation(); $('#file-menu').classList.toggle('hidden'); $('#examples-menu').classList.add('hidden'); };
 $('#btn-examples').onclick = e => { e.stopPropagation(); $('#examples-menu').classList.toggle('hidden'); $('#file-menu').classList.add('hidden'); };
 document.addEventListener('click', e => { if (!e.target.closest('.menu-item, .add-wrap')) $$('.dropdown, .add-menu').forEach(d => d.classList.add('hidden')); });
@@ -510,6 +511,7 @@ async function loadProject(p){
   $('#project-name').value = engine.project.name || 'My Game';
   const first = engine.objects.find(o => o.name === 'Player') || engine.objects.find(o => o.kind !== 'plane' && o.kind !== 'terrain') || engine.objects[0];
   first ? select(first) : select('stage');
+  if (!engine.project.ui) engine.project.ui = []; uiSelected = null; if (typeof renderUIList === 'function'){ renderUIList(); refreshUIForm(); }
   dirty = false; $('#save-status').textContent = ''; thumbs.clear(); scheduleThumbs();
 }
 async function newProject(){ if (dirty && !confirm('Start a new project? Your current one stays in File → Open if you saved it.')) return; await loadProject(newProjectData()); }
@@ -553,11 +555,86 @@ async function exportGame(){
 }
 window.addEventListener('pagehide', () => { try { localStorage.setItem('bw3d_draft', JSON.stringify(serialize())); } catch (e) {} });
 
+/* ---------------- UI maker ---------------- */
+let uiSelected = null, uiEdit = false;
+const UI_DEFAULTS = {
+  label:  { text: 'Score: 0', x: 3, y: 3, w: 30, h: 8, size: 5, color: '#ffffff', bg: '' },
+  button: { text: 'Go!', x: 40, y: 85, w: 20, h: 10, size: 5, color: '#ffffff', bg: '#7c5ce6' },
+  bar:    { text: 'health', x: 3, y: 12, w: 30, h: 5, size: 3, color: '#4cbf56', bg: 'rgba(0,0,0,.45)', value: 100 },
+  panel:  { text: 'Level 1', x: 65, y: 3, w: 32, h: 20, size: 4, color: '#ffffff', bg: 'rgba(0,0,0,.45)' },
+  image:  { text: '', x: 80, y: 78, w: 16, h: 18, size: 4, color: '#ffffff', bg: '', url: '' }
+};
+function uiUniqueName(base){ const names = new Set(engine.project.ui.map(u => u.name)); if (!names.has(base)) return base; let i = 2; while (names.has(base + i)) i++; return base + i; }
+function addUI(type){
+  pushHistory();
+  const el = Object.assign({ id: newId(), name: uiUniqueName(type), type, visible: true, radius: type === 'button' ? 14 : 10 }, UI_DEFAULTS[type]);
+  engine.project.ui.push(el); engine.renderUI(false); setUIEdit(true); selectUI(el); markDirty(false);
+  if (type === 'image') $('#file-image').click();
+}
+function selectUI(el){ uiSelected = el; renderUIList(); refreshUIForm(); if (engine._uiEls) for (const [id, d] of engine._uiEls) d.classList.toggle('sel', !!el && id === el.id); }
+function setUIEdit(on){ uiEdit = on; const box = $('#hud .bw-ui'); if (box) box.classList.toggle('editing', on && !engine.playing); if (!on) selectUI(null); }
+function renderUIList(){
+  const list = $('#ui-list'); list.innerHTML = '';
+  for (const u of engine.project.ui || []){
+    const d = document.createElement('div'); d.className = 'ui-item' + (u === uiSelected ? ' selected' : ''); d.innerHTML = '<span class="t"></span><span class="nm"></span><span class="eye"></span>';
+    d.querySelector('.t').textContent = u.type; d.querySelector('.nm').textContent = u.name; d.querySelector('.eye').textContent = u.visible === false ? '🚫' : '';
+    d.onclick = () => selectUI(u); list.appendChild(d);
+  }
+  if (!engine.project.ui.length) list.innerHTML = '<p class="ui-help">Nothing yet — add a label or button above.</p>';
+}
+function refreshUIForm(){
+  const f = $('#ui-form'), u = uiSelected; f.style.visibility = u ? '' : 'hidden'; if (!u) return;
+  $('#u-kind').textContent = u.type; $('#u-name').value = u.name; $('#u-text').value = u.text || ''; $('#u-text-row').style.display = u.type === 'image' ? 'none' : '';
+  $('#u-x').value = u.x; $('#u-y').value = u.y; $('#u-w').value = u.w; $('#u-h').value = u.h; $('#u-size').value = u.size; $('#u-radius').value = u.radius == null ? 10 : u.radius;
+  $('#u-color').value = /^#[0-9a-f]{6}$/i.test(u.color || '') ? u.color : '#ffffff'; const bgHex = /^#[0-9a-f]{6}$/i.test(u.bg || '') ? u.bg : '#222633'; $('#u-bg').value = bgHex; $('#u-bgon').checked = !!u.bg;
+  $('#u-value-row').style.display = u.type === 'bar' ? '' : 'none'; $('#u-value').value = u.value == null ? 100 : u.value; $('#u-visible').checked = u.visible !== false; $('#u-image-row').style.display = u.type === 'image' ? '' : 'none';
+}
+function applyUIForm(){
+  const u = uiSelected; if (!u) return; pushHistoryDebounced(); const n = s => parseFloat($(s).value) || 0;
+  u.text = $('#u-text').value; u.x = n('#u-x'); u.y = n('#u-y'); u.w = Math.max(1, n('#u-w')); u.h = Math.max(1, n('#u-h')); u.size = Math.max(1, n('#u-size')); u.radius = n('#u-radius');
+  u.color = $('#u-color').value; u.bg = $('#u-bgon').checked ? $('#u-bg').value : ''; u.value = n('#u-value'); u.visible = $('#u-visible').checked;
+  engine.updateUI(u); renderUIList(); markDirty(false);
+}
+$$('#ui-form input').forEach(el => { if (el.id === 'u-name') return; el.addEventListener('input', applyUIForm); el.addEventListener('change', applyUIForm); });
+$('#u-name').addEventListener('change', () => { const u = uiSelected; if (!u) return; const name = $('#u-name').value.trim().slice(0, 30); if (!name || name === u.name) return refreshUIForm(); pushHistory(); const old = u.name; u.name = engine.project.ui.some(x => x !== u && x.name === name) ? uiUniqueName(name) : name;
+  const fix = json => { if (!json) return; const walk = b => { if (!b) return; if (b.fields) for (const k in b.fields) if (k === 'NAME' && b.fields[k] === old && /^ui_/.test(b.type || '')) b.fields[k] = u.name; if (b.inputs) for (const k in b.inputs){ walk(b.inputs[k].block); walk(b.inputs[k].shadow); } walk(b.next && b.next.block); }; (json.blocks && json.blocks.blocks || []).forEach(walk); };
+  saveCurrentWorkspace(); engine.project.objects.forEach(p => fix(p.workspace)); fix(engine.project.stage.workspace); loadWorkspaceFor(editingStage ? 'stage' : selected); engine.renderUI(false); setUIEdit(true); selectUI(u); markDirty(false); });
+$$('#ui-panel [data-ui]').forEach(b => b.onclick = () => addUI(b.dataset.ui));
+$('#u-del').onclick = () => { const u = uiSelected; if (!u) return; pushHistory(); engine.project.ui = engine.project.ui.filter(x => x !== u); engine.renderUI(false); setUIEdit(true); selectUI(null); markDirty(false); };
+$('#u-dup').onclick = () => { const u = uiSelected; if (!u) return; pushHistory(); const c = Object.assign({}, u, { id: newId(), name: uiUniqueName(u.name), y: Math.min(90, u.y + u.h + 2) }); engine.project.ui.push(c); engine.renderUI(false); setUIEdit(true); selectUI(c); markDirty(false); };
+$('#u-image').onclick = () => $('#file-image').click();
+$('#file-image').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return; e.target.value = ''; const u = uiSelected; if (!u || u.type !== 'image') return;
+  try { const r = await fetch('/api/workshop/upload?name=' + encodeURIComponent(f.name), { method: 'POST', body: f, headers: { 'Content-Type': 'application/octet-stream' } }).then(r => r.json()); if (!r.ok) throw new Error(r.error || 'upload failed'); u.url = r.local; engine.updateUI(u); markDirty(false); toast('Image added'); }
+  catch (err) { toast('Upload failed: ' + err.message, true); }
+};
+// drag / resize UI elements on the viewport
+{ let ud = null;
+  $('#hud').addEventListener('pointerdown', e => {
+    if (!uiEdit || engine.playing) return; const d = e.target.closest('.bw-el'); if (!d) return;
+    const u = engine.project.ui.find(x => x.id === d.dataset.id); if (!u) return; e.preventDefault(); e.stopPropagation();
+    selectUI(u); pushHistory();
+    const r = $('#hud').getBoundingClientRect();
+    ud = { u, r, resize: e.target.classList.contains('bw-rs'), sx: e.clientX, sy: e.clientY, x: u.x, y: u.y, w: u.w, h: u.h };
+    $('#hud').setPointerCapture(e.pointerId);
+  });
+  $('#hud').addEventListener('pointermove', e => {
+    if (!ud) return; const dx = (e.clientX - ud.sx) / ud.r.width * 100, dy = (e.clientY - ud.sy) / ud.r.height * 100;
+    if (ud.resize){ ud.u.w = Math.max(2, Math.round(ud.w + dx)); ud.u.h = Math.max(2, Math.round(ud.h + dy)); }
+    else { ud.u.x = Math.max(0, Math.min(100 - ud.u.w, Math.round(ud.x + dx))); ud.u.y = Math.max(0, Math.min(100 - ud.u.h, Math.round(ud.y + dy))); }
+    engine.updateUI(ud.u); refreshUIForm();
+  });
+  const end = e => { if (!ud) return; ud = null; try { $('#hud').releasePointerCapture(e.pointerId); } catch (x) {} markDirty(false); };
+  $('#hud').addEventListener('pointerup', end); $('#hud').addEventListener('pointercancel', end);
+}
+engine.onPlayState = (orig => on => { orig(on); const box = $('#hud .bw-ui'); if (box) box.classList.toggle('editing', uiEdit && !on); if (!on && uiEdit) selectUI(uiSelected && engine.project.ui.find(x => x.id === uiSelected.id) || null); })(engine.onPlayState);
+
 /* ---------------- boot ---------------- */
 (async () => {
   let draft = null; try { draft = JSON.parse(localStorage.getItem('bw3d_draft') || 'null'); } catch(e){}
   await loadProject(draft && draft.objects && draft.objects.length ? draft : newProjectData());
   if (draft) $('#save-status').textContent = 'Restored your last session';
+  renderUIList(); refreshUIForm();
   new ResizeObserver(() => Blockly.svgResize(workspace)).observe($('#blockly'));
   updateHistoryButtons();
   window.BW = { engine, workspace, select, addShape, addSmart, addModel, play, loadProject, compileAll, serialize, undo, redo, gizmo, state: () => ({ sculptMode, sculpting: !!sculpting, look: !!look, drag: !!drag, axis: gizmo.axis }) };

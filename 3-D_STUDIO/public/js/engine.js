@@ -42,7 +42,7 @@ export function defaultProject(){
   return {
     version: 2, name: 'My Game',
     stage: { style: 'auto', time: 12, sky: '#8fd3ff', gravity: 9.8, sun: 1.0, fog: true, ambient: 1.0, workspace: null },
-    variables: [], lists: [], sounds: [],
+    variables: [], lists: [], sounds: [], ui: [],
     objects: [],
     camera: { position: [9, 6, 11], target: [0, 1, 0] }
   };
@@ -299,7 +299,7 @@ export class SceneObject {
   }
   _terrain(){
     const d = this.data, T = d.terrain || (d.terrain = defaultObject('terrain').terrain);
-    const size = clamp(toNum(T.size) || 60, 5, 400), n = clamp(Math.round(toNum(T.detail) || 64), 8, 200), h = toNum(T.height);
+    const size = clamp(toNum(T.size) || 60, 5, 2000), n = clamp(Math.round(toNum(T.detail) || 64), 8, 256), h = toNum(T.height);
     const es = size / n, count = (n + 1) * (n + 1);
     // heights: sculpted data if present, else fresh hills from noise
     let heights = Array.isArray(T.heights) && T.heights.length === count ? Float32Array.from(T.heights) : null;
@@ -506,7 +506,7 @@ export class SceneObject {
   moveTowards(name, steps){ const t = this.engine.find(name, this); if (!t) return; const d = t.root.position.clone().sub(this.root.position); d.y = 0; const len = d.length(); if (len < 1e-4) return; d.multiplyScalar(Math.min(steps, len) / len); this.root.position.add(d); this._moved(true); }
   goTo(x, y, z){ this.root.position.set(x, y, z); this._moved(false); }
   goToObj(name){
-    if (name === '__random__'){ this.root.position.set((Math.random()-0.5)*30, this.root.position.y, (Math.random()-0.5)*30); this._moved(false); return; }
+    if (name === '__random__'){ const ext = this.engine.worldExtent() * 0.8; this.root.position.set((Math.random()-0.5)*ext, this.root.position.y, (Math.random()-0.5)*ext); this._moved(false); return; }
     if (name === '__mouse__'){ const p = this.engine.mouseGround(); if (p){ this.root.position.x = p.x; this.root.position.z = p.z; this._moved(false); } return; }
     const t = this.engine.find(name, this); if (t){ this.root.position.copy(t.root.position); this._moved(false); }
   }
@@ -643,7 +643,8 @@ class Runtime {
       item: (k, i) => { const a = L(k); if (i === 'last') return a[a.length - 1] ?? ''; if (i === 'random') return a[Math.floor(Math.random() * a.length)] ?? ''; i = Math.floor(toNum(i)); return a[i - 1] ?? ''; },
       length: k => L(k).length, contains: (k, v) => L(k).some(x => this.cmp(x, v) === 0), indexOf: (k, v) => L(k).findIndex(x => this.cmp(x, v) === 0) + 1,
       join: k => L(k).map(toStr).join(' '), show: (k, on) => { on ? this.monitors.add('list:' + k) : this.monitors.delete('list:' + k); this.e.hudDirty = true; } };
-    this.hudTexts = { top: '', bottom: '' };
+    this.hudTexts = { top: '', bottom: '' }; this.uiDown = new Set();
+    this.ui = { set: (name, prop, v) => { const u = this.e.uiFind(name); if (!u) return; u[prop] = v; this.e.updateUI(u); }, pressed: name => this.uiDown.has(name), get: (name, prop) => { const u = this.e.uiFind(name); return u ? (u[prop] ?? '') : ''; } };
   }
   now(){ return this.time; }
   n(v){ return toNum(v); } s(v){ return toStr(v); } b(v){ return toBool(v); }
@@ -762,10 +763,10 @@ export class Engine {
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 900);
+    this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 4000);
     this.camera.position.set(9, 6, 11);
     this.controls = new OrbitControls(this.camera, canvas);
-    this.controls.enableDamping = true; this.controls.dampingFactor = 0.12; this.controls.target.set(0, 1, 0); this.controls.maxPolarAngle = Math.PI * 0.495; this.controls.maxDistance = 300;
+    this.controls.enableDamping = true; this.controls.dampingFactor = 0.12; this.controls.target.set(0, 1, 0); this.controls.maxPolarAngle = Math.PI * 0.495; this.controls.maxDistance = 1500;
     this.controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.PAN, RIGHT: null };
     // lights + sky
     this.hemi = new THREE.HemisphereLight(0xbfe3ff, 0x6a7a4a, 0.75); this.scene.add(this.hemi);
@@ -775,7 +776,7 @@ export class Engine {
     this.scene.add(this.sun); this.scene.add(this.sun.target);
     this.sky = new Sky(this.scene);
     // editor helpers
-    this.grid = new THREE.GridHelper(80, 80, 0x8890aa, 0x555c75); this.grid.position.y = 0.002; this.grid.material.transparent = true; this.grid.material.opacity = 0.35; this.scene.add(this.grid);
+    this.grid = new THREE.GridHelper(200, 200, 0x8890aa, 0x555c75); this.grid.position.y = 0.002; this.grid.material.transparent = true; this.grid.material.opacity = 0.35; this.scene.add(this.grid);
     this.selBox = new THREE.BoxHelper(new THREE.Mesh(new THREE.BoxGeometry(1,1,1)), 0xa78bfa); this.selBox.material.depthTest = false; this.selBox.material.transparent = true; this.selBox.material.opacity = 0.9; this.selBox.renderOrder = 998; this.selBox.visible = false; this.scene.add(this.selBox);
     this.hoverBox = new THREE.BoxHelper(new THREE.Mesh(new THREE.BoxGeometry(1,1,1)), 0xffffff); this.hoverBox.material.depthTest = false; this.hoverBox.material.transparent = true; this.hoverBox.material.opacity = 0.35; this.hoverBox.visible = false; this.scene.add(this.hoverBox);
     this.selected = null; this.hovered = null;
@@ -805,11 +806,14 @@ export class Engine {
     this.sun.color.copy(info.sunColor); this.sun.intensity = info.intensity * (s.sun == null ? 1 : toNum(s.sun));
     this.hemi.color.copy(info.top).lerp(new THREE.Color(0xffffff), 0.5); this.hemi.groundColor.set(0x5a6a45).lerp(info.horizon, 0.3);
     this.hemi.intensity = (0.25 + (1 - info.night) * 0.55) * (s.ambient == null ? 1 : toNum(s.ambient));
-    const fogCol = info.horizon.clone();
-    this.scene.fog = s.fog === false || s.style === 'space' ? null : new THREE.Fog(fogCol, 70, 260);
+    const fogCol = info.horizon.clone(), ext = this.worldExtent();
+    this.scene.fog = s.fog === false || s.style === 'space' ? null : new THREE.Fog(fogCol, Math.max(70, ext * 0.45), Math.max(260, ext * 1.6));
+    const sh = clamp(ext / 3, 34, 110); const sc = this.sun.shadow.camera; sc.left = -sh; sc.right = sh; sc.top = sh; sc.bottom = -sh; sc.far = 200 + ext; sc.updateProjectionMatrix();
+    this.sun.shadow.mapSize.set(ext > 300 ? 4096 : 2048, ext > 300 ? 4096 : 2048); if (this.sun.shadow.map){ this.sun.shadow.map.dispose(); this.sun.shadow.map = null; }
     this.scene.background = null;
     this.world.gravity.set(0, -(s.gravity == null ? 9.8 : toNum(s.gravity)), 0);
   }
+  worldExtent(){ let ext = 120; for (const o of this.objects){ if (o.kind === 'terrain' && o.terrainInfo) ext = Math.max(ext, o.terrainInfo.size * Math.abs(o.root.scale.x)); else if (o.kind === 'plane') ext = Math.max(ext, Math.max(Math.abs(o.root.scale.x), Math.abs(o.root.scale.z)) * 1.5); } return ext; }
   async loadProject(p){
     this.stop(); this.clear();
     const def = defaultProject();
@@ -819,6 +823,9 @@ export class Engine {
     this.applyStage();
     if (p.camera){ this.camera.position.fromArray(p.camera.position); this.controls.target.fromArray(p.camera.target); this.controls.update(); }
     await Promise.all((this.project.objects || []).map(d => this.addObject(d, false)));
+    this.scene.updateMatrixWorld(true);
+    for (const o of this.objects) if (o.data.drop){ delete o.data.drop; this.dropToGround(o); }   // examples: settle onto terrain after it exists
+    this.applyStage(); this.renderUI(false);
   }
   clear(){ for (const o of this.objects.slice()) this.removeObject(o, false); this.objects = []; this.byId.clear(); this.select(null); }
   async addObject(data, register=true){
@@ -826,6 +833,7 @@ export class Engine {
     const o = new SceneObject(this, data);
     this.objects.push(o); this.byId.set(o.id, o); this.scene.add(o.root);
     await o.build();
+    if (o.kind === 'terrain' || o.kind === 'plane') this.applyStage();
     return o;
   }
   removeObject(o, unregister=true){
@@ -872,7 +880,7 @@ export class Engine {
   /* ---------- play / stop ---------- */
   play(scriptsById){
     if (this.playing) this.stop();
-    this._snapshot = { camera: { position: this.camera.position.toArray(), target: this.controls.target.toArray() }, stage: JSON.parse(JSON.stringify(this.project.stage)),
+    this._snapshot = { camera: { position: this.camera.position.toArray(), target: this.controls.target.toArray() }, stage: JSON.parse(JSON.stringify(this.project.stage)), ui: JSON.parse(JSON.stringify(this.project.ui || [])),
       objects: this.objects.map(o => ({ o, data: JSON.parse(JSON.stringify(o.data)) })) };
     const rt = this.rt; rt.threads = []; rt.time = 0; rt.timerStart = 0; rt.timeScale = 1; rt.vars.clear(); rt.lists.clear(); rt.monitors.clear(); rt.touchPrev.clear(); rt.pairs.clear(); rt.timerFired.clear(); rt.hudTexts = { top: '', bottom: '' }; rt.particles.clear();
     for (const v of this.project.variables || []) rt.vars.set(v.name || v, 0);
@@ -884,7 +892,7 @@ export class Engine {
     for (const o of this.objects){ o.scripts = scriptsById[o.id] || []; o.sizePct = 100; o.baseScale = o.data.scale.slice(); o.applyProps(); o.rebuildBody(); }
     this.grid.visible = false; this.selBox.visible = false; this.hoverBox.visible = false; this.playing = true; this.hudDirty = true;
     rt.cam.reset(); rt.synth.ensure();
-    this.showBigText('');
+    this.showBigText(''); this.renderUI(true);
     rt.startHats('flag');
     if (this.onPlayState) this.onPlayState(true);
   }
@@ -896,14 +904,39 @@ export class Engine {
     for (const o of this.objects){ if (o.body){ this.world.removeBody(o.body); o.body = null; } o.stopAnim(); this.setLabel(o, ''); }
     if (this._snapshot){
       for (const { o, data } of this._snapshot.objects) if (this.objects.includes(o)) { Object.assign(o.data, data); o.applyProps(); }
-      Object.assign(this.project.stage, this._snapshot.stage);
+      Object.assign(this.project.stage, this._snapshot.stage); this.project.ui = this._snapshot.ui;
       this.camera.position.fromArray(this._snapshot.camera.position); this.controls.target.fromArray(this._snapshot.camera.target); this.controls.update();
       this._snapshot = null;
     }
-    this.grid.visible = this.editor; this.selBox.visible = !!this.selected; this.showBigText(''); this.rt.monitors.clear(); this.rt.hudTexts = { top: '', bottom: '' }; this.renderHud(); this.applyStage();
+    this.grid.visible = this.editor; this.selBox.visible = !!this.selected; this.showBigText(''); this.rt.monitors.clear(); this.rt.hudTexts = { top: '', bottom: '' }; this.renderHud(); this.applyStage(); this.renderUI(false);
     if (this.onPlayState) this.onPlayState(false);
   }
   reportError(msg){ if (this.onError) this.onError(msg); }
+  /* ---------- UI maker (labels, buttons, bars, panels, images) ---------- */
+  renderUI(interactive){
+    if (!this.hud) return;
+    let box = this.hud.querySelector('.bw-ui'); if (!box){ box = document.createElement('div'); box.className = 'bw-ui'; this.hud.appendChild(box); if (window.ResizeObserver) new ResizeObserver(() => this.refreshUISizes()).observe(this.hud); }
+    box.innerHTML = ''; box.classList.toggle('live', !!interactive); this._uiEls = new Map();
+    for (const el of this.project.ui || []){
+      const d = document.createElement('div'); d.className = 'bw-el bw-' + el.type; d.dataset.id = el.id; d.dataset.name = el.name;
+      if (el.type === 'bar'){ d.innerHTML = '<div class="fill"></div><span class="lbl"></span>'; }
+      else if (el.type !== 'image') { d.innerHTML = '<span class="lbl"></span>'; }
+      const rs = document.createElement('i'); rs.className = 'bw-rs'; d.appendChild(rs);
+      if (interactive && el.type === 'button'){ d.addEventListener('pointerdown', ev => { ev.stopPropagation(); d.classList.add('down'); this.rt.uiDown.add(el.name); this.rt.startHats('uiclick', s => s.name === el.name); }); const up = () => { d.classList.remove('down'); this.rt.uiDown.delete(el.name); }; d.addEventListener('pointerup', up); d.addEventListener('pointerleave', up); }
+      box.appendChild(d); this._uiEls.set(el.id, d); this.updateUI(el);
+    }
+  }
+  updateUI(el){
+    const d = this._uiEls && this._uiEls.get(el.id); if (!d) return;
+    const H = this.hud.clientHeight || 300;
+    Object.assign(d.style, { left: el.x + '%', top: el.y + '%', width: el.w + '%', height: el.h + '%', fontSize: (toNum(el.size) || 4) / 100 * H + 'px', color: el.color || '#fff', background: el.type === 'label' ? 'transparent' : (el.bg || 'transparent'), display: el.visible === false ? 'none' : '', textAlign: el.align || 'center' });
+    if (el.type === 'image'){ d.style.backgroundImage = el.url ? 'url("' + el.url + '")' : ''; d.style.backgroundColor = el.url ? 'transparent' : (el.bg || '#ffffff33'); }
+    const lbl = d.querySelector('.lbl'); if (lbl) lbl.textContent = toStr(el.text ?? '');
+    if (el.type === 'bar'){ const f = d.querySelector('.fill'); f.style.width = clamp(toNum(el.value), 0, 100) + '%'; f.style.background = el.color || '#4cbf56'; d.style.color = '#fff'; d.style.background = el.bg || 'rgba(0,0,0,.45)'; }
+    d.style.borderRadius = (el.radius == null ? 10 : el.radius) + 'px';
+  }
+  refreshUISizes(){ for (const el of this.project.ui || []) this.updateUI(el); }
+  uiFind(name){ return (this.project.ui || []).find(u => u.name === name); }
   /* ---------- HUD ---------- */
   showBigText(t){ if (!this.hud) return; let el = this.hud.querySelector('.bw-bigtext'); if (!el){ el = document.createElement('div'); el.className = 'bw-bigtext'; this.hud.appendChild(el); } el.textContent = t; el.style.display = t ? '' : 'none'; }
   flash(color, secs){ if (!this.hud) return; let el = this.hud.querySelector('.bw-flash'); if (!el){ el = document.createElement('div'); el.className = 'bw-flash'; this.hud.appendChild(el); } el.style.background = color; el.style.transition = 'none'; el.style.opacity = '0.8'; requestAnimationFrame(() => { el.style.transition = 'opacity ' + Math.max(0.05, secs) + 's'; el.style.opacity = '0'; }); }
@@ -1045,7 +1078,8 @@ export class Engine {
       this.rt.step();
       this.world.step(1 / 60, dt, 4);
       this.rt.updateContacts();
-      for (const o of this.objects){ if (o.body) o.syncFromBody(); if (o.mixer) o.mixer.update(dt); }
+      const floor = -40 - this.worldExtent() * 0.2;
+      for (const o of this.objects){ if (o.body) o.syncFromBody(); if (o.mixer) o.mixer.update(dt); if (o.body && o.body.mass > 0 && o.root.position.y < floor){ const s = this._snapshot && this._snapshot.objects.find(x => x.o === o); const p = s ? s.data.position : [0, 5, 0]; o.goTo(p[0], Math.max(p[1], this.groundHeightAt(p[0], p[2]) + 2), p[2]); } }
       this.scene.updateMatrixWorld();
       this.rt.fireTouchHats();
       this.rt.cam.update(raw);

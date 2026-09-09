@@ -100,7 +100,14 @@ export const EXAMPLES = [
       chain([['event_whentouch', { TARGET:'Player' }], ['sound_play', { NAME:'coin' }], ['fx_particles', { COLOR:'#ffd700' }, { N:30, S:3 }], ['data_changevariableby', V('score'), { VALUE:1 }], ['looks_hide'], ['control_if', null, { COND: rep('op_eq', null, { A: rep('data_variable', V('score')), B:10 }) }, { DO:[['sound_play', { NAME:'win' }], ['looks_bigtext', null, { TEXT:'You got them all!', SECS:3 }]] }]])
     );
     const enemy = SMART[2].build([-8,0.5,-8]);
-    return { version:2, name:'Coin Collector', stage:{ style:'auto', time:11, sky:'#8fd3ff', gravity:9.8, sun:1, fog:true, ambient:1, workspace:null }, variables:[{ name:'score', id:'score' }], lists:[], sounds:[], objects:[ground(), player, coin, enemy], camera:{ position:[9,6,11], target:[0,1,0] } };
+    // screen UI: a coin counter label and a Jump button, driven by UI blocks on the Stage
+    const ui = [ { id:'ui_score', name:'coins', type:'label', text:'Coins: 0 / 10', x:3, y:3, w:34, h:8, size:5, color:'#ffd700', bg:'', visible:true, radius:10 },
+                 { id:'ui_jump', name:'Jump', type:'button', text:'Jump', x:78, y:84, w:19, h:11, size:5, color:'#ffffff', bg:'#7c5ce6', visible:true, radius:14 } ];
+    const stageWs = ws(
+      chain([['event_whenflag'], ['control_forever', null, null, { DO:[['ui_settext', { NAME:'coins' }, { V: rep('op_join', null, { A:'Coins: ', B: rep('op_join', null, { A: rep('data_variable', V('score')), B:' / 10' }) }) }]] }]])
+    );
+    player.workspace.blocks.blocks.push(chain([['ui_whenclicked', { NAME:'Jump' }], ['physics_jump', null, { V:6 }], ['sound_play', { NAME:'jump' }]], 560, 460));
+    return { version:2, name:'Coin Collector', stage:{ style:'auto', time:11, sky:'#8fd3ff', gravity:9.8, sun:1, fog:true, ambient:1, workspace: stageWs }, variables:[{ name:'score', id:'score' }], lists:[], sounds:[], ui, objects:[ground(), player, coin, enemy], camera:{ position:[9,6,11], target:[0,1,0] } };
   }},
   { name: 'Bouncy Balls', build(){
     const ball = obj('sphere', 'Ball', [0,6,0], { color:'#ff5a5f', material:'shiny', physics:{ enabled:true, type:'dynamic', mass:1, bounce:0.9, friction:0.2, upright:false },
@@ -130,9 +137,9 @@ export const EXAMPLES = [
     return { version:2, name:'Dodge the Blocks', stage:{ style:'auto', time:21, sky:'#c9b6ff', gravity:9.8, sun:1, fog:true, ambient:1, workspace:null }, variables:[{ name:'time', id:'time' }], lists:[], sounds:[], objects:[ground(16,60,'metal'), player, block, SMART[7].build([0,3,0]), SMART[7].build([0,3,-12])], camera:{ position:[0,8,18], target:[0,1,0] } };
   }},
   { name: 'Terrain Explorer', build(){
-    const player = SMART[0].build([0,3,0]);
-    const terrain = obj('terrain', 'Terrain', [0,0,0], { color:'#ffffff', physics:STATIC, terrain:{ size:80, height:5, seed:12, detail:80, texture:'grass' } });
-    const goal = SMART[5].build([25,1,-25]);
-    return { version:2, name:'Terrain Explorer', stage:{ style:'auto', time:9, sky:'#8fd3ff', gravity:9.8, gravity:9.8, sun:1, fog:true, ambient:1, workspace:null }, variables:[], lists:[], sounds:[], objects:[terrain, player, goal, SMART[8].build([0,4,-3])], camera:{ position:[12,10,14], target:[0,1,0] } };
+    const player = SMART[0].build([0,3,0]); player.drop = true;
+    const terrain = obj('terrain', 'Terrain', [0,0,0], { color:'#ffffff', physics:STATIC, terrain:{ size:240, height:9, seed:12, detail:160, texture:'grass' } });
+    const goal = SMART[5].build([60,1,-60]); goal.drop = true;
+    return { version:2, name:'Terrain Explorer', stage:{ style:'auto', time:9, sky:'#8fd3ff', gravity:9.8, gravity:9.8, sun:1, fog:true, ambient:1, workspace:null }, variables:[], lists:[], sounds:[], objects:[terrain, player, goal, Object.assign(SMART[8].build([0,4,-3]), { drop:true })], camera:{ position:[12,10,14], target:[0,1,0] } };
   }}
 ];
