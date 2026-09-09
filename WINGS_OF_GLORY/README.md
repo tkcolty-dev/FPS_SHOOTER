@@ -41,10 +41,15 @@ the lock survives a brief wobble instead of dropping instantly, and the game aut
 missile on the rails can actually take the shot you are lined up for.
 
 **G force is modelled.** Yank the stick and you pull real G, calculated from your turn rate and speed.
-Hold a hard turn too long and your vision greys out and tunnels, then you black out entirely (G-LOC)
+Hold a maximum-rate turn for a long time and your vision greys out and tunnels, then you black out (G-LOC)
 and the aircraft flies itself until you come round. Pull harder than the airframe can take at
 manoeuvring speed and you strain it. Current G is shown on the flight panel, amber when you are
-loading up and red when you are close to passing out.
+loading up and red when you are close to passing out. It is deliberately forgiving — roughly twelve
+seconds of continuous maximum turn before anything happens — and can be switched off in Settings.
+
+**Targeting is automatic.** The HUD always holds whichever enemy is nearest and switches as soon as
+another is clearly closer, so missiles have something to lock without you selecting anything.
+Q still cycles manually when you want a specific target.
 
 Every aircraft has a **best turn speed** shown on the flight panel and marked in green on the throttle
 bar. Sit on it and you turn hardest; run at full speed and you cannot follow anyone.

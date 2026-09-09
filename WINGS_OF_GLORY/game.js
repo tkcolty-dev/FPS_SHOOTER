@@ -13,13 +13,13 @@ window.Game = (function(){
 
   let canvas, ctx, W=0, H=0, dpr=1;
   let S=null;
-  let settings={ control:'mouse', quality:2, name:'Pilot', assist:'easy', arrows:'climb' };
+  let settings={ control:'mouse', quality:2, name:'Pilot', assist:'easy', arrows:'climb', gEffects:'on' };
   // Assist profile depends on who fired. Your missiles reach further and steer better; enemy missiles
   // are shorter-legged and easier to break, so a defensive turn actually works.
   const A = (who)=>{
     const mine = who ? !!who.isPlayer : true;
     if (mine) return settings.assist==='easy'
-      ? {cone:1.6, lockT:0.5, g:2.6, gimbal:1.7, rearFree:true, noise:0.15, range:1.45, decoy:0.5}
+      ? {cone:1.9, lockT:0.35, g:2.8, gimbal:1.9, rearFree:true, noise:0.12, range:1.5, decoy:0.45}
       : {cone:1.1, lockT:0.9, g:1.35, gimbal:1.15, rearFree:false, noise:0.7, range:1.1, decoy:0.85};
     return {cone:0.9, lockT:1.3, g:1.0, gimbal:1.0, rearFree:false, noise:1.0, range:0.7, decoy:1.7};
   };
@@ -204,8 +204,15 @@ window.Game = (function(){
     const firing = k.Space||input.lmb||(gp&&gp.buttons[7]&&gp.buttons[7].value>0.5);
     if (firing && !p.landed) fireGuns(p, dt);
     if (gp){ if (gp.buttons[6]&&gp.buttons[6].value>0.5) fireMissile(p); if (gp.buttons[0]&&gp.buttons[0].pressed) dropFlares(p); if (gp.buttons[2]&&gp.buttons[2].pressed) dropBomb(p); if (gp.buttons[3]&&gp.buttons[3].pressed&&!p.gpY) cycleTarget(p); p.gpY=gp.buttons[3]&&gp.buttons[3].pressed; }
-    const acq = Math.max(3200, ...p.missiles.map(m=>window.MISSILES[m.key].range*1.3));
-    if (!p.target||!p.target.alive||dist(p,p.target)>acq*1.4) p.target=pickTarget(p, acq, 75);
+    // Targeting is automatic: it holds whichever enemy is nearest, switching as soon as another is
+    // clearly closer. Q still cycles manually if you want a specific one.
+    const acq = Math.max(4000, ...p.missiles.map(m=>window.MISSILES[m.key].range*1.4));
+    let near=null, nd=1e9;
+    for (const e of S.planes){ if (e.team===p.team||!e.alive) continue; const d=dist3(p,e); if (d<nd){ nd=d; near=e; } }
+    const cur = (p.target&&p.target.alive) ? dist3(p,p.target) : 1e9;
+    if (near && (cur>acq || nd < cur*0.75 || !p.target || !p.target.alive)){
+      if (p.target!==near){ p.target=near; p.lockT=0; p.locked=false; }
+    }
     updateLock(p, dt);
   }
   function pollGamepad(){ input.gp=null; if (!navigator.getGamepads) return; const gps=navigator.getGamepads(); for (const g of gps){ if (g&&g.connected){ input.gp=g; break; } } }
@@ -312,7 +319,7 @@ window.Game = (function(){
     const m=250; if (p.x<m||p.y<m||p.x>S.size-m||p.y>S.size-m) want=Math.atan2(S.size/2-p.x,-(S.size/2-p.y));
     for (const o of S.planes){ if (o===p||!o.alive) continue; if (Math.abs(o.alt-p.alt)>80) continue; const d=dist(p,o); if (d<60){ const a=Math.atan2(o.x-p.x,-(o.y-p.y)); const s=norm(a-p.hd); want=p.hd-(s>0?1:-1)*1.0; wantAlt=p.alt+(o.alt>p.alt?-200:200); break; } }
     p.turnCmd=clamp(norm(want-p.hd)*3,-1,1);
-    if ((p.gStress||0)>2.0) p.turnCmd*=0.55;      // ease off before greying out
+    if ((p.gStress||0)>2.4) p.turnCmd*=0.6;      // ease off before greying out
     p.throttle=lerp(p.throttle,thr,dt*2);
     if (p.speed<def.speed*0.4){ p.throttle=1; wantAlt=Math.min(wantAlt,p.alt-100); }
     if (p.alt<200) wantAlt=Math.max(wantAlt,340);
@@ -356,7 +363,7 @@ window.Game = (function(){
     // ---- G force. n = omega * v / g. Grey-out and blackout come from how long you hold it,
     // and a blacked-out pilot stops pulling, so the load falls and you come round.
     if (p.gloc) omega *= 0.18;
-    else if ((p.gStress||0) > 1.5) omega *= 1 - Math.min(0.35, ((p.gStress-1.5)/1.3)*0.35);
+    else if ((p.gStress||0) > 2.0) omega *= 1 - Math.min(0.28, ((p.gStress-2.0)/1.0)*0.28);
     p.omega = omega;
     // The arcade turn floor would read as absurd G at Mach speeds, so the load the pilot feels is
     // capped at what the airframe could actually pull.
@@ -364,10 +371,10 @@ window.Game = (function(){
     const gNow = clamp(gPhys, 1, nMax*1.2);
     p.gLoad = lerp(p.gLoad||1, gNow, 1-Math.pow(0.02,dt));
     p.burstUsed = clamp((p.burstUsed||0) + (gNow>nMax*0.95 ? dt*0.8 : -dt*0.5), 0, 1);
-    const tol = (p.isPlayer?7.6:8.2) * (def.jet?1.2:1);       // G-suits help the jet crews
-    const rise = p.gLoad>tol ? (p.gLoad-tol)*dt*0.15 : -dt*1.35;
-    p.gStress = clamp((p.gStress||0) + rise, 0, 3.2);
-    if (!p.gloc && p.gStress>2.6){ p.gloc=true; if (p.isPlayer){ toast('G-LOC — you blacked out'); Audio2.died(); } }
+    const tol = (p.isPlayer?9.2:9.6) * (def.jet?1.25:1) * (settings.gEffects==='off'?99:1);
+    const rise = p.gLoad>tol ? (p.gLoad-tol)*dt*0.085 : -dt*1.8;
+    p.gStress = clamp((p.gStress||0) + rise, 0, 3.4);
+    if (!p.gloc && p.gStress>3.0){ p.gloc=true; if (p.isPlayer){ toast('G-LOC — you blacked out'); Audio2.died(); } }
     else if (p.gloc && p.gStress<0.8){ p.gloc=false; if (p.isPlayer) toast('Vision returning'); }
     if (p.gloc) p.throttle=Math.min(p.throttle,0.65);
     if (gPhys > nMax*1.35 && p.speed < vc*1.6 && Math.random()<dt*1.6){
@@ -895,8 +902,8 @@ window.Game = (function(){
     // flight panel
     const bw=270*U, bh=150*U; const bx=pad, by=H-pad-bh; panel(bx,by,bw,bh);
     // grey-out / blackout vignette
-    if (P.alive && (P.gStress||0)>1.5){
-      const k=clamp((P.gStress-1.5)/1.1,0,1);
+    if (P.alive && (P.gStress||0)>1.9){
+      const k=clamp((P.gStress-1.9)/1.1,0,1);
       const vg=ctx.createRadialGradient(W/2,H/2,H*0.5*(1-k*0.78),W/2,H/2,H*0.78);
       vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,`rgba(0,0,0,${0.55+0.45*k})`);
       ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
@@ -913,7 +920,7 @@ window.Game = (function(){
     ctx.fillStyle=nearCorner?'#7dff7d':'#9aa3ad'; ctx.fillText('BEST TURN '+Math.round(P.def.vCorner*3.6), bx+12, by+38*U);
     { const gl=P.gLoad||1; const lim=P.def.gMax;
       ctx.textAlign='right';
-      ctx.fillStyle = (P.gStress||0)>1.8 ? '#ff4d4d' : (P.gStress||0)>1.0 ? '#ffd35a' : '#9aa3ad';
+      ctx.fillStyle = (P.gStress||0)>2.2 ? '#ff4d4d' : (P.gStress||0)>1.4 ? '#ffd35a' : '#9aa3ad';
       ctx.font=`800 ${Math.round(15*U)}px `+getFont();
       ctx.fillText(gl.toFixed(1)+' G', bx+bw-12, by+38*U);
       ctx.font=`600 ${Math.round(11*U)}px `+getFont(); ctx.textAlign='left'; }
