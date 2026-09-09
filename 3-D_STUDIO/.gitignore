@@ -2,3 +2,5 @@ node_modules/
 cache/
 projects/
 .DS_Store
+server.log
+.playwright-mcp/
