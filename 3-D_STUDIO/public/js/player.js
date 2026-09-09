@@ -7,7 +7,7 @@ const engine = new Engine({ canvas, hud, editor: false });
 engine.grid.visible = false;
 const GenFn = Object.getPrototypeOf(function*(){}).constructor;
 const byId = {};
-for (const k in game.scripts) byId[k] = game.scripts[k].map(s => Object.assign({}, s, { fn: new GenFn('self', 'R', 'V', '_thread', s.code) }));
+for (const k in game.scripts) byId[k] = game.scripts[k].map(s => Object.assign({}, s, { fn: new GenFn('self', 'R', 'V', '_thread', '_arg', 'L', s.code) }));
 const errEl = document.getElementById('err');
 engine.onError = m => { if (errEl){ errEl.textContent = m; errEl.style.display = 'block'; } };
 (async () => {

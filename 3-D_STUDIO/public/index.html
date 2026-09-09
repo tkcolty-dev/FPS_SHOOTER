@@ -23,6 +23,10 @@
     <symbol id="i-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
     <symbol id="i-eyeoff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.6a3 3 0 0 0 4.2 4.2M9.9 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 3.9M6.6 6.6C3.7 8.5 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 4.4-1"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></symbol>
+    <symbol id="i-drop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M8 10l4 4 4-4"/><path d="M4 20h16"/></symbol>
+    <symbol id="i-sculpt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18c3-6 5-9 8-9s4 5 6 5 3-3 4-5"/><path d="M3 21h18"/></symbol>
     <symbol id="i-physics" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="7" r="4"/><path d="M12 11v4M5 21c0-3 3-5 7-5s7 2 7 5"/></symbol>
   </defs>
 </svg>
@@ -68,33 +72,60 @@
     </div>
     <div id="object-panel" class="tab-panel object-panel">
       <div class="obj-form" id="obj-form">
-        <h3>Object</h3>
+        <h3>Object <span id="p-kind" class="kind-badge"></span></h3>
         <label>Name <input id="p-name" /></label>
         <div class="row3"><label>x <input id="p-x" type="number" step="0.1" /></label><label>y <input id="p-y" type="number" step="0.1" /></label><label>z <input id="p-z" type="number" step="0.1" /></label></div>
         <div class="row3"><label>rotation x <input id="p-rx" type="number" step="5" /></label><label>rotation y <input id="p-ry" type="number" step="5" /></label><label>rotation z <input id="p-rz" type="number" step="5" /></label></div>
         <div class="row3"><label>width <input id="p-sx" type="number" step="0.1" min="0.01" /></label><label>height <input id="p-sy" type="number" step="0.1" min="0.01" /></label><label>depth <input id="p-sz" type="number" step="0.1" min="0.01" /></label></div>
-        <h3>Look</h3>
-        <div class="row3"><label>color <input id="p-color" type="color" /></label>
-          <label>material <select id="p-material"><option>normal</option><option>shiny</option><option>metal</option><option>glass</option><option>glow</option><option>flat</option></select></label>
-          <label>transparency % <input id="p-opacity" type="number" min="0" max="100" step="5" /></label></div>
         <label class="chk"><input id="p-visible" type="checkbox" /> Visible when the game starts</label>
-        <h3>Physics</h3>
-        <label class="chk"><input id="p-phys" type="checkbox" /> Physics on — it can fall, collide and be pushed</label>
-        <div class="row3"><label>type <select id="p-ptype"><option value="dynamic">dynamic (moves & falls)</option><option value="static">static (never moves)</option></select></label>
-          <label>mass <input id="p-mass" type="number" step="0.5" min="0.01" /></label>
-          <label>bounciness 0–1 <input id="p-bounce" type="number" step="0.1" min="0" max="1.5" /></label></div>
-        <div class="row3"><label>friction <input id="p-friction" type="number" step="0.1" min="0" max="2" /></label>
-          <label class="chk"><input id="p-upright" type="checkbox" /> keep upright (never tips over)</label></div>
-        <div class="btn-row"><button id="p-dup" class="small-btn">Duplicate</button><button id="p-del" class="small-btn danger">Delete object</button></div>
+        <div class="btn-row"><button id="p-drop" class="small-btn">Drop onto ground</button><button id="p-dup" class="small-btn">Duplicate</button><button id="p-del" class="small-btn danger">Delete object</button></div>
+        <div id="sec-look">
+          <h3>Look</h3>
+          <div class="row3"><label>color <input id="p-color" type="color" /></label>
+            <label>material <select id="p-material"><option>normal</option><option>shiny</option><option>metal</option><option>glass</option><option>glow</option><option>flat</option><option>wireframe</option></select></label>
+            <label>transparency % <input id="p-opacity" type="number" min="0" max="100" step="5" /></label></div>
+          <label>texture</label>
+          <div id="p-texture" class="swatches"></div>
+        </div>
+        <div id="sec-light">
+          <h3>Light</h3>
+          <div class="row3"><label>color <input id="p-lcolor" type="color" /></label><label>brightness <input id="p-lint" type="number" step="1" min="0" /></label><label>range <input id="p-ldist" type="number" step="1" min="1" /></label></div>
+          <div class="row3"><label>cone angle <input id="p-langle" type="number" step="5" min="1" max="89" /></label><label class="chk"><input id="p-lshadow" type="checkbox" /> casts shadows (slower)</label></div>
+        </div>
+        <div id="sec-text">
+          <h3>Text</h3>
+          <label>text <input id="p-tcontent" /></label>
+          <div class="row3"><label>size <input id="p-tsize" type="number" step="0.1" min="0.1" /></label><label>color <input id="p-tcolor" type="color" /></label><label>background <input id="p-tbg" type="color" /></label></div>
+        </div>
+        <div id="sec-terrain">
+          <h3>Terrain</h3>
+          <div class="row3"><label>size <input id="p-trsize" type="number" step="10" min="5" max="400" /></label><label>hill height <input id="p-trheight" type="number" step="1" min="0" /></label><label>seed <input id="p-trseed" type="number" step="1" /></label></div>
+          <div class="row3"><label>detail <input id="p-trdetail" type="number" step="8" min="8" max="200" /></label></div>
+        </div>
+        <div id="sec-physics">
+          <h3>Physics</h3>
+          <label class="chk"><input id="p-phys" type="checkbox" /> Physics on — it can fall, collide and be pushed</label>
+          <div class="row3"><label>type <select id="p-ptype"><option value="dynamic">dynamic (moves & falls)</option><option value="static">static (never moves)</option></select></label>
+            <label>mass <input id="p-mass" type="number" step="0.5" min="0.01" /></label>
+            <label>bounciness 0–1 <input id="p-bounce" type="number" step="0.1" min="0" max="1.5" /></label></div>
+          <div class="row3"><label>friction <input id="p-friction" type="number" step="0.1" min="0" max="2" /></label>
+            <label class="chk"><input id="p-upright" type="checkbox" /> keep upright</label>
+            <label class="chk"><input id="p-collide" type="checkbox" /> solid (off = ghost)</label></div>
+        </div>
       </div>
       <div class="obj-form" id="stage-form">
         <h3>World</h3>
-        <div class="row3"><label>sky color <input id="s-sky" type="color" /></label><label>gravity <input id="s-gravity" type="number" step="0.5" /></label><label>sun brightness <input id="s-sun" type="number" step="0.1" min="0" max="3" /></label></div>
-        <label class="chk"><input id="s-fog" type="checkbox" /> Distance fog</label>
+        <div class="row3"><label>sky <select id="s-style"><option value="auto">day / night by time</option><option value="space">space</option><option value="custom">flat color</option></select></label>
+          <label id="s-sky-row">sky color <input id="s-sky" type="color" /></label>
+          <label>gravity <input id="s-gravity" type="number" step="0.5" /></label></div>
+        <label id="s-time-row">time of day <span id="s-time-label" class="muted"></span> <input id="s-time" type="range" min="0" max="24" step="0.25" /></label>
+        <div class="row3"><label>sun brightness <input id="s-sun" type="number" step="0.1" min="0" max="3" /></label><label>ambient light <input id="s-ambient" type="number" step="0.1" min="0" max="3" /></label>
+          <label class="chk"><input id="s-fog" type="checkbox" /> distance fog</label></div>
       </div>
     </div>
   </section>
 
+  <div id="splitter" class="splitter" title="Drag to resize"></div>
   <!-- ============ STAGE ============ -->
   <section class="stage-pane">
     <div class="stage-header">
@@ -102,20 +133,46 @@
       <button id="btn-stop" class="run-btn stop" title="Stop and reset"><svg><use href="#i-stop"/></svg></button>
       <span id="fps" class="fps">— fps</span>
       <div class="tab-spacer"></div>
+      <div class="gizmo-bar" role="group" aria-label="History">
+        <button id="btn-undo" class="gz" title="Undo (⌘Z)"><svg><use href="#i-undo"/></svg></button>
+        <button id="btn-redo" class="gz" title="Redo (⇧⌘Z)"><svg><use href="#i-redo"/></svg></button>
+      </div>
       <div class="gizmo-bar" role="group" aria-label="Edit tool">
-        <button data-mode="translate" class="gz active" title="Move (W)"><svg><use href="#i-move"/></svg>Move</button>
-        <button data-mode="rotate" class="gz" title="Rotate (E)"><svg><use href="#i-rotate"/></svg>Turn</button>
-        <button data-mode="scale" class="gz" title="Scale (R)"><svg><use href="#i-scale"/></svg>Size</button>
+        <button data-mode="translate" class="gz active" title="Move (W)"><svg><use href="#i-move"/></svg><span class="lbl">Move</span></button>
+        <button data-mode="rotate" class="gz" title="Rotate (E)"><svg><use href="#i-rotate"/></svg><span class="lbl">Turn</span></button>
+        <button data-mode="scale" class="gz" title="Scale (R)"><svg><use href="#i-scale"/></svg><span class="lbl">Size</span></button>
+        <button data-mode="sculpt" class="gz" id="gz-sculpt" title="Sculpt terrain (T)"><svg><use href="#i-sculpt"/></svg><span class="lbl">Sculpt</span></button>
         <span class="gz-sep"></span>
-        <button id="gz-snap" class="gz" title="Snap to grid"><svg><use href="#i-snap"/></svg>Snap</button>
-        <button id="gz-focus" class="gz" title="Focus selected (F)"><svg><use href="#i-focus"/></svg>Focus</button>
+        <button id="gz-snap" class="gz" title="Snap to grid"><svg><use href="#i-snap"/></svg><span class="lbl">Snap</span></button>
+        <button id="gz-focus" class="gz" title="Focus selected (F)"><svg><use href="#i-focus"/></svg><span class="lbl">Focus</span></button>
+        <button id="gz-drop" class="gz" title="Drop selected onto the ground"><svg><use href="#i-drop"/></svg><span class="lbl">Drop</span></button>
       </div>
       <button id="btn-big" class="icon-btn" title="Big stage"><svg><use href="#i-expand"/></svg></button>
     </div>
+    <div id="terrain-tools" class="terrain-tools hidden">
+        <div class="tt-row">
+          <div class="tt-tools" role="group" aria-label="Brush">
+            <button data-tool="raise" class="on" title="Raise ground (hold ⇧ to lower)">▲ Raise</button><button data-tool="lower" title="Lower ground">▼ Lower</button><button data-tool="smooth" title="Smooth bumps">◐ Smooth</button><button data-tool="flatten" title="Flatten to the height where you start dragging">▬ Flatten</button><button data-tool="paint" title="Paint color onto the ground">🎨 Paint</button>
+          </div>
+          <label>size <input id="tt-size" type="range" min="1" max="25" step="0.5" value="5"></label>
+          <label>strength <input id="tt-strength" type="range" min="1" max="10" step="0.5" value="4"></label>
+        </div>
+        <div class="tt-row" id="tt-paint-row">
+          <span class="tt-label">paint</span>
+          <div class="tt-colors">
+            <button data-color="#6fb04a" style="background:#6fb04a" title="grass"></button><button data-color="#8a6a44" style="background:#8a6a44" title="dirt"></button><button data-color="#e0c78a" style="background:#e0c78a" title="sand"></button><button data-color="#8a8f96" style="background:#8a8f96" title="rock"></button><button data-color="#f4f7ff" style="background:#f4f7ff" title="snow"></button><button data-color="#4c97ff" style="background:#4c97ff" title="water"></button><button data-color="#ff4d00" style="background:#ff4d00" title="lava"></button><button data-color="#ffffff" style="background:#fff" title="erase paint">∅</button>
+            <input id="tt-color" type="color" value="#6fb04a" title="custom color">
+          </div>
+          <div class="tab-spacer"></div>
+          <button id="tt-random" class="tt-btn" title="New random hills">🎲 New hills</button>
+          <button id="tt-flat" class="tt-btn" title="Make the whole terrain flat">Flatten all</button>
+          
+        </div>
+      </div>
     <div class="viewport-wrap" id="viewport-wrap">
       <canvas id="view" tabindex="0"></canvas>
       <div id="hud" class="hud"></div>
-      <div id="view-hint" class="view-hint">Drag to orbit · right-drag to pan · scroll to zoom · click an object to select it</div>
+      <div id="view-hint" class="view-hint">Click to select · drag objects to move them (⇧ = up/down) · left-drag orbits · right-drag looks around + WASD flies · scroll zooms</div>
     </div>
     <div class="info-panel" id="info-bar">
       <div class="ip-row">
@@ -139,20 +196,35 @@
         <div class="add-wrap">
           <button id="btn-add" class="add-btn" title="Add an object">+</button>
           <div class="add-menu hidden" id="add-menu">
-            <div class="add-title">Shapes</div>
-            <div class="shape-grid">
-              <button data-kind="box"><i class="sh sh-box"></i>Cube</button>
-              <button data-kind="sphere"><i class="sh sh-ball"></i>Ball</button>
-              <button data-kind="cylinder"><i class="sh sh-cyl"></i>Cylinder</button>
-              <button data-kind="cone"><i class="sh sh-cone"></i>Cone</button>
-              <button data-kind="capsule"><i class="sh sh-cap"></i>Capsule</button>
-              <button data-kind="torus"><i class="sh sh-ring"></i>Ring</button>
-              <button data-kind="wedge"><i class="sh sh-ramp"></i>Ramp</button>
-              <button data-kind="plane"><i class="sh sh-floor"></i>Floor</button>
+            <div class="add-cols">
+              <div>
+                <div class="add-title">Shapes</div>
+                <div class="shape-grid">
+                  <button data-kind="box"><i class="sh sh-box"></i>Cube</button>
+                  <button data-kind="sphere"><i class="sh sh-ball"></i>Ball</button>
+                  <button data-kind="cylinder"><i class="sh sh-cyl"></i>Cylinder</button>
+                  <button data-kind="cone"><i class="sh sh-cone"></i>Cone</button>
+                  <button data-kind="capsule"><i class="sh sh-cap"></i>Capsule</button>
+                  <button data-kind="torus"><i class="sh sh-ring"></i>Ring</button>
+                  <button data-kind="wedge"><i class="sh sh-ramp"></i>Ramp</button>
+                  <button data-kind="plane"><i class="sh sh-floor"></i>Floor</button>
+                </div>
+                <div class="add-title">World</div>
+                <div class="shape-grid">
+                  <button data-kind="terrain"><span class="ico">⛰️</span>Terrain</button>
+                  <button data-kind="light"><span class="ico">💡</span>Light</button>
+                  <button data-kind="spot"><span class="ico">🔦</span>Spotlight</button>
+                  <button data-kind="text"><span class="ico">🔤</span>Text</button>
+                </div>
+              </div>
+              <div>
+                <div class="add-title">Smart objects — already scripted</div>
+                <div class="shape-grid smart" id="smart-grid"></div>
+                <div class="add-title">Models</div>
+                <button class="wide" data-act="workshop">🧩 Model Workshop — free 3D models</button>
+                <button class="wide" data-act="upload">📁 Upload my own .glb / .obj</button>
+              </div>
             </div>
-            <div class="add-title">Models</div>
-            <button class="wide" data-act="workshop">🧩 Model Workshop — download free models</button>
-            <button class="wide" data-act="upload">📁 Upload my own .glb / .obj</button>
           </div>
         </div>
       </div>
@@ -179,8 +251,8 @@
       <div class="help-col">
         <h3>1 · Put things in the world</h3>
         <p>Press the big <b>+</b> under the 3D view to add shapes, or open the <b>🧩 Model Workshop</b> to download real models — they arrive with animations you can play.</p>
-        <p>Click an object in the 3D view to select it, then drag the arrows to move it. <kbd>W</kbd> move · <kbd>E</kbd> turn · <kbd>R</kbd> size · <kbd>F</kbd> focus · <kbd>Del</kbd> delete · <kbd>⌘D</kbd> duplicate.</p>
-        <h3>2 · Give it code</h3>
+        <p>Click an object to select it and just drag it across the ground (hold <kbd>⇧</kbd> to lift it). Right-click for a menu. <kbd>W</kbd> move · <kbd>E</kbd> turn · <kbd>R</kbd> size · <kbd>G</kbd> snap · <kbd>F</kbd> focus · <kbd>⌘Z</kbd> undo · <kbd>⌘D</kbd> duplicate · <kbd>Del</kbd> delete.</p><p>Fly around: hold the right mouse button to look, and use <kbd>W A S D</kbd> (<kbd>Q</kbd>/<kbd>E</kbd> down/up, <kbd>⇧</kbd> fast) while holding it.</p>
+        <h3>Smart objects</h3><p>The <b>+</b> menu also has ready-made objects with code inside: a drivable <b>Player</b>, <b>Coin</b>, chasing <b>Enemy</b>, <b>Moving platform</b>, <b>Spawner</b>, <b>Goal</b>, <b>Button</b>, <b>Lamp</b>, <b>Sign</b>. Add them, press ▶, then open their code to see how they work.</p><h3>Terrain maker</h3><p>Add <b>Terrain</b> from the + menu (World). The <b>Sculpt</b> tool turns on: drag on the ground to raise it, hold <kbd>⇧</kbd> to dig, use Smooth / Flatten to tidy up, and Paint to color paths, sand, snow or lava. Objects fall, roll and walk on it for real. <b>🎲 New hills</b> rerolls the shape.</p><h3>2 · Give it code</h3>
         <p>Every object has its own scripts, just like sprites in Scratch. Drag blocks from the categories on the left. Scripts start with a hat block: <span class="pill events">when ▶ clicked</span> <span class="pill events">when key pressed</span> <span class="pill events">when this touches…</span></p>
         <h3>3 · Press ▶</h3>
         <p>Physics switches on and the scripts run. Press <b>■</b> and everything snaps back to where you left it.</p>
@@ -201,7 +273,16 @@
     </div>
   </div>
 </div>
+<div id="ctx-menu" class="ctx-menu hidden">
+  <div class="ctx-title"></div>
+  <button data-act="code">Edit code</button><button data-act="settings">Settings</button><hr>
+  <button data-act="dup">Duplicate <kbd>⌘D</kbd></button><button data-act="rename">Rename…</button><button data-act="hide">Show / hide</button><hr>
+  <button data-act="focus">Focus camera <kbd>F</kbd></button><button data-act="drop">Drop onto ground</button><button data-act="reset">Reset rotation</button><hr>
+  <button data-act="del" class="danger">Delete <kbd>⌫</kbd></button>
+</div>
+<div class="modal hidden" id="prompt-modal"><div class="modal-box small"><div class="modal-head"><h2 id="prompt-title">Name</h2></div><div class="prompt-body"><input id="prompt-input" /><div class="btn-row"><button id="prompt-cancel" class="small-btn">Cancel</button><button id="prompt-ok" class="small-btn primary">OK</button></div></div></div></div>
 <div id="toast" class="toast hidden"></div>
+<input type="file" id="file-sound" accept="audio/*,.mp3,.wav,.ogg,.m4a" hidden />
 <input type="file" id="file-model" accept=".glb,.gltf,.obj" hidden />
 <input type="file" id="file-project" accept=".bw3d,.json" hidden />
 

@@ -13,7 +13,8 @@ const PAL = {
   motion:['#4C97FF','#4280D7','#3373CC'], looks:['#9966FF','#855CD6','#774DCB'], sound:['#CF63CF','#C94FC9','#BD42BD'],
   events:['#FFBF00','#E6AC00','#CC9900'], control:['#FFAB19','#EC9C13','#CF8B17'], sensing:['#5CB1D6','#47A8D1','#2E8EB8'],
   operators:['#59C059','#46B946','#389438'], variables:['#FF8C1A','#FF8000','#DB6E00'],
-  physics:['#12B886','#0CA678','#099268'], camera:['#F26A5B','#E8503F','#D9432F']
+  physics:['#12B886','#0CA678','#099268'], camera:['#F26A5B','#E8503F','#D9432F'],
+  effects:['#FF6EB4','#F55AA2','#E04A91'], custom:['#FF6680','#FF4D6A','#FF3355']
 };
 const C = {}; for (const k in PAL) C[k] = PAL[k][0];
 window.BW_COLORS = C;
@@ -40,8 +41,16 @@ window.BW_THEME = Blockly.Theme.defineTheme('blockworld', {
 window.BW_hooks = {
   objectNames: () => [],                // names of objects in the project
   animationNames: () => [],             // clips on the object being edited
-  variableNames: () => []
+  listNames: () => [],                  // project lists
+  soundNames: () => [],                 // uploaded sounds
+  procNames: () => [],                  // "define" blocks in the current workspace
+  textureNames: () => []
 };
+const listOpts = () => { const n = window.BW_hooks.listNames(); return n.length ? n.map(x => [x, x]) : [['(make a list first)', '']]; };
+const soundOpts = () => [['jump','jump'],['coin','coin'],['hit','hit'],['boom','boom'],['laser','laser'],['pop','pop'],['powerup','powerup'],['lose','lose'],['win','win'],['click','click'],['whoosh','whoosh'],['splash','splash']].concat(window.BW_hooks.soundNames().map(x => [x, x]));
+const procOpts = () => { const n = window.BW_hooks.procNames(); return n.length ? n.map(x => [x, x]) : [['(define a block first)', '']]; };
+const texOpts = () => [['none','none']].concat(window.BW_hooks.textureNames().map(x => [x, x]));
+const INDEX_OPTS = [['1','1'],['last','last'],['random','random']];
 const objOpts = (extra=[]) => () => {
   const names = window.BW_hooks.objectNames();
   const list = extra.concat(names.map(n => [n, n]));
@@ -53,6 +62,28 @@ const animOpts = () => () => {
 };
 const KEYS = [['space','space'],['up arrow','up arrow'],['down arrow','down arrow'],['left arrow','left arrow'],['right arrow','right arrow'],['any','any'],['enter','enter'],['shift','shift']]
   .concat('abcdefghijklmnopqrstuvwxyz0123456789'.split('').map(k => [k, k]));
+
+/* ---------- colour field (Blockly 13 moved FieldColour to a plugin; this is a tiny native one) ---------- */
+class FieldColour extends Blockly.Field {
+  constructor(value, validator){ super(value || '#ff5555', validator); this.SERIALIZABLE = true; this.CURSOR = 'pointer'; }
+  static fromJson(o){ return new this(o.colour); }
+  initView(){ this.createBorderRect_(); this.borderRect_.setAttribute('rx', 8); this.borderRect_.setAttribute('ry', 8); this.size_ = new Blockly.utils.Size(34, 24); }
+  applyColour(){ if (this.borderRect_){ this.borderRect_.style.fill = this.getValue(); this.borderRect_.style.stroke = 'rgba(0,0,0,.25)'; this.borderRect_.style.fillOpacity = '1'; } }
+  render_(){ this.borderRect_.setAttribute('width', 34); this.borderRect_.setAttribute('height', 24); this.applyColour(); }
+  doClassValidation_(v){ if (typeof v !== 'string') return null; if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase(); const c = document.createElement('canvas').getContext('2d'); c.fillStyle = v; return /^#[0-9a-f]{6}$/i.test(c.fillStyle) ? c.fillStyle : null; }
+  doValueUpdate_(v){ super.doValueUpdate_(v); this.applyColour(); }
+  getText_(){ return this.getValue(); }
+  showEditor_(){
+    const input = document.createElement('input'); input.type = 'color'; input.value = this.getValue();
+    const r = this.fieldGroup_.getBoundingClientRect(); Object.assign(input.style, { position: 'fixed', left: r.left + 'px', top: r.bottom + 'px', width: '1px', height: '1px', opacity: '0', border: '0', padding: '0' });
+    document.body.appendChild(input);
+    input.addEventListener('input', () => this.setValue(input.value));
+    const done = () => { setTimeout(() => input.remove(), 300); };
+    input.addEventListener('change', done); input.addEventListener('blur', done);
+    input.click();
+  }
+}
+Blockly.fieldRegistry.register('field_colour', FieldColour);
 
 /* ---------- block definition helper ----------
    def(type, category, message, args, {kind})   kind: 'stmt' | 'hat' | 'rep' | 'bool' | 'cap'
@@ -210,7 +241,51 @@ def('data_changevariableby', 'variables', 'change %1 by %2', [{type:'field_varia
 def('data_showvariable', 'variables', 'show variable %1', [{type:'field_variable', name:'VAR', variable:'my variable'}]);
 def('data_hidevariable', 'variables', 'hide variable %1', [{type:'field_variable', name:'VAR', variable:'my variable'}]);
 
+/* ===================== v2 additions ===================== */
+def('event_whentimer', 'events', 'when timer > %1', [num('V')], {kind:'hat'});
+def('motion_towards', 'motion', 'move towards %1 by %2', [dd('TARGET', objOpts()), num('V')]);
+def('motion_turntowards', 'motion', 'turn towards %1 by up to %2 degrees', [dd('TARGET', objOpts()), num('V')], {tip:'Smoothly rotates to face something — great for enemies'});
+def('motion_lookatxz', 'motion', 'point towards x: %1 z: %2', [num('X'), num('Z')]);
+def('looks_texture', 'looks', 'set texture to %1', [dd('T', texOpts)]);
+def('looks_settext', 'looks', 'set text to %1', [anyv('TEXT')], {tip:'For Text objects'});
+def('looks_light', 'looks', 'set light %1 to %2', [dd('W',[['color','color'],['brightness','brightness'],['range','range']]), anyv('V')], {tip:'For Light objects'});
+def('looks_lighton', 'looks', 'turn light %1', [dd('ON',[['on','on'],['off','off']])]);
+def('fx_particles', 'effects', 'burst %1 particles color %2 speed %3', [num('N'), {type:'field_colour', name:'COLOR', colour:'#ffcc00'}, num('S')]);
+def('fx_particlesat', 'effects', 'burst %1 particles at x: %2 y: %3 z: %4 color %5', [num('N'), num('X'), num('Y'), num('Z'), anyv('COLOR')]);
+def('fx_flash', 'effects', 'flash screen %1 for %2 seconds', [{type:'field_colour', name:'COLOR', colour:'#ffffff'}, num('SECS')]);
+def('fx_speed', 'effects', 'set game speed to %1 %', [num('V')], {tip:'50 = slow motion, 200 = double speed'});
+def('fx_hudtext', 'effects', 'show text %1 at %2 of screen', [anyv('TEXT'), dd('POS',[['top','top'],['bottom','bottom']])]);
+def('fx_hudclear', 'effects', 'clear screen text', []);
+def('fx_sky', 'effects', 'set sky to %1', [dd('S',[['day/night (by time)','auto'],['space','space'],['flat color','custom']])]);
+def('fx_time', 'effects', 'set time of day to %1', [num('V')], {tip:'0–24 hours: 6 sunrise, 12 noon, 18 sunset'});
+def('physics_collide', 'physics', 'turn collisions %1', [dd('ON',[['on','on'],['off','off']])], {tip:'Off = ghost: still touches things, but passes through them'});
+def('physics_explode', 'physics', 'explode with power %1 radius %2', [num('P'), num('R')], {tip:'Pushes everything nearby away'});
+def('sensing_infront', 'sensing', 'object in front within %1', [num('D')], {kind:'rep', out:'String', tip:'Name of the first object ahead, or nothing'});
+def('sensing_hitfront', 'sensing', 'something in front within %1 ?', [num('D')], {kind:'bool'});
+def('sensing_height', 'sensing', 'height above ground', [], {kind:'rep', out:'Number'});
+def('sensing_groundat', 'sensing', 'ground height at x: %1 z: %2', [num('X'), num('Z')], {kind:'rep', out:'Number', tip:'Works on terrain too — handy for spawning things on hills'});
+def('control_spawn', 'control', 'spawn %1 at x: %2 y: %3 z: %4', [dd('TARGET', objOpts([['myself','__self__']])), num('X'), num('Y'), num('Z')], {tip:'Creates a clone and puts it there'});
+def('custom_define', 'custom', 'define %1', [txt('NAME','my block')], {kind:'hat'});
+def('custom_call', 'custom', 'run %1', [dd('NAME', procOpts)]);
+def('custom_callarg', 'custom', 'run %1 with %2', [dd('NAME', procOpts), anyv('V')]);
+def('custom_arg', 'custom', 'argument', [], {kind:'rep'});
+def('data_list', 'variables', '%1', [dd('LIST', listOpts)], {kind:'rep', out:'String'});
+def('data_listadd', 'variables', 'add %1 to %2', [anyv('V'), dd('LIST', listOpts)]);
+def('data_listdelete', 'variables', 'delete %1 of %2', [anyv('I'), dd('LIST', listOpts)]);
+def('data_listdeleteall', 'variables', 'delete all of %1', [dd('LIST', listOpts)]);
+def('data_listinsert', 'variables', 'insert %1 at %2 of %3', [anyv('V'), anyv('I'), dd('LIST', listOpts)]);
+def('data_listreplace', 'variables', 'replace item %1 of %2 with %3', [anyv('I'), dd('LIST', listOpts), anyv('V')]);
+def('data_listitem', 'variables', 'item %1 of %2', [anyv('I'), dd('LIST', listOpts)], {kind:'rep'});
+def('data_listindex', 'variables', 'item # of %1 in %2', [anyv('V'), dd('LIST', listOpts)], {kind:'rep', out:'Number'});
+def('data_listlength', 'variables', 'length of %1', [dd('LIST', listOpts)], {kind:'rep', out:'Number'});
+def('data_listcontains', 'variables', '%1 contains %2 ?', [dd('LIST', listOpts), anyv('V')], {kind:'bool'});
+def('data_listshow', 'variables', 'show list %1', [dd('LIST', listOpts)]);
+def('data_listhide', 'variables', 'hide list %1', [dd('LIST', listOpts)]);
+def('sound_stopall', 'sound', 'stop all sounds', []);
 Blockly.defineBlocksWithJsonArray(defs);
+// dynamic sound list (built-ins + uploaded files)
+Blockly.Blocks['sound_play'].init = function(){ this.jsonInit({ type:'sound_play', message0:'play sound %1', args0:[{ type:'field_dropdown', name:'NAME', options: soundOpts }], previousStatement:null, nextStatement:null, style:'sound_blocks', inputsInline:true }); };
+Blockly.Blocks['motion_gotoobj'].init = function(){ this.jsonInit({ type:'motion_gotoobj', message0:'go to %1', args0:[{ type:'field_dropdown', name:'TARGET', options: objOpts([['random position','__random__'],['mouse position','__mouse__']]) }], previousStatement:null, nextStatement:null, style:'motion_blocks', inputsInline:true }); };
 // Scratch-style reporters: round; booleans: hexagon (zelos does this from output checks)
 Blockly.Blocks['data_variable'].customContextMenu = null;
 
@@ -238,33 +313,42 @@ window.BW_TOOLBOX = { kind:'categoryToolbox', contents: [
     b('motion_point',{DIR:0}), b('motion_pointtowards'), sep(),
     b('motion_goto',{X:0,Y:1,Z:0}), b('motion_gotoobj'), b('motion_glide',{SECS:1,X:0,Y:1,Z:0}), b('motion_glideobj',{SECS:1}), sep(),
     b('motion_changeby',{V:1}), b('motion_setaxis',{V:0}), b('motion_moveaxis',{V:1}), sep(),
+    b('motion_towards',{V:0.1}), b('motion_turntowards',{V:3}), b('motion_lookatxz',{X:0,Z:0}), sep(),
     b('motion_setrot',{X:0,Y:0,Z:0}), b('motion_tilt',{DEG:15}), sep(),
     b('motion_xpos'), b('motion_ypos'), b('motion_zpos'), b('motion_dir')
   ]),
   cat('Looks', C.looks, [
     b('looks_sayfor',{TEXT:'Hello!',SECS:2}), b('looks_say',{TEXT:'Hello!'}), b('looks_bigtext',{TEXT:'You win!',SECS:2}), sep(),
     b('looks_show'), b('looks_hide'), sep(),
-    b('looks_setcolor'), b('looks_setcolorval',{COLOR:'red'}), b('looks_material'), b('looks_setopacity',{V:50}), sep(),
+    b('looks_setcolor'), b('looks_setcolorval',{COLOR:'red'}), b('looks_texture'), b('looks_material'), b('looks_setopacity',{V:50}), sep(),
+    b('looks_settext',{TEXT:'Hello!'}), b('looks_light',{V:'#ff8800'}), b('looks_lighton'), sep(),
     b('looks_setsize',{SIZE:100}), b('looks_changesize',{DELTA:10}), b('looks_size'), sep(),
     b('looks_anim'), b('looks_animonce'), b('looks_animstop'), b('looks_animspeed',{V:100})
   ]),
-  cat('Sound', C.sound, [ b('sound_play'), b('sound_note',{NOTE:60,BEATS:0.5}), b('sound_volume',{V:100}) ]),
+  cat('Sound', C.sound, [ b('sound_play'), b('sound_note',{NOTE:60,BEATS:0.5}), b('sound_volume',{V:100}), b('sound_stopall'), { kind:'button', text:'Add a sound file', callbackKey:'ADD_SOUND' } ]),
   cat('Events', C.events, [
     b('event_whenflag'), b('event_whenkey'), b('event_whenclicked'), b('event_whentouch'), sep(),
-    b('event_whenbroadcast'), b('event_broadcast',{MSG:'message1'}), b('event_broadcastwait',{MSG:'message1'})
+    b('event_whenbroadcast'), b('event_broadcast',{MSG:'message1'}), b('event_broadcastwait',{MSG:'message1'}), sep(),
+    b('event_whentimer',{V:10})
   ]),
   cat('Control', C.control, [
     b('control_wait',{SECS:1}), b('control_repeat',{TIMES:10}), b('control_forever'), sep(),
     b('control_if'), b('control_ifelse'), b('control_waituntil'), b('control_repeatuntil'), sep(),
     b('control_stop'), sep(),
-    b('control_startclone'), b('control_clone'), b('control_deleteclone'), b('control_deleteobj')
+    b('control_startclone'), b('control_clone'), b('control_spawn',{X:0,Y:3,Z:0}), b('control_deleteclone'), b('control_deleteobj')
   ]),
   cat('Physics', C.physics, [
     b('physics_enable'), b('physics_type'), sep(),
     b('physics_pushdir',{V:5}), b('physics_jump',{V:6}), b('physics_push',{X:0,Y:5,Z:0}), sep(),
     b('physics_setvel',{X:0,Y:0,Z:0}), b('physics_setvelaxis',{V:0}), b('physics_stop'), sep(),
     b('physics_mass',{V:1}), b('physics_bounce',{V:0.5}), b('physics_friction',{V:0.4}), b('physics_gravity',{V:9.8}), sep(),
+    b('physics_collide'), b('physics_explode',{P:8,R:6}), sep(),
     b('physics_vel'), b('physics_onground')
+  ]),
+  cat('Effects', C.effects, [
+    b('fx_particles',{N:40,S:4}), b('fx_particlesat',{N:40,X:0,Y:2,Z:0,COLOR:'#ffcc00'}), b('fx_flash',{SECS:0.3}), sep(),
+    b('fx_hudtext',{TEXT:'Level 1'}), b('fx_hudclear'), sep(),
+    b('fx_speed',{V:100}), b('fx_sky'), b('fx_time',{V:18})
   ]),
   cat('Camera', C.camera, [
     b('camera_follow',{DIST:6,H:3}), b('camera_top',{H:15}), b('camera_firstperson'), b('camera_offset',{X:0,Y:5,Z:8}), sep(),
@@ -275,6 +359,7 @@ window.BW_TOOLBOX = { kind:'categoryToolbox', contents: [
     b('sensing_touching'), b('sensing_distance'), b('sensing_of'), sep(),
     b('sensing_keypressed'), b('sensing_mousedown'), b('sensing_mouse'), sep(),
     b('sensing_timer'), b('sensing_resettimer'), sep(),
+    b('sensing_infront',{D:2}), b('sensing_hitfront',{D:2}), b('sensing_height'), b('sensing_groundat',{X:0,Z:0}), sep(),
     b('sensing_exists'), b('sensing_count')
   ]),
   cat('Operators', C.operators, [
@@ -285,7 +370,8 @@ window.BW_TOOLBOX = { kind:'categoryToolbox', contents: [
     b('op_join',{A:'apple ',B:'banana'}), b('op_letter',{N:1,S:'apple'}), b('op_length',{S:'apple'}), sep(),
     b('op_mod',{A:'',B:''}), b('op_round',{A:''}), b('op_math',{A:''})
   ]),
-  cat('Variables', C.variables, [], { custom:'VARIABLE' })
+  cat('Variables', C.variables, [], { custom:'VARIABLE' }),
+  cat('My Blocks', C.custom, [ b('custom_define'), b('custom_call'), b('custom_callarg',{V:10}), b('custom_arg') ])
 ]};
 // text shadows for operator inputs that take numbers: use math_number when value is ''
 for (const c of window.BW_TOOLBOX.contents){
@@ -312,6 +398,27 @@ window.BW_variableFlyout = function(workspace){
     contents.push({ kind:'block', type:'data_showvariable', fields:{ VAR:first } });
     contents.push({ kind:'block', type:'data_hidevariable', fields:{ VAR:first } });
   }
+  contents.push({ kind:'sep', gap:28 });
+  contents.push({ kind:'button', text:'Make a List', callbackKey:'CREATE_LIST' });
+  const lists = window.BW_hooks.listNames();
+  if (lists.length){
+    const L = { LIST: lists[0] }, sh = v => ({ shadow:{ type: typeof v === 'number' ? 'math_number' : 'text', fields: typeof v === 'number' ? { NUM:v } : { TEXT:v } } });
+    for (const l of lists) contents.push({ kind:'block', type:'data_list', fields:{ LIST:l } });
+    contents.push({ kind:'sep', gap:24 });
+    contents.push({ kind:'block', type:'data_listadd', fields:L, inputs:{ V:sh('thing') } });
+    contents.push({ kind:'block', type:'data_listdelete', fields:L, inputs:{ I:sh(1) } });
+    contents.push({ kind:'block', type:'data_listdeleteall', fields:L });
+    contents.push({ kind:'block', type:'data_listinsert', fields:L, inputs:{ V:sh('thing'), I:sh(1) } });
+    contents.push({ kind:'block', type:'data_listreplace', fields:L, inputs:{ I:sh(1), V:sh('thing') } });
+    contents.push({ kind:'sep', gap:24 });
+    contents.push({ kind:'block', type:'data_listitem', fields:L, inputs:{ I:sh(1) } });
+    contents.push({ kind:'block', type:'data_listindex', fields:L, inputs:{ V:sh('thing') } });
+    contents.push({ kind:'block', type:'data_listlength', fields:L });
+    contents.push({ kind:'block', type:'data_listcontains', fields:L, inputs:{ V:sh('thing') } });
+    contents.push({ kind:'sep', gap:24 });
+    contents.push({ kind:'block', type:'data_listshow', fields:L });
+    contents.push({ kind:'block', type:'data_listhide', fields:L });
+  }
   return contents;
 };
 
@@ -337,7 +444,8 @@ const REP = (type, fn) => G.forBlock[type] = blk => [fn(blk), ATOMIC];
 // hats: they are compiled by the runtime (engine.js) — the generator only emits the body of the chain
 const HATS = { event_whenflag: b=>({hat:'flag'}), event_whenkey: b=>({hat:'key', key:b.getFieldValue('KEY')}),
   event_whenclicked: b=>({hat:'click'}), event_whentouch: b=>({hat:'touch', target:b.getFieldValue('TARGET')}),
-  event_whenbroadcast: b=>({hat:'broadcast', msg:String(b.getFieldValue('MSG')).toLowerCase()}), control_startclone: b=>({hat:'clone'}) };
+  event_whenbroadcast: b=>({hat:'broadcast', msg:String(b.getFieldValue('MSG')).toLowerCase()}), control_startclone: b=>({hat:'clone'}),
+  event_whentimer: b=>({hat:'timer', value: Number(G.valueToCode(b, 'V', NONE)) || 0}), custom_define: b=>({hat:'define', name:String(b.getFieldValue('NAME')).trim()}) };
 window.BW_HATS = HATS;
 for (const t in HATS) S(t, () => '');
 
@@ -457,6 +565,46 @@ S('data_hidevariable', b => 'V.show(' + varName(b) + ',false);\n');
 // built-in shadows
 G.forBlock['math_number'] = b => { const v = Number(b.getFieldValue('NUM')); return [isNaN(v) ? '0' : String(v), ATOMIC]; };
 G.forBlock['text'] = b => [str(b.getFieldValue('TEXT')), ATOMIC];
+
+// v2 generators
+S('motion_towards', b => 'self.moveTowards(' + field(b,'TARGET') + ',' + n(b,'V') + ');\n');
+S('motion_turntowards', b => 'self.turnTowards(' + field(b,'TARGET') + ',' + n(b,'V') + ');\n');
+S('motion_lookatxz', b => 'self.lookAtPoint(' + n(b,'X') + ',' + n(b,'Z') + ');\n');
+S('looks_texture', b => 'self.setTexture(' + field(b,'T') + ');\n');
+S('looks_settext', b => 'self.setText(' + val(b,'TEXT','""') + ');\n');
+S('looks_light', b => 'self.setLight(' + field(b,'W') + ',' + val(b,'V','0') + ');\n');
+S('looks_lighton', b => 'self.setLight("on",' + (b.getFieldValue('ON') === 'on') + ');\n');
+S('fx_particles', b => 'R.fx(self,' + field(b,'COLOR') + ',' + n(b,'N') + ',' + n(b,'S') + ');\n');
+S('fx_particlesat', b => 'R.fxAt(' + n(b,'X') + ',' + n(b,'Y') + ',' + n(b,'Z') + ',' + val(b,'COLOR','"#fff"') + ',' + n(b,'N') + ',4);\n');
+S('fx_flash', b => 'yield* R.flash(' + field(b,'COLOR') + ',' + n(b,'SECS') + ');\n');
+S('fx_speed', b => 'R.setSpeed(' + n(b,'V') + ');\n');
+S('fx_hudtext', b => 'R.hudText(' + field(b,'POS') + ',' + val(b,'TEXT','""') + ');\n');
+S('fx_hudclear', b => 'R.hudText("top","");R.hudText("bottom","");\n');
+S('fx_sky', b => 'R.setSky(' + field(b,'S') + ');\n');
+S('fx_time', b => 'R.setSky(null,' + n(b,'V') + ');\n');
+S('physics_collide', b => 'self.setCollide(' + (b.getFieldValue('ON') === 'on') + ');\n');
+S('physics_explode', b => 'self.explode(' + n(b,'P') + ',' + n(b,'R') + ');\n');
+REP('sensing_infront', b => '((self.rayHit(' + n(b,'D') + ')||{name:""}).name)');
+G.forBlock['sensing_hitfront'] = b => ['!!self.rayHit(' + n(b,'D') + ')', ATOMIC];
+REP('sensing_height', b => 'self.heightAboveGround()');
+REP('sensing_groundat', b => 'R.e.groundHeightAt(' + n(b,'X') + ',' + n(b,'Z') + ')');
+S('control_spawn', b => 'R.spawn(self,' + field(b,'TARGET') + ',' + n(b,'X') + ',' + n(b,'Y') + ',' + n(b,'Z') + ');\n');
+S('custom_call', b => 'yield* R.callProc(self,' + field(b,'NAME') + ');\n');
+S('custom_callarg', b => 'yield* R.callProc(self,' + field(b,'NAME') + ',' + val(b,'V','0') + ');\n');
+REP('custom_arg', b => '(_arg===undefined?"":_arg)');
+REP('data_list', b => 'L.join(' + field(b,'LIST') + ')');
+S('data_listadd', b => 'L.add(' + field(b,'LIST') + ',' + val(b,'V','""') + ');\n');
+S('data_listdelete', b => 'L.del(' + field(b,'LIST') + ',' + val(b,'I','1') + ');\n');
+S('data_listdeleteall', b => 'L.del(' + field(b,'LIST') + ',"all");\n');
+S('data_listinsert', b => 'L.insert(' + field(b,'LIST') + ',' + val(b,'I','1') + ',' + val(b,'V','""') + ');\n');
+S('data_listreplace', b => 'L.replace(' + field(b,'LIST') + ',' + val(b,'I','1') + ',' + val(b,'V','""') + ');\n');
+REP('data_listitem', b => 'L.item(' + field(b,'LIST') + ',' + val(b,'I','1') + ')');
+REP('data_listindex', b => 'L.indexOf(' + field(b,'LIST') + ',' + val(b,'V','""') + ')');
+REP('data_listlength', b => 'L.length(' + field(b,'LIST') + ')');
+G.forBlock['data_listcontains'] = b => ['L.contains(' + field(b,'LIST') + ',' + val(b,'V','""') + ')', ATOMIC];
+S('data_listshow', b => 'L.show(' + field(b,'LIST') + ',true);\n');
+S('data_listhide', b => 'L.show(' + field(b,'LIST') + ',false);\n');
+S('sound_stopall', b => 'R.stopSounds();\n');
 
 /* Compile every script in a workspace → [{hat, ..., code}] */
 window.BW_compileWorkspace = function(workspace){

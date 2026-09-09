@@ -1,39 +1,44 @@
 # BlockWorld 3D Studio
 
-Scratch-style block coding for real 3D games. Drag blocks, press ▶, and your
-objects move, fall, bounce, collide, animate and cast soft shadows.
+Scratch-style block coding for real 3D games. Drag blocks, press ▶, and your objects
+move, fall, bounce, collide, animate and cast shadows — then export a single `.html`
+you can send to anyone.
 
 ```
 npm install
 npm start          # → http://localhost:4770
 ```
 
-## What's inside
-- **Editor** (`public/`) — Blockly (Zelos renderer = Scratch-look blocks), one script
-  workspace per object, 3D viewport with move/rotate/scale gizmo, object tiles, an
-  Object settings tab and a Stage tab (sky, gravity, sun, fog).
-- **Engine** (`public/js/engine.js`) — Three.js renderer (shadow maps, ACES tone
-  mapping, fog) + cannon-es rigid-body physics + a Scratch-like green-thread runtime.
-  Every hat block becomes a generator function; loops yield once per frame so all
-  scripts run in parallel exactly like Scratch.
-- **Blocks** (`public/js/blocks.js`) — Motion (x/y/z, turn, glide, point towards),
-  Looks (say, color, material, transparency, size, model animations, big text),
-  Sound (synth sfx + notes), Events (flag, key held, click, touch, broadcast),
-  Control (wait/repeat/forever/if/clones/stop), Physics (push, jump, velocity,
-  mass, bounciness, friction, gravity, on ground?), Camera (follow / top-down /
-  first-person / offset / fixed / mouse look / zoom / shake), Sensing, Operators,
-  Variables (with on-screen monitors).
-- **Backend** (`server.js`) — Express. Saves projects to `projects/`, runs the
-  **Model Workshop**: downloads models only from trusted hosts (Khronos glTF sample
-  assets, optionally poly.pizza with `POLY_PIZZA_KEY=…`), caches them in
-  `cache/models/`, accepts your own `.glb/.gltf/.obj` uploads, and **exports** a
-  finished game as a single offline `.html` (engine bundled with esbuild, models
-  inlined as data URLs).
+## Editor
+- **Dark studio UI**, Scratch 3-tone blocks (Blockly Zelos renderer), one script workspace per object.
+- **3D viewport**: click to select, drag objects across the ground (⇧ = up/down), move/turn/size gizmo,
+  right-drag to look around + WASD to fly, scroll to zoom, right-click menu, snap, focus, drop-to-ground.
+- **Undo / redo** for everything in the scene (⌘Z / ⇧⌘Z). Scripts have Blockly's own undo.
+- **Object tiles** are live 3D thumbnails; the Stage tile is a live render of the scene.
+- **Terrain maker**: add a Terrain, then sculpt with Raise / Lower / Smooth / Flatten brushes and paint
+  colors on it. Sculpted terrain is saved with the project and drives a real physics heightfield.
+- **World settings**: time-of-day sky (sunrise → noon → sunset → stars), space, or flat color; sun,
+  ambient, fog, gravity.
+- **Objects**: cube, ball, cylinder, cone, capsule, ring, ramp, floor, terrain, point light, spotlight,
+  3D text, and models from the Workshop. 15 procedural textures (grass, brick, wood, lava, water…).
+- **Smart objects** (already scripted): Player, Coin, Enemy, Moving platform, Ball spawner, Goal, Button, Lamp, Sign.
+- **Model Workshop**: free models from trusted sources only (Khronos glTF samples; poly.pizza with
+  `POLY_PIZZA_KEY=…`), downloaded and cached by the server; upload your own `.glb/.obj`; upload sounds.
+- **Saves**: autosaved draft + named projects in the browser (localStorage) and on the server (`projects/`).
+- **Export** (File → Export playable game): one offline `.html` — engine bundled with esbuild, models and
+  sounds inlined.
 
-## Keys in the editor
-`W` move · `E` rotate · `R` scale · `F` focus · `Del` delete · `⌘D` duplicate · `⌘S` save
-Left-drag orbits, right-drag pans, scroll zooms.
+## Blocks
+Motion (steps, turn, glide, towards, look at) · Looks (say, color, texture, material, transparency, size,
+model animations, text, lights, big text) · Sound (sfx, notes, uploaded files) · Events (flag, key held,
+click, touch, broadcast, timer) · Control (wait, loops, if, clones, spawn, stop) · Physics (push, jump,
+velocity, mass, bounce, friction, gravity, collisions on/off, explode, on ground?) · Effects (particles,
+flash, HUD text, game speed, sky, time of day) · Camera (follow, top-down, first person, offset, fixed,
+mouse look, zoom, shake) · Sensing (touching, distance, raycast in front, height above ground, ground height
+at x/z, keys, mouse, timer) · Operators · Variables & Lists (with on-screen monitors) · My Blocks
+(define / run with argument).
 
-## Examples
-File → Examples: **Coin Collector** (clones, variables, touch events),
-**Bouncy Balls** (physics + random colors), **Dodge the Blocks** (spawner + game over).
+## Layout
+`server.js` backend · `public/js/engine.js` renderer/physics/runtime · `public/js/blocks.js` blocks +
+generators · `public/js/app.js` editor · `public/js/examples.js` smart objects + examples ·
+`public/js/textures.js` procedural textures · `public/js/player.js` exported-game entry.

@@ -163,7 +163,7 @@ app.get('/api/workshop/thumb', async (req, res) => {
 // User uploads (their own .glb/.gltf/.obj) — raw body, stored in the cache.
 app.post('/api/workshop/upload', express.raw({ type: '*/*', limit: '120mb' }), (req, res) => {
   const name = String(req.query.name || 'model.glb');
-  const ext = (name.match(/\.(glb|gltf|obj|fbx)$/i) || [, 'glb'])[1].toLowerCase();
+  const ext = (name.match(/\.(glb|gltf|obj|fbx|mp3|wav|ogg|m4a|png|jpg)$/i) || [, 'glb'])[1].toLowerCase();
   const hash = crypto.createHash('sha1').update(req.body).digest('hex').slice(0, 16);
   const file = hash + '.' + ext;
   fs.writeFileSync(path.join(MODEL_CACHE, file), req.body);
@@ -185,7 +185,7 @@ app.post('/api/export', async (req, res) => {
   try {
     const { project, scripts } = req.body;
     if (!project) throw new Error('no project');
-    if (!bundleCache) bundleCache = await buildRuntimeBundle();
+    if (!bundleCache || process.env.NODE_ENV !== 'production') bundleCache = await buildRuntimeBundle();
     const proj = JSON.parse(JSON.stringify(project));
     // inline models as data URLs so the game plays offline
     for (const o of proj.objects || []){
@@ -196,11 +196,14 @@ app.post('/api/export', async (req, res) => {
       delete o.workspace;
     }
     if (proj.stage) delete proj.stage.workspace;
+    for (const snd of proj.sounds || []){
+      if (snd.url && snd.url.startsWith('/models/')){ const f = path.join(MODEL_CACHE, path.basename(snd.url)); if (fs.existsSync(f)){ const ext = path.extname(f).slice(1); const mime = { mp3:'audio/mpeg', wav:'audio/wav', ogg:'audio/ogg', m4a:'audio/mp4' }[ext] || 'audio/mpeg'; snd.url = 'data:' + mime + ';base64,' + fs.readFileSync(f).toString('base64'); } }
+    }
     const safe = s => s.replace(/<\/script/gi, '<\\/script');
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${String(proj.name || 'Game').replace(/[<>&]/g, '')}</title>
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden;font-family:Helvetica,Arial,sans-serif}#view{width:100%;height:100%;display:block;outline:none}#hud{position:absolute;inset:0;pointer-events:none}
 .bw-monitors{position:absolute;left:12px;top:12px;display:flex;flex-direction:column;gap:6px}.bw-monitor{display:flex;align-items:center;gap:8px;background:#e6f0ff;border:1px solid #c3d4f5;border-radius:6px;padding:3px 3px 3px 8px;font-size:14px;font-weight:600;color:#575e75}.bw-monitor .v{background:#4c97ff;color:#fff;border-radius:4px;padding:2px 8px;min-width:36px;text-align:center}
-.bw-bigtext{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9vmin;font-weight:900;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.5),0 0 3px #000;text-align:center;padding:20px}
+.bw-bigtext{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9vmin;font-weight:900;color:#fff;text-shadow:0 4px 18px rgba(0,0,0,.5),0 0 3px #000;text-align:center;padding:20px}.bw-flash{position:absolute;inset:0;opacity:0;pointer-events:none}.bw-hudtext{position:absolute;left:0;right:0;text-align:center;color:#fff;font-weight:800;font-size:3.5vmin;text-shadow:0 2px 8px rgba(0,0,0,.6);padding:14px}.bw-hudtext.top{top:0}.bw-hudtext.bottom{bottom:0}.bw-listmon{background:rgba(230,240,255,.95);border:1px solid #c3d4f5;border-radius:6px;font-size:13px;color:#575e75;min-width:130px;max-height:200px;overflow:auto}.bw-listmon .k{font-weight:700;padding:4px 8px;border-bottom:1px solid #c3d4f5;text-align:center}.bw-listmon .items div{display:flex;gap:6px;padding:2px 6px;align-items:center}.bw-listmon .items span{color:#8b90a5;min-width:14px;font-size:10px}.bw-listmon .items b{background:#ff8c1a;color:#fff;border-radius:4px;padding:1px 6px;font-weight:600;flex:1}
 #start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;gap:14px}#start h1{margin:0;font-size:8vmin}#start .b{background:#4cbb17;padding:14px 40px;border-radius:40px;font-size:24px;font-weight:700}
 #restart{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.85);border:0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer}#err{position:absolute;bottom:10px;left:10px;background:#c0392b;color:#fff;padding:6px 10px;border-radius:6px;display:none;font-size:12px}
 #credit{position:absolute;bottom:8px;right:10px;color:#fff;opacity:.5;font-size:11px}</style></head>
