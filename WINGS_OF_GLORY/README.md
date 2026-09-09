@@ -40,8 +40,13 @@ The HUD draws the seeker cone as a dashed wedge and fills a ring around the targ
 the lock survives a brief wobble instead of dropping instantly, and the game auto-selects whichever
 missile on the rails can actually take the shot you are lined up for.
 
+Every aircraft has a **best turn speed** shown on the flight panel and marked in green on the throttle
+bar. Sit on it and you turn hardest; run at full speed and you cannot follow anyone.
+
 **Combat assist** (Settings) is on by default: seekers are all-aspect and wide, missiles pull double
-G, and locks come quickly. Switch it to Realistic for rear-aspect-only heat seekers and true missile G.
+G, and locks come quickly. Switch it to Realistic for rear-aspect-only heat seekers and true missile G. Your missiles always
+reach further and steer harder than the enemy's, and a hard break turn with flares defeats an
+incoming shot — ignore one and it will usually hit you.
 
 ## Features
 - 55 aircraft across 7 nations (USA, Germany, USSR, Britain, Japan, France, Sweden), ranks I–VI:

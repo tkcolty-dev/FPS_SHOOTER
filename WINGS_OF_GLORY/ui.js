@@ -2,7 +2,7 @@
 (function(){
   const $=id=>document.getElementById(id);
   const SAVE_KEY='wingsOfGlory.save.v1';
-  const defaultProfile=()=>({ name:'Pilot', sl:1500, rp:0, level:1, xp:0, battles:0, wins:0, kills:0, owned:['p40','bf109','yak1','spit','a6m','d520'], researched:[], selected:'p40', nation:'usa', settings:{vol:0.8,music:true,control:'mouse',quality:2,assist:'easy'}, sandbox:true, lastMode:'air', lastMap:'random', lastSize:'8', lastDiff:'1' });
+  const defaultProfile=()=>({ name:'Pilot', sl:1500, rp:0, level:1, xp:0, battles:0, wins:0, kills:0, owned:['p40','bf109','yak1','spit','a6m','d520'], researched:[], selected:'p40', nation:'usa', settings:{vol:0.8,music:true,control:'mouse',quality:2,assist:'easy',arrows:'climb'}, sandbox:true, lastMode:'air', lastMap:'random', lastSize:'8', lastDiff:'1' });
   let prof = load(); let showcaseAnim=null; let currentNation=prof.nation||'usa';
   function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if (s&&s.owned) return Object.assign(defaultProfile(), s); }catch(e){} return defaultProfile(); }
   function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(prof)); }catch(e){} }
@@ -19,7 +19,7 @@
     const firstClick=()=>{ Audio2.ensure(); Audio2.music('menu'); document.removeEventListener('pointerdown',firstClick); document.removeEventListener('keydown',firstClick); };
     document.addEventListener('pointerdown',firstClick); document.addEventListener('keydown',firstClick);
   }
-  function applySettings(){ const s=prof.settings; Game.settings.control=s.control; Game.settings.quality=+s.quality; Game.settings.assist=s.assist||'easy'; Game.settings.name=prof.name; Audio2.setVolume(s.vol); Audio2.setMusic(s.music); }
+  function applySettings(){ const s=prof.settings; Game.settings.control=s.control; Game.settings.quality=+s.quality; Game.settings.assist=s.assist||'easy'; Game.settings.arrows=s.arrows||'climb'; Game.settings.name=prof.name; Audio2.setVolume(s.vol); Audio2.setMusic(s.music); }
   function refreshTop(){ $('uiSL').textContent=fmt(prof.sl); $('uiRP').textContent=fmt(prof.rp); $('uiLevel').textContent=prof.level; $('uiRecord').textContent=prof.wins+' / '+prof.battles; $('uiKills').textContent=prof.kills; }
 
   // ---------- nations & tree
@@ -31,7 +31,9 @@
       for (const p of planes.filter(x=>x.rank===r)){ const st=status(p); const c=document.createElement('div'); c.className='card'+(st==='locked'?' locked':'')+(p.id===prof.selected?' selected':''); c.dataset.id=p.id;
         c.innerHTML=`<canvas width="200" height="120"></canvas><div class="nm">${p.name}</div><div class="st"><span>${p.role}</span><span class="br">BR ${p.br}</span></div>`+(st==='owned'?'<span class="badge own">Owned</span>':st==='researched'?'<span class="badge res">Buy</span>':st==='available'?'<span class="badge">Research</span>':'');
         c.onclick=()=>{ Audio2.click(); selectPlane(p.id); }; col.appendChild(c);
-        Art.thumb(p.id, 140).then(sp=>{ const cv=c.querySelector('canvas'); cv.width=200; cv.height=110; const x=cv.getContext('2d'); const s=Math.min(186/sp.h, 100/sp.w); x.save(); x.translate(100,55); x.rotate(Math.PI/2); x.drawImage(sp.cv,-sp.w*s/2,-sp.h*s/2,sp.w*s,sp.h*s); x.restore(); }); } } }
+        Art.thumb(p.id, 200).then(sp=>{ const cv=c.querySelector('canvas'); cv.width=200; cv.height=110; const x=cv.getContext('2d');
+          const rel=0.45+0.55*Math.sqrt(p.size/48.5);       // bigger aircraft draw bigger
+          const s=Math.min(190/sp.h, 104/sp.w)*rel; x.save(); x.translate(100,55); x.rotate(Math.PI/2); x.drawImage(sp.cv,-sp.w*s/2,-sp.h*s/2,sp.w*s,sp.h*s); x.restore(); }); } } }
   function selectPlane(id){ const p=window.planeById(id); if (!p) return; prof.selected=id; save(); document.querySelectorAll('.card').forEach(c=>c.classList.toggle('selected',c.dataset.id===id));
     $('piRole').textContent=`${window.NATIONS[p.nation].name} · Rank ${['','I','II','III','IV','V','VI'][p.rank]} · ${p.role} · BR ${p.br}`; $('piName').textContent=p.name; $('piDesc').textContent=p.desc;
     const fp = firepower(p);
@@ -49,11 +51,18 @@
   $('btnBuy').onclick=()=>{ const p=window.planeById(prof.selected); const st=status(p); if (st==='researched'&&prof.sl>=p.cost[0]){ prof.sl-=p.cost[0]; prof.owned.push(p.id); Audio2.kill(); } else if (st==='available'&&prof.rp>=p.cost[1]){ prof.rp-=p.cost[1]; prof.researched.push(p.id); Audio2.kill(); } save(); refreshTop(); buildTree(); selectPlane(p.id); };
 
   // ---------- showcase (big painted plane over the moving backdrop)
-  function startShowcase(p){ if (showcaseAnim) cancelAnimationFrame(showcaseAnim); const cv=$('showcaseCv'); let sp=null; Art.showcase(p.id, 560).then(s=>sp=s); let t=0;
+  const SHOWCASE_REF_M = 52;      // the panel always shows this many metres, so sizes compare honestly
+  function startShowcase(p){ if (showcaseAnim) cancelAnimationFrame(showcaseAnim); const cv=$('showcaseCv'); let sp=null; Art.showcase(p.id, 900).then(s=>sp=s); let t=0;
     const draw=()=>{ showcaseAnim=requestAnimationFrame(draw); const r=cv.getBoundingClientRect(); if (cv.width!==r.width*2||cv.height!==r.height*2){ cv.width=r.width*2; cv.height=r.height*2; } const x=cv.getContext('2d'); x.setTransform(2,0,0,2,0,0); x.clearRect(0,0,r.width,r.height); if (!sp) return; t+=1/60;
-      const scale=Math.min(1, (r.width*0.62)/sp.h, (r.height*0.72)/sp.w); const cx=r.width*0.55, cy=r.height*0.47+Math.sin(t*0.8)*6; const ang=Math.PI/2+Math.sin(t*0.5)*0.06;
+      const pxPerM = Math.min(r.width*0.62, r.height*0.80)/SHOWCASE_REF_M;
+      const scale=(p.size*pxPerM)/sp.h; const cx=r.width*0.55, cy=r.height*0.47+Math.sin(t*0.8)*6; const ang=Math.PI/2+Math.sin(t*0.5)*0.06;
       x.save(); x.translate(cx+40,cy+70); x.rotate(ang); x.globalAlpha=0.35; x.drawImage(sp.shadow,-sp.shadow.width*scale/2,-sp.shadow.height*scale/2,sp.shadow.width*scale,sp.shadow.height*scale); x.restore();
-      x.save(); x.translate(cx,cy); x.rotate(ang); x.drawImage(sp.cv,-sp.w*scale/2,-sp.h*scale/2,sp.w*scale,sp.h*scale); x.restore(); };
+      x.save(); x.translate(cx,cy); x.rotate(ang); x.drawImage(sp.cv,-sp.w*scale/2,-sp.h*scale/2,sp.w*scale,sp.h*scale); x.restore();
+      const bar=10*pxPerM, bx=r.width-bar-28, by=r.height-26;
+      x.strokeStyle='rgba(255,255,255,.55)'; x.lineWidth=2; x.beginPath();
+      x.moveTo(bx,by-5); x.lineTo(bx,by); x.lineTo(bx+bar,by); x.lineTo(bx+bar,by-5); x.stroke();
+      x.fillStyle='rgba(255,255,255,.7)'; x.font='600 11px system-ui,sans-serif'; x.textAlign='center'; x.fillText('10 m', bx+bar/2, by-9);
+    };
     draw(); }
 
   // ---------- battle flow
@@ -61,6 +70,7 @@
     prof.lastMode=$('selMode').value; prof.lastMap=$('selMap').value; prof.lastSize=$('selSize').value; prof.lastDiff=$('selDiff').value; save();
     if (showcaseAnim) cancelAnimationFrame(showcaseAnim);
     requestFullscreen();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     $('hangar').classList.add('hidden'); $('briefing').classList.remove('hidden');
     const mode=prof.lastMode; $('brTitle').textContent=mode==='air'?'Air Battle':mode==='ground'?'Ground Strike':'Test Flight';
     $('brText').textContent = mode==='air'?'Shoot down enemy aircraft. Each loss costs your team tickets — first to zero loses.':mode==='ground'?'Destroy the enemy airfield, tanks and AA. Bombers and attackers win this one.':'Free practice against soft targets. No rewards, no pressure.';
@@ -86,14 +96,14 @@
   $('btnRespawn').onclick=()=>{ Audio2.click(); const S=Game.S; if (S&&S.player){ if (S.player.alive){ S.player.hp=0; S.player.alive=false; } S.respawnT=0; Game.resume(); $('pauseModal').classList.add('hidden'); Game.respawn(); } };
   $('btnQuit').onclick=()=>{ Audio2.click(); const S=Game.S; const test=S&&S.mode==='test'; Game.quit(); if (!test){ prof.battles++; save(); } backToHangar(); };
   // controls text
-  const controls=`<div><span class="kbd">Mouse</span> steer toward cursor</div><div><span class="kbd">A</span><span class="kbd">D</span> turn (keyboard)</div><div><span class="kbd">W</span><span class="kbd">S</span> throttle</div><div><span class="kbd">Shift</span><span class="kbd">↑</span> climb</div><div><span class="kbd">Ctrl</span><span class="kbd">↓</span> dive</div><div><span class="kbd">LMB</span><span class="kbd">Space</span> fire guns</div><div><span class="kbd">RMB</span><span class="kbd">E</span> fire missile (needs lock)</div><div><span class="kbd">1</span><span class="kbd">2</span> select missile (auto-picks the shot)</div><div><span class="kbd">F</span> flares</div><div><span class="kbd">B</span><span class="kbd">Ctrl</span> drop bomb</div><div><span class="kbd">Q</span><span class="kbd">Tab</span> cycle target</div><div><span class="kbd">Wheel</span> zoom</div><div><span class="kbd">Esc</span> pause</div><div><span class="kbd">F11</span> fullscreen</div><div style="margin-top:6px;color:#9aa3ad">Missiles: the dashed cone is your seeker. Put the target inside it and the ring around them fills; when it says LOCK, fire. Early heat seekers need you roughly behind the target, radar missiles work from any angle but you must keep the target in front of you until impact.</div><div style="margin-top:6px;color:#9aa3ad">Take off: full throttle down the runway, then Shift to rotate. Land: line up with your airfield, throttle back, dive gently onto the strip to repair, refuel and rearm.</div><div style="margin-top:6px;color:#9aa3ad">Gamepad: left stick steer, RT guns, LT missile, A flares, X bomb, Y target, LB/RB throttle</div>`;
+  const controls=`<div><span class="kbd">Mouse</span> steer toward cursor</div><div><span class="kbd">A</span><span class="kbd">D</span> turn (keyboard)</div><div><span class="kbd">W</span><span class="kbd">S</span> throttle</div><div><span class="kbd">↑</span><span class="kbd">Shift</span> climb</div><div><span class="kbd">↓</span><span class="kbd">Ctrl</span> dive</div><div><span class="kbd">LMB</span><span class="kbd">Space</span> fire guns</div><div><span class="kbd">RMB</span><span class="kbd">E</span> fire missile (needs lock)</div><div><span class="kbd">1</span><span class="kbd">2</span> select missile (auto-picks the shot)</div><div><span class="kbd">F</span> flares</div><div><span class="kbd">B</span><span class="kbd">Ctrl</span> drop bomb</div><div><span class="kbd">Q</span><span class="kbd">Tab</span> cycle target</div><div><span class="kbd">Wheel</span> zoom</div><div><span class="kbd">Esc</span> pause</div><div><span class="kbd">F11</span> fullscreen</div><div style="margin-top:6px;color:#9aa3ad">Missiles: the dashed cone is your seeker. Put the target inside it and the ring around them fills; when it says LOCK, fire. Early heat seekers need you roughly behind the target, radar missiles work from any angle but you must keep the target in front of you until impact.</div><div style="margin-top:6px;color:#9aa3ad">Take off: full throttle down the runway, then Shift to rotate. Land: line up with your airfield, throttle back, dive gently onto the strip to repair, refuel and rearm.</div><div style="margin-top:6px;color:#9aa3ad">Gamepad: left stick steer, RT guns, LT missile, A flares, X bomb, Y target, LB/RB throttle</div>`;
   $('controlsList').innerHTML=controls; $('controlsList2').innerHTML=controls;
   function refreshSandbox(){ const b=$('btnSandbox'); b.textContent=(prof.sandbox?'🔓 All planes: On':'🔒 All planes: Off'); b.classList.toggle('on',!!prof.sandbox); }
   $('btnSandbox').onclick=()=>{ Audio2.click(); prof.sandbox=!prof.sandbox; save(); refreshSandbox(); buildTree(); selectPlane(prof.selected); };
   $('btnControls').onclick=()=>{ Audio2.click(); $('controlsModal').classList.remove('hidden'); }; $('btnControlsClose').onclick=()=>$('controlsModal').classList.add('hidden');
   // settings
-  $('btnSettings').onclick=()=>{ Audio2.click(); const s=prof.settings; $('setVol').value=s.vol; $('setMusic').checked=s.music; $('setControl').value=s.control; $('setAssist').value=s.assist||'easy'; $('setQuality').value=s.quality; $('setName').value=prof.name; $('settingsModal').classList.remove('hidden'); };
-  $('btnSettingsClose').onclick=()=>{ const s=prof.settings; s.vol=+$('setVol').value; s.music=$('setMusic').checked; s.control=$('setControl').value; s.assist=$('setAssist').value; s.quality=$('setQuality').value; prof.name=$('setName').value.trim()||'Pilot'; save(); applySettings(); $('settingsModal').classList.add('hidden'); };
+  $('btnSettings').onclick=()=>{ Audio2.click(); const s=prof.settings; $('setVol').value=s.vol; $('setMusic').checked=s.music; $('setControl').value=s.control; $('setAssist').value=s.assist||'easy'; $('setArrows').value=s.arrows||'climb'; $('setQuality').value=s.quality; $('setName').value=prof.name; $('settingsModal').classList.remove('hidden'); };
+  $('btnSettingsClose').onclick=()=>{ const s=prof.settings; s.vol=+$('setVol').value; s.music=$('setMusic').checked; s.control=$('setControl').value; s.assist=$('setAssist').value; s.arrows=$('setArrows').value; s.quality=$('setQuality').value; prof.name=$('setName').value.trim()||'Pilot'; save(); applySettings(); $('settingsModal').classList.add('hidden'); };
   $('setVol').oninput=e=>Audio2.setVolume(+e.target.value); $('setMusic').onchange=e=>Audio2.setMusic(e.target.checked);
   $('btnReset').onclick=()=>{ if (confirm('Reset all progress? This wipes your planes, Silver Lions and stats.')){ prof=defaultProfile(); save(); applySettings(); $('settingsModal').classList.add('hidden'); refreshTop(); selectNation('usa'); } };
   // fullscreen
