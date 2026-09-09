@@ -1,7 +1,7 @@
 // art.js — rasterizes the original SVG silhouettes and paints them: nation colour, camo, shading, insignia, outline.
 window.Art = (function(){
   const RES = 2;               // internal pixels per world pixel
-  const SPRITE_SCALE = 5;      // aircraft are drawn this many times their true length so they stay readable
+  const SPRITE_SCALE = 7;      // aircraft are drawn this many times their true length so they stay readable
   const cache = {};            // id -> sprite
   const imgCache = {};
   function hash(s){ let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
@@ -13,7 +13,7 @@ window.Art = (function(){
   // Some source SVGs point left / diagonally instead of up. Override angles (deg, clockwise) here; otherwise wide images are assumed nose-left.
   const ART_ROT = window.ART_ROT = {};   // explicit rotation override (deg) when auto-detection needs help
   let lastNoseInfo=null;
-  const ART_FLIP = window.ART_FLIP = {};  // true/false forces, 'invert' flips the auto decision // true/false = force, 'invert' = opposite of auto-detect
+  const ART_FLIP = window.ART_FLIP = { 'horten-229a-0':'invert' };  // true/false forces, 'invert' flips the auto decision // true/false = force, 'invert' = opposite of auto-detect
   function bboxOf(t){ const d=t.getContext('2d').getImageData(0,0,t.width,t.height).data; let x0=t.width,y0=t.height,x1=0,y1=0; for (let y=0;y<t.height;y++) for (let x=0;x<t.width;x++){ if (d[(y*t.width+x)*4+3]>40){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } } if (x1<x0){ x0=0;y0=0;x1=t.width-1;y1=t.height-1; } return [x0,y0,x1,y1]; }
   // ---- Orientation. An aircraft is mirror-symmetric about its fuselage but not about its wing line,
   // so the axis with the best mirror score IS the fuselage axis. The main wing (widest slice) then sits
@@ -66,12 +66,16 @@ window.Art = (function(){
     for (let y=bb[1];y<=bb[3];y++){ let n=0; for (let x=bb[0];x<=bb[2];x++) if (m[y*w+x]) n++; rows.push(n); }
     const H=rows.length||1; let wi=0; for (let i=0;i<H;i++) if (rows[i]>rows[wi]) wi=i;
     const wingFrac=wi/Math.max(1,H-1);
-    const k=Math.max(2,Math.floor(H*0.12));
+    // Primary test: almost every aircraft tapers to a point at the nose and carries horizontal
+    // stabilisers at the tail, so the tail end of the silhouette is the wider one.
+    const k=Math.max(2,Math.round(H*0.13));
     const topW=rows.slice(0,k).reduce((a,b)=>a+b,0)/k, botW=rows.slice(-k).reduce((a,b)=>a+b,0)/k;
-    const votes=(wingFrac>0.5?1:-1)+(topW>botW*1.15?0.8:(botW>topW*1.15?-0.8:0));
-    let flip=votes>0;
+    const taper=(topW-botW)/Math.max(1,(topW+botW)/2);     // >0 means the top end is the tail
+    let flip, why;
+    if (Math.abs(taper)>0.16){ flip = taper>0; why='taper'; }
+    else { flip = wingFrac>0.5; why='wing'; }              // near-symmetric ends: fall back to wing position
     const fo=ART_FLIP[artKey]; if (fo==='invert') flip=!flip; else if (fo===true||fo===false) flip=fo;
-    lastNoseInfo={artKey, deg:+best.deg.toFixed(1), sym:+best.s.toFixed(3), wingFrac:+wingFrac.toFixed(2), votes:+votes.toFixed(1), flip};
+    lastNoseInfo={artKey, deg:+best.deg.toFixed(1), sym:+best.s.toFixed(3), wingFrac:+wingFrac.toFixed(2), taper:+taper.toFixed(2), why, flip};
     return {rot:best.deg, flip};
   }
   function applyOrientation(cv, artKey){

@@ -7,7 +7,7 @@ window.Game = (function(){
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
   const dist3=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y,((a.alt||0)-(b.alt||0))*0.6);
   const HC=6000, ALT_MAX=4000, CLOUD_ALT=1800, GRAV=9.81;   // 1 world unit = 1 metre, real gravity
-  const SPRITE=5;   // aircraft are drawn 5x their true length
+  const SPRITE=7;   // aircraft are drawn 7x their true length so they read clearly from above
   const G=9.81;
   const AI_NAMES=['Viper','Ghost','Maverick','Iceman','Red Baron','Falcon','Hawk','Bandit','Cobra','Reaper','Wolf','Sabre','Raven','Duke','Lynx','Storm','Blitz','Jester','Rogue','Hornet','Kestrel','Dagger','Vandal','Comet','Rook','Talon','Zulu','Echo','Bravo','Kilo','Nomad','Ranger','Spectre','Titan','Ivan','Hans','Pierre','Sven','Kenji','Jack','Mick','Boris'];
 
@@ -40,7 +40,7 @@ window.Game = (function(){
     window.addEventListener('gamepadconnected',()=>{ toast('Gamepad connected'); });
     requestAnimationFrame(frame);
   }
-  function resize(){ dpr=Math.min(2,window.devicePixelRatio||1); W=window.innerWidth; H=window.innerHeight; canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.width=W+'px'; canvas.style.height=H+'px'; }
+  function resize(){ dpr=Math.min(1.5,window.devicePixelRatio||1); W=window.innerWidth; H=window.innerHeight; canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.width=W+'px'; canvas.style.height=H+'px'; }
   function toast(t){ hudMsgs.push({t, life:2.8}); }
   function keyPress(code){
     const p=S.player; if(!p) return;
@@ -145,7 +145,7 @@ window.Game = (function(){
     const vx=Math.sin(P.hd)*(P.speed||0), vy=-Math.cos(P.hd)*(P.speed||0);
     cam.x=lerp(cam.x, P.x+vx*0.25, 1-Math.pow(0.02,dt)); cam.y=lerp(cam.y, P.y+vy*0.25, 1-Math.pow(0.02,dt));
     cam.alt=lerp(cam.alt, P.alt, 1-Math.pow(0.05,dt));
-    const view = clamp(P.def.speed*9.5, 1500, 3600);          // metres visible across the screen
+    const view = clamp(P.def.speed*8, 1200, 3000);          // metres visible across the screen
     const base = W/view; const speedZoom = 1 - clamp((P.speed-P.def.vCorner)/Math.max(1,P.def.speed),0,1)*0.18;
     cam.zoom = lerp(cam.zoom, base*cam.userZoom*speedZoom, 1-Math.pow(0.05,dt)); cam.shake*=Math.pow(0.02,dt);
     Audio2.engineUpdate(P.alive?P.throttle*(P.fuel>0?1:0)*(1-0.5*P.dmg.engine):0, P.speed/P.def.speed, P.def.ab && P.throttle>0.92 && P.fuel>0);
@@ -436,8 +436,8 @@ window.Game = (function(){
       if (dead){ B[i]=B[B.length-1]; B.pop(); }
     }
   }
-  function hitSpan(p){ const sp=p.sprite; return (sp?sp.span:p.def.size*SPRITE)*0.5*0.6; }   // ~2.4x true span
-  function hitLen(p){ const sp=p.sprite; return (sp?sp.h:p.def.size*SPRITE)*0.5*0.6; }
+  function hitSpan(p){ const sp=p.sprite; return (sp?sp.span:p.def.size*SPRITE)*0.5*0.45; }   // ~3.1x true span
+  function hitLen(p){ const sp=p.sprite; return (sp?sp.h:p.def.size*SPRITE)*0.5*0.45; }
   function hitHeight(p){ return Math.max(6, hitSpan(p)*0.35); }
   function hitPlane(p,x,y,alt){
     if (alt!==undefined && Math.abs(alt-p.alt) > hitHeight(p)) return false;
@@ -699,14 +699,31 @@ window.Game = (function(){
     ctx.drawImage(bb.cv, W/2-(bb.cw/2)*k+dx+shx, H/2-(bb.ch/2)*k+dy+shy, bb.cw*k, bb.ch*k);
     return s0;
   }
-  function drawCloudShadows(){ const c=S.cam; const s=scaleFor(0)*c.zoom; const vw=W/s/2+300, vh=H/s/2+300;
-    for (const cl of S.world.clouds){ const wx=((cl.x+S.t*cl.vx)%S.size+S.size)%S.size, wy=((cl.y+S.t*cl.vy)%S.size+S.size)%S.size; const px=wx+CLOUD_ALT*0.09, py=wy+CLOUD_ALT*0.11; if (Math.abs(px-c.x)>vw||Math.abs(py-c.y)>vh) continue;
-      ctx.save(); ctx.translate(px,py); ctx.fillStyle='rgba(0,0,0,0.16)'; ctx.beginPath(); for (const [ox,oy,r] of cl.parts){ ctx.moveTo(ox+r*0.9,oy); ctx.arc(ox,oy,r*0.9,0,TAU); } ctx.fill(); ctx.restore(); } }
-  function drawClouds(){ const c=S.cam; const near=clamp(1-(CLOUD_ALT-c.alt)/1500,0.1,1); const s=layer(CLOUD_ALT); const vw=W/s/2+300, vh=H/s/2+300; const q=settings.quality;
-    for (const cl of S.world.clouds){ const wx=((cl.x+S.t*cl.vx)%S.size+S.size)%S.size, wy=((cl.y+S.t*cl.vy)%S.size+S.size)%S.size; if (Math.abs(wx-c.x)>vw||Math.abs(wy-c.y)>vh) continue;
-      ctx.save(); ctx.translate(wx,wy);
-      for (const [ox,oy,r] of cl.parts){ if (q>0){ const g=ctx.createRadialGradient(ox-r*0.25,oy-r*0.3,r*0.05,ox,oy,r); g.addColorStop(0,`rgba(255,255,255,${cl.a*0.75*near})`); g.addColorStop(0.55,`rgba(246,249,253,${cl.a*0.45*near})`); g.addColorStop(1,'rgba(236,242,250,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ox,oy,r,0,TAU); ctx.fill(); } else { ctx.fillStyle=`rgba(255,255,255,${cl.a*0.7*near})`; ctx.beginPath(); ctx.arc(ox,oy,r*0.8,0,TAU); ctx.fill(); } }
-      ctx.restore(); } }
+  function drawCloudShadows(){
+    const c=S.cam, wld=S.world; const s=scaleFor(0)*c.zoom; const vw=W/s/2+500, vh=H/s/2+500;
+    const cw=wld.CW, ch=wld.CH;
+    ctx.globalAlpha=0.30;
+    for (const cl of wld.clouds){
+      const wx=((cl.x+S.t*cl.vx)%S.size+S.size)%S.size, wy=((cl.y+S.t*cl.vy)%S.size+S.size)%S.size;
+      const px=wx+CLOUD_ALT*0.09, py=wy+CLOUD_ALT*0.11;
+      if (Math.abs(px-c.x)>vw||Math.abs(py-c.y)>vh) continue;
+      ctx.drawImage(wld.cloudShadows[cl.spr], px-cw*cl.sc/2, py-ch*cl.sc/2, cw*cl.sc, ch*cl.sc);
+    }
+    ctx.globalAlpha=1;
+  }
+  function drawClouds(){
+    if (settings.quality===0) return;
+    const c=S.cam, wld=S.world; const s=layer(CLOUD_ALT); const vw=W/s/2+500, vh=H/s/2+500;
+    const near=clamp(1-(CLOUD_ALT-c.alt)/1500,0.12,1);
+    const cw=wld.CW, ch=wld.CH;
+    for (const cl of wld.clouds){
+      const wx=((cl.x+S.t*cl.vx)%S.size+S.size)%S.size, wy=((cl.y+S.t*cl.vy)%S.size+S.size)%S.size;
+      if (Math.abs(wx-c.x)>vw||Math.abs(wy-c.y)>vh) continue;
+      ctx.globalAlpha=cl.a*near;
+      ctx.drawImage(wld.cloudSprites[cl.spr], wx-cw*cl.sc/2, wy-ch*cl.sc/2, cw*cl.sc, ch*cl.sc);
+    }
+    ctx.globalAlpha=1;
+  }
   function drawParticles(which, filt){
     ctx.setTransform(dpr,0,0,dpr,0,0); const c=S.cam;
     for (const p of S.parts){ const isLow = p.type==='smoke'||p.type==='vortex'; if ((which==='low')!==isLow) continue; if (!filt(p)) continue;
@@ -856,7 +873,8 @@ window.Game = (function(){
     if (!backdrop) backdrop={ world: World.create('islands', 4000, 4242) };
     bdT+=dt; const b=backdrop; const cx=((1200+Math.sin(bdT*0.05)*900+bdT*12)%3000+3000)%3000+500, cy=1300+Math.cos(bdT*0.04)*800; const z=0.7;
     ctx.save(); ctx.translate(W/2,H/2); ctx.scale(z,z); ctx.translate(-cx,-cy); b.world.draw(ctx,{x:cx,y:cy,zoom:z},W,H);
-    for (const cl of b.world.clouds){ const wx=((cl.x+bdT*cl.vx)%4000+4000)%4000, wy=((cl.y+bdT*cl.vy)%4000+4000)%4000; if (Math.abs(wx-cx)>W/z||Math.abs(wy-cy)>H/z) continue; ctx.save(); ctx.translate(wx,wy); for (const [ox,oy,r] of cl.parts){ const g=ctx.createRadialGradient(ox-r*0.25,oy-r*0.3,r*0.05,ox,oy,r); g.addColorStop(0,`rgba(255,255,255,${cl.a*0.75})`); g.addColorStop(0.55,`rgba(246,249,253,${cl.a*0.45})`); g.addColorStop(1,'rgba(236,242,250,0)'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(ox,oy,r,0,TAU); ctx.fill(); } ctx.restore(); }
+    for (const cl of b.world.clouds){ const wx=((cl.x+bdT*cl.vx)%4000+4000)%4000, wy=((cl.y+bdT*cl.vy)%4000+4000)%4000; if (Math.abs(wx-cx)>W/z||Math.abs(wy-cy)>H/z) continue; ctx.globalAlpha=cl.a; ctx.drawImage(b.world.cloudSprites[cl.spr], wx-b.world.CW*cl.sc/2, wy-b.world.CH*cl.sc/2, b.world.CW*cl.sc, b.world.CH*cl.sc); }
+    ctx.globalAlpha=1;
     ctx.restore();
     ctx.fillStyle='rgba(4,8,14,0.3)'; ctx.fillRect(0,0,W,H); const vg=ctx.createRadialGradient(W*0.6,H*0.45,H*0.2,W*0.6,H*0.45,H*0.95); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.55)'); ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
   }

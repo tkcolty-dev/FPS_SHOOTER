@@ -100,11 +100,28 @@ window.World = (function(){
         ctx.drawImage(tile(tx,ty), tx*TILE, ty*TILE, TILE+0.5, TILE+0.5);
       }
     }
-    // cloud layer
+    // ---- cloud layer: a few shapes are pre-rendered once, then blitted, so the per-frame cost is
+    // one drawImage per cloud instead of a dozen radial gradients.
     const clouds=[]; const R=Art.rng(seed+99);
-    for (let i=0;i<Math.floor(size*size/(1000*1000));i++){ const parts=[]; const n=6+Math.floor(R()*8); const sc=0.7+R()*0.9; for(let k=0;k<n;k++){ const ang=R()*Math.PI*2, rr=R()*90*sc; parts.push([ Math.cos(ang)*rr*1.5, Math.sin(ang)*rr*0.7, (24+R()*34)*sc ]); } clouds.push({x:R()*size, y:R()*size, parts, a:0.5+R()*0.25, vx:12+R()*10, vy:4+R()*6}); }
+    const cloudSprites=[], cloudShadows=[]; const CW=420, CH=220;
+    for (let i=0;i<7;i++){
+      const parts=[]; const n=6+Math.floor(R()*7);
+      for (let k=0;k<n;k++){ const ang=R()*Math.PI*2, rr=R()*80; parts.push([CW/2+Math.cos(ang)*rr*1.5, CH/2+Math.sin(ang)*rr*0.7, 26+R()*40]); }
+      const c=document.createElement('canvas'); c.width=CW; c.height=CH; const x=c.getContext('2d');
+      for (const [ox,oy,r] of parts){ const g=x.createRadialGradient(ox-r*0.25,oy-r*0.3,r*0.05,ox,oy,r);
+        g.addColorStop(0,'rgba(255,255,255,0.85)'); g.addColorStop(0.55,'rgba(246,249,253,0.5)'); g.addColorStop(1,'rgba(236,242,250,0)');
+        x.fillStyle=g; x.beginPath(); x.arc(ox,oy,r,0,Math.PI*2); x.fill(); }
+      cloudSprites.push(c);
+      const s=document.createElement('canvas'); s.width=CW; s.height=CH; const sx=s.getContext('2d');
+      sx.fillStyle='rgba(0,0,0,0.5)'; sx.beginPath();
+      for (const [ox,oy,r] of parts){ sx.moveTo(ox+r*0.85,oy); sx.arc(ox,oy,r*0.85,0,Math.PI*2); }
+      sx.fill(); cloudShadows.push(s);
+    }
+    for (let i=0;i<Math.floor(size*size/(1500*1500));i++){
+      clouds.push({x:R()*size, y:R()*size, spr:Math.floor(R()*cloudSprites.length), sc:0.8+R()*1.4, a:0.55+R()*0.3, vx:12+R()*10, vy:4+R()*6});
+    }
     function findLand(R, tries){ for (let i=0;i<(tries||60);i++){ const x=size*0.15+R()*size*0.7, y=size*0.15+R()*size*0.7; if (isLand(x,y) && height(x,y)-T.sea<0.28) return {x,y}; } return {x:size/2,y:size/2}; }
-    return { theme:themeName, T, size, seed, TILE, tile, draw, height, isLand, clouds, findLand, noise };
+    return { theme:themeName, T, size, seed, TILE, tile, draw, height, isLand, clouds, cloudSprites, cloudShadows, CW, CH, findLand, noise };
   }
   return { create, THEMES, TILE };
 })();

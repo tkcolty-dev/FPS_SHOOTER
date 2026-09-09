@@ -8,7 +8,7 @@ The aircraft and missile silhouettes come from the original "Wings of Glory" Scr
 
 ## Scale
 One world unit is one metre and time is real, so every number on screen is honest. A P-40 does
-551 km/h, is 9.7 m long, pulls 6.5 G and climbs 32 m/s. Aircraft are *drawn* five times their true
+551 km/h, is 9.7 m long, pulls 6.5 G and climbs 32 m/s. Aircraft are *drawn* seven times their true
 size so they stay readable from a top-down camera, and the camera pulls back for faster aircraft.
 
 ## Flight model
