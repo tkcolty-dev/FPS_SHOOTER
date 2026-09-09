@@ -22,6 +22,9 @@ Early heat seekers (AIM-9B, R-3S, R-13M, AIM-4) only see a hot tailpipe, so you 
 target; the R-60M is all-aspect. Semi-active radar missiles (AIM-7, R-23R, R-40) go stupid the moment
 you break your own lock, while active radar (AIM-120, AIM-54) goes autonomous in the terminal phase.
 Flares decoy heat seekers, and later seekers reject them more often.
+The HUD draws the seeker cone as a dashed wedge and fills a ring around the target as the lock builds,
+the lock survives a brief wobble instead of dropping instantly, and the game auto-selects whichever
+missile on the rails can actually take the shot you are lined up for.
 
 ## Features
 - 55 aircraft across 7 nations (USA, Germany, USSR, Britain, Japan, France, Sweden), ranks I–VI:

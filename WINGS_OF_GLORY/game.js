@@ -174,7 +174,14 @@ window.Game = (function(){
   }
   function pollGamepad(){ input.gp=null; if (!navigator.getGamepads) return; const gps=navigator.getGamepads(); for (const g of gps){ if (g&&g.connected){ input.gp=g; break; } } }
   function pickTarget(p, range, coneDeg){
-    let best=null, bs=1e9; for (const e of S.planes){ if (e.team===p.team||!e.alive) continue; const d=dist(p,e); if (d>range) continue; const a=Math.abs(norm(Math.atan2(e.x-p.x,-(e.y-p.y))-p.hd)); if (a>coneDeg*DEG) continue; const s=d*(0.4+a)+Math.abs(e.alt-p.alt)*0.5; if (s<bs){ bs=s; best=e; } } return best;
+    const m=p.missiles&&p.missiles[p.missileIdx]; const md=m&&m.n>0?window.MISSILES[m.key]:null;
+    let best=null, bs=1e9;
+    for (const e of S.planes){ if (e.team===p.team||!e.alive) continue; const d=dist(p,e); if (d>range) continue;
+      const a=Math.abs(norm(Math.atan2(e.x-p.x,-(e.y-p.y))-p.hd)); if (a>coneDeg*DEG) continue;
+      let s=d*(0.4+a)+Math.abs(e.alt-p.alt)*0.5;
+      if (md && lockCheck(p, md, e).ok) s*=0.35;   // prefer a target the seeker can actually take
+      if (s<bs){ bs=s; best=e; } }
+    return best;
   }
   function cycleTarget(p){ const cands=S.planes.filter(e=>e.team!==p.team&&e.alive&&dist(p,e)<3600).sort((a,b)=>dist(p,a)-dist(p,b)); if(!cands.length) return; const i=cands.indexOf(p.target); p.target=cands[(i+1)%cands.length]; p.lockT=0; p.locked=false; Audio2.click(); }
   // Aspect angle: 0 = dead astern of the target (hot tailpipe in view), 180 = head-on.
@@ -185,20 +192,32 @@ window.Game = (function(){
     if (d>md.range) return {ok:false, why:'OUT OF RANGE', far:true};
     if (d<md.minRange) return {ok:false, why:'TOO CLOSE'};
     const off=Math.abs(norm(Math.atan2(t.x-p.x,-(t.y-p.y))-p.hd));
-    if (off>md.lockFov*DEG) return {ok:false, why:'AIM AT TARGET'};
+    // once you have the lock the seeker holds a wider cone than it needed to acquire it
+    const cone = (p.locked ? md.lockFov*1.5 : md.lockFov)*DEG;
+    if (off>cone) return {ok:false, why:'AIM AT TARGET'};
     if (Math.abs(t.alt-p.alt) > (md.guidance==='ir'?900:1600)) return {ok:false, why:'ALTITUDE'};
-    if (md.guidance==='ir' && md.rearOnly && aspectAngle(p,t) > 62*DEG) return {ok:false, why:'REAR ASPECT ONLY'};
+    if (md.guidance==='ir' && md.rearOnly && aspectAngle(p,t) > (md.rearArc||95)*DEG) return {ok:false, why:'GET BEHIND THE TARGET'};
     if (md.guidance==='ir' && t.onGround) return {ok:false, why:'NO HEAT SOURCE'};
     return {ok:true, why:md.guidance==='sarh'?'HOLD THE LOCK':'LOCKED'};
   }
   function updateLock(p, dt){
-    const m=p.missiles&&p.missiles[p.missileIdx];
+    let m=p.missiles&&p.missiles[p.missileIdx];
     if (!m||m.n<=0||!p.target){ p.lockT=0; p.locked=false; p.lockWhy=null; return; }
+    // if the selected seeker can't take this shot but another one can, switch to it
+    if (!p.locked && p.missiles.length>1 && !lockCheck(p, window.MISSILES[m.key], p.target).ok){
+      for (let i=0;i<p.missiles.length;i++){
+        const alt=p.missiles[i]; if (i===p.missileIdx||alt.n<=0) continue;
+        if (lockCheck(p, window.MISSILES[alt.key], p.target).ok){ p.missileIdx=i; m=alt; p.lockT=0; if (p.isPlayer) toast(window.MISSILES[alt.key].name+' — better shot'); break; }
+      }
+    }
     const md=window.MISSILES[m.key];
     const c=lockCheck(p, md, p.target);
     p.lockWhy=c.why;
-    if (c.ok){ p.lockT+=dt; if (!p.locked && p.lockT>=md.lockTime){ p.locked=true; if(p.isPlayer) Audio2.lock(); } else if (p.isPlayer && !p.locked && Math.floor(p.lockT*6)!==Math.floor((p.lockT-dt)*6)) Audio2.lockTone(); }
-    else { p.lockT=Math.max(0,p.lockT-dt*2.5); if (p.lockT<=0) p.locked=false; }
+    if (c.ok){ p.lockGrace=1.1; p.lockT+=dt; if (!p.locked && p.lockT>=md.lockTime){ p.locked=true; if(p.isPlayer) Audio2.lock(); } else if (p.isPlayer && !p.locked && Math.floor(p.lockT*6)!==Math.floor((p.lockT-dt)*6)) Audio2.lockTone(); }
+    else if (p.locked){ // don't drop a good lock over a momentary wobble
+      p.lockGrace=(p.lockGrace||0)-dt; if (p.lockGrace<=0){ p.locked=false; p.lockT=0; if (p.isPlayer) toast('LOCK LOST · '+c.why); } }
+    else { p.lockT=Math.max(0,p.lockT-dt*1.2); }
+    p.lockProgress = p.locked?1:clamp(p.lockT/md.lockTime,0,1); p.lockMd=md;
   }
 
   // ---------------- AI
@@ -691,6 +710,24 @@ window.Game = (function(){
       const g=P.def.guns||P.def.guns2; if (g && !P.onGround){ const nose=nosePos(P); const rx=nose.x+Math.sin(P.hd)*g.range*0.55, ry=nose.y-Math.cos(P.hd)*g.range*0.55; const s=w2s(rx,ry,P.alt); ctx.strokeStyle='rgba(255,255,255,0.75)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,TAU); ctx.moveTo(s.x-12,s.y); ctx.lineTo(s.x-8,s.y); ctx.moveTo(s.x+8,s.y); ctx.lineTo(s.x+12,s.y); ctx.moveTo(s.x,s.y-12); ctx.lineTo(s.x,s.y-8); ctx.stroke(); }
       const t=P.target; if (t&&t.alive&&g){ const d=dist(P,t); if (d<g.range*1.6){ const tt=d/(g.speed+P.speed*0.6); const lx=t.x+Math.sin(t.hd)*t.speed*tt, ly=t.y-Math.cos(t.hd)*t.speed*tt; const s=w2s(lx,ly,t.alt); const inAlt=Math.abs(t.alt-P.alt)<260; ctx.strokeStyle=inAlt?'#7dff7d':'#ffb347'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(s.x,s.y,7,0,TAU); ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(s.x,s.y,2,0,TAU); ctx.fill(); if (!inAlt){ ctx.textAlign='left'; ctx.fillText(t.alt>P.alt?'climb ▲':'dive ▼', s.x+12, s.y); } } }
       if (P.def.bombs && P.bombs>0 && !P.onGround){ const ip=bombImpact(P); const s=w2s(ip.x,ip.y,0); ctx.strokeStyle='rgba(255,210,80,0.9)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(s.x,s.y,P.def.bombs.r*0.5*s.s,0,TAU); ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(s.x-6,s.y); ctx.lineTo(s.x+6,s.y); ctx.moveTo(s.x,s.y-6); ctx.lineTo(s.x,s.y+6); ctx.stroke(); }
+      // seeker cone and lock ring
+      const mm=P.missiles&&P.missiles[P.missileIdx];
+      if (mm&&mm.n>0&&!P.onGround){ const md=window.MISSILES[mm.key];
+        const half=(P.locked?md.lockFov*1.5:md.lockFov)*DEG; const L=Math.min(md.range,2000);
+        const c0=w2s(P.x,P.y,P.alt);
+        const e1=w2s(P.x+Math.sin(P.hd-half)*L, P.y-Math.cos(P.hd-half)*L, P.alt);
+        const e2=w2s(P.x+Math.sin(P.hd+half)*L, P.y-Math.cos(P.hd+half)*L, P.alt);
+        ctx.strokeStyle=P.locked?'rgba(125,255,125,0.35)':'rgba(255,255,255,0.22)'; ctx.lineWidth=1.5; ctx.setLineDash([7,7]);
+        ctx.beginPath(); ctx.moveTo(e1.x,e1.y); ctx.lineTo(c0.x,c0.y); ctx.lineTo(e2.x,e2.y); ctx.stroke(); ctx.setLineDash([]);
+        const t2=P.target;
+        if (t2&&t2.alive){ const s=w2s(t2.x,t2.y,t2.alt); const rr=Math.max(22,t2.def.size*0.5*s.s+16);
+          const prog=P.lockProgress||0;
+          ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(s.x,s.y,rr,0,TAU); ctx.stroke();
+          if (prog>0){ ctx.strokeStyle=P.locked?'#7dff7d':'#f3c14b'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(s.x,s.y,rr,-Math.PI/2,-Math.PI/2+TAU*prog); ctx.stroke(); }
+          if (P.locked){ ctx.fillStyle='#7dff7d'; ctx.textAlign='center'; ctx.font='800 15px '+getFont(); ctx.fillText('LOCK', s.x, s.y+rr+16); }
+          else if (P.lockWhy && P.lockWhy!=='LOCKED'){ ctx.fillStyle='#ffd35a'; ctx.textAlign='center'; ctx.font='700 13px '+getFont(); ctx.fillText(P.lockWhy, s.x, s.y+rr+16); }
+        }
+      }
       if (settings.control==='mouse'){ ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(input.mx,input.my,10,0,TAU); ctx.stroke(); ctx.fillStyle='#fff'; ctx.fillRect(input.mx-1,input.my-1,2,2); }
       if (S.hitMarker>0){ ctx.strokeStyle='#fff'; ctx.lineWidth=2; const c=P.target?w2s(P.target.x,P.target.y,P.target.alt):w2s(P.x,P.y,P.alt); for (const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){ ctx.beginPath(); ctx.moveTo(c.x+sx*6,c.y+sy*6); ctx.lineTo(c.x+sx*12,c.y+sy*12); ctx.stroke(); } }
     }
@@ -759,10 +796,11 @@ window.Game = (function(){
     ctx.fillStyle='rgba(4,8,14,0.3)'; ctx.fillRect(0,0,W,H); const vg=ctx.createRadialGradient(W*0.6,H*0.45,H*0.2,W*0.6,H*0.45,H*0.95); vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,0.55)'); ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
   }
 
-  function debugProbe(range, aspectDeg, idx){
+  function debugProbe(range, aspectDeg, idx, offDeg){
     const P=S.player; if (!P) return null; if (idx!==undefined) P.missileIdx=idx;
     const m=P.missiles[P.missileIdx]; if (!m) return null; const md=window.MISSILES[m.key];
-    const t={ x:P.x+Math.sin(P.hd)*range, y:P.y-Math.cos(P.hd)*range, alt:P.alt, hd:P.hd+Math.PI-aspectDeg*DEG, alive:true, speed:200, onGround:false, def:{size:70} };
+    const off=(offDeg||0)*DEG;
+    const t={ x:P.x+Math.sin(P.hd+off)*range, y:P.y-Math.cos(P.hd+off)*range, alt:P.alt, hd:P.hd+off+Math.PI-aspectDeg*DEG, alive:true, speed:200, onGround:false, def:{size:70} };
     const c=lockCheck(P, md, t); return {missile:md.name, guidance:md.guidance, rearOnly:!!md.rearOnly, range, aspectDeg, ok:c.ok, why:c.why};
   }
   return { debug:{ probe:debugProbe, kill:()=>S&&killPlane(S.player,S.planes[1],'gun'), end:()=>{ if(S) S.tickets[1]=0; }, lose:()=>{ if(S) S.tickets[0]=0; } }, init, start, pause, resume, respawn, quit, set onEnd(f){onEnd=f;}, get state(){ return S?S.state:'idle'; }, settings, get S(){return S;}, toast };
