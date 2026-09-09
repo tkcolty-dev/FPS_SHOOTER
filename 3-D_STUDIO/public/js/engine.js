@@ -598,7 +598,7 @@ export class Engine {
       this.camera.position.fromArray(this._snapshot.camera.position); this.controls.target.fromArray(this._snapshot.camera.target); this.controls.update();
       this._snapshot = null;
     }
-    this.grid.visible = this.editor; this.showBigText(''); this.hudDirty = true; this.applyStage();
+    this.grid.visible = this.editor; this.showBigText(''); this.rt.monitors.clear(); this.renderHud(); this.applyStage();
     if (this.onPlayState) this.onPlayState(false);
   }
   reportError(msg){ if (this.onError) this.onError(msg); }
@@ -625,6 +625,46 @@ export class Engine {
     sp.scale.set(h * c.width / c.height / o.root.scale.x, h / o.root.scale.y, 1);
     sp.position.set(0, o.localBox.max.y + 0.5 / o.root.scale.y, 0); sp.renderOrder = 999; sp.userData.text = text;
     o.root.add(sp); o.label = sp;
+  }
+  /* ---------- thumbnails (object tiles) ---------- */
+  _thumbSetup(){
+    if (this._thumb) return this._thumb;
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 128;
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1); renderer.setSize(128, 128, false); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    const scene = new THREE.Scene();
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 1.1));
+    const key = new THREE.DirectionalLight(0xffffff, 2.2); key.position.set(3, 5, 4); scene.add(key);
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.01, 1000);
+    return (this._thumb = { canvas, renderer, scene, camera });
+  }
+  thumbnail(o){
+    if (!o.ready || !o.mesh) return '';
+    const t = this._thumbSetup(), parent = o.root.parent, wasVisible = o.root.visible;
+    if (t.canvas.height !== 128) t.renderer.setSize(128, 128, false);
+    t.camera.aspect = 1;
+    const pos = o.root.position.clone(), quat = o.root.quaternion.clone();
+    o.root.position.set(0, 0, 0); o.root.quaternion.identity(); o.root.visible = true;
+    t.scene.add(o.root); o.root.updateMatrixWorld(true);
+    const box = o.worldBox(); const c = new THREE.Vector3(), sz = new THREE.Vector3(); box.getCenter(c); box.getSize(sz);
+    const r = Math.max(0.05, sz.length() / 2);
+    t.camera.position.copy(c).add(new THREE.Vector3(1, 0.75, 1.35).normalize().multiplyScalar(r * 3.4)); t.camera.lookAt(c);
+    t.camera.near = r * 0.05; t.camera.far = r * 20; t.camera.updateProjectionMatrix();
+    const label = o.label; if (label) label.visible = false;
+    t.renderer.render(t.scene, t.camera);
+    if (label) label.visible = true;
+    o.root.position.copy(pos); o.root.quaternion.copy(quat); o.root.visible = wasVisible;
+    if (parent) parent.add(o.root); else t.scene.remove(o.root);
+    o.root.updateMatrixWorld(true);
+    return t.canvas.toDataURL('image/png');
+  }
+  sceneThumbnail(){
+    const t = this._thumbSetup(); const cam = this.camera.clone(); cam.aspect = 4 / 3; cam.updateProjectionMatrix();
+    const grid = this.grid.visible; this.grid.visible = false; const helper = this._gizmoHelper; if (helper) helper.visible = false;
+    if (t.canvas.height !== 96) t.renderer.setSize(128, 96, false);
+    t.renderer.render(this.scene, cam);
+    this.grid.visible = grid; if (helper) helper.visible = true;
+    return t.canvas.toDataURL('image/png');
   }
   /* ---------- input ---------- */
   _bindInput(){

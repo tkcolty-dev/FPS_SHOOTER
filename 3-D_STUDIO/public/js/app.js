@@ -18,15 +18,14 @@ function toast(msg, err=false){ const t = $('#toast'); t.textContent = msg; t.cl
 /* ---------------- engine ---------------- */
 const engine = new Engine({ canvas: $('#view'), hud: $('#hud'), editor: true });
 engine.onError = m => toast('Script error — ' + m, true);
-engine.onPlayState = on => { $('#btn-play').classList.toggle('active', on); $('#info-bar').classList.toggle('disabled', on); gizmo.visible = !on && !!selected; if (on) gizmo.detach(); else if (selected) gizmo.attach(selected.root); $('#view-hint').textContent = on ? 'Playing — press ■ to stop and reset' : HINT; };
-const HINT = $('#view-hint').textContent;
+engine.onPlayState = on => { $('#btn-play').classList.toggle('active', on); $('#info-bar').classList.toggle('disabled', on); $('#viewport-wrap').classList.toggle('playing', on); gizmo.visible = !on && !!selected; if (on) gizmo.detach(); else { if (selected) gizmo.attach(selected.root); engine.controls.enabled = true; scheduleThumbs(); } };
 setInterval(() => { $('#fps').textContent = engine.fps + ' fps'; }, 500);
 
 /* ---------------- Blockly ---------------- */
 const workspace = Blockly.inject('blockly', {
   toolbox: window.BW_TOOLBOX, theme: window.BW_THEME, renderer: 'zelos', media: 'vendor/blockly/media/',
-  zoom: { controls: true, wheel: true, startScale: 0.75, minScale: 0.4, maxScale: 1.5, pinch: true },
-  grid: { spacing: 32, length: 3, colour: '#e3e3e3', snap: false }, trashcan: true, move: { scrollbars: true, drag: true, wheel: true }, sounds: false
+  zoom: { controls: true, wheel: true, startScale: 0.8, minScale: 0.4, maxScale: 1.6, pinch: true },
+  grid: { spacing: 36, length: 3, colour: '#2b3042', snap: false }, trashcan: true, move: { scrollbars: true, drag: true, wheel: true }, sounds: false
 });
 workspace.registerToolboxCategoryCallback('VARIABLE', window.BW_variableFlyout);
 workspace.registerButtonCallback('CREATE_VARIABLE', btn => Blockly.Variables.createVariableButtonHandler(btn.getTargetWorkspace(), null, ''));
@@ -64,8 +63,9 @@ workspace.addChangeListener(e => {
   if (e.type === Blockly.Events.VAR_CREATE){ if (!engine.project.variables.some(v => v.id === e.varId)) engine.project.variables.push({ name: e.varName, id: e.varId }); }
   if (e.type === Blockly.Events.VAR_DELETE){ engine.project.variables = engine.project.variables.filter(v => v.id !== e.varId); }
   if (e.type === Blockly.Events.VAR_RENAME){ const v = engine.project.variables.find(v => v.id === e.varId); if (v) v.name = e.newName; }
-  saveCurrentWorkspace(); markDirty();
+  saveCurrentWorkspace(); markDirty(); updateEmptyHint();
 });
+function updateEmptyHint(){ const empty = workspace.getTopBlocks(false).length === 0; $('#ws-empty').classList.toggle('hidden', !empty); $('#ws-empty-name').textContent = editingStage ? 'the Stage' : (selected ? selected.name : ''); }
 
 function select(target){
   saveCurrentWorkspace();
@@ -73,22 +73,35 @@ function select(target){
   else { editingStage = false; selected = target; if (!engine.playing) gizmo.attach(target.root); }
   loadWorkspaceFor(editingStage ? 'stage' : selected);
   $('#editing-name').textContent = editingStage ? 'Stage' : selected.name;
+  $('#editing-thumb').src = editingStage ? '' : (thumbs.get(selected.id) || '');
+  updateEmptyHint();
   $('#obj-form').style.display = editingStage ? 'none' : ''; $('#stage-form').style.display = editingStage ? '' : 'none';
   renderTiles(); refreshInfo(); refreshForm();
 }
 
 /* ---------------- object tiles ---------------- */
+const thumbs = new Map();   // object id → data URL
+let thumbT;
+function scheduleThumbs(){ clearTimeout(thumbT); thumbT = setTimeout(refreshThumbs, 250); }
+function refreshThumbs(){
+  if (engine.playing) return;
+  for (const o of engine.objects){ if (o.isClone || !o.ready) continue; try { thumbs.set(o.id, engine.thumbnail(o)); } catch (e) { console.warn('thumb', e); } }
+  try { $('#stage-thumb').src = engine.sceneThumbnail(); } catch (e) {}
+  $$('.obj-tile').forEach(t => { const src = thumbs.get(t.dataset.id); if (src) t.querySelector('.thumb').src = src; });
+  if (selected) $('#editing-thumb').src = thumbs.get(selected.id) || '';
+}
 function renderTiles(){
   const list = $('#objects-list'); list.innerHTML = '';
   for (const o of engine.objects.filter(o => !o.isClone)){
-    const t = document.createElement('div'); t.className = 'obj-tile' + (o === selected ? ' selected' : '');
-    const pic = document.createElement('div'); pic.className = 'pic'; pic.textContent = KIND_ICON[o.kind] || '◼'; pic.style.background = o.data.color || '#888';
+    const t = document.createElement('div'); t.className = 'obj-tile' + (o === selected ? ' selected' : ''); t.dataset.id = o.id; t.title = o.name;
+    const pic = document.createElement('img'); pic.className = 'thumb'; pic.alt = ''; pic.src = thumbs.get(o.id) || '';
     const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = o.name;
-    const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.title = 'Delete'; x.onclick = ev => { ev.stopPropagation(); deleteObject(o); };
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕'; x.title = 'Delete ' + o.name; x.onclick = ev => { ev.stopPropagation(); deleteObject(o); };
     t.append(pic, nm, x); t.onclick = () => select(o); t.ondblclick = () => focusOn(o);
     list.appendChild(t);
   }
   $('#stage-tile').classList.toggle('selected', editingStage);
+  if (engine.objects.some(o => !o.isClone && !thumbs.has(o.id))) scheduleThumbs();
 }
 $('#stage-tile').onclick = () => select('stage');
 
@@ -96,12 +109,14 @@ $('#stage-tile').onclick = () => select('stage');
 const fmt = v => Math.round(v * 100) / 100;
 function refreshInfo(){
   const o = selected; const bar = $('#info-bar');
-  bar.querySelectorAll('input').forEach(i => i.disabled = !o);
-  $('#ib-name').textContent = o ? o.name : 'Stage';
+  bar.querySelectorAll('input, button').forEach(i => i.disabled = !o);
+  $('#ib-name').value = o ? o.name : 'Stage';
   if (!o) return;
   $('#ib-x').value = fmt(o.data.position[0]); $('#ib-y').value = fmt(o.data.position[1]); $('#ib-z').value = fmt(o.data.position[2]);
   $('#ib-ry').value = fmt(o.data.rotation[1]); $('#ib-size').value = fmt(o.data.scale[1]);
-  $('#ib-color').value = o.data.color || '#ffffff'; $('#ib-phys').checked = !!o.data.physics.enabled;
+  $('#ib-color').value = o.data.color || '#ffffff';
+  const vis = o.data.visible !== false; $('#ib-show').classList.toggle('on', vis); $('#ib-show').querySelector('use').setAttribute('href', vis ? '#i-eye' : '#i-eyeoff'); $('#ib-show').querySelector('span').textContent = vis ? 'Shown' : 'Hidden';
+  $('#ib-phys').classList.toggle('on', !!o.data.physics.enabled);
 }
 function refreshForm(){
   if (editingStage){ const s = engine.project.stage; $('#s-sky').value = s.sky; $('#s-gravity').value = s.gravity; $('#s-sun').value = s.sun == null ? 1 : s.sun; $('#s-fog').checked = s.fog !== false; return; }
@@ -126,10 +141,14 @@ function infoApply(){
   const o = selected; if (!o) return; const d = o.data, n = s => parseFloat($(s).value) || 0;
   d.position = [n('#ib-x'), n('#ib-y'), n('#ib-z')]; d.rotation[1] = n('#ib-ry');
   const sz = Math.max(0.01, n('#ib-size')), k = sz / (d.scale[1] || 1); d.scale = d.scale.map(v => Math.max(0.01, v * k));
-  d.color = $('#ib-color').value; d.physics.enabled = $('#ib-phys').checked;
-  o.applyProps(); refreshForm(); renderTiles(); markDirty();
+  d.color = $('#ib-color').value;
+  o.applyProps(); refreshForm(); refreshInfo(); markDirty();
 }
-$$('#info-bar input').forEach(el => { el.addEventListener('input', infoApply); el.addEventListener('change', infoApply); });
+$$('#info-bar input[type=number], #info-bar input[type=color]').forEach(el => { el.addEventListener('input', infoApply); el.addEventListener('change', infoApply); });
+$('#ib-name').addEventListener('change', () => renameObject(selected, $('#ib-name').value));
+$('#ib-name').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+$('#ib-show').onclick = () => { if (!selected) return; selected.data.visible = selected.data.visible === false; selected.applyProps(); refreshInfo(); refreshForm(); markDirty(); };
+$('#ib-phys').onclick = () => { if (!selected) return; selected.data.physics.enabled = !selected.data.physics.enabled; refreshInfo(); refreshForm(); markDirty(); };
 $('#p-dup').onclick = () => selected && duplicateObject(selected);
 $('#p-del').onclick = () => selected && deleteObject(selected);
 
@@ -140,7 +159,7 @@ function uniqueName(base){
 function renameObject(o, name){
   name = String(name || '').trim().slice(0, 40); if (!o || !name || name === o.name) { refreshForm(); return; }
   const old = o.name; if (engine.project.objects.some(p => p.name === name)) name = uniqueName(name);
-  o.name = o.data.name = name;
+  o.name = o.data.name = name; thumbs.delete(o.id);
   // update dropdowns in every workspace that pointed at the old name
   const fix = json => { if (!json) return; const walk = b => { if (!b) return; if (b.fields) for (const k in b.fields) if (b.fields[k] === old) b.fields[k] = name; if (b.inputs) for (const k in b.inputs){ walk(b.inputs[k].block); walk(b.inputs[k].shadow); } walk(b.next && b.next.block); }; (json.blocks && json.blocks.blocks || []).forEach(walk); };
   saveCurrentWorkspace(); engine.project.objects.forEach(p => fix(p.workspace)); fix(engine.project.stage.workspace);
@@ -227,7 +246,10 @@ async function wsSearch(q){
 
 /* ---------------- viewport: gizmo + picking ---------------- */
 const gizmo = new TransformControls(engine.camera, engine.canvas);
-gizmo.setSize(0.9); engine.scene.add(gizmo.getHelper ? gizmo.getHelper() : gizmo);
+gizmo.setSize(0.9); const gizmoHelper = gizmo.getHelper ? gizmo.getHelper() : gizmo; engine.scene.add(gizmoHelper); engine._gizmoHelper = gizmoHelper;
+// orbit must not fight the gizmo: pause it while hovering/dragging a handle, always restore on release
+engine.canvas.addEventListener('pointermove', () => { if (!engine.playing && !gizmo.dragging) engine.controls.enabled = !gizmo.axis; });
+window.addEventListener('pointerup', () => { if (!engine.playing && !gizmo.dragging) setTimeout(() => { if (!gizmo.dragging) engine.controls.enabled = true; }, 0); });
 gizmo.addEventListener('dragging-changed', e => { engine.controls.enabled = !e.value; if (!e.value && selected) { syncFromGizmo(); } });
 gizmo.addEventListener('objectChange', () => { if (selected) syncFromGizmo(false); });
 function syncFromGizmo(final=true){
@@ -285,6 +307,7 @@ function compileAll(){
 function play(){ if (engine.playing) engine.stop(); engine.play(compileAll()); engine.canvas.focus(); }
 $('#btn-play').onclick = play;
 $('#btn-stop').onclick = () => { engine.stop(); refreshInfo(); refreshForm(); if (selected) gizmo.attach(selected.root); };
+$('#viewport-wrap').addEventListener('pointerdown', () => { if (!engine.playing) engine.canvas.focus({ preventScroll: true }); });
 $('#btn-big').onclick = () => { $('.layout').classList.toggle('big'); setTimeout(() => Blockly.svgResize(workspace), 50); };
 
 /* ---------------- tabs / menus ---------------- */
@@ -299,7 +322,7 @@ for (const ex of EXAMPLES){ const b = document.createElement('button'); b.textCo
 $$('#file-menu [data-act]').forEach(b => b.onclick = () => ({ new: newProject, open: openDialog, save: saveProject, saveas: saveAs, download: downloadProject, upload: () => $('#file-project').click(), export: exportGame })[b.dataset.act]());
 
 /* ---------------- project files ---------------- */
-function markDirty(){ dirty = true; $('#save-status').textContent = 'unsaved changes'; scheduleAutosave(); }
+function markDirty(){ dirty = true; $('#save-status').textContent = 'Unsaved changes'; scheduleAutosave(); scheduleThumbs(); }
 let autosaveT; function scheduleAutosave(){ clearTimeout(autosaveT); autosaveT = setTimeout(() => { try { localStorage.setItem('bw3d_draft', JSON.stringify(serialize())); } catch(e){} }, 1500); }
 function serialize(){ saveCurrentWorkspace(); engine.project.name = $('#project-name').value.trim() || 'My Game'; engine.project.camera = { position: engine.camera.position.toArray(), target: engine.controls.target.toArray() }; return engine.project; }
 async function loadProject(p){
@@ -308,19 +331,32 @@ async function loadProject(p){
   $('#project-name').value = engine.project.name || 'My Game';
   const first = engine.objects.find(o => o.name === 'Player') || engine.objects.find(o => o.kind !== 'plane') || engine.objects[0];
   first ? select(first) : select('stage');
-  dirty = false; $('#save-status').textContent = '';
+  dirty = false; $('#save-status').textContent = ''; thumbs.clear(); scheduleThumbs();
 }
 async function newProject(){ if (dirty && !confirm('Start a new project? Unsaved changes will be lost.')) return; await loadProject(newProjectData()); }
+const LOCAL_KEY = 'bw3d_projects';
+function localProjects(){ try { return JSON.parse(localStorage.getItem(LOCAL_KEY) || '{}'); } catch (e) { return {}; } }
+function saveLocal(p){ const all = localProjects(); all[p.name] = { data: p, modified: Date.now() }; try { localStorage.setItem(LOCAL_KEY, JSON.stringify(all)); return true; } catch (e) { return false; } }
 async function saveProject(){
   const p = serialize();
-  try { const r = await fetch('/api/projects/' + encodeURIComponent(p.name), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }).then(r => r.json());
-    dirty = false; $('#save-status').textContent = 'saved ✓'; toast('Saved "' + r.name + '"'); } catch (e) { toast('Save failed: ' + e.message, true); }
+  const local = saveLocal(p);
+  let server = false;
+  try { const r = await fetch('/api/projects/' + encodeURIComponent(p.name), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }); server = r.ok; } catch (e) {}
+  if (!local && !server) return toast('Could not save — the project is too big for this browser and the server is offline', true);
+  dirty = false; $('#save-status').textContent = 'Saved'; toast('Saved "' + p.name + '"' + (server ? '' : ' in this browser'));
 }
 function saveAs(){ const n = prompt('Save project as:', $('#project-name').value); if (n) { $('#project-name').value = n; saveProject(); } }
 async function openDialog(){
-  const list = await fetch('/api/projects').then(r => r.json()); const box = $('#open-list'); box.innerHTML = list.length ? '' : '<p style="padding:10px;color:#888">No saved projects yet.</p>';
-  for (const p of list){ const b = document.createElement('button'); b.innerHTML = '<span></span><span class="d"></span>'; b.firstChild.textContent = p.name; b.lastChild.textContent = new Date(p.modified).toLocaleString();
-    b.onclick = async () => { $('#open-modal').classList.add('hidden'); const data = await fetch('/api/projects/' + encodeURIComponent(p.name)).then(r => r.json()); await loadProject(data); }; box.appendChild(b); }
+  const local = localProjects(); const items = Object.keys(local).map(n => ({ name: n, modified: local[n].modified, src: 'browser', data: local[n].data }));
+  try { const list = await fetch('/api/projects').then(r => r.json()); for (const p of list) if (!items.some(i => i.name === p.name && i.modified >= p.modified)) items.push({ name: p.name, modified: p.modified, src: 'server' }); } catch (e) {}
+  items.sort((a, b) => b.modified - a.modified);
+  const box = $('#open-list'); box.innerHTML = items.length ? '' : '<p>No saved projects yet. Use File → Save to keep one.</p>';
+  for (const p of items){
+    const b = document.createElement('button'); b.innerHTML = '<span></span><span class="d"></span>';
+    b.firstChild.textContent = p.name; b.firstChild.insertAdjacentHTML('beforeend', '<span class="src"></span>'); b.querySelector('.src').textContent = p.src; b.lastChild.textContent = new Date(p.modified).toLocaleString();
+    b.onclick = async () => { $('#open-modal').classList.add('hidden'); const data = p.data || await fetch('/api/projects/' + encodeURIComponent(p.name)).then(r => r.json()); await loadProject(data); };
+    box.appendChild(b);
+  }
   $('#open-modal').classList.remove('hidden');
 }
 function downloadProject(){ const p = serialize(); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(p)], { type: 'application/json' })); a.download = p.name + '.bw3d'; a.click(); }
@@ -342,7 +378,7 @@ window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); 
 (async () => {
   let draft = null; try { draft = JSON.parse(localStorage.getItem('bw3d_draft') || 'null'); } catch(e){}
   await loadProject(draft && draft.objects && draft.objects.length ? draft : newProjectData());
-  if (draft) $('#save-status').textContent = 'restored draft';
+  if (draft) $('#save-status').textContent = 'Restored your last session';
   new ResizeObserver(() => Blockly.svgResize(workspace)).observe($('#blockly'));
   window.BW = { engine, workspace, select, addShape, addModel, play, loadProject, compileAll, serialize };
 })();

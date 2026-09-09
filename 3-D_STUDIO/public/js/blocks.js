@@ -8,24 +8,31 @@
 (function(){
 'use strict';
 
-const C = {
-  motion:'#4C97FF', looks:'#9966FF', sound:'#CF63CF', events:'#FFBF00', control:'#FFAB19',
-  sensing:'#5CB1D6', operators:'#59C059', variables:'#FF8C1A', physics:'#12B886', camera:'#F26A5B'
+// [primary, secondary (inputs/dropdowns), tertiary (outline)] — the real Scratch 3 palette + two new 3D categories
+const PAL = {
+  motion:['#4C97FF','#4280D7','#3373CC'], looks:['#9966FF','#855CD6','#774DCB'], sound:['#CF63CF','#C94FC9','#BD42BD'],
+  events:['#FFBF00','#E6AC00','#CC9900'], control:['#FFAB19','#EC9C13','#CF8B17'], sensing:['#5CB1D6','#47A8D1','#2E8EB8'],
+  operators:['#59C059','#46B946','#389438'], variables:['#FF8C1A','#FF8000','#DB6E00'],
+  physics:['#12B886','#0CA678','#099268'], camera:['#F26A5B','#E8503F','#D9432F']
 };
+const C = {}; for (const k in PAL) C[k] = PAL[k][0];
 window.BW_COLORS = C;
 
-/* ---------- theme ---------- */
-const catStyle = {};
-for (const k in C) catStyle[k+'_category'] = { colour: C[k] };
+/* ---------- theme (dark workspace, Scratch 3-tone blocks) ---------- */
+const catStyle = {}, blockStyles = {};
+for (const k in PAL){
+  catStyle[k+'_category'] = { colour: PAL[k][0] };
+  blockStyles[k+'_blocks'] = { colourPrimary: PAL[k][0], colourSecondary: PAL[k][1], colourTertiary: PAL[k][2], hat: '' };
+}
 window.BW_THEME = Blockly.Theme.defineTheme('blockworld', {
   base: Blockly.Themes.Zelos,
   fontStyle: { family: '"Helvetica Neue", Helvetica, Arial, sans-serif', weight: 'bold', size: 12 },
-  categoryStyles: catStyle,
+  categoryStyles: catStyle, blockStyles,
   componentStyles: {
-    workspaceBackgroundColour: '#f9f9f9', toolboxBackgroundColour: '#ffffff', toolboxForegroundColour: '#575e75',
-    flyoutBackgroundColour: '#f9f9f9', flyoutForegroundColour: '#575e75', flyoutOpacity: 1,
-    scrollbarColour: '#cecdce', scrollbarOpacity: 0.7, insertionMarkerColour: '#000000', insertionMarkerOpacity: 0.2,
-    cursorColour: '#000000'
+    workspaceBackgroundColour: '#1a1d28', toolboxBackgroundColour: '#1b1e29', toolboxForegroundColour: '#c7cbe0',
+    flyoutBackgroundColour: '#20232f', flyoutForegroundColour: '#c7cbe0', flyoutOpacity: 1,
+    scrollbarColour: '#5a6080', scrollbarOpacity: 0.55, insertionMarkerColour: '#ffffff', insertionMarkerOpacity: 0.35,
+    cursorColour: '#ffffff', markerColour: '#a78bfa'
   }
 });
 
@@ -53,7 +60,7 @@ const KEYS = [['space','space'],['up arrow','up arrow'],['down arrow','down arro
 const defs = [];
 function def(type, cat, message0, args0, opt={}){
   const kind = opt.kind || 'stmt';
-  const d = { type, message0, args0: args0 || [], colour: C[cat], tooltip: opt.tip || '', inputsInline: true };
+  const d = { type, message0, args0: args0 || [], style: cat + '_blocks', tooltip: opt.tip || '', inputsInline: true };
   if (kind === 'stmt') { d.previousStatement = null; d.nextStatement = null; }
   if (kind === 'hat')  { d.nextStatement = null; d.hat = 'cap'; }
   if (kind === 'cap')  { d.previousStatement = null; }
