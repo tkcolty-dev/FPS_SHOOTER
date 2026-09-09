@@ -1,6 +1,7 @@
 // art.js — rasterizes the original SVG silhouettes and paints them: nation colour, camo, shading, insignia, outline.
 window.Art = (function(){
   const RES = 2;               // internal pixels per world pixel
+  const SPRITE_SCALE = 5;      // aircraft are drawn this many times their true length so they stay readable
   const cache = {};            // id -> sprite
   const imgCache = {};
   function hash(s){ let h=2166136261; for (let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
@@ -10,24 +11,84 @@ window.Art = (function(){
 
   // Draw image at natural size, find opaque bounding box, return cropped canvas scaled so that height == len.
   // Some source SVGs point left / diagonally instead of up. Override angles (deg, clockwise) here; otherwise wide images are assumed nose-left.
-  const ART_ROT = window.ART_ROT = { 'ilyushin-il-2-sturmovik-blueprint-2': 0, 'me-262a-1-swallow': 90, 'j-21': 90, 'j-21r': 90 };
-  const ART_FLIP = window.ART_FLIP = { 'horten-229a-0':'invert', 'mig-19p-farmer':'invert' }; // true/false = force, 'invert' = opposite of auto-detect
+  const ART_ROT = window.ART_ROT = {};   // explicit rotation override (deg) when auto-detection needs help
+  let lastNoseInfo=null;
+  const ART_FLIP = window.ART_FLIP = {};  // true/false forces, 'invert' flips the auto decision // true/false = force, 'invert' = opposite of auto-detect
   function bboxOf(t){ const d=t.getContext('2d').getImageData(0,0,t.width,t.height).data; let x0=t.width,y0=t.height,x1=0,y1=0; for (let y=0;y<t.height;y++) for (let x=0;x<t.width;x++){ if (d[(y*t.width+x)*4+3]>40){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } } if (x1<x0){ x0=0;y0=0;x1=t.width-1;y1=t.height-1; } return [x0,y0,x1,y1]; }
+  // ---- Orientation. An aircraft is mirror-symmetric about its fuselage but not about its wing line,
+  // so the axis with the best mirror score IS the fuselage axis. The main wing (widest slice) then sits
+  // forward of centre, which says which end is the nose. This handles art drawn at any angle.
+  function maskOf(cv, maxDim){
+    const s=Math.min(1, maxDim/Math.max(cv.width,cv.height));
+    const w=Math.max(8,Math.round(cv.width*s)), h=Math.max(8,Math.round(cv.height*s));
+    const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d');
+    x.drawImage(cv,0,0,w,h); const d=x.getImageData(0,0,w,h).data;
+    const m=new Uint8Array(w*h); for (let i=0;i<w*h;i++) m[i]=d[i*4+3]>40?1:0;
+    return {m,w,h};
+  }
+  function rotatedMask(cv, deg, maxDim){
+    const th=deg*Math.PI/180, d=Math.ceil(Math.hypot(cv.width,cv.height));
+    const c=document.createElement('canvas'); c.width=d; c.height=d; const x=c.getContext('2d');
+    x.translate(d/2,d/2); x.rotate(th); x.drawImage(cv,-cv.width/2,-cv.height/2);
+    return maskOf(c, maxDim);
+  }
+  function symmetryScore(mk){
+    const {m,w,h}=mk; const bb=bboxMask(mk); if (bb[2]<bb[0]) return 0;
+    let inter=0, uni=0; const cx=(bb[0]+bb[2])/2;
+    for (let y=bb[1];y<=bb[3];y++){ const row=y*w;
+      for (let x=bb[0];x<=bb[2];x++){ const mx=Math.round(2*cx-x); if (mx<0||mx>=w) continue;
+        const a=m[row+x], b=m[row+mx]; if (a&&b) inter++; if (a||b) uni++; } }
+    return uni? inter/uni : 0;
+  }
+  function bboxMask(mk){ const {m,w,h}=mk; let x0=w,y0=h,x1=-1,y1=-1;
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) if (m[y*w+x]){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+    return [x0,y0,x1,y1]; }
+  function principalAngle(cv){
+    const mk=maskOf(cv,120); const {m,w,h}=mk; let n=0,sx=0,sy=0;
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) if (m[y*w+x]){ n++; sx+=x; sy+=y; }
+    if (!n) return 0; const cx=sx/n, cy=sy/n; let xx=0,yy=0,xy=0;
+    for (let y=0;y<h;y++) for (let x=0;x<w;x++) if (m[y*w+x]){ const dx=x-cx, dy=y-cy; xx+=dx*dx; yy+=dy*dy; xy+=dx*dy; }
+    xx/=n; yy/=n; xy/=n;
+    return 0.5*Math.atan2(2*xy, xx-yy)*180/Math.PI;
+  }
+  function orientationFor(artKey, cv){
+    const forced = ART_ROT[artKey];
+    let best=null;
+    if (forced!==undefined){ best={deg:forced, mk:rotatedMask(cv,forced,110), s:1}; }
+    else {
+      const pa=principalAngle(cv);
+      for (const base of [90-pa, -pa]) for (let off=-8; off<=8; off+=2){
+        const deg=base+off, mk=rotatedMask(cv,deg,110), s=symmetryScore(mk);
+        if (!best || s>best.s) best={s,deg,mk};
+      }
+    }
+    const {m,w}=best.mk; const bb=bboxMask(best.mk); const rows=[];
+    for (let y=bb[1];y<=bb[3];y++){ let n=0; for (let x=bb[0];x<=bb[2];x++) if (m[y*w+x]) n++; rows.push(n); }
+    const H=rows.length||1; let wi=0; for (let i=0;i<H;i++) if (rows[i]>rows[wi]) wi=i;
+    const wingFrac=wi/Math.max(1,H-1);
+    const k=Math.max(2,Math.floor(H*0.12));
+    const topW=rows.slice(0,k).reduce((a,b)=>a+b,0)/k, botW=rows.slice(-k).reduce((a,b)=>a+b,0)/k;
+    const votes=(wingFrac>0.5?1:-1)+(topW>botW*1.15?0.8:(botW>topW*1.15?-0.8:0));
+    let flip=votes>0;
+    const fo=ART_FLIP[artKey]; if (fo==='invert') flip=!flip; else if (fo===true||fo===false) flip=fo;
+    lastNoseInfo={artKey, deg:+best.deg.toFixed(1), sym:+best.s.toFixed(3), wingFrac:+wingFrac.toFixed(2), votes:+votes.toFixed(1), flip};
+    return {rot:best.deg, flip};
+  }
+  function applyOrientation(cv, artKey){
+    const o=orientationFor(artKey, cv); const deg=o.rot+(o.flip?180:0);
+    if (Math.abs(deg)<0.01) return cv;
+    const th=deg*Math.PI/180, d=Math.ceil(Math.hypot(cv.width,cv.height));
+    const c=document.createElement('canvas'); c.width=d; c.height=d; const x=c.getContext('2d');
+    x.translate(d/2,d/2); x.rotate(th); x.drawImage(cv,-cv.width/2,-cv.height/2);
+    return c;
+  }
   async function rasterBase(artKey, len){
     const img = await loadImage(window.ART[artKey]);
-    let w = img.naturalWidth||img.width, h = img.naturalHeight||img.height;
+    const w = img.naturalWidth||img.width, h = img.naturalHeight||img.height;
     const cap = 900; const s0 = Math.min(1, cap/Math.max(w,h));
-    let t = document.createElement('canvas'); t.width = Math.max(1,Math.round(w*s0)); t.height = Math.max(1,Math.round(h*s0));
-    let tc = t.getContext('2d'); tc.drawImage(img,0,0,t.width,t.height);
-    // orientation: measure the opaque bbox first, rotate so the nose points up
-    let bb = bboxOf(t); let rot = ART_ROT[artKey]; if (rot===undefined) rot = (bb[2]-bb[0]) > (bb[3]-bb[1])*1.08 ? 90 : 0;
-    if (rot){ const th=rot*Math.PI/180; const bw0=bb[2]-bb[0]+1, bh0=bb[3]-bb[1]+1; const W2=Math.ceil(Math.abs(bw0*Math.cos(th))+Math.abs(bh0*Math.sin(th)))+4, H2=Math.ceil(Math.abs(bw0*Math.sin(th))+Math.abs(bh0*Math.cos(th)))+4;
-      const r=document.createElement('canvas'); r.width=W2; r.height=H2; const rc=r.getContext('2d'); rc.translate(W2/2,H2/2); rc.rotate(th); rc.drawImage(t, bb[0],bb[1],bw0,bh0, -bw0/2,-bh0/2,bw0,bh0); t=r; tc=rc; }
-    // nose detection: the tail end of an aircraft silhouette (stabilisers / trailing edge) is wider than the nose end.
-    bb = bboxOf(t); { const d=t.getContext('2d').getImageData(0,0,t.width,t.height).data; const rows=[]; for (let y=bb[1];y<=bb[3];y++){ let n=0; for (let x=bb[0];x<=bb[2];x++) if (d[(y*t.width+x)*4+3]>40) n++; rows.push(n); }
-      const k=Math.max(2,Math.floor(rows.length*0.14)); const top=rows.slice(0,k).reduce((a,b)=>a+b,0)/k, bot=rows.slice(-k).reduce((a,b)=>a+b,0)/k;
-      let flip = top > bot; const fo=ART_FLIP[artKey]; if (fo==='invert') flip=!flip; else if (fo!==undefined) flip=fo;
-      if (flip){ const r=document.createElement('canvas'); r.width=t.width; r.height=t.height; const rc=r.getContext('2d'); rc.translate(t.width/2,t.height/2); rc.rotate(Math.PI); rc.drawImage(t,-t.width/2,-t.height/2); t=r; } }
+    const src = document.createElement('canvas'); src.width=Math.max(1,Math.round(w*s0)); src.height=Math.max(1,Math.round(h*s0));
+    src.getContext('2d').drawImage(img,0,0,src.width,src.height);
+    const t = applyOrientation(src, artKey);
     const d = t.getContext('2d').getImageData(0,0,t.width,t.height).data;
     let x0=t.width,y0=t.height,x1=0,y1=0;
     for (let y=0;y<t.height;y++) for (let x=0;x<t.width;x++){ if (d[(y*t.width+x)*4+3]>40){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
@@ -124,15 +185,15 @@ window.Art = (function(){
     const key = id+(opts&&opts.seed?'#'+opts.seed:'');
     if (cache[key]) return cache[key];
     const p = window.planeById(id);
-    const base = await rasterBase(p.art, p.size*RES);
+    const base = await rasterBase(p.art, p.size*SPRITE_SCALE*RES);
     const cv = paint(base, p, opts);
-    const sp = { cv, shadow: shadowOf(cv), flash: silhouette(cv,'#fff'), w: cv.width/RES, h: cv.height/RES, res: RES, len: p.size, span: cv.width/RES - 8/RES };
+    const sp = { cv, shadow: shadowOf(cv), flash: silhouette(cv,'#fff'), w: cv.width/RES, h: cv.height/RES, res: RES, len: p.size*SPRITE_SCALE, span: cv.width/RES - 8/RES };
     cache[key]=sp; return sp;
   }
   async function missile(key){
     const k='m:'+key; if (cache[k]) return cache[k];
     const m = window.MISSILES[key];
-    const base = await rasterBase(m.art, 26*RES);
+    const base = await rasterBase(m.art, 12*RES);
     const c=document.createElement('canvas'); c.width=base.width; c.height=base.height; const x=c.getContext('2d');
     x.drawImage(base,0,0); x.globalCompositeOperation='source-atop'; x.fillStyle='rgba(235,238,240,0.5)'; x.fillRect(0,0,c.width,c.height);
     x.globalCompositeOperation='destination-over'; const s=silhouette(base,'rgba(0,0,0,.8)'); for (const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) x.drawImage(s,dx,dy);
@@ -155,5 +216,5 @@ window.Art = (function(){
     for (const id of ids){ await plane(id); n++; progress && progress(n/(ids.length+Object.keys(window.MISSILES).length)); }
     for (const k of Object.keys(window.MISSILES)){ await missile(k); n++; progress && progress(n/(ids.length+Object.keys(window.MISSILES).length)); }
   }
-  return { plane, missile, showcase, thumb, preloadAll, rng, hash, supportsFilter, RES };
+  return { plane, missile, showcase, thumb, preloadAll, rng, hash, supportsFilter, RES, SPRITE_SCALE, get noseInfo(){return lastNoseInfo;}, rasterBase };
 })();

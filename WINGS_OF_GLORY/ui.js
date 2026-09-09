@@ -2,7 +2,7 @@
 (function(){
   const $=id=>document.getElementById(id);
   const SAVE_KEY='wingsOfGlory.save.v1';
-  const defaultProfile=()=>({ name:'Pilot', sl:1500, rp:0, level:1, xp:0, battles:0, wins:0, kills:0, owned:['p40','bf109','yak1','spit','a6m','d520'], researched:[], selected:'p40', nation:'usa', settings:{vol:0.8,music:true,control:'mouse',quality:2}, sandbox:true, lastMode:'air', lastMap:'random', lastSize:'8', lastDiff:'1' });
+  const defaultProfile=()=>({ name:'Pilot', sl:1500, rp:0, level:1, xp:0, battles:0, wins:0, kills:0, owned:['p40','bf109','yak1','spit','a6m','d520'], researched:[], selected:'p40', nation:'usa', settings:{vol:0.8,music:true,control:'mouse',quality:2,assist:'easy'}, sandbox:true, lastMode:'air', lastMap:'random', lastSize:'8', lastDiff:'1' });
   let prof = load(); let showcaseAnim=null; let currentNation=prof.nation||'usa';
   function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if (s&&s.owned) return Object.assign(defaultProfile(), s); }catch(e){} return defaultProfile(); }
   function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(prof)); }catch(e){} }
@@ -19,7 +19,7 @@
     const firstClick=()=>{ Audio2.ensure(); Audio2.music('menu'); document.removeEventListener('pointerdown',firstClick); document.removeEventListener('keydown',firstClick); };
     document.addEventListener('pointerdown',firstClick); document.addEventListener('keydown',firstClick);
   }
-  function applySettings(){ const s=prof.settings; Game.settings.control=s.control; Game.settings.quality=+s.quality; Game.settings.name=prof.name; Audio2.setVolume(s.vol); Audio2.setMusic(s.music); }
+  function applySettings(){ const s=prof.settings; Game.settings.control=s.control; Game.settings.quality=+s.quality; Game.settings.assist=s.assist||'easy'; Game.settings.name=prof.name; Audio2.setVolume(s.vol); Audio2.setMusic(s.music); }
   function refreshTop(){ $('uiSL').textContent=fmt(prof.sl); $('uiRP').textContent=fmt(prof.rp); $('uiLevel').textContent=prof.level; $('uiRecord').textContent=prof.wins+' / '+prof.battles; $('uiKills').textContent=prof.kills; }
 
   // ---------- nations & tree
@@ -35,8 +35,8 @@
   function selectPlane(id){ const p=window.planeById(id); if (!p) return; prof.selected=id; save(); document.querySelectorAll('.card').forEach(c=>c.classList.toggle('selected',c.dataset.id===id));
     $('piRole').textContent=`${window.NATIONS[p.nation].name} · Rank ${['','I','II','III','IV','V','VI'][p.rank]} · ${p.role} · BR ${p.br}`; $('piName').textContent=p.name; $('piDesc').textContent=p.desc;
     const fp = firepower(p);
-    setStat('stSpeed', p.speed/1100, Math.round(p.speed*1.6)+' km/h'); setStat('stTurn', p.turn/175, p.turn+'°/s'); setStat('stFire', fp/900, Math.round(fp)+' dps'); setStat('stArmor', p.hp/900, p.hp+' hp');
-    const w=[]; if (p.guns) w.push(`<div><b>${p.guns.n}×</b> ${calName(p.guns.cal)}</div>`); if (p.guns2) w.push(`<div><b>${p.guns2.n}×</b> ${calName(p.guns2.cal)}</div>`); if (p.turret) w.push(`<div><b>${p.turret.n}×</b> defensive turret guns</div>`); if (p.missiles) p.missiles.forEach(([k,n])=>{ const m=window.MISSILES[k]; const type = m.guidance==='ir' ? (m.rearOnly?'IR, rear-aspect':'IR, all-aspect') : m.guidance==='sarh' ? 'semi-active radar' : 'active radar'; w.push(`<div><b>${n}×</b> ${m.name} <span style="color:#9aa3ad">${type} · ${(m.range*2/1000).toFixed(1)} km</span></div>`); }); if (p.bombs) w.push(`<div><b>${p.bombs.n}×</b> bombs</div>`); if (p.flares) w.push(`<div><b>${p.flares}</b> flares</div>`); if (p.ab) w.push(`<div><b>Afterburner</b></div>`);
+    setStat('stSpeed', p.speed/760, Math.round(p.speed*3.6)+' km/h'); setStat('stTurn', p.turnStat/55, p.turnStat.toFixed(0)+'°/s @ '+Math.round(p.vCorner*3.6)+' km/h'); setStat('stFire', fp/900, Math.round(fp)+' dps'); setStat('stArmor', p.hp/900, p.hp+' hp'); 
+    const w=[]; if (p.guns) w.push(`<div><b>${p.guns.n}×</b> ${calName(p.guns.cal)}</div>`); if (p.guns2) w.push(`<div><b>${p.guns2.n}×</b> ${calName(p.guns2.cal)}</div>`); if (p.turret) w.push(`<div><b>${p.turret.n}×</b> defensive turret guns</div>`); if (p.missiles) p.missiles.forEach(([k,n])=>{ const m=window.MISSILES[k]; const type = m.guidance==='ir' ? (m.rearOnly?'IR, rear-aspect':'IR, all-aspect') : m.guidance==='sarh' ? 'semi-active radar' : 'active radar'; w.push(`<div><b>${n}×</b> ${m.name} <span style="color:#9aa3ad">${type} · ${(m.range/1000).toFixed(1)} km</span></div>`); }); if (p.bombs) w.push(`<div><b>${p.bombs.n}×</b> bombs</div>`); if (p.flares) w.push(`<div><b>${p.flares}</b> flares</div>`); if (p.ab) w.push(`<div><b>Afterburner</b></div>`); w.push(`<div style="color:#9aa3ad">${p.gMax} G limit · climbs ${p.climb} m/s · ${p.size} m long</div>`);
     $('weaponsBox').innerHTML=w.join('');
     const st=status(p); const buy=$('btnBuy'); const battle=$('btnBattle');
     if (st==='owned'){ buy.classList.add('hidden'); battle.disabled=false; }
@@ -92,8 +92,8 @@
   $('btnSandbox').onclick=()=>{ Audio2.click(); prof.sandbox=!prof.sandbox; save(); refreshSandbox(); buildTree(); selectPlane(prof.selected); };
   $('btnControls').onclick=()=>{ Audio2.click(); $('controlsModal').classList.remove('hidden'); }; $('btnControlsClose').onclick=()=>$('controlsModal').classList.add('hidden');
   // settings
-  $('btnSettings').onclick=()=>{ Audio2.click(); const s=prof.settings; $('setVol').value=s.vol; $('setMusic').checked=s.music; $('setControl').value=s.control; $('setQuality').value=s.quality; $('setName').value=prof.name; $('settingsModal').classList.remove('hidden'); };
-  $('btnSettingsClose').onclick=()=>{ const s=prof.settings; s.vol=+$('setVol').value; s.music=$('setMusic').checked; s.control=$('setControl').value; s.quality=$('setQuality').value; prof.name=$('setName').value.trim()||'Pilot'; save(); applySettings(); $('settingsModal').classList.add('hidden'); };
+  $('btnSettings').onclick=()=>{ Audio2.click(); const s=prof.settings; $('setVol').value=s.vol; $('setMusic').checked=s.music; $('setControl').value=s.control; $('setAssist').value=s.assist||'easy'; $('setQuality').value=s.quality; $('setName').value=prof.name; $('settingsModal').classList.remove('hidden'); };
+  $('btnSettingsClose').onclick=()=>{ const s=prof.settings; s.vol=+$('setVol').value; s.music=$('setMusic').checked; s.control=$('setControl').value; s.assist=$('setAssist').value; s.quality=$('setQuality').value; prof.name=$('setName').value.trim()||'Pilot'; save(); applySettings(); $('settingsModal').classList.add('hidden'); };
   $('setVol').oninput=e=>Audio2.setVolume(+e.target.value); $('setMusic').onchange=e=>Audio2.setMusic(e.target.checked);
   $('btnReset').onclick=()=>{ if (confirm('Reset all progress? This wipes your planes, Silver Lions and stats.')){ prof=defaultProfile(); save(); applySettings(); $('settingsModal').classList.add('hidden'); refreshTop(); selectNation('usa'); } };
   // fullscreen

@@ -6,12 +6,17 @@ window.Game = (function(){
   const norm=a=>{ while(a>Math.PI)a-=TAU; while(a<-Math.PI)a+=TAU; return a; };
   const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
   const dist3=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y,((a.alt||0)-(b.alt||0))*0.6);
-  const HC=4200, ALT_MAX=3000, CLOUD_ALT=2000, GRAV=650;
+  const HC=6000, ALT_MAX=4000, CLOUD_ALT=1800, GRAV=9.81;   // 1 world unit = 1 metre, real gravity
+  const SPRITE=5;   // aircraft are drawn 5x their true length
+  const G=9.81;
   const AI_NAMES=['Viper','Ghost','Maverick','Iceman','Red Baron','Falcon','Hawk','Bandit','Cobra','Reaper','Wolf','Sabre','Raven','Duke','Lynx','Storm','Blitz','Jester','Rogue','Hornet','Kestrel','Dagger','Vandal','Comet','Rook','Talon','Zulu','Echo','Bravo','Kilo','Nomad','Ranger','Spectre','Titan','Ivan','Hans','Pierre','Sven','Kenji','Jack','Mick','Boris'];
 
   let canvas, ctx, W=0, H=0, dpr=1;
   let S=null;
-  let settings={ control:'mouse', quality:2, name:'Pilot' };
+  let settings={ control:'mouse', quality:2, name:'Pilot', assist:'easy' };
+  const A = ()=> settings.assist==='easy'
+    ? {cone:1.5, lockT:0.6, g:2.2, gimbal:1.4, rearFree:true, noise:0.25}
+    : {cone:1.0, lockT:1.0, g:1.0, gimbal:1.0, rearFree:false, noise:1.0};
   let onEnd=null;
   const input={ keys:{}, mx:0, my:0, lmb:false, rmb:false, gp:null };
   let backdrop=null, bdT=0;
@@ -28,7 +33,7 @@ window.Game = (function(){
     cv.addEventListener('mousedown',e=>{ input.mx=e.clientX; input.my=e.clientY; if(e.button===0) input.lmb=true; if(e.button===2){ input.rmb=true; fireMissile(S&&S.player); } e.preventDefault(); });
     window.addEventListener('mouseup',e=>{ if(e.button===0) input.lmb=false; if(e.button===2) input.rmb=false; });
     cv.addEventListener('contextmenu',e=>e.preventDefault());
-    cv.addEventListener('wheel',e=>{ if(!S) return; S.cam.userZoom=clamp(S.cam.userZoom*(e.deltaY>0?0.9:1.1),0.45,1.8); e.preventDefault(); },{passive:false});
+    cv.addEventListener('wheel',e=>{ if(!S) return; S.cam.userZoom=clamp(S.cam.userZoom*(e.deltaY>0?0.9:1.1),0.4,2.6); e.preventDefault(); },{passive:false});
     cv.addEventListener('touchstart',e=>{ const t=e.touches[0]; input.mx=t.clientX; input.my=t.clientY; input.lmb=true; e.preventDefault(); },{passive:false});
     cv.addEventListener('touchmove',e=>{ const t=e.touches[0]; input.mx=t.clientX; input.my=t.clientY; e.preventDefault(); },{passive:false});
     cv.addEventListener('touchend',()=>{ input.lmb=false; });
@@ -51,12 +56,13 @@ window.Game = (function(){
   function start(opts){
     const {planeId, mode, map, size, diff} = opts;
     const teamSize = mode==='test'?3:size;
-    const worldSize = teamSize<=4?4800:teamSize<=8?6200:7600;
+    const pd0=planeById(planeId);
+    const worldSize = Math.round(clamp(pd0.speed*30, 6000, 16000) * (teamSize<=4?0.8:teamSize<=8?1:1.15));
     const themes=['islands','plains','desert','winter']; const theme = map==='random'?themes[Math.floor(Math.random()*4)]:map;
     const seed = Math.floor(Math.random()*1e9);
     const world = World.create(theme, worldSize, seed);
     S = { state:'battle', mode, diff, world, size:worldSize, t:0, time: mode==='test'?1e9:(mode==='air'?12*60:14*60), planes:[], bullets:[], missiles:[], bombs:[], flares:[], ground:[], parts:[], fx:[], decals:[], feed:[], tickets:[mode==='ground'?150:100, mode==='ground'?150:100], maxTickets:mode==='ground'?150:100,
-      cam:{x:0,y:0,alt:700,zoom:1.2,userZoom:1,shake:0}, player:null, respawnT:0, score:{kills:0,assists:0,ground:0,bases:0,deaths:0,damage:0,sl:0,rp:0,events:[]}, ended:false, warn:false, mini:null, playerDef: planeById(planeId), flybyT:0, killedBy:null, hitMarker:0, killFlash:null };
+      cam:{x:0,y:0,alt:700,zoom:0.7,userZoom:1,shake:0}, player:null, respawnT:0, score:{kills:0,assists:0,ground:0,bases:0,deaths:0,damage:0,sl:0,rp:0,events:[]}, ended:false, warn:false, mini:null, bg:null, playerDef: planeById(planeId), flybyT:0, killedBy:null, hitMarker:0, killFlash:null };
     const R = Art.rng(seed+5);
     const b0 = world.findLand(Art.rng(seed+11)); const b1 = world.findLand(Art.rng(seed+17));
     b0.x = worldSize*0.18 + (b0.x-worldSize/2)*0.2; b0.y = worldSize*0.5 + (b0.y-worldSize/2)*0.5; b1.x = worldSize*0.82 + (b1.x-worldSize/2)*0.2; b1.y = worldSize*0.5 + (b1.y-worldSize/2)*0.5;
@@ -139,7 +145,8 @@ window.Game = (function(){
     const vx=Math.sin(P.hd)*(P.speed||0), vy=-Math.cos(P.hd)*(P.speed||0);
     cam.x=lerp(cam.x, P.x+vx*0.25, 1-Math.pow(0.02,dt)); cam.y=lerp(cam.y, P.y+vy*0.25, 1-Math.pow(0.02,dt));
     cam.alt=lerp(cam.alt, P.alt, 1-Math.pow(0.05,dt));
-    const base = Math.min(1, W/1400)*1.25; const speedZoom = 1 - clamp((P.speed-350)/900,0,1)*0.2;
+    const view = clamp(P.def.speed*9.5, 1500, 3600);          // metres visible across the screen
+    const base = W/view; const speedZoom = 1 - clamp((P.speed-P.def.vCorner)/Math.max(1,P.def.speed),0,1)*0.18;
     cam.zoom = lerp(cam.zoom, base*cam.userZoom*speedZoom, 1-Math.pow(0.05,dt)); cam.shake*=Math.pow(0.02,dt);
     Audio2.engineUpdate(P.alive?P.throttle*(P.fuel>0?1:0)*(1-0.5*P.dmg.engine):0, P.speed/P.def.speed, P.def.ab && P.throttle>0.92 && P.fuel>0);
     let warn=false; for (const m of S.missiles) if (m.target===P) warn=true; if (warn!==S.warn){ S.warn=warn; Audio2.warning(warn); }
@@ -189,14 +196,15 @@ window.Game = (function(){
   function lockCheck(p, md, t){
     if (!t||!t.alive) return {ok:false, why:'NO TARGET'};
     const d=dist3(p,t);
+    const as=A();
     if (d>md.range) return {ok:false, why:'OUT OF RANGE', far:true};
-    if (d<md.minRange) return {ok:false, why:'TOO CLOSE'};
+    if (d<md.minRange*(as.rearFree?0.7:1)) return {ok:false, why:'TOO CLOSE'};
     const off=Math.abs(norm(Math.atan2(t.x-p.x,-(t.y-p.y))-p.hd));
     // once you have the lock the seeker holds a wider cone than it needed to acquire it
-    const cone = (p.locked ? md.lockFov*1.5 : md.lockFov)*DEG;
+    const cone = (p.locked ? md.lockFov*1.5 : md.lockFov)*as.cone*DEG;
     if (off>cone) return {ok:false, why:'AIM AT TARGET'};
-    if (Math.abs(t.alt-p.alt) > (md.guidance==='ir'?900:1600)) return {ok:false, why:'ALTITUDE'};
-    if (md.guidance==='ir' && md.rearOnly && aspectAngle(p,t) > (md.rearArc||95)*DEG) return {ok:false, why:'GET BEHIND THE TARGET'};
+    if (Math.abs(t.alt-p.alt) > (md.guidance==='ir'?900:1600)*as.cone) return {ok:false, why:'ALTITUDE'};
+    if (md.guidance==='ir' && md.rearOnly && !as.rearFree && aspectAngle(p,t) > (md.rearArc||95)*DEG) return {ok:false, why:'GET BEHIND THE TARGET'};
     if (md.guidance==='ir' && t.onGround) return {ok:false, why:'NO HEAT SOURCE'};
     return {ok:true, why:md.guidance==='sarh'?'HOLD THE LOCK':'LOCKED'};
   }
@@ -213,11 +221,11 @@ window.Game = (function(){
     const md=window.MISSILES[m.key];
     const c=lockCheck(p, md, p.target);
     p.lockWhy=c.why;
-    if (c.ok){ p.lockGrace=1.1; p.lockT+=dt; if (!p.locked && p.lockT>=md.lockTime){ p.locked=true; if(p.isPlayer) Audio2.lock(); } else if (p.isPlayer && !p.locked && Math.floor(p.lockT*6)!==Math.floor((p.lockT-dt)*6)) Audio2.lockTone(); }
+    if (c.ok){ p.lockGrace=1.1; p.lockT+=dt; if (!p.locked && p.lockT>=md.lockTime*A().lockT){ p.locked=true; if(p.isPlayer) Audio2.lock(); } else if (p.isPlayer && !p.locked && Math.floor(p.lockT*6)!==Math.floor((p.lockT-dt)*6)) Audio2.lockTone(); }
     else if (p.locked){ // don't drop a good lock over a momentary wobble
       p.lockGrace=(p.lockGrace||0)-dt; if (p.lockGrace<=0){ p.locked=false; p.lockT=0; if (p.isPlayer) toast('LOCK LOST · '+c.why); } }
     else { p.lockT=Math.max(0,p.lockT-dt*1.2); }
-    p.lockProgress = p.locked?1:clamp(p.lockT/md.lockTime,0,1); p.lockMd=md;
+    p.lockProgress = p.locked?1:clamp(p.lockT/(md.lockTime*A().lockT),0,1); p.lockMd=md;
   }
 
   // ---------------- AI
@@ -301,11 +309,19 @@ window.Game = (function(){
     const tgt = p.onGround ? (p.throttle*vmax*0.9*power) : vmin+(vmax-vmin)*p.throttle*power;
     const accel=def.accel*(p.onGround?0.9:1)*(abOn?1.3:1)*(0.3+0.7*power);
     p.speed += clamp(tgt-p.speed, -def.accel*dt*(p.fuel>0?1.2:0.35), accel*dt);
-    const sf=p.speed/vmax; const f = sf<0.55 ? 0.42+0.58*(sf/0.55) : 1-(sf-0.55)/0.45*0.42;
-    let turnAvail = def.turn*DEG*f*(1-0.5*p.dmg.controls); if (p.onGround) turnAvail*=0.12;
+    // Real turn physics: lift-limited below corner speed, structurally limited above it.
+    // n = G pulled, omega = n*g/v — so you turn best at corner speed, and badly when very fast.
+    const sf=p.speed/vmax;
+    const vc=def.vCorner, nMax=def.gMax;
+    const n = Math.min(nMax, nMax*Math.pow(Math.max(p.speed,1)/vc, 2));
+    let turnAvail = (n*G/Math.max(p.speed,25))*(1-0.5*p.dmg.controls);
+    if (p.onGround) turnAvail*=0.10;
+    p.gPulled = n;
     const omega = clamp(p.turnCmd||0,-1,1)*turnAvail; p.omega=omega;
     p.hd=norm(p.hd+omega*dt);
-    p.speed -= Math.abs(omega)*p.speed*0.055*dt;
+    // induced drag: hard turns bleed energy, harder at high G
+    const nUsed = Math.abs(omega)*Math.max(p.speed,25)/G;
+    p.speed -= (nUsed*nUsed)*0.30*dt;
     const stall = !p.onGround && p.speed < vmin*0.95; p.stall=stall;
     if (p.onGround){
       if (p.speed > vmin*1.05 && (p.climbCmd>0 || p.takeoff)){ p.vz = def.climb*0.5; p.alt += p.vz*dt; if (p.alt>60){ p.onGround=false; p.takeoff=false; if (p.isPlayer) toast('Airborne'); } }
@@ -317,7 +333,7 @@ window.Game = (function(){
       if (stall) vzT = Math.min(vzT, -180);
       if (p.fuel<=0 && p.climbCmd>=0) vzT = Math.min(vzT, -40);
       p.vz = lerp(p.vz, vzT, 1-Math.pow(0.02,dt));
-      p.speed -= p.vz*0.26*dt;
+      p.speed -= p.vz*(G/Math.max(p.speed,40))*dt*9;
       p.alt += p.vz*dt;
       if (p.alt>=ALT_MAX){ p.alt=ALT_MAX; p.vz=Math.min(0,p.vz); }
       if (p.alt<=0){
@@ -353,9 +369,17 @@ window.Game = (function(){
   }
 
   // ---------------- weapons
+  function gunTarget(p){
+    const g=p.def.guns||p.def.guns2; if (!g) return null;
+    let best=p.target&&p.target.alive&&dist(p,p.target)<g.range*1.5 ? p.target : null;
+    let bs=best?Math.abs(norm(Math.atan2(best.x-p.x,-(best.y-p.y))-p.hd)):1e9;
+    for (const e of S.planes){ if (e.team===p.team||!e.alive) continue; const d=dist(p,e); if (d>g.range*1.5) continue;
+      const a=Math.abs(norm(Math.atan2(e.x-p.x,-(e.y-p.y))-p.hd)); if (a<25*DEG && a<bs){ bs=a; best=e; } }
+    return best;
+  }
   function fireGuns(p, dt){
     const def=p.def; if (!def.guns&&!def.guns2) return; if (p.heat>=1) return;
-    const t=p.target&&p.target.alive?p.target:null;
+    const t=gunTarget(p);
     const shoot=(g, which)=>{
       const cdKey = which===1?'cd':'cd2', ammoKey=which===1?'ammo':'ammo2';
       if (p[cdKey]>0 || p[ammoKey]<=0) return;
@@ -374,8 +398,8 @@ window.Game = (function(){
   }
   function spawnBullet(p, x, y, a, g, baseSpeed, target){
     const sp=g.speed+baseSpeed*0.6; const life=g.range/g.speed; let vz=0;
-    if (target){ const d=dist(p,target); if (d<g.range*1.4 && Math.abs(target.alt-p.alt)<700) vz=(target.alt-p.alt)/(d/sp); }
-    else if (p.alt<450 && !g.turret) vz=-p.alt/life;
+    if (target){ const d=dist(p,target); if (d<g.range*1.6) vz=clamp((target.alt-p.alt)/Math.max(0.05,d/sp), -600, 600); }
+    else if (p.alt<300 && !g.turret) vz=-p.alt/life;
     S.bullets.push({x,y,px:x,py:y,alt:p.alt,vz,vx:Math.sin(a)*sp,vy:-Math.cos(a)*sp,life,dmg:g.dmg,team:p.team,owner:p,col:g.col,size:g.size});
   }
   function fireMissile(p){
@@ -400,7 +424,11 @@ window.Game = (function(){
     const B=S.bullets;
     for (let i=B.length-1;i>=0;i--){ const b=B[i]; b.px=b.x; b.py=b.y; b.x+=b.vx*dt; b.y+=b.vy*dt; b.alt+=b.vz*dt; b.life-=dt; let dead=b.life<=0;
       if (!dead){
-        for (const p of S.planes){ if (!p.alive||p.team===b.team) continue; if (Math.abs(p.x-b.x)>90||Math.abs(p.y-b.y)>90) continue; if (Math.abs(p.alt-b.alt)>55+p.def.size*0.25) continue; if (hitPlane(p,b.x,b.y)||hitPlane(p,(b.x+b.px)/2,(b.y+b.py)/2)){ damagePlane(p,b.dmg,b.owner,'gun'); hitFx(b.x,b.y,p.alt,b.dmg>12); dead=true; break; } }
+        for (const p of S.planes){ if (!p.alive||p.team===b.team) continue;
+          const reach=hitSpan(p)+60; if (Math.abs(p.x-b.x)>reach||Math.abs(p.y-b.y)>reach) continue;
+          // sample along the round's path this frame so fast bullets can't tunnel through
+          let hit=false; for (let s=0;s<=1;s+=0.25){ const hx=b.px+(b.x-b.px)*s, hy=b.py+(b.y-b.py)*s, ha=b.alt-b.vz*dt*(1-s); if (hitPlane(p,hx,hy,ha)){ hit=true; break; } }
+          if (hit){ damagePlane(p,b.dmg,b.owner,'gun'); hitFx(b.x,b.y,p.alt,b.dmg>12); dead=true; break; } }
         if (!dead && b.alt<=0){ dead=true;
           for (const g of S.ground){ if (!g.alive||g.team===b.team) continue; const rr=g.kind==='base'?g.r:g.r+6; if (Math.abs(g.x-b.x)<rr&&Math.abs(g.y-b.y)<rr && (g.kind==='base'?inBase(g,b.x,b.y):Math.hypot(g.x-b.x,g.y-b.y)<rr)){ damageGround(g,b.dmg*(g.kind==='base'?0.25:g.kind==='tank'?(b.dmg>12?0.9:0.25):0.8),b.owner); hitFx(b.x,b.y,0,false); break; } }
           if (settings.quality>0 && onScreen(b,0)) addPart({x:b.x,y:b.y,alt:0,vx:0,vy:0,life:0.5,r:3,grow:6,col:[190,180,150],a:0.4,type:'smoke'}); }
@@ -408,7 +436,15 @@ window.Game = (function(){
       if (dead){ B[i]=B[B.length-1]; B.pop(); }
     }
   }
-  function hitPlane(p,x,y){ const dx=x-p.x, dy=y-p.y; const c=Math.cos(p.hd), s=Math.sin(p.hd); const lx=dx*c+dy*s, ly=-dx*s+dy*c; const sp=p.sprite; const a=(sp?sp.span:p.def.size)*0.5*0.88, b=p.def.size*0.5*0.95; return (lx*lx)/(a*a)+(ly*ly)/(b*b)<=1; }
+  function hitSpan(p){ const sp=p.sprite; return (sp?sp.span:p.def.size*SPRITE)*0.5*0.6; }   // ~2.4x true span
+  function hitLen(p){ const sp=p.sprite; return (sp?sp.h:p.def.size*SPRITE)*0.5*0.6; }
+  function hitHeight(p){ return Math.max(6, hitSpan(p)*0.35); }
+  function hitPlane(p,x,y,alt){
+    if (alt!==undefined && Math.abs(alt-p.alt) > hitHeight(p)) return false;
+    const dx=x-p.x, dy=y-p.y; const c=Math.cos(p.hd), s=Math.sin(p.hd);
+    const lx=dx*c+dy*s, ly=-dx*s+dy*c; const a=hitSpan(p), b=hitLen(p);
+    return (lx*lx)/(a*a)+(ly*ly)/(b*b)<=1;
+  }
   function inBase(g,x,y){ const dx=x-g.x, dy=y-g.y; const c=Math.cos(g.hd), s=Math.sin(g.hd); const lx=dx*c+dy*s, ly=-dx*s+dy*c; return Math.abs(lx)<g.w/2&&Math.abs(ly)<g.h/2; }
   function updateMissiles(dt){
     const M=S.missiles;
@@ -424,8 +460,8 @@ window.Game = (function(){
       if (t && (t.alive===false || (t.life!==undefined && t.life<=0))) { t=m.target=null; m.lost=true; }
       if (t && !m.lost){
         const bearing = Math.abs(norm(Math.atan2(t.x-m.x,-(t.y-m.y)) - m.hd));
-        if (bearing > md.fov*DEG){ m.lost=true; }                       // slid outside the seeker gimbal
-        else if (md.guidance==='ir' && md.rearOnly && m.t>0.5 && t.alive && aspectAngle(m,t) > 78*DEG) m.lost=true; // lost the tailpipe
+        if (bearing > md.fov*A().gimbal*DEG){ m.lost=true; }                       // slid outside the seeker gimbal
+        else if (md.guidance==='ir' && md.rearOnly && !A().rearFree && m.t>0.5 && t.alive && aspectAngle(m,t) > 78*DEG) m.lost=true; // lost the tailpipe
         else if (md.guidance==='sarh'){                                  // needs the launcher to keep illuminating
           const o=m.owner;
           const ok = o && o.alive && !o.onGround && o.target===t && Math.abs(norm(Math.atan2(t.x-o.x,-(t.y-o.y))-o.hd)) < 45*DEG && dist3(o,t) < md.range*1.25;
@@ -440,27 +476,32 @@ window.Game = (function(){
           for (const f of S.flares){
             if (f.owner!==t) continue;
             const fd=Math.hypot(f.x-m.x,f.y-m.y); if (fd>560) continue;
-            const rejection = md.ccm + (aspectAngle(m,t)<40*DEG ? 0.25 : 0);  // a hot tailpipe competes with the flare
+            const rejection = md.ccm + (aspectAngle(m,t)<40*DEG ? 0.25 : 0) + (A().rearFree?0.35:0);  // a hot tailpipe competes with the flare
             if (Math.random() < dt*2.6*(1-clamp(rejection,0,0.9))){ m.decoy=f; m.target=null; t=null; break; }
           }
         }
       }
       const guideOn = !m.lost && (t || m.decoy);
       const gt = m.decoy && (m.decoy.life>0) ? m.decoy : t;
-      if (guideOn && gt && m.t>0.18){
-        const tv = gt.speed!==undefined ? {x:Math.sin(gt.hd)*gt.speed, y:-Math.cos(gt.hd)*gt.speed} : {x:gt.vx||0,y:gt.vy||0};
-        const d=Math.hypot(gt.x-m.x, gt.y-m.y); const tof=d/Math.max(250,m.speed);
-        const lx=gt.x+tv.x*tof*0.9, ly=gt.y+tv.y*tof*0.9;
-        const evasion = gt.omega!==undefined ? Math.min(1, Math.abs(gt.omega)/(2.2)) : 0;
-        const noise = (Math.random()-0.5)*(0.02 + evasion*0.08) * (md.guidance==='ir'?1.2:0.8);
-        const want=Math.atan2(lx-m.x,-(ly-m.y))+noise; const diff=norm(want-m.hd);
-        const turnRate = md.turn*DEG*spdFrac*(m.t<md.boost?1:0.8);       // less authority once the motor burns out
-        const applied = clamp(diff, -turnRate*dt, turnRate*dt);
-        m.hd=norm(m.hd+applied);
-        m.speed -= Math.abs(applied)/dt * 26 * dt;                        // hard turns bleed energy
-        const da=(gt.alt||0)-m.alt; m.alt += clamp(da*2.2, -md.turn*10, md.turn*10)*dt;
-        if (Math.abs(diff) > md.fov*DEG) m.lost=true;
-      } else { m.alt -= 90*dt; }                                          // gone ballistic: it falls away
+      const as=A();
+      if (guideOn && gt && m.t>0.15){
+        // Proportional navigation: steer at N times the rotation rate of the line of sight, which is
+        // what a real seeker does. A collision course makes the line of sight stop rotating.
+        const los = Math.atan2(gt.x-m.x, -(gt.y-m.y));
+        const losRate = m.losPrev===undefined ? 0 : norm(los-m.losPrev)/dt;
+        m.losPrev = los;
+        const N = 4;
+        const gAvail = md.gLimit*as.g*(m.t<md.boost?1:0.75)*spdFrac;      // less bite once the motor is out
+        const omegaMax = gAvail*G/Math.max(120,m.speed);                  // rad/s the airframe can pull
+        const closing = Math.max(60, m.speed);
+        let cmd = N*losRate + norm(los-m.hd)*1.2;                         // PN plus a gentle pursuit term
+        const noise=(Math.random()-0.5)*0.02*as.noise;
+        cmd = clamp(cmd+noise, -omegaMax, omegaMax);
+        m.hd = norm(m.hd + cmd*dt);
+        m.speed -= Math.abs(cmd)*Math.max(m.speed,120)/G * 0.9 * dt;      // energy cost of pulling G
+        const da=(gt.alt||0)-m.alt; m.alt += clamp(da*1.8, -omegaMax*closing, omegaMax*closing)*dt;
+        if (Math.abs(norm(los-m.hd)) > md.fov*as.gimbal*DEG) m.lost=true;
+      } else { m.vzBallistic=(m.vzBallistic||0)-G*dt; m.alt += m.vzBallistic*dt; }
       if (m.decoy && m.decoy.life<=0) m.decoy=null;
 
       const step=m.speed*dt; m.x+=Math.sin(m.hd)*step; m.y-=Math.cos(m.hd)*step; m.travelled+=step;
@@ -474,7 +515,7 @@ window.Game = (function(){
       const armed = m.travelled > md.minRange*0.6;
       let dead = m.life<=0 || m.alt<=0 || m.x<0||m.y<0||m.x>S.size||m.y>S.size;
       if (!dead && armed){
-        const fuse = md.fuse||20;
+        const fuse = (md.fuse||12)*(A().rearFree?1.8:1);
         // proximity fuse on closest point of approach: it fires as the miss distance starts opening again
         let near=null, nd=1e9;
         for (const p of S.planes){ if (!p.alive||p.team===m.team) continue; const d=dist3(p,m); if (d<nd){ nd=d; near=p; } }
@@ -610,8 +651,8 @@ window.Game = (function(){
     ctx.setTransform(dpr,0,0,dpr,0,0);
     if (!S){ renderBackdrop(dtReal); return; }
     const cam=S.cam; shx=(Math.random()-0.5)*cam.shake; shy=(Math.random()-0.5)*cam.shake;
-    const s0=layer(0);
-    S.world.draw(ctx, {x:cam.x,y:cam.y,zoom:s0}, W, H);
+    const s0=drawTerrainCached();
+    layer(0);
     drawCloudShadows();
     for (const d of S.decals){ ctx.fillStyle=`rgba(20,16,12,${Math.min(0.55,d.life/10)})`; ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,TAU); ctx.fill(); }
     for (const g of S.ground) drawGround(ctx,g);
@@ -633,6 +674,30 @@ window.Game = (function(){
     pass(o=>!below(o));
     ctx.setTransform(dpr,0,0,dpr,0,0);
     drawHUD(dtReal);
+  }
+  function drawTerrainCached(){
+    const cam=S.cam; const s0=scaleFor(0)*cam.zoom; const M=320;
+    // Cache the static terrain at a quantised scale so small zoom drift only rescales the blit
+    // instead of re-rendering every tile, and only re-render when the camera slides off the margin.
+    const qs = Math.pow(2, Math.round(Math.log2(s0)*8)/8);
+    const b=S.bg;
+    const stale = !b || b.w!==W || b.h!==H || b.qs!==qs
+      || Math.abs((b.x-cam.x)*s0)>M*0.7 || Math.abs((b.y-cam.y)*s0)>M*0.7;
+    if (stale){
+      const cw=Math.ceil((W+M*2)), ch=Math.ceil((H+M*2));
+      const cv = (b&&b.cv&&b.cv.width===cw&&b.cv.height===ch) ? b.cv : document.createElement('canvas');
+      if (cv.width!==cw||cv.height!==ch){ cv.width=cw; cv.height=ch; }
+      const c=cv.getContext('2d');
+      const vw=cw/qs, vh=ch/qs;                       // world span the cache covers at the cached scale
+      c.setTransform(qs,0,0,qs, cw/2-cam.x*qs, ch/2-cam.y*qs);
+      S.world.draw(c, {x:cam.x,y:cam.y,zoom:qs}, cw, ch);
+      S.bg={cv,x:cam.x,y:cam.y,qs,w:W,h:H,M,cw,ch};
+    }
+    const bb=S.bg; const k=s0/bb.qs;                   // rescale factor for the current zoom
+    const dx=(bb.x-cam.x)*s0, dy=(bb.y-cam.y)*s0;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.drawImage(bb.cv, W/2-(bb.cw/2)*k+dx+shx, H/2-(bb.ch/2)*k+dy+shy, bb.cw*k, bb.ch*k);
+    return s0;
   }
   function drawCloudShadows(){ const c=S.cam; const s=scaleFor(0)*c.zoom; const vw=W/s/2+300, vh=H/s/2+300;
     for (const cl of S.world.clouds){ const wx=((cl.x+S.t*cl.vx)%S.size+S.size)%S.size, wy=((cl.y+S.t*cl.vy)%S.size+S.size)%S.size; const px=wx+CLOUD_ALT*0.09, py=wy+CLOUD_ALT*0.11; if (Math.abs(px-c.x)>vw||Math.abs(py-c.y)>vh) continue;
@@ -700,7 +765,7 @@ window.Game = (function(){
         if (enemy){ ctx.beginPath(); for (const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){ ctx.moveTo(s.x+sx*r,s.y+sy*r-sy*7); ctx.lineTo(s.x+sx*r,s.y+sy*r); ctx.lineTo(s.x+sx*r-sx*7,s.y+sy*r); } ctx.stroke(); if (isT){ ctx.beginPath(); ctx.arc(s.x,s.y,r+6,0,TAU); ctx.stroke(); } }
         else { ctx.beginPath(); ctx.arc(s.x,s.y,r,0,TAU); ctx.stroke(); }
         ctx.fillStyle=col; ctx.textAlign='center'; ctx.fillText(`${p.name} · ${p.def.name}`, s.x, s.y-r-16);
-        const da=p.alt-P.alt; ctx.fillStyle='#fff'; ctx.fillText(`${(d*2/1000).toFixed(1)} km  ${da>40?'▲':da<-40?'▼':'●'}${Math.abs(Math.round(da))} m`, s.x, s.y-r-4);
+        const da=p.alt-P.alt; ctx.fillStyle='#fff'; ctx.fillText(`${(d/1000).toFixed(2)} km  ${da>40?'▲':da<-40?'▼':'●'}${Math.abs(Math.round(da))} m`, s.x, s.y-r-4);
         ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(s.x-16,s.y+r+4,32,4); ctx.fillStyle=col; ctx.fillRect(s.x-16,s.y+r+4,32*p.hp/p.maxhp,4); ctx.globalAlpha=1;
       } else if (enemy && d<3800){ const a=Math.atan2(s.y-H/2,s.x-W/2); const ex=clamp(s.x,30,W-30), ey=clamp(s.y,70,H-30); ctx.save(); ctx.translate(ex,ey); ctx.rotate(a); ctx.fillStyle=col; ctx.globalAlpha=0.7; ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-6,-6); ctx.lineTo(-6,6); ctx.closePath(); ctx.fill(); ctx.restore(); }
     }
@@ -708,7 +773,7 @@ window.Game = (function(){
     for (const m of S.missiles){ if (m.target!==P) continue; const s=w2s(m.x,m.y,m.alt); ctx.strokeStyle='#ffcf3a'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(s.x,s.y,10+Math.sin(S.t*20)*3,0,TAU); ctx.stroke(); }
     if (P.alive){
       const g=P.def.guns||P.def.guns2; if (g && !P.onGround){ const nose=nosePos(P); const rx=nose.x+Math.sin(P.hd)*g.range*0.55, ry=nose.y-Math.cos(P.hd)*g.range*0.55; const s=w2s(rx,ry,P.alt); ctx.strokeStyle='rgba(255,255,255,0.75)'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.arc(s.x,s.y,6,0,TAU); ctx.moveTo(s.x-12,s.y); ctx.lineTo(s.x-8,s.y); ctx.moveTo(s.x+8,s.y); ctx.lineTo(s.x+12,s.y); ctx.moveTo(s.x,s.y-12); ctx.lineTo(s.x,s.y-8); ctx.stroke(); }
-      const t=P.target; if (t&&t.alive&&g){ const d=dist(P,t); if (d<g.range*1.6){ const tt=d/(g.speed+P.speed*0.6); const lx=t.x+Math.sin(t.hd)*t.speed*tt, ly=t.y-Math.cos(t.hd)*t.speed*tt; const s=w2s(lx,ly,t.alt); const inAlt=Math.abs(t.alt-P.alt)<260; ctx.strokeStyle=inAlt?'#7dff7d':'#ffb347'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(s.x,s.y,7,0,TAU); ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(s.x,s.y,2,0,TAU); ctx.fill(); if (!inAlt){ ctx.textAlign='left'; ctx.fillText(t.alt>P.alt?'climb ▲':'dive ▼', s.x+12, s.y); } } }
+      const t=P.target; if (t&&t.alive&&g){ const d=dist(P,t); if (d<g.range*1.8){ const tt=d/(g.speed+P.speed*0.6); const lx=t.x+Math.sin(t.hd)*t.speed*tt, ly=t.y-Math.cos(t.hd)*t.speed*tt; const s=w2s(lx,ly,t.alt); const inAlt=Math.abs(t.alt-P.alt)<hitHeight(t)*3; ctx.strokeStyle=inAlt?'#7dff7d':'#ffb347'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(s.x,s.y,7,0,TAU); ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.beginPath(); ctx.arc(s.x,s.y,2,0,TAU); ctx.fill(); if (!inAlt){ ctx.textAlign='left'; ctx.fillText(t.alt>P.alt?'climb ▲':'dive ▼', s.x+12, s.y); } } }
       if (P.def.bombs && P.bombs>0 && !P.onGround){ const ip=bombImpact(P); const s=w2s(ip.x,ip.y,0); ctx.strokeStyle='rgba(255,210,80,0.9)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(s.x,s.y,P.def.bombs.r*0.5*s.s,0,TAU); ctx.stroke(); ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(s.x-6,s.y); ctx.lineTo(s.x+6,s.y); ctx.moveTo(s.x,s.y-6); ctx.lineTo(s.x,s.y+6); ctx.stroke(); }
       // seeker cone and lock ring
       const mm=P.missiles&&P.missiles[P.missileIdx];
@@ -740,7 +805,7 @@ window.Game = (function(){
     if (S.killFlash){ const k=S.killFlash.t; const a=k<0.2?k/0.2:k>1.7?(2.2-k)/0.5:1; ctx.globalAlpha=a; ctx.fillStyle='#ffd35a'; ctx.font='800 36px '+getFont(); ctx.fillText(S.killFlash.text,W/2,H*0.3); ctx.font='600 16px '+getFont(); ctx.fillStyle='#fff'; ctx.fillText(S.killFlash.sub,W/2,H*0.3+28); ctx.globalAlpha=1; }
     // flight panel
     const bw=270*U, bh=150*U; const bx=pad, by=H-pad-bh; panel(bx,by,bw,bh);
-    ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.font=`800 ${Math.round(28*U)}px `+getFont(); const spdTxt=Math.round(P.speed*1.6)+''; ctx.fillText(spdTxt, bx+12, by+24*U); const sw=ctx.measureText(spdTxt).width; ctx.font=`600 ${Math.round(11*U)}px `+getFont(); ctx.fillStyle='#9aa3ad'; ctx.fillText('KM/H', bx+16+sw, by+28*U);
+    ctx.textAlign='left'; ctx.fillStyle='#fff'; ctx.font=`800 ${Math.round(28*U)}px `+getFont(); const spdTxt=Math.round(P.speed*3.6)+''; ctx.fillText(spdTxt, bx+12, by+24*U); const sw=ctx.measureText(spdTxt).width; ctx.font=`600 ${Math.round(11*U)}px `+getFont(); ctx.fillStyle='#9aa3ad'; ctx.fillText('KM/H', bx+16+sw, by+28*U);
     ctx.font=`800 ${Math.round(28*U)}px `+getFont(); ctx.fillStyle=(P.alt<150&&P.vz<-40&&!P.onGround)?'#ff5a5a':'#fff'; ctx.textAlign='right'; ctx.fillText(Math.round(P.alt)+'', bx+bw-40*U, by+24*U); ctx.font=`600 ${Math.round(11*U)}px `+getFont(); ctx.fillStyle='#9aa3ad'; ctx.textAlign='left'; ctx.fillText('M '+(P.vz>15?'▲':P.vz<-15?'▼':'—'), bx+bw-36*U, by+28*U);
     ctx.font=`600 ${Math.round(11*U)}px `+getFont();
     ctx.fillStyle='#9aa3ad'; ctx.fillText('THROTTLE', bx+12, by+50*U); bar(bx+72*U,by+44*U,bw-84*U,9*U,P.throttle,P.def.ab&&P.throttle>0.92?'#8fd3ff':'#f3c14b');
@@ -758,7 +823,7 @@ window.Game = (function(){
     if (P.missiles.length){ P.missiles.forEach((m,i)=>{ const md=window.MISSILES[m.key]; const sel=i===P.missileIdx; ctx.fillStyle=sel?'#f3c14b':'#9aa3ad'; ctx.font=(sel?'700':'600')+' 12px '+getFont(); ctx.fillText((sel?'▶ ':'   ')+md.name.toUpperCase(), wx+12, ly); ctx.fillStyle='#fff'; ctx.textAlign='right'; ctx.fillText('×'+m.n, wx+ww-12, ly); ctx.textAlign='left'; ly+=18; });
       const m=P.missiles[P.missileIdx]; if (m&&m.n>0){ const md=window.MISSILES[m.key];
         if (P.locked){ ctx.fillStyle='#7dff7d'; ctx.font='800 13px '+getFont(); ctx.fillText(md.guidance==='sarh'?'LOCKED · HOLD THE TARGET':'LOCKED · RMB / E', wx+12, ly); }
-        else if (P.lockT>0){ ctx.fillStyle='#f3c14b'; ctx.fillText('LOCKING…', wx+12, ly); bar(wx+90,ly-4,ww-102,8,P.lockT/md.lockTime,'#f3c14b'); }
+        else if (P.lockT>0){ ctx.fillStyle='#f3c14b'; ctx.fillText('LOCKING…', wx+12, ly); bar(wx+90,ly-4,ww-102,8,P.lockProgress||0,'#f3c14b'); }
         else { ctx.fillStyle='#9aa3ad'; ctx.font='600 11px '+getFont(); ctx.fillText(P.lockWhy||('SEEKER '+md.guidance.toUpperCase()), wx+12, ly); ctx.font='600 12px '+getFont(); }
         ly+=18; } }
     if (P.def.bombs){ ctx.fillStyle='#9aa3ad'; ctx.font='600 12px '+getFont(); ctx.fillText('BOMBS', wx+12, ly); ctx.fillStyle='#fff'; ctx.textAlign='right'; ctx.fillText('×'+P.bombs, wx+ww-12, ly); ctx.textAlign='left'; ly+=18; }
@@ -774,7 +839,7 @@ window.Game = (function(){
     if (S.warn && P.alive){ ctx.fillStyle=Math.sin(S.t*18)>0?'#ff4d4d':'#ffd35a'; ctx.font='800 26px '+getFont(); ctx.fillText('⚠ MISSILE — FLARES (F)', W/2, H*0.16); }
     if (P.alive && !P.onGround && P.alt<160 && P.vz<-50){ ctx.fillStyle=Math.sin(S.t*20)>0?'#ff4d4d':'#fff'; ctx.font='800 30px '+getFont(); ctx.fillText('PULL UP', W/2, H*0.38); }
     if (P.alive && P.landed){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(W/2-200,H*0.34-20,400,40); ctx.fillStyle='#7dff7d'; ctx.font='700 18px '+getFont(); ctx.fillText(P.repairT>0?`LANDED · repairing & rearming ${Math.ceil(P.repairT)} s`:'READY · hold W to take off', W/2, H*0.34); }
-    else if (P.alive && P.onGround){ ctx.fillStyle='#fff'; ctx.font='700 16px '+getFont(); ctx.fillText(`TAKEOFF ROLL · rotate at ${Math.round(P.def.speed*0.336*1.6)} km/h (Shift)`, W/2, H*0.34); }
+    else if (P.alive && P.onGround){ ctx.fillStyle='#fff'; ctx.font='700 16px '+getFont(); ctx.fillText(`TAKEOFF ROLL · rotate at ${Math.round(P.def.speed*0.336*3.6)} km/h (Shift)`, W/2, H*0.34); }
     if (P.alive && P.fuel<P.maxFuel*0.15 && P.fuel>0 && Math.sin(S.t*6)>0){ ctx.fillStyle='#ffd35a'; ctx.font='800 18px '+getFont(); ctx.fillText('LOW FUEL — return to your airfield and land', W/2, H*0.2); }
     if (!P.alive){ ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(0,0,W,H); ctx.fillStyle='#ff5a5a'; ctx.font='800 44px '+getFont(); ctx.fillText(S.killedBy==='the ground'?'CRASHED':'SHOT DOWN', W/2, H*0.4); ctx.fillStyle='#fff'; ctx.font='600 18px '+getFont(); ctx.fillText('by '+(S.killedBy||'?'), W/2, H*0.4+36);
       if (S.tickets[0]>0){ ctx.fillStyle='#f3c14b'; ctx.font='700 20px '+getFont(); ctx.fillText(S.respawnT>0?'Respawn in '+Math.ceil(S.respawnT)+'…':(S.bases[0].alive?'Press SPACE / click to respawn on the runway':'Your airfield is destroyed — no respawns'), W/2, H*0.4+80); } }

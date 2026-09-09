@@ -1,6 +1,6 @@
 // world.js — procedural terrain tiles (value noise → water/sand/grass/forest/fields/towns), cloud layer.
 window.World = (function(){
-  const TILE = 512, BASE_RES = 2; // base colour computed every 4 world px, features drawn at full res
+  const TILE = 1024, BASE_RES = 4; // base colour computed every 4 world px, features drawn at full res
   const THEMES = {
     islands: { sea:0.47, deep:[14,52,92], shallow:[46,138,170], sand:[214,196,150], grass:[[96,142,66],[118,158,74],[84,130,60]], forest:[38,84,44], tree:[52,104,52], field:[[196,168,88],[160,140,70],[110,150,70],[184,150,60]], rock:[120,118,110], snowLine:2, town:[168,160,150], road:[86,82,78], river:false },
     plains:  { sea:0.30, deep:[18,60,100], shallow:[52,140,168], sand:[200,186,140], grass:[[108,150,66],[128,166,74],[96,140,60]], forest:[44,92,46], tree:[56,110,54], field:[[204,172,80],[168,140,66],[126,160,72],[190,150,58],[230,200,100]], rock:[120,118,110], snowLine:0.92, town:[172,166,156], road:[90,86,82], river:true },
@@ -59,7 +59,7 @@ window.World = (function(){
       // features
       const R = Art.rng(Art.hash(seed+':'+tx+','+ty));
       // fields
-      for (let k=0;k<6;k++){ const fx=ox+R()*TILE, fy=oy+R()*TILE; const h=height(fx,fy)-T.sea; const f=noiseC(fx*S*2.2, fy*S*2.2, 3);
+      for (let k=0;k<24;k++){ const fx=ox+R()*TILE, fy=oy+R()*TILE; const h=height(fx,fy)-T.sea; const f=noiseC(fx*S*2.2, fy*S*2.2, 3);
         if (h>0.02 && h<0.24 && f<0.5 && R()< (themeName==='plains'?0.9:0.45)){
           const w=60+R()*120, hh=40+R()*90, a=R()*Math.PI; const col=T.field[Math.floor(R()*T.field.length)];
           ctx.save(); ctx.translate(fx-ox,fy-oy); ctx.rotate(a); ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},0.85)`; ctx.fillRect(-w/2,-hh/2,w,hh);
@@ -67,7 +67,7 @@ window.World = (function(){
           ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.strokeRect(-w/2,-hh/2,w,hh); ctx.restore();
         } }
       // trees
-      const treeN = themeName==='desert'?40:260;
+      const treeN = themeName==='desert'?160:1040;
       for (let k=0;k<treeN;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; const h=height(px,py)-T.sea; if (h<0.014||h>0.34) continue; const f=noiseC(px*S*2.2, py*S*2.2, 3); if (f<0.55 && R()>0.06) continue;
         const r=2.5+R()*3.5; const c=T.tree; const sh=themeName==='winter'?0.9:0.75;
         ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.beginPath(); ctx.arc(px-ox+r*0.6,py-oy+r*0.7,r,0,7); ctx.fill();
@@ -75,9 +75,9 @@ window.World = (function(){
         ctx.fillStyle=`rgb(${Math.min(255,c[0]+30)},${Math.min(255,c[1]+34)},${Math.min(255,c[2]+20)})`; ctx.beginPath(); ctx.arc(px-ox-r*0.3,py-oy-r*0.3,r*0.5,0,7); ctx.fill();
       }
       // rocks in desert / mountains
-      for (let k=0;k<30;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; const h=height(px,py)-T.sea; if (!(h>0.28 || (themeName==='desert'&&h>0.05&&R()<0.3))) continue; const r=3+R()*6; ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(px-ox+2,py-oy+2,r,r*0.7,R()*3,0,7); ctx.fill(); ctx.fillStyle=`rgb(${T.rock[0]},${T.rock[1]},${T.rock[2]})`; ctx.beginPath(); ctx.ellipse(px-ox,py-oy,r,r*0.7,R()*3,0,7); ctx.fill(); }
+      for (let k=0;k<120;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; const h=height(px,py)-T.sea; if (!(h>0.28 || (themeName==='desert'&&h>0.05&&R()<0.3))) continue; const r=3+R()*6; ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(px-ox+2,py-oy+2,r,r*0.7,R()*3,0,7); ctx.fill(); ctx.fillStyle=`rgb(${T.rock[0]},${T.rock[1]},${T.rock[2]})`; ctx.beginPath(); ctx.ellipse(px-ox,py-oy,r,r*0.7,R()*3,0,7); ctx.fill(); }
       // town
-      if (R()<0.42){ const cx=ox+80+R()*(TILE-160), cy=oy+80+R()*(TILE-160); const h=height(cx,cy)-T.sea; const f=noiseC(cx*S*2.2, cy*S*2.2, 3);
+      for (let town=0; town<3; town++) if (R()<0.5){ const cx=ox+80+R()*(TILE-160), cy=oy+80+R()*(TILE-160); const h=height(cx,cy)-T.sea; const f=noiseC(cx*S*2.2, cy*S*2.2, 3);
         if (h>0.02 && h<0.22 && f<0.6){ const nb=8+Math.floor(R()*14); const ang=R()*Math.PI; ctx.save(); ctx.translate(cx-ox,cy-oy); ctx.rotate(ang);
           ctx.strokeStyle=`rgb(${T.road[0]},${T.road[1]},${T.road[2]})`; ctx.lineWidth=7; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(-90,0); ctx.lineTo(90,0); ctx.moveTo(0,-70); ctx.lineTo(0,70); ctx.stroke();
           ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1; ctx.setLineDash([6,6]); ctx.beginPath(); ctx.moveTo(-90,0); ctx.lineTo(90,0); ctx.moveTo(0,-70); ctx.lineTo(0,70); ctx.stroke(); ctx.setLineDash([]);
@@ -87,10 +87,10 @@ window.World = (function(){
           ctx.restore(); }
       }
       // shoreline foam / wave lines
-      if (themeName!=='plains' || true){ ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.2; for (let k=0;k<18;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; if (height(px,py)>T.sea-0.005) continue; const len=10+R()*30; ctx.beginPath(); ctx.moveTo(px-ox,py-oy); ctx.quadraticCurveTo(px-ox+len/2,py-oy-3,px-ox+len,py-oy); ctx.stroke(); } }
+      if (themeName!=='plains' || true){ ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1.2; for (let k=0;k<72;k++){ const px=ox+R()*TILE, py=oy+R()*TILE; if (height(px,py)>T.sea-0.005) continue; const len=10+R()*30; ctx.beginPath(); ctx.moveTo(px-ox,py-oy); ctx.quadraticCurveTo(px-ox+len/2,py-oy-3,px-ox+len,py-oy); ctx.stroke(); } }
       return cv;
     }
-    function tile(tx,ty){ const k=tx+','+ty; let t=tiles.get(k); if (!t){ t=renderTile(tx,ty); tiles.set(k,t); order.push(k); if (order.length>90){ tiles.delete(order.shift()); } } return t; }
+    function tile(tx,ty){ const k=tx+','+ty; let t=tiles.get(k); if (!t){ t=renderTile(tx,ty); tiles.set(k,t); order.push(k); if (order.length>40){ tiles.delete(order.shift()); } } return t; }
     function draw(ctx, cam, vw, vh){
       const x0=Math.floor((cam.x - vw/2/cam.zoom)/TILE), x1=Math.floor((cam.x + vw/2/cam.zoom)/TILE);
       const y0=Math.floor((cam.y - vh/2/cam.zoom)/TILE), y1=Math.floor((cam.y + vh/2/cam.zoom)/TILE);
