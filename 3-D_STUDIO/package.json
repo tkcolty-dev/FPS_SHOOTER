@@ -1,0 +1,3 @@
+{ "name": "blockworld-3d", "version": "1.0.0", "private": true, "description": "BlockWorld 3D Studio — Scratch-style block coding for 3D games",
+  "main": "server.js", "scripts": { "start": "node server.js" },
+  "dependencies": { "blockly": "^13.2.1", "cannon-es": "^0.20.0", "esbuild": "^0.25.0", "express": "^5.2.1", "three": "^0.185.1" } }

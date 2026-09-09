@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BlockWorld 3D Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2720%27 fill=%27%234c97ff%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2762%27 text-anchor=%27middle%27 fill=%27white%27%3E◈%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/jsm/", "cannon-es": "./vendor/cannon-es.js" } }
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">◈</span><span class="brand-name">BlockWorld <b>3D</b></span></div>
+  <nav class="menu">
+    <div class="menu-item"><button class="menu-btn" id="btn-file">File ▾</button>
+      <div class="dropdown hidden" id="file-menu">
+        <button data-act="new">New project</button>
+        <button data-act="open">Open…</button>
+        <button data-act="save">Save <kbd>⌘S</kbd></button>
+        <button data-act="saveas">Save as…</button>
+        <hr>
+        <button data-act="download">Download project file</button>
+        <button data-act="upload">Load project file…</button>
+        <hr>
+        <button data-act="export">Export as playable game (.html)</button>
+      </div>
+    </div>
+    <div class="menu-item"><button class="menu-btn" id="btn-examples">Examples ▾</button><div class="dropdown hidden" id="examples-menu"></div></div>
+    <button class="menu-btn" id="btn-help">? Tutorial</button>
+  </nav>
+  <input id="project-name" class="project-name" value="My Game" spellcheck="false" />
+  <div class="top-right">
+    <span id="save-status" class="save-status"></span>
+    <button class="menu-btn workshop-btn" id="btn-workshop">🧩 Model Workshop</button>
+  </div>
+</header>
+
+<main class="layout">
+  <!-- ============ CODE ============ -->
+  <section class="code-pane">
+    <div class="pane-tabs">
+      <button class="tab active" data-tab="code">Code</button>
+      <button class="tab" data-tab="object">Object</button>
+      <div class="tab-spacer"></div>
+      <span class="editing-target"><span id="editing-name">Cube</span></span>
+    </div>
+    <div id="blockly" class="tab-panel active"></div>
+    <div id="object-panel" class="tab-panel object-panel">
+      <h3>Object settings</h3>
+      <div class="obj-form" id="obj-form">
+        <label>Name <input id="p-name" /></label>
+        <div class="row3"><label>x <input id="p-x" type="number" step="0.1" /></label><label>y <input id="p-y" type="number" step="0.1" /></label><label>z <input id="p-z" type="number" step="0.1" /></label></div>
+        <div class="row3"><label>rot x <input id="p-rx" type="number" step="5" /></label><label>rot y <input id="p-ry" type="number" step="5" /></label><label>rot z <input id="p-rz" type="number" step="5" /></label></div>
+        <div class="row3"><label>width <input id="p-sx" type="number" step="0.1" min="0.01" /></label><label>height <input id="p-sy" type="number" step="0.1" min="0.01" /></label><label>depth <input id="p-sz" type="number" step="0.1" min="0.01" /></label></div>
+        <div class="row3"><label>color <input id="p-color" type="color" /></label>
+          <label>material <select id="p-material"><option>normal</option><option>shiny</option><option>metal</option><option>glass</option><option>glow</option><option>flat</option></select></label>
+          <label>transparency <input id="p-opacity" type="number" min="0" max="100" step="5" /></label></div>
+        <label class="chk"><input id="p-visible" type="checkbox" /> visible</label>
+        <h3>Physics</h3>
+        <label class="chk"><input id="p-phys" type="checkbox" /> physics on</label>
+        <div class="row3"><label>type <select id="p-ptype"><option value="dynamic">dynamic (moves & falls)</option><option value="static">static (never moves)</option></select></label>
+          <label>mass <input id="p-mass" type="number" step="0.5" min="0.01" /></label></div>
+        <div class="row3"><label>bounciness <input id="p-bounce" type="number" step="0.1" min="0" max="1.5" /></label><label>friction <input id="p-friction" type="number" step="0.1" min="0" max="2" /></label>
+          <label class="chk"><input id="p-upright" type="checkbox" /> keep upright</label></div>
+        <div class="btn-row"><button id="p-dup" class="small-btn">Duplicate</button><button id="p-del" class="small-btn danger">Delete object</button></div>
+      </div>
+      <div class="obj-form" id="stage-form">
+        <div class="row3"><label>sky color <input id="s-sky" type="color" /></label><label>gravity <input id="s-gravity" type="number" step="0.5" /></label><label>sun <input id="s-sun" type="number" step="0.1" min="0" max="3" /></label></div>
+        <label class="chk"><input id="s-fog" type="checkbox" /> distance fog</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STAGE ============ -->
+  <section class="stage-pane">
+    <div class="stage-header">
+      <button id="btn-play" class="run-btn flag" title="Play (green flag)">▶</button>
+      <button id="btn-stop" class="run-btn stop" title="Stop">■</button>
+      <span id="fps" class="fps">— fps</span>
+      <div class="tab-spacer"></div>
+      <div class="gizmo-bar">
+        <button data-mode="translate" class="gz active" title="Move (W)">✥</button>
+        <button data-mode="rotate" class="gz" title="Rotate (E)">⟳</button>
+        <button data-mode="scale" class="gz" title="Scale (R)">⤢</button>
+        <button id="gz-snap" class="gz" title="Snap to grid">⌗</button>
+        <button id="gz-focus" class="gz" title="Focus selected (F)">◎</button>
+      </div>
+      <button id="btn-big" class="icon-btn" title="Big stage">⛶</button>
+    </div>
+    <div class="viewport-wrap" id="viewport-wrap">
+      <canvas id="view"></canvas>
+      <div id="hud" class="hud"></div>
+      <div id="view-hint" class="view-hint">Left-drag: orbit · Right-drag: pan · Scroll: zoom · Click an object to select</div>
+    </div>
+    <div class="info-bar" id="info-bar">
+      <span class="ib-name" id="ib-name">—</span>
+      <label>x <input id="ib-x" type="number" step="0.5"></label>
+      <label>y <input id="ib-y" type="number" step="0.5"></label>
+      <label>z <input id="ib-z" type="number" step="0.5"></label>
+      <label>turn <input id="ib-ry" type="number" step="15"></label>
+      <label>size <input id="ib-size" type="number" step="0.1" min="0.01"></label>
+      <label class="ib-color">color <input id="ib-color" type="color"></label>
+      <label class="chk">physics <input id="ib-phys" type="checkbox"></label>
+    </div>
+    <div class="objects-pane">
+      <div class="objects-list" id="objects-list"></div>
+      <div class="stage-tile-col">
+        <div class="add-wrap">
+          <button id="btn-add" class="add-btn" title="Add object">+</button>
+          <div class="add-menu hidden" id="add-menu">
+            <div class="add-title">Shapes</div>
+            <div class="shape-grid">
+              <button data-kind="box">◼ Cube</button><button data-kind="sphere">● Ball</button><button data-kind="cylinder">⬮ Cylinder</button>
+              <button data-kind="cone">▲ Cone</button><button data-kind="capsule">⬭ Capsule</button><button data-kind="torus">◯ Ring</button>
+              <button data-kind="wedge">◢ Ramp</button><button data-kind="plane">▬ Floor</button>
+            </div>
+            <div class="add-title">Models</div>
+            <button class="wide" data-act="workshop">🧩 Model Workshop (download models)</button>
+            <button class="wide" data-act="upload">📁 Upload my own .glb / .obj</button>
+          </div>
+        </div>
+        <div class="stage-tile" id="stage-tile"><div class="stage-tile-pic">🌍</div><div>Stage</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ MODALS ============ -->
+<div class="modal hidden" id="workshop-modal">
+  <div class="modal-box wide">
+    <div class="modal-head"><h2>🧩 Model Workshop</h2><span class="modal-sub">Free 3D models from trusted libraries — downloaded through your own server and cached.</span><button class="close" data-close>✕</button></div>
+    <div class="ws-search"><input id="ws-q" placeholder="Search: fox, car, robot, chair…" /><button id="ws-go" class="small-btn">Search</button><span id="ws-status"></span></div>
+    <div class="ws-grid" id="ws-grid"></div>
+    <p class="ws-note" id="ws-note"></p>
+  </div>
+</div>
+<div class="modal hidden" id="open-modal">
+  <div class="modal-box"><div class="modal-head"><h2>Open project</h2><button class="close" data-close>✕</button></div><div id="open-list" class="open-list"></div></div>
+</div>
+<div class="modal hidden" id="help-modal">
+  <div class="modal-box wide help">
+    <div class="modal-head"><h2>How to build a game</h2><button class="close" data-close>✕</button></div>
+    <div class="help-body">
+      <div class="help-col">
+        <h3>1 · Put things in the world</h3>
+        <p>Press the big <b>+</b> under the 3D view to add shapes, or open the <b>🧩 Model Workshop</b> to download real models (they show up with animations you can play).</p>
+        <p>Click an object in the 3D view to select it. Drag the arrows to move it. Keys: <kbd>W</kbd> move · <kbd>E</kbd> rotate · <kbd>R</kbd> scale · <kbd>F</kbd> focus · <kbd>Del</kbd> delete · <kbd>⌘D</kbd> duplicate.</p>
+        <h3>2 · Give it code</h3>
+        <p>Every object has its own scripts, exactly like sprites in Scratch. Drag blocks from the categories on the left. Scripts start with a hat block: <span class="pill events">when ▶ clicked</span>, <span class="pill events">when key pressed</span>, <span class="pill events">when this touches</span>…</p>
+        <h3>3 · Press ▶</h3>
+        <p>Physics turns on, scripts run. Press <b>■</b> and everything snaps back to where you put it.</p>
+      </div>
+      <div class="help-col">
+        <h3>A player you can drive</h3>
+        <div class="fake-script">
+          <div class="fb events">when ▶ clicked</div><div class="fb camera">camera follow <i>Player</i> distance 6 height 3</div>
+        </div>
+        <div class="fake-script">
+          <div class="fb events">when <i>up arrow</i> key pressed</div><div class="fb motion">move 0.15 steps</div>
+        </div>
+        <div class="fake-script">
+          <div class="fb events">when <i>space</i> key pressed</div><div class="fb physics">jump with power 6</div><div class="fb sound">play sound jump</div>
+        </div>
+        <h3>Collect a coin</h3>
+        <div class="fake-script">
+          <div class="fb events">when this touches <i>Player</i></div><div class="fb sound">play sound coin</div><div class="fb variables">change <i>score</i> by 1</div><div class="fb looks">hide</div>
+        </div>
+        <p class="tip">Tip: the <b>Examples ▾</b> menu loads finished games you can take apart.</p>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+<input type="file" id="file-model" accept=".glb,.gltf,.obj" hidden />
+<input type="file" id="file-project" accept=".bw3d,.json" hidden />
+
+<script src="vendor/blockly/blockly_compressed.js"></script>
+<script src="vendor/blockly/blocks_compressed.js"></script>
+<script src="vendor/blockly/javascript_compressed.js"></script>
+<script src="vendor/blockly/en.js"></script>
+<script src="js/blocks.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
