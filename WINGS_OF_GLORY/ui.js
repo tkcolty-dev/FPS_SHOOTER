@@ -2,7 +2,7 @@
 (function(){
   const $=id=>document.getElementById(id);
   const SAVE_KEY='wingsOfGlory.save.v1';
-  const defaultProfile=()=>({ name:'Pilot', sl:1500, rp:0, level:1, xp:0, battles:0, wins:0, kills:0, owned:['p40','bf109','yak1','spit','a6m','d520'], researched:[], selected:'p40', nation:'usa', settings:{vol:0.8,music:true,control:'mouse',quality:2}, lastMode:'air', lastMap:'random', lastSize:'8', lastDiff:'1' });
+  const defaultProfile=()=>({ name:'Pilot', sl:1500, rp:0, level:1, xp:0, battles:0, wins:0, kills:0, owned:['p40','bf109','yak1','spit','a6m','d520'], researched:[], selected:'p40', nation:'usa', settings:{vol:0.8,music:true,control:'mouse',quality:2}, sandbox:true, lastMode:'air', lastMap:'random', lastSize:'8', lastDiff:'1' });
   let prof = load(); let showcaseAnim=null; let currentNation=prof.nation||'usa';
   function load(){ try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if (s&&s.owned) return Object.assign(defaultProfile(), s); }catch(e){} return defaultProfile(); }
   function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(prof)); }catch(e){} }
@@ -14,7 +14,7 @@
     applySettings();
     await Art.preloadAll(f=>{ $('loadBar').style.width=(f*100).toFixed(0)+'%'; $('loadText').textContent='Painting aircraft… '+Math.round(f*100)+'%'; });
     $('loader').classList.add('hidden'); $('hangar').classList.remove('hidden');
-    buildNations(); selectNation(currentNation); refreshTop();
+    buildNations(); selectNation(currentNation); refreshTop(); refreshSandbox();
     $('selMode').value=prof.lastMode; $('selMap').value=prof.lastMap; $('selSize').value=prof.lastSize; $('selDiff').value=prof.lastDiff;
     const firstClick=()=>{ Audio2.ensure(); Audio2.music('menu'); document.removeEventListener('pointerdown',firstClick); document.removeEventListener('keydown',firstClick); };
     document.addEventListener('pointerdown',firstClick); document.addEventListener('keydown',firstClick);
@@ -25,18 +25,18 @@
   // ---------- nations & tree
   function buildNations(){ const el=$('nations'); el.innerHTML=''; for (const [id,n] of Object.entries(window.NATIONS)){ const d=document.createElement('div'); d.className='nation'; d.dataset.id=id; d.innerHTML=`<span class="flag" style="background:linear-gradient(90deg,${n.flag[0]} 33%,${n.flag[1]} 33% 66%,${n.flag[2]} 66%)"></span>${n.name}`; d.onclick=()=>{ Audio2.click(); selectNation(id); }; el.appendChild(d); } }
   function selectNation(id){ currentNation=id; prof.nation=id; document.querySelectorAll('.nation').forEach(n=>n.classList.toggle('active',n.dataset.id===id)); buildTree(); const sel=window.planeById(prof.selected); if (!sel||sel.nation!==id){ const own=window.PLANES.filter(p=>p.nation===id&&prof.owned.includes(p.id)); const first=own[0]||window.PLANES.find(p=>p.nation===id); selectPlane(first.id); } else selectPlane(prof.selected); save(); }
-  function status(p){ if (prof.owned.includes(p.id)) return 'owned'; if (prof.researched.includes(p.id)) return 'researched'; const prev = window.PLANES.filter(x=>x.nation===p.nation && x.rank===p.rank-1); const ok = p.rank===1 || prev.length===0 || prev.some(x=>prof.owned.includes(x.id)); return ok?'available':'locked'; }
+  function status(p){ if (prof.sandbox) return 'owned'; if (prof.owned.includes(p.id)) return 'owned'; if (prof.researched.includes(p.id)) return 'researched'; const prev = window.PLANES.filter(x=>x.nation===p.nation && x.rank===p.rank-1); const ok = p.rank===1 || prev.length===0 || prev.some(x=>prof.owned.includes(x.id)); return ok?'available':'locked'; }
   async function buildTree(){ const el=$('tree'); el.innerHTML=''; const planes=window.PLANES.filter(p=>p.nation===currentNation); const ranks=[...new Set(planes.map(p=>p.rank))].sort();
     for (const r of ranks){ const col=document.createElement('div'); col.className='rankcol'; col.innerHTML=`<h4>Rank ${['','I','II','III','IV','V','VI'][r]}</h4>`; el.appendChild(col);
       for (const p of planes.filter(x=>x.rank===r)){ const st=status(p); const c=document.createElement('div'); c.className='card'+(st==='locked'?' locked':'')+(p.id===prof.selected?' selected':''); c.dataset.id=p.id;
         c.innerHTML=`<canvas width="200" height="120"></canvas><div class="nm">${p.name}</div><div class="st"><span>${p.role}</span><span class="br">BR ${p.br}</span></div>`+(st==='owned'?'<span class="badge own">Owned</span>':st==='researched'?'<span class="badge res">Buy</span>':st==='available'?'<span class="badge">Research</span>':'');
         c.onclick=()=>{ Audio2.click(); selectPlane(p.id); }; col.appendChild(c);
-        Art.thumb(p.id, 100).then(sp=>{ const cv=c.querySelector('canvas'); const x=cv.getContext('2d'); const s=Math.min(180/sp.w, 110/sp.h); x.save(); x.translate(100,60); x.rotate(Math.PI/2); x.drawImage(sp.cv,-sp.w*s/2,-sp.h*s/2,sp.w*s,sp.h*s); x.restore(); }); } } }
+        Art.thumb(p.id, 140).then(sp=>{ const cv=c.querySelector('canvas'); cv.width=200; cv.height=110; const x=cv.getContext('2d'); const s=Math.min(186/sp.h, 100/sp.w); x.save(); x.translate(100,55); x.rotate(Math.PI/2); x.drawImage(sp.cv,-sp.w*s/2,-sp.h*s/2,sp.w*s,sp.h*s); x.restore(); }); } } }
   function selectPlane(id){ const p=window.planeById(id); if (!p) return; prof.selected=id; save(); document.querySelectorAll('.card').forEach(c=>c.classList.toggle('selected',c.dataset.id===id));
     $('piRole').textContent=`${window.NATIONS[p.nation].name} · Rank ${['','I','II','III','IV','V','VI'][p.rank]} · ${p.role} · BR ${p.br}`; $('piName').textContent=p.name; $('piDesc').textContent=p.desc;
     const fp = firepower(p);
     setStat('stSpeed', p.speed/1100, Math.round(p.speed*1.6)+' km/h'); setStat('stTurn', p.turn/175, p.turn+'°/s'); setStat('stFire', fp/900, Math.round(fp)+' dps'); setStat('stArmor', p.hp/900, p.hp+' hp');
-    const w=[]; if (p.guns) w.push(`<div><b>${p.guns.n}×</b> ${calName(p.guns.cal)}</div>`); if (p.guns2) w.push(`<div><b>${p.guns2.n}×</b> ${calName(p.guns2.cal)}</div>`); if (p.turret) w.push(`<div><b>${p.turret.n}×</b> defensive turret guns</div>`); if (p.missiles) p.missiles.forEach(([k,n])=>w.push(`<div><b>${n}×</b> ${window.MISSILES[k].name} ${window.MISSILES[k].ir?'(IR)':'(radar)'}</div>`)); if (p.bombs) w.push(`<div><b>${p.bombs.n}×</b> bombs</div>`); if (p.flares) w.push(`<div><b>${p.flares}</b> flares</div>`); if (p.ab) w.push(`<div><b>Afterburner</b></div>`);
+    const w=[]; if (p.guns) w.push(`<div><b>${p.guns.n}×</b> ${calName(p.guns.cal)}</div>`); if (p.guns2) w.push(`<div><b>${p.guns2.n}×</b> ${calName(p.guns2.cal)}</div>`); if (p.turret) w.push(`<div><b>${p.turret.n}×</b> defensive turret guns</div>`); if (p.missiles) p.missiles.forEach(([k,n])=>{ const m=window.MISSILES[k]; const type = m.guidance==='ir' ? (m.rearOnly?'IR, rear-aspect':'IR, all-aspect') : m.guidance==='sarh' ? 'semi-active radar' : 'active radar'; w.push(`<div><b>${n}×</b> ${m.name} <span style="color:#9aa3ad">${type} · ${(m.range*2/1000).toFixed(1)} km</span></div>`); }); if (p.bombs) w.push(`<div><b>${p.bombs.n}×</b> bombs</div>`); if (p.flares) w.push(`<div><b>${p.flares}</b> flares</div>`); if (p.ab) w.push(`<div><b>Afterburner</b></div>`);
     $('weaponsBox').innerHTML=w.join('');
     const st=status(p); const buy=$('btnBuy'); const battle=$('btnBattle');
     if (st==='owned'){ buy.classList.add('hidden'); battle.disabled=false; }
@@ -57,7 +57,7 @@
     draw(); }
 
   // ---------- battle flow
-  $('btnBattle').onclick=()=>{ Audio2.ensure(); Audio2.click(); const p=window.planeById(prof.selected); if (!prof.owned.includes(p.id)) return;
+  $('btnBattle').onclick=()=>{ Audio2.ensure(); Audio2.click(); const p=window.planeById(prof.selected); if (status(p)!=='owned') return;
     prof.lastMode=$('selMode').value; prof.lastMap=$('selMap').value; prof.lastSize=$('selSize').value; prof.lastDiff=$('selDiff').value; save();
     if (showcaseAnim) cancelAnimationFrame(showcaseAnim);
     requestFullscreen();
@@ -86,8 +86,10 @@
   $('btnRespawn').onclick=()=>{ Audio2.click(); const S=Game.S; if (S&&S.player){ if (S.player.alive){ S.player.hp=0; S.player.alive=false; } S.respawnT=0; Game.resume(); $('pauseModal').classList.add('hidden'); Game.respawn(); } };
   $('btnQuit').onclick=()=>{ Audio2.click(); const S=Game.S; const test=S&&S.mode==='test'; Game.quit(); if (!test){ prof.battles++; save(); } backToHangar(); };
   // controls text
-  const controls=`<div><span class="kbd">Mouse</span> steer toward cursor</div><div><span class="kbd">A</span><span class="kbd">D</span> turn (keyboard)</div><div><span class="kbd">W</span><span class="kbd">S</span> throttle</div><div><span class="kbd">LMB</span><span class="kbd">Space</span> fire guns</div><div><span class="kbd">RMB</span><span class="kbd">E</span> fire missile (needs lock)</div><div><span class="kbd">1</span><span class="kbd">2</span> select missile type</div><div><span class="kbd">F</span> flares</div><div><span class="kbd">B</span><span class="kbd">Ctrl</span> drop bomb</div><div><span class="kbd">Q</span><span class="kbd">Tab</span> cycle target</div><div><span class="kbd">Wheel</span> zoom</div><div><span class="kbd">Esc</span> pause</div><div><span class="kbd">F11</span> fullscreen</div><div style="margin-top:6px;color:#9aa3ad">Gamepad: left stick steer, RT guns, LT missile, A flares, X bomb, Y target, LB/RB throttle</div>`;
+  const controls=`<div><span class="kbd">Mouse</span> steer toward cursor</div><div><span class="kbd">A</span><span class="kbd">D</span> turn (keyboard)</div><div><span class="kbd">W</span><span class="kbd">S</span> throttle</div><div><span class="kbd">Shift</span><span class="kbd">↑</span> climb</div><div><span class="kbd">Ctrl</span><span class="kbd">↓</span> dive</div><div><span class="kbd">LMB</span><span class="kbd">Space</span> fire guns</div><div><span class="kbd">RMB</span><span class="kbd">E</span> fire missile (needs lock)</div><div><span class="kbd">1</span><span class="kbd">2</span> select missile type</div><div><span class="kbd">F</span> flares</div><div><span class="kbd">B</span><span class="kbd">Ctrl</span> drop bomb</div><div><span class="kbd">Q</span><span class="kbd">Tab</span> cycle target</div><div><span class="kbd">Wheel</span> zoom</div><div><span class="kbd">Esc</span> pause</div><div><span class="kbd">F11</span> fullscreen</div><div style="margin-top:6px;color:#9aa3ad">Take off: full throttle down the runway, then Shift to rotate. Land: line up with your airfield, throttle back, dive gently onto the strip to repair, refuel and rearm.</div><div style="margin-top:6px;color:#9aa3ad">Gamepad: left stick steer, RT guns, LT missile, A flares, X bomb, Y target, LB/RB throttle</div>`;
   $('controlsList').innerHTML=controls; $('controlsList2').innerHTML=controls;
+  function refreshSandbox(){ const b=$('btnSandbox'); b.textContent=(prof.sandbox?'🔓 All planes: On':'🔒 All planes: Off'); b.classList.toggle('on',!!prof.sandbox); }
+  $('btnSandbox').onclick=()=>{ Audio2.click(); prof.sandbox=!prof.sandbox; save(); refreshSandbox(); buildTree(); selectPlane(prof.selected); };
   $('btnControls').onclick=()=>{ Audio2.click(); $('controlsModal').classList.remove('hidden'); }; $('btnControlsClose').onclick=()=>$('controlsModal').classList.add('hidden');
   // settings
   $('btnSettings').onclick=()=>{ Audio2.click(); const s=prof.settings; $('setVol').value=s.vol; $('setMusic').checked=s.music; $('setControl').value=s.control; $('setQuality').value=s.quality; $('setName').value=prof.name; $('settingsModal').classList.remove('hidden'); };

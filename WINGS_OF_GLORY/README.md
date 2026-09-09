@@ -6,6 +6,23 @@ The aircraft and missile silhouettes come from the original "Wings of Glory" Scr
 
 **Play:** double-click `index.html` (or `start.command`). Press ⛶ Fullscreen / F11.
 
+## Flight model
+Altitude is real: climb with Shift/↑, dive with Ctrl/↓, and the whole world scales with distance —
+planes far below you shrink, clouds sit at 2000 m and you can fly above or under them.
+Fuel burns faster at full throttle and on afterburner; a fuel leak drains it fast and an empty tank
+kills the engine. Hits can knock out the engine, shoot away control response, start a fire (dive to blow
+it out) or kill the pilot outright. Respawns put you on the runway: full throttle, rotate, and climb away.
+Land back on your own airfield to repair, refuel and rearm in 8 seconds.
+
+## Missiles
+Each missile is modelled on the real thing: motor burn then an unpowered coast that bleeds speed,
+a turn rate that fades as it slows, a seeker gimbal it can be dragged outside of, an arming distance,
+and a proximity fuse that scores near misses as fragment damage instead of a guaranteed kill.
+Early heat seekers (AIM-9B, R-3S, R-13M, AIM-4) only see a hot tailpipe, so you must be behind the
+target; the R-60M is all-aspect. Semi-active radar missiles (AIM-7, R-23R, R-40) go stupid the moment
+you break your own lock, while active radar (AIM-120, AIM-54) goes autonomous in the terminal phase.
+Flares decoy heat seekers, and later seekers reject them more often.
+
 ## Features
 - 55 aircraft across 7 nations (USA, Germany, USSR, Britain, Japan, France, Sweden), ranks I–VI:
   WW2 props → early jets → supersonic missile fighters, bombers, attackers.

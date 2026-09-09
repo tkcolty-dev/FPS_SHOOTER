@@ -12,22 +12,26 @@ const NATIONS = {
 };
 const RANK_COST = { 1:[0,0], 2:[4200,900], 3:[11000,2400], 4:[24000,5200], 5:[52000,11000], 6:[110000,24000] };
 const MISSILES = {
-  'aim-9b':  {art:'aim-9b-sidewinder', name:'AIM-9B Sidewinder', speed:1500, turn:70,  range:1400, dmg:95,  life:5.5, ir:true},
-  'aim-9d':  {art:'aim-9d-sidewinder', name:'AIM-9D Sidewinder', speed:1700, turn:110, range:1700, dmg:110, life:6,   ir:true},
-  'aim-9e':  {art:'aim-9e-sidewinder', name:'AIM-9E Sidewinder', speed:1650, turn:95,  range:1600, dmg:105, life:6,   ir:true},
-  'aim-7':   {art:'aim-7b-sparrow',    name:'AIM-7B Sparrow',    speed:1900, turn:80,  range:2600, dmg:140, life:8,   ir:false},
-  'aim-4':   {art:'aim-4a-falcon',     name:'AIM-4A Falcon',     speed:1500, turn:60,  range:1300, dmg:80,  life:5,   ir:true},
-  'aim-54':  {art:'aim-54c-phoenix',   name:'AIM-54C Phoenix',   speed:2400, turn:85,  range:4200, dmg:200, life:11,  ir:false},
-  'aim-120': {art:'aim-120-amraam',    name:'AIM-120 AMRAAM',    speed:2300, turn:130, range:3600, dmg:170, life:9,   ir:false},
-  'r-3s':    {art:'r-3s-aa-2-atoll',   name:'R-3S Atoll',        speed:1500, turn:65,  range:1300, dmg:95,  life:5.5, ir:true},
-  'r-13':    {art:'k-13r-aa-2c-atoll', name:'R-13M Atoll',       speed:1650, turn:100, range:1600, dmg:105, life:6,   ir:true},
-  'r-60':    {art:'r-60-vympel-aa-8-aphid',name:'R-60 Aphid',    speed:1700, turn:150, range:1100, dmg:85,  life:4.5, ir:true},
-  'r-23':    {art:'vympel-r-23-aa-7-apex',name:'R-23R Apex',     speed:1900, turn:85,  range:2600, dmg:140, life:8,   ir:false},
-  'r-40':    {art:'r-40-aa-6-acrid',   name:'R-40D Acrid',       speed:2200, turn:75,  range:3300, dmg:180, life:9,   ir:false},
-  'r-4':     {art:'r-4t-aa-5-ash',     name:'R-4T Ash',          speed:1600, turn:60,  range:2000, dmg:130, life:7,   ir:true},
-  'aa-3':    {art:'k-8-kalingrad-aa-3-anab',name:'R-8 Anab',     speed:1600, turn:65,  range:1900, dmg:120, life:7,   ir:true},
-};
-function guns(n, cal, opts){ // cal: 'mg' 7.7mm, 'hmg' 12.7mm, 'c20' 20mm, 'c30' 30mm, 'c37', 'gau' 30mm gatling, 'vulcan' 20mm gatling
+  // guidance: 'ir' (heat seeker), 'sarh' (semi-active radar — launcher must hold the lock), 'arh' (active radar, goes autonomous)
+  // rearOnly: early IR seekers can only see the hot tailpipe, so you must be behind the target
+  // fov: seeker gimbal half-angle (deg) — the missile loses the target if it slides outside
+  // lockFov: acquisition half-angle from your nose · minRange: arming distance · fuse: proximity radius
+  // boost/accel: motor burn seconds and thrust · drag: coast deceleration · ccm: resistance to flares (0=easily fooled)
+  'aim-9b':  {art:'aim-9b-sidewinder', name:'AIM-9B Sidewinder', guidance:'ir',   rearOnly:true,  speed:1500, accel:2000, boost:2.2, drag:200, turn:70,  fov:25, lockFov:12, range:1400, minRange:320, fuse:22, dmg:95,  life:5.5, lockTime:1.1, ccm:0.15},
+  'aim-9d':  {art:'aim-9d-sidewinder', name:'AIM-9D Sidewinder', guidance:'ir',   rearOnly:true,  speed:1700, accel:2200, boost:2.4, drag:190, turn:110, fov:35, lockFov:16, range:1700, minRange:300, fuse:24, dmg:110, life:6.0, lockTime:1.0, ccm:0.3},
+  'aim-9e':  {art:'aim-9e-sidewinder', name:'AIM-9E Sidewinder', guidance:'ir',   rearOnly:true,  speed:1650, accel:2100, boost:2.3, drag:190, turn:95,  fov:40, lockFov:20, range:1600, minRange:300, fuse:24, dmg:105, life:6.0, lockTime:0.9, ccm:0.35},
+  'aim-4a':  {art:'aim-4a-falcon',     name:'AIM-4A Falcon',     guidance:'ir',   rearOnly:true,  speed:1500, accel:1900, boost:1.8, drag:230, turn:60,  fov:20, lockFov:10, range:1300, minRange:340, fuse:0,  dmg:80,  life:5.0, lockTime:1.3, ccm:0.1},
+  'aim-7':   {art:'aim-7b-sparrow',    name:'AIM-7B Sparrow',    guidance:'sarh', rearOnly:false, speed:1900, accel:2400, boost:3.0, drag:170, turn:80,  fov:45, lockFov:30, range:2600, minRange:500, fuse:30, dmg:140, life:8.0, lockTime:1.6, ccm:1},
+  'aim-54':  {art:'aim-54c-phoenix',   name:'AIM-54C Phoenix',   guidance:'arh',  rearOnly:false, speed:2400, accel:2600, boost:4.5, drag:150, turn:85,  fov:50, lockFov:35, range:4200, minRange:800, fuse:36, dmg:200, life:11,  lockTime:2.0, ccm:1},
+  'aim-120': {art:'aim-120-amraam',    name:'AIM-120 AMRAAM',    guidance:'arh',  rearOnly:false, speed:2300, accel:2800, boost:3.4, drag:150, turn:130, fov:55, lockFov:35, range:3600, minRange:600, fuse:30, dmg:170, life:9.0, lockTime:1.4, ccm:1},
+  'r-3s':    {art:'r-3s-aa-2-atoll',   name:'R-3S Atoll',        guidance:'ir',   rearOnly:true,  speed:1500, accel:1950, boost:2.1, drag:210, turn:65,  fov:22, lockFov:11, range:1300, minRange:330, fuse:20, dmg:95,  life:5.5, lockTime:1.2, ccm:0.12},
+  'r-13':    {art:'k-13r-aa-2c-atoll', name:'R-13M Atoll',       guidance:'ir',   rearOnly:true,  speed:1650, accel:2100, boost:2.4, drag:195, turn:100, fov:34, lockFov:17, range:1600, minRange:300, fuse:24, dmg:105, life:6.0, lockTime:1.0, ccm:0.3},
+  'r-60':    {art:'r-60-vympel-aa-8-aphid',name:'R-60M Aphid',   guidance:'ir',   rearOnly:false, speed:1700, accel:2500, boost:1.6, drag:260, turn:150, fov:45, lockFov:25, range:1100, minRange:220, fuse:18, dmg:85,  life:4.5, lockTime:0.7, ccm:0.5},
+  'r-23':    {art:'vympel-r-23-aa-7-apex',name:'R-23R Apex',     guidance:'sarh', rearOnly:false, speed:1900, accel:2400, boost:3.0, drag:175, turn:85,  fov:45, lockFov:30, range:2600, minRange:500, fuse:30, dmg:140, life:8.0, lockTime:1.6, ccm:1},
+  'r-40':    {art:'r-40-aa-6-acrid',   name:'R-40D Acrid',       guidance:'sarh', rearOnly:false, speed:2200, accel:2500, boost:3.8, drag:160, turn:75,  fov:45, lockFov:32, range:3300, minRange:700, fuse:34, dmg:180, life:9.0, lockTime:1.8, ccm:1},
+  'r-4':     {art:'r-4t-aa-5-ash',     name:'R-4T Ash',          guidance:'ir',   rearOnly:true,  speed:1600, accel:1900, boost:2.6, drag:210, turn:60,  fov:24, lockFov:12, range:2000, minRange:450, fuse:28, dmg:130, life:7.0, lockTime:1.5, ccm:0.15},
+  'aa-3':    {art:'k-8-kalingrad-aa-3-anab',name:'R-8T Anab',    guidance:'ir',   rearOnly:true,  speed:1600, accel:1950, boost:2.4, drag:205, turn:65,  fov:26, lockFov:13, range:1900, minRange:420, fuse:26, dmg:120, life:7.0, lockTime:1.4, ccm:0.18},
+};function guns(n, cal, opts){ // cal: 'mg' 7.7mm, 'hmg' 12.7mm, 'c20' 20mm, 'c30' 30mm, 'c37', 'gau' 30mm gatling, 'vulcan' 20mm gatling
   const table = {
     mg:    {dmg:2.0, rof:18, spread:2.2, range:520, speed:1500, col:'#ffe9a8', size:1.3},
     hmg:   {dmg:3.6,  rof:14, spread:1.9, range:620, speed:1650, col:'#ffd27a', size:1.7},
@@ -106,7 +110,11 @@ add({id:'j21', art:'j-21', name:'J 21A', nation:'sweden', rank:2, role:'Fighter'
 add({id:'j21r', art:'j-21r', name:'J 21RA', nation:'sweden', rank:3, role:'Jet Fighter', jet:true, speed:520, accel:70, turn:118, hp:150, size:74, guns:guns(1,'c20',{n:1}), guns2:guns(4,'hmg'), desc:'The J 21 with a jet in place of the piston engine. Rare and quick.'});
 add({id:'draken', art:'saab-35-draken', name:'J 35D Draken', nation:'sweden', rank:5, role:'Interceptor', jet:true, ab:true, speed:920, accel:130, turn:100, hp:190, size:92, guns:guns(2,'c30'), missiles:[['aim-9b',4]], flares:12, desc:'Double-delta interceptor. Ferocious acceleration and a surprisingly good turn.'});
 
-P.forEach(p=>{ p.br = (p.rank + (p.jet?0.5:0) + (p.role==='Bomber'?-0.3:0)).toFixed(1); });
+P.forEach(p=>{ p.br = (p.rank + (p.jet?0.5:0) + (p.role==='Bomber'?-0.3:0)).toFixed(1);
+  // fuel in seconds of full-throttle flight; climb rate px/s
+  p.fuel = p.fuel || (p.role==='Bomber' ? 30*60 : p.jet ? (p.ab? 11*60 : 14*60) : 22*60);
+  p.climb = p.climb || Math.round(p.jet ? p.speed*0.45 : p.speed*0.34);
+});
 window.NATIONS = NATIONS; window.PLANES = P; window.MISSILES = MISSILES; window.RANK_COST = RANK_COST;
 window.planeById = id => P.find(p=>p.id===id);
 })();

@@ -10,7 +10,8 @@ window.Art = (function(){
 
   // Draw image at natural size, find opaque bounding box, return cropped canvas scaled so that height == len.
   // Some source SVGs point left / diagonally instead of up. Override angles (deg, clockwise) here; otherwise wide images are assumed nose-left.
-  const ART_ROT = window.ART_ROT = { 'ilyushin-il-2-sturmovik-blueprint-2': 0, 'me-262a-1-swallow': 90, 'j-21': 90, 'j-21r': -90 };
+  const ART_ROT = window.ART_ROT = { 'ilyushin-il-2-sturmovik-blueprint-2': 0, 'me-262a-1-swallow': 90, 'j-21': 90, 'j-21r': 90 };
+  const ART_FLIP = window.ART_FLIP = { 'horten-229a-0':'invert', 'mig-19p-farmer':'invert' }; // true/false = force, 'invert' = opposite of auto-detect
   function bboxOf(t){ const d=t.getContext('2d').getImageData(0,0,t.width,t.height).data; let x0=t.width,y0=t.height,x1=0,y1=0; for (let y=0;y<t.height;y++) for (let x=0;x<t.width;x++){ if (d[(y*t.width+x)*4+3]>40){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } } if (x1<x0){ x0=0;y0=0;x1=t.width-1;y1=t.height-1; } return [x0,y0,x1,y1]; }
   async function rasterBase(artKey, len){
     const img = await loadImage(window.ART[artKey]);
@@ -22,6 +23,11 @@ window.Art = (function(){
     let bb = bboxOf(t); let rot = ART_ROT[artKey]; if (rot===undefined) rot = (bb[2]-bb[0]) > (bb[3]-bb[1])*1.08 ? 90 : 0;
     if (rot){ const th=rot*Math.PI/180; const bw0=bb[2]-bb[0]+1, bh0=bb[3]-bb[1]+1; const W2=Math.ceil(Math.abs(bw0*Math.cos(th))+Math.abs(bh0*Math.sin(th)))+4, H2=Math.ceil(Math.abs(bw0*Math.sin(th))+Math.abs(bh0*Math.cos(th)))+4;
       const r=document.createElement('canvas'); r.width=W2; r.height=H2; const rc=r.getContext('2d'); rc.translate(W2/2,H2/2); rc.rotate(th); rc.drawImage(t, bb[0],bb[1],bw0,bh0, -bw0/2,-bh0/2,bw0,bh0); t=r; tc=rc; }
+    // nose detection: the tail end of an aircraft silhouette (stabilisers / trailing edge) is wider than the nose end.
+    bb = bboxOf(t); { const d=t.getContext('2d').getImageData(0,0,t.width,t.height).data; const rows=[]; for (let y=bb[1];y<=bb[3];y++){ let n=0; for (let x=bb[0];x<=bb[2];x++) if (d[(y*t.width+x)*4+3]>40) n++; rows.push(n); }
+      const k=Math.max(2,Math.floor(rows.length*0.14)); const top=rows.slice(0,k).reduce((a,b)=>a+b,0)/k, bot=rows.slice(-k).reduce((a,b)=>a+b,0)/k;
+      let flip = top > bot; const fo=ART_FLIP[artKey]; if (fo==='invert') flip=!flip; else if (fo!==undefined) flip=fo;
+      if (flip){ const r=document.createElement('canvas'); r.width=t.width; r.height=t.height; const rc=r.getContext('2d'); rc.translate(t.width/2,t.height/2); rc.rotate(Math.PI); rc.drawImage(t,-t.width/2,-t.height/2); t=r; } }
     const d = t.getContext('2d').getImageData(0,0,t.width,t.height).data;
     let x0=t.width,y0=t.height,x1=0,y1=0;
     for (let y=0;y<t.height;y++) for (let x=0;x<t.width;x++){ if (d[(y*t.width+x)*4+3]>40){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
