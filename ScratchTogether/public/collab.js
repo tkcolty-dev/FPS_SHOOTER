@@ -58,14 +58,17 @@
     let myId = null;
 
     let ignoreWorkspaceEvents = false; // true while Blockly reloads a workspace (switching sprites)
+    let wsBusy = 0;                    // >0 only while WE are the ones touching the Blockly workspace
     let remoteBusy = 0;                // >0 while applying a remote structural change
     let remoteLoading = false;         // true while vm.loadProject runs for a remote project
     const remoteExtensions = new Set();
 
-    const known = new Map();      // targetId -> {name, structSig, poseSig}
+    const known = new Map();      // targetId -> {sid, name, structSig, poseSig}
     let knownOrder = '';
-    const pendingBlocks = new Map(); // sprite name -> [{msg, at}]
+    const pendingBlocks = new Map(); // sprite id -> [{msg, at}]
     const inbox = [];             // messages received before we're ready
+    let lastDeleted = null;       // {sid, name, json} of the sprite this editor just deleted, for "undo"
+
     let firstLoadResolve;
     const firstLoad = new Promise(r => { firstLoadResolve = r; });
     let chain = Promise.resolve(); // serializes async remote applications
@@ -85,7 +88,71 @@
     const isRunning = () => vm.runtime.threads.length > 0;
 
     function send (msg) {
+        if (msg && msg.sid) announced.add(msg.sid);
         if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
+    }
+
+    // ---------------- sprite ids ----------------
+    // Names are a bad key: two people can both make a "Ball", and Scratch silently renames any
+    // sprite it is handed if the name is taken. So every sprite also gets a room-wide id that
+    // travels with every message; names are only labels.
+    const sidOfTarget = new Map();   // vm target id -> sid
+    const targetOfSid = new Map();   // sid -> vm target id
+    const newSid = () => 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+    function bindSid (t, sid) {
+        const prev = sidOfTarget.get(t.id);
+        if (prev && prev !== sid) targetOfSid.delete(prev);
+        sidOfTarget.set(t.id, sid);
+        targetOfSid.set(sid, t.id);
+        return sid;
+    }
+    function sidOf (t) {
+        if (!t) return null;
+        if (t.isStage) return 'stage';
+        return sidOfTarget.get(t.id) || bindSid(t, newSid());
+    }
+    function targetBySid (sid) {
+        if (!sid) return null;
+        if (sid === 'stage') return stage();
+        const id = targetOfSid.get(sid);
+        const t = id ? vm.runtime.getTargetById(id) : null;
+        return t && t.isOriginal ? t : null;
+    }
+    // Sprites the room as a whole has heard of. Falling back to the name for one of these picks
+    // the wrong sprite: if both of us just made a "Ball", their message about theirs would land
+    // on mine. The name is only a fallback for a sprite nobody has announced yet.
+    const announced = new Set();
+    function findUnannounced (name) {
+        const t = findTarget(name);
+        if (!t) return null;
+        if (t.isStage) return t;
+        return announced.has(sidOfTarget.get(t.id)) ? null : t;
+    }
+    const resolve = msg => targetBySid(msg.sid) || (msg.sprite ? findUnannounced(msg.sprite) : null);
+    const sidMap = () => { const out = {}; originals().forEach(t => { out[keyOf(t)] = sidOf(t); }); return out; };
+    function adoptSids (map) {
+        sidOfTarget.clear(); targetOfSid.clear();
+        originals().forEach(t => {
+            const fromRoom = map && map[keyOf(t)];
+            const sid = bindSid(t, fromRoom || (t.isStage ? 'stage' : newSid()));
+            if (fromRoom) announced.add(sid);   // the room already knows this one by id
+        });
+    }
+    function pruneSids () {
+        const live = new Set(vm.runtime.targets.filter(t => t.isOriginal).map(t => t.id));
+        for (const [tid, sid] of [...sidOfTarget]) {
+            if (live.has(tid)) continue;
+            sidOfTarget.delete(tid);
+            if (targetOfSid.get(sid) === tid) targetOfSid.delete(sid);
+        }
+    }
+    function unusedName (base) {
+        const names = new Set(originals().filter(t => !t.isStage).map(t => t.sprite.name));
+        if (!names.has(base)) return base;
+        let i = 2;
+        while (names.has(base + i)) i++;
+        return base + i;
     }
 
     function withEditingTarget (target, fn) {
@@ -97,6 +164,25 @@
 
     // ---------------- assets ----------------
     const md5extOf = a => `${a.assetId}.${a.dataFormat}`;
+    // A costume list is sent whole, so two people adding a backdrop at the same moment used to
+    // mean one of them was thrown away. Every message now also says which costumes the sender
+    // had ever seen: anything we have that they never saw was added at the same time, so we keep it.
+    const mediaKey = a => `${md5extOf(a)}|${a.name}`;
+    const seenMedia = new Map();   // sid -> {costumes:Set, sounds:Set}
+    const seenFor = sid => {
+        if (!seenMedia.has(sid)) seenMedia.set(sid, {costumes: new Set(), sounds: new Set()});
+        return seenMedia.get(sid);
+    };
+    function noteSeen (sid, d) {
+        if (!sid || !d) return;
+        const s = seenFor(sid);
+        (d.costumes || []).forEach(c => s.costumes.add(mediaKey(c)));
+        (d.sounds || []).forEach(x => s.sounds.add(mediaKey(x)));
+    }
+    const seenPayload = sid => {
+        const s = seenFor(sid);
+        return {costumes: [...s.costumes], sounds: [...s.sounds]};
+    };
 
     function allAssets () {
         const out = new Map();
@@ -128,16 +214,53 @@
                 body: JSON.stringify({files: [...assets.keys()]})
             });
             missing = (await r.json()).missing || [];
-        } catch (e) { return; }
+        } catch (e) {
+            missing = [...assets.keys()];   // can't ask — upload everything rather than send a picture nobody can load
+        }
         for (const k of assets.keys()) if (!missing.includes(k)) assetsSeen.add(k);
-        await Promise.all(missing.map(async name => {
-            const asset = assets.get(name);
+        await Promise.all(missing.map(name => uploadAsset(name, assets.get(name))));
+    }
+
+    // One upload, retried a couple of times — a costume that never reaches the server is a
+    // picture that never appears for anyone else.
+    async function uploadAsset (name, asset) {
+        if (!asset || !asset.data) return false;
+        for (let attempt = 0; attempt < 3; attempt++) {
             try {
                 const r = await fetch(`${API}/assets/${name}`, {method: 'POST', body: asset.data,
                     headers: {'Content-Type': 'application/octet-stream'}});
-                if (r.ok) assetsSeen.add(name);
-            } catch (e) { console.warn('upload failed', name, e); }
-        }));
+                if (r.ok) { assetsSeen.add(name); return true; }
+            } catch (e) { /* retry */ }
+            await new Promise(r => setTimeout(r, 400 * (attempt + 1)));
+        }
+        console.warn('[together] could not upload asset', name);
+        return false;
+    }
+
+    // ---------------- missing-picture repair ----------------
+    // If a costume's image hasn't landed on the server yet, don't drop the costume: remember it,
+    // ask the room for the bytes, and put it back the moment they arrive.
+    const wantedAssets = new Map();   // md5ext -> {sid, data, seen}  (sprite update to re-apply)
+    function requestAsset (file, sid, data, seen) {
+        const first = !wantedAssets.has(file);
+        wantedAssets.set(file, {sid, data, seen});
+        if (first) { send({type: 'needAsset', file}); log('waiting for image', file); }
+    }
+    async function serveAsset (file) {
+        const asset = allAssets().get(file);
+        if (!asset) return;
+        if (await uploadAsset(file, asset)) send({type: 'assetReady', file});
+    }
+    function assetArrived (file) {
+        const want = wantedAssets.get(file);
+        if (!want) return;
+        wantedAssets.delete(file);
+        assetsSeen.add(file);
+        const t = targetBySid(want.sid);
+        if (!t || !want.data) return;
+        log('image arrived, restoring', file);
+        chain = chain.then(() => applySpriteUpdate({sid: want.sid, sprite: keyOf(t), data: want.data, seen: want.seen}))
+            .catch(e => console.warn(e));
     }
 
     function installAssetStore () {
@@ -192,12 +315,43 @@
 
     function snapshotKnown () {
         monitorsSnapshot();
+        pruneSids();
         known.clear();
         originals().forEach(t => {
             const d = describe(t);
-            known.set(t.id, {name: keyOf(t), structSig: structSigOf(d), poseSig: poseSigOf(d)});
+            noteSeen(sidOf(t), d);
+            known.set(t.id, {sid: sidOf(t), name: keyOf(t), structSig: structSigOf(d), poseSig: poseSigOf(d)});
         });
-        knownOrder = JSON.stringify(originals().filter(t => !t.isStage).map(keyOf));
+        knownOrder = JSON.stringify(originals().filter(t => !t.isStage).map(sidOf));
+    }
+
+    // snapshotKnown() declares "everything you see has already been sent". Running it after a
+    // remote change quietly ate anything you had just done yourself — the classic "I added a
+    // backdrop / a sprite and it never showed up for them". So after a remote change we only
+    // write down the one thing that actually arrived, and leave every un-sent local edit
+    // waiting for checkTargets to pick it up.
+    function syncKnown () {
+        monitorsSnapshot();
+        pruneSids();
+    }
+    const noteOrder = () => { knownOrder = JSON.stringify(originals().filter(t => !t.isStage).map(sidOf)); };
+
+    function adoptTarget (t) {   // this sprite came from someone else — nothing to send back
+        if (!t || !vm.runtime.getTargetById(t.id)) return;
+        const d = describe(t);
+        noteSeen(sidOf(t), d);
+        known.set(t.id, {sid: sidOf(t), name: keyOf(t), structSig: structSigOf(d), poseSig: poseSigOf(d)});
+    }
+
+    // After applying someone's costume/sound list, record THEIR list as the baseline — not ours.
+    // If we merged something of our own into it, the next diff notices and sends it to them.
+    function rememberRemote (t, d) {
+        syncKnown();
+        if (!t || !d || !vm.runtime.getTargetById(t.id)) return;
+        const local = describe(t);
+        const base = Object.assign({}, local, {costumes: d.costumes || local.costumes, sounds: d.sounds || local.sounds});
+        known.set(t.id, {sid: sidOf(t), name: keyOf(t), structSig: structSigOf(base), poseSig: poseSigOf(local)});
+        checkTargets();
     }
 
     const checkTargets = debounce(() => {
@@ -212,13 +366,15 @@
             const poseSig = poseSigOf(d);
             const prev = known.get(t.id);
             if (!prev) {
-                known.set(t.id, {name: keyOf(t), structSig, poseSig});
+                known.set(t.id, {sid: sidOf(t), name: keyOf(t), structSig, poseSig});
                 if (!t.isStage) sendSpriteAdd(t);
                 return;
             }
             const rename = prev.name !== keyOf(t) ? keyOf(t) : null;
             if (rename || prev.structSig !== structSig || (!running && prev.poseSig !== poseSig)) {
-                const msg = {type: 'sprite', sprite: prev.name, data: d, pose: !running};
+                noteSeen(prev.sid, d);
+                const msg = {type: 'sprite', sid: prev.sid, sprite: prev.name, data: d, pose: !running,
+                    seen: seenPayload(prev.sid)};
                 if (rename) msg.rename = rename;
                 const oldName = prev.name;
                 prev.name = keyOf(t);
@@ -231,10 +387,13 @@
         for (const [id, k] of known) {
             if (!seen.has(id)) {
                 known.delete(id);
-                if (k.name !== STAGE_KEY) send({type: 'deleteSprite', sprite: k.name});
+                if (k.name === STAGE_KEY) continue;
+                const undo = lastDeleted && lastDeleted.sid === k.sid ? lastDeleted : null;
+                send({type: 'deleteSprite', sid: k.sid, sprite: k.name, by: NAME, json: undo ? undo.json : null});
+                lastDeleted = null;
             }
         }
-        const order = JSON.stringify(originals().filter(t => !t.isStage).map(keyOf));
+        const order = JSON.stringify(originals().filter(t => !t.isStage).map(sidOf));
         if (order !== knownOrder) {
             knownOrder = order;
             send({type: 'reorder', order: JSON.parse(order)});
@@ -244,7 +403,7 @@
     async function sendSpriteAdd (t) {
         await syncAssets([t]);
         if (!vm.runtime.getTargetById(t.id)) return; // deleted again already
-        send({type: 'sprite', add: true, sprite: keyOf(t), json: vm.toJSON(t.id), data: describe(t)});
+        send({type: 'sprite', add: true, sid: sidOf(t), sprite: keyOf(t), json: vm.toJSON(t.id), data: describe(t)});
         log('sent new sprite', keyOf(t));
     }
 
@@ -258,7 +417,7 @@
         // serialize in an idle moment so a big project never hitches a block drag
         const idle = window.requestIdleCallback ? new Promise(r => requestIdleCallback(r, {timeout: 3000})) : Promise.resolve();
         await idle;
-        send({type: 'snapshot', project: vm.toJSON(), title});
+        send({type: 'snapshot', project: vm.toJSON(), title, sids: sidMap()});
         sendThumbnail();
     }
     let lastThumb = 0;
@@ -281,7 +440,7 @@
 
     // ---------------- outgoing block events ----------------
     function onLocalBlockEvent (e) {
-        if (!ready || ignoreWorkspaceEvents || remoteBusy > 0) return;
+        if (!ready || ignoreWorkspaceEvents || wsBusy > 0 || remoteLoading) return;
         if (!SYNC_EVENTS.has(e.type)) return;
         if (workspace && e.workspaceId && e.workspaceId !== workspace.id) return;
         const t = vm.editingTarget;
@@ -294,7 +453,7 @@
                 json[k] = (v && typeof v === 'object' && 'x' in v && 'y' in v) ? {x: v.x, y: v.y} : v;
             }
         });
-        send({type: 'blocks', sprite: keyOf(t), event: json});
+        send({type: 'blocks', sid: sidOf(t), sprite: keyOf(t), event: json});
     }
 
     // ---------------- incoming block events ----------------
@@ -310,10 +469,11 @@
     }
 
     function applyBlocks (msg) {
-        const t = findTarget(msg.sprite);
+        const t = resolve(msg);
         if (!t) {
-            if (!pendingBlocks.has(msg.sprite)) pendingBlocks.set(msg.sprite, []);
-            pendingBlocks.get(msg.sprite).push({msg, at: Date.now()});
+            const key = msg.sid || msg.sprite;
+            if (!pendingBlocks.has(key)) pendingBlocks.set(key, []);
+            pendingBlocks.get(key).push({msg, at: Date.now()});
             return;
         }
         const json = msg.event;
@@ -326,6 +486,7 @@
         }
         let needsRefresh = false;
         remoteBusy++;
+        wsBusy++;
         try {
             if (workspace && SB && (editing || (isVar && global))) {
                 SB.Events.disable();
@@ -353,15 +514,17 @@
             if (needsRefresh && editing) vm.emitWorkspaceUpdate();
         } finally {
             remoteBusy--;
+            wsBusy--;
         }
     }
 
-    function replayPending (name) {
-        const list = pendingBlocks.get(name);
-        pendingBlocks.delete(name);
-        if (!list) return;
-        const cutoff = Date.now() - 20000;
-        list.filter(p => p.at > cutoff).forEach(p => applyBlocks(p.msg));
+    function replayPending (...keys) {
+        const cutoff = Date.now() - 120000;
+        keys.filter(Boolean).forEach(key => {
+            const list = pendingBlocks.get(key);
+            pendingBlocks.delete(key);
+            if (list) list.filter(p => p.at > cutoff).forEach(p => applyBlocks(p.msg));
+        });
     }
 
     // ---------------- incoming structure ----------------
@@ -371,64 +534,90 @@
         removed.forEach(c => { try { if (c.skinId !== undefined) renderer.destroySkin(c.skinId); } catch (e) { /* ignore */ } });
     }
 
-    async function applyCostumes (t, d) {
-        const current = t.getCostumes();
-        const have = new Map(current.map(c => [md5extOf(c), c]));
-        const wantKeys = new Set(d.costumes.map(c => c.md5ext));
-        for (const c of d.costumes) {
-            if (have.has(c.md5ext)) continue;
-            const obj = {name: c.name, assetId: c.assetId, dataFormat: c.dataFormat, bitmapResolution: c.bitmapResolution,
-                rotationCenterX: c.rotationCenterX, rotationCenterY: c.rotationCenterY};
+    // One costume object per entry in the list. Copying an existing one would share its renderer
+    // skin, and then deleting either copy blanks the other — which is how backdrops "broke".
+    const poolOf = list => {
+        const pool = new Map();
+        list.forEach(c => {
+            const k = md5extOf(c);
+            if (!pool.has(k)) pool.set(k, []);
+            pool.get(k).push(c);
+        });
+        return pool;
+    };
+
+    async function loadCostumeCopy (t, c) {
+        const obj = {name: c.name, assetId: c.assetId, dataFormat: c.dataFormat, bitmapResolution: c.bitmapResolution,
+            rotationCenterX: c.rotationCenterX, rotationCenterY: c.rotationCenterY};
+        for (let attempt = 0; attempt < 2; attempt++) {
             try {
                 await withTimeout(vm.addCostume(c.md5ext, obj, t.id), 20000, 'costume ' + c.md5ext);
-                have.set(c.md5ext, obj);
-            } catch (e) { console.warn('[together] costume load failed', c.md5ext, e); }
+                return obj;
+            } catch (e) {
+                if (attempt === 0) await new Promise(r => setTimeout(r, 600));
+                else console.warn('[together] costume load failed', c.md5ext, e);
+            }
         }
-        const used = new Set();
+        return null;
+    }
+
+    async function applyCostumes (t, d, seen) {
+        const before = t.getCostumes().slice();
+        const pool = poolOf(before);
         const ordered = [];
-        d.costumes.forEach(c => {
-            let obj = have.get(c.md5ext);
-            if (!obj) return;
-            if (used.has(obj)) obj = Object.assign({}, obj);
-            used.add(obj);
+        let lost = false;
+        for (const c of d.costumes) {
+            const avail = pool.get(c.md5ext);
+            const obj = (avail && avail.length) ? avail.shift() : await loadCostumeCopy(t, c);
+            if (!obj) { lost = true; requestAsset(c.md5ext, sidOf(t), d, seen); continue; }
             obj.name = c.name;
             obj.rotationCenterX = c.rotationCenterX;
             obj.rotationCenterY = c.rotationCenterY;
             ordered.push(obj);
-        });
-        if (!ordered.length) return;
-        const before = t.getCostumes().slice();
-        const same = before.length === ordered.length && before.every((c, i) => c === ordered[i]);
-        if (!same) {
-            t.sprite.costumes = ordered;
-            skinCleanup(t, before.filter(c => !wantKeys.has(md5extOf(c))));
         }
-        const idx = Math.min(Math.max(0, d.currentCostume), ordered.length - 1);
+        // Anything here that the sender had never heard of was added at the same moment on this
+        // side — keep it rather than letting their list wipe it out.
+        if (seen && seen.costumes) {
+            const heard = new Set(seen.costumes);
+            before.forEach(c => { if (!heard.has(mediaKey(c)) && ordered.indexOf(c) === -1) ordered.push(c); });
+        }
+        // A picture we could not fetch must not quietly delete the costume list we already had:
+        // keep what we have and put it right when the bytes arrive (see assetArrived).
+        const want = (lost && before.length) ? before : ordered;
+        if (!want.length) return;
+        // vm.addCostume appended straight onto the target, so compare against the live list.
+        const now = t.getCostumes();
+        const same = now.length === want.length && want.every((c, i) => c === now[i]);
+        if (!same) t.sprite.costumes = want;
+        const idx = Math.min(Math.max(0, d.currentCostume), want.length - 1);
         if (t.currentCostume !== idx || !same) t.setCostume(idx);
+        if (!same) skinCleanup(t, now.filter(c => want.indexOf(c) === -1));
     }
 
-    async function applySounds (t, d) {
-        const have = new Map(t.getSounds().map(s => [md5extOf(s), s]));
-        for (const s of d.sounds) {
-            if (have.has(s.md5ext)) continue;
-            const obj = {name: s.name, assetId: s.assetId, dataFormat: s.dataFormat, md5: s.md5ext,
-                format: s.format, rate: s.rate, sampleCount: s.sampleCount};
-            try {
-                await withTimeout(vm.addSound(obj, t.id), 20000, 'sound ' + s.md5ext);
-                have.set(s.md5ext, obj);
-            } catch (e) { console.warn('[together] sound load failed', s.md5ext, e); }
-        }
-        const used = new Set();
+    async function applySounds (t, d, seen) {
+        const before = t.getSounds().slice();
+        const pool = poolOf(before);
         const ordered = [];
-        d.sounds.forEach(s => {
-            let obj = have.get(s.md5ext);
-            if (!obj) return;
-            if (used.has(obj)) obj = Object.assign({}, obj);
-            used.add(obj);
+        for (const s of d.sounds) {
+            const avail = pool.get(s.md5ext);
+            let obj = avail && avail.length ? avail.shift() : null;
+            if (!obj) {
+                obj = {name: s.name, assetId: s.assetId, dataFormat: s.dataFormat, md5: s.md5ext,
+                    format: s.format, rate: s.rate, sampleCount: s.sampleCount};
+                try {
+                    await withTimeout(vm.addSound(obj, t.id), 20000, 'sound ' + s.md5ext);
+                } catch (e) { console.warn('[together] sound load failed', s.md5ext, e); obj = null; }
+            }
+            if (!obj) continue;
             obj.name = s.name;
             ordered.push(obj);
-        });
-        t.sprite.sounds = ordered;
+        }
+        if (seen && seen.sounds) {
+            const heard = new Set(seen.sounds);
+            before.forEach(x => { if (!heard.has(mediaKey(x)) && ordered.indexOf(x) === -1) ordered.push(x); });
+        }
+        const now = t.getSounds();
+        if (ordered.length !== now.length || ordered.some((s, i) => s !== now[i])) t.sprite.sounds = ordered;
     }
 
     function applyVariables (t, d) {
@@ -441,15 +630,20 @@
     }
 
     async function applySpriteUpdate (msg) {
-        const t = findTarget(msg.sprite);
+        const t = resolve(msg);
         if (!t) return;
+        if (msg.sid) bindSid(t, msg.sid);
         remoteBusy++;
         try {
-            if (msg.rename && msg.rename !== keyOf(t) && !t.isStage) vm.renameSprite(t.id, msg.rename);
+            if (msg.rename && msg.rename !== keyOf(t) && !t.isStage) {
+                vm.renameSprite(t.id, msg.rename);
+                replayPending(msg.rename);
+            }
             const d = msg.data;
             if (d) {
-                await applyCostumes(t, d);
-                await applySounds(t, d);
+                noteSeen(sidOf(t), d);
+                await applyCostumes(t, d, msg.seen);
+                await applySounds(t, d, msg.seen);
                 applyVariables(t, d);
                 if (!t.isStage) {
                     if (t.rotationStyle !== d.rotationStyle) t.setRotationStyle(d.rotationStyle);
@@ -472,12 +666,26 @@
             vm.runtime.emitProjectChanged();
         } finally {
             remoteBusy--;
-            snapshotKnown();
+            rememberRemote(t, msg.data);
         }
     }
 
     async function applySpriteAdd (msg) {
-        if (findTarget(msg.sprite)) return applySpriteUpdate(msg);
+        const already = targetBySid(msg.sid);
+        if (already) return applySpriteUpdate(msg);
+        // Two people can invent the same name at the same moment. Both editors settle it the
+        // same way — smaller id keeps the name — so nobody ends up with a different picture of
+        // the room than everyone else.
+        const clash = msg.sprite && !msg.sid ? null : (msg.sprite ? findTarget(msg.sprite) : null);
+        if (clash && !clash.isStage && sidOf(clash) !== msg.sid && String(msg.sid) < String(sidOf(clash))) {
+            const free = unusedName(msg.sprite);
+            const known2 = announced.has(sidOf(clash));
+            remoteBusy++;
+            try { vm.renameSprite(clash.id, free); } catch (e) { /* ignore */ } finally { remoteBusy--; }
+            if (known2) send({type: 'sprite', sid: sidOf(clash), sprite: msg.sprite, rename: clash.sprite.name, data: describe(clash)});
+            log('name clash on', msg.sprite, '→ renamed ours to', clash.sprite.name);
+        }
+        const before = new Set(vm.runtime.targets.map(t => t.id));
         const prevEditing = vm.editingTarget;
         remoteBusy++;
         try {
@@ -488,29 +696,49 @@
         } finally {
             remoteBusy--;
         }
-        if (prevEditing && vm.runtime.getTargetById(prevEditing.id)) vm.setEditingTarget(prevEditing.id);
-        snapshotKnown();
-        replayPending(msg.sprite);
+        const added = vm.runtime.targets.find(t => t.isOriginal && !t.isStage && !before.has(t.id));
+        if (added && msg.sid) {
+            bindSid(added, msg.sid);
+            // Scratch renames a sprite it is handed if that name is taken — tell everyone what
+            // it actually ended up being called, or the two editors drift apart forever.
+            if (added.sprite.name !== msg.sprite) {
+                send({type: 'sprite', sid: msg.sid, sprite: msg.sprite, rename: added.sprite.name, data: describe(added)});
+                log('renamed incoming sprite to', added.sprite.name);
+            }
+        }
+        if (prevEditing && vm.runtime.getTargetById(prevEditing.id)) {
+            wsBusy++;
+            try { vm.setEditingTarget(prevEditing.id); } finally { wsBusy--; }
+        }
+        syncKnown();
+        adoptTarget(added);
+        noteOrder();
+        checkTargets();
+        replayPending(msg.sid, msg.sprite, added && added.sprite.name);
     }
 
     function applyDeleteSprite (msg) {
-        const t = findTarget(msg.sprite);
+        const t = resolve(msg);
         if (!t || t.isStage) return;
+        const name = keyOf(t);
+        const goneId = t.id;
         remoteBusy++;
-        try { vm.deleteSprite(t.id); } catch (e) { console.warn(e); } finally { remoteBusy--; snapshotKnown(); }
+        try { vm.deleteSprite(t.id); } catch (e) { console.warn(e); }
+        finally { remoteBusy--; syncKnown(); known.delete(goneId); noteOrder(); checkTargets(); }
+        if (msg.json) offerUndo(msg.by || 'Someone', name, msg.sid, msg.json);
     }
 
     function applyReorder (msg) {
         remoteBusy++;
         try {
-            msg.order.forEach((name, i) => {
-                const t = findTarget(name);
+            msg.order.forEach((key, i) => {
+                const t = targetBySid(key) || findTarget(key);
                 if (!t) return;
                 const cur = vm.runtime.targets.indexOf(t);
                 const want = i + 1; // stage is index 0
                 if (cur !== want && cur >= 0) vm.reorderTarget(cur, want);
             });
-        } finally { remoteBusy--; snapshotKnown(); }
+        } finally { remoteBusy--; syncKnown(); noteOrder(); checkTargets(); }
     }
 
     async function loadDefaultProject () {
@@ -519,7 +747,7 @@
         await vm.loadProject(asset.decodeText ? asset.decodeText() : asset.data);
     }
 
-    async function applyProject (json) {
+    async function applyProject (json, sids) {
         remoteBusy++;
         remoteLoading = true;
         try {
@@ -532,6 +760,7 @@
         } finally {
             remoteLoading = false;
             remoteBusy--;
+            if (sids) adoptSids(sids);
             snapshotKnown();
             ensureCloud();
         }
@@ -567,7 +796,7 @@
             if (added) {
                 t.blocks.updateTargetSpecificBlocks(t.isStage);
                 vm.runtime.emitProjectChanged();
-                if (vm.editingTarget === t) vm.emitWorkspaceUpdate();
+                if (vm.editingTarget === t) { wsBusy++; try { vm.emitWorkspaceUpdate(); } finally { wsBusy--; } }
             }
         } finally { remoteBusy--; }
     }
@@ -689,17 +918,20 @@
 
     // ---------------- message dispatch ----------------
     function handle (msg) {
+        if (msg.sid) announced.add(msg.sid);
         switch (msg.type) {
         case 'blocks': applyBlocks(msg); break;
         case 'sprite':
             chain = chain.then(() => (msg.add ? applySpriteAdd(msg) : applySpriteUpdate(msg))).catch(e => console.warn(e));
             break;
-        case 'deleteSprite': chain = chain.then(() => applyDeleteSprite(msg)); break;
-        case 'reorder': chain = chain.then(() => applyReorder(msg)); break;
-        case 'project': chain = chain.then(() => applyProject(msg.project)); break;
+        case 'deleteSprite': chain = chain.then(() => applyDeleteSprite(msg)).catch(e => console.warn(e)); break;
+        case 'reorder': chain = chain.then(() => applyReorder(msg)).catch(e => console.warn(e)); break;
+        case 'project': chain = chain.then(() => applyProject(msg.project, msg.sids)).catch(e => console.warn(e)); break;
         case 'extension': applyExtension(msg); break;
         case 'monitor': applyMonitor(msg); break;
         case 'blocksAdd': chain = chain.then(() => applyBlocksAdd(msg)).catch(e => console.warn(e)); break;
+        case 'needAsset': serveAsset(msg.file).catch(e => console.warn(e)); break;
+        case 'assetReady': assetArrived(msg.file); break;
         default: break;
         }
     }
@@ -712,7 +944,7 @@
         if (msg.cloudMode) cloudMode = msg.cloudMode;
         renderUsers();
         if (msg.project) {
-            await applyProject(msg.project);
+            await applyProject(msg.project, msg.sids);
         } else {
             snapshotKnown();
         }
@@ -771,6 +1003,41 @@
         if (!vm || !ready) return;
         const s = vm.editingTarget ? (vm.editingTarget.isStage ? 'Stage' : vm.editingTarget.sprite.name) : null;
         if (force || s !== lastPresence) { lastPresence = s; send({type: 'presence', sprite: s}); }
+    }
+
+    // ---------------- "X deleted your sprite" — undo ----------------
+    let undoToast = null;
+    function closeUndo () { if (undoToast) { undoToast.remove(); undoToast = null; } }
+    function offerUndo (who, name, sid, json) {
+        closeUndo();
+        const el = document.createElement('div');
+        el.id = 'together-undo';
+        const label = document.createElement('span');
+        label.textContent = `${who} deleted "${name}"`;
+        const undo = document.createElement('button');
+        undo.textContent = 'Undo';
+        const dismiss = document.createElement('button');
+        dismiss.className = 'tg-x';
+        dismiss.textContent = '\u2715';
+        el.append(label, undo, dismiss);
+        document.body.appendChild(el);
+        undoToast = el;
+        const timer = setTimeout(closeUndo, 15000);
+        dismiss.onclick = () => { clearTimeout(timer); closeUndo(); };
+        undo.onclick = async () => {
+            clearTimeout(timer); closeUndo();
+            const before = new Set(vm.runtime.targets.map(t => t.id));
+            remoteBusy++;
+            try { await vm.addSprite(json); } catch (e) { console.warn('[together] undo failed', e); } finally { remoteBusy--; }
+            const back = vm.runtime.targets.find(t => t.isOriginal && !t.isStage && !before.has(t.id));
+            if (!back) return;
+            bindSid(back, sid);
+            syncKnown();
+            adoptTarget(back);
+            noteOrder();
+            sendSpriteAdd(back);
+            log('undid delete of', name);
+        };
     }
 
     let guiRender = null;
@@ -900,12 +1167,24 @@
                 if (ready && !remote) {
                     remoteBusy++;
                     syncAssets().then(() => {
-                        send({type: 'project', project: vm.toJSON()});
+                        send({type: 'project', project: vm.toJSON(), sids: sidMap()});
                         log('sent whole project');
                     }).finally(() => { remoteBusy--; snapshotKnown(); });
                 }
             }).catch(() => {});
             return p;
+        };
+
+        // Remember the sprite we are about to delete: checkTargets needs its JSON so the other
+        // editors can offer "undo", and without this the delete was never broadcast at all.
+        const origDelete = vm.deleteSprite.bind(vm);
+        vm.deleteSprite = function (targetId) {
+            const t = vm.runtime.getTargetById(targetId);
+            if (ready && remoteBusy === 0 && t && t.isOriginal && !t.isStage) {
+                try { lastDeleted = {sid: sidOf(t), name: keyOf(t), json: vm.toJSON(targetId)}; }
+                catch (e) { lastDeleted = null; }
+            }
+            return origDelete(targetId);
         };
 
         const origShare = vm.shareBlocksToTarget.bind(vm);

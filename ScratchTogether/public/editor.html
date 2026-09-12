@@ -42,6 +42,17 @@
   #together-pill .tg-sprite { margin-left: auto; opacity: .7; font-size: 11px; }
   #together-pill .tg-credit { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,.15); font-size: 10px; opacity: .7; }
   #together-pill .tg-credit a { color: #9cc7ff; }
+  #together-undo {
+    position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 10000;
+    display: flex; align-items: center; gap: 10px;
+    font: 13px/1.3 "Helvetica Neue", Helvetica, Arial, sans-serif; color: #fff;
+    background: rgba(31, 41, 55, .95); border-radius: 12px; padding: 9px 12px;
+    box-shadow: 0 6px 22px rgba(0,0,0,.3);
+  }
+  #together-undo button { border: 0; border-radius: 8px; padding: 4px 10px; cursor: pointer;
+    background: #4c97ff; color: #fff; font: inherit; font-weight: 600; }
+  #together-undo button:hover { background: #3373cc; }
+  #together-undo button.tg-x { background: transparent; opacity: .6; padding: 4px 6px; }
 </style>
 </head>
 <body>

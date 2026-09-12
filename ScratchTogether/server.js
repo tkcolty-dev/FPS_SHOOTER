@@ -488,6 +488,7 @@ function sendInit (room, ws) {
     ws.send(JSON.stringify({
         type: 'init',
         project: room.project,
+        sids: room.meta.sids || null,
         title: room.meta.title,
         cloudMode: room.meta.cloudMode || 'live',
         you: ws.userId,
@@ -533,6 +534,7 @@ wss.on('connection', async (ws, req) => {
                 const parsed = parseProject(msg.project);
                 if (!parsed) return;
                 room.project = msg.project;
+                if (msg.sids) room.meta.sids = msg.sids;
                 if (msg.title) room.meta.title = msg.title;
                 room.meta.updated = Date.now();
                 room.meta.sprites = parsed.targets.filter(t => !t.isStage).length;
@@ -553,11 +555,13 @@ wss.on('connection', async (ws, req) => {
             return;
         case 'blocks': case 'sprite': case 'deleteSprite': case 'reorder':
         case 'project': case 'extension': case 'blocksReplace': case 'blocksAdd': case 'monitor':
+        case 'needAsset': case 'assetReady':
             msg.from = ws.userId;
             if (process.env.DEBUG || (msg.type !== 'blocks' && msg.type !== 'monitor')) console.log(`[${code}] ${ws.userName}: ${msg.type} ${msg.sprite || ''}${msg.add ? ' (new)' : ''}${msg.rename ? ' → ' + msg.rename : ''} → ${room.clients.size - 1} others`);
             if (msg.type === 'project') {
                 if (!validProject(msg.project)) return;
-                room.project = msg.project; room.meta.updated = Date.now(); saveRoom(room);
+                room.project = msg.project; room.meta.sids = msg.sids || null;
+                room.meta.updated = Date.now(); saveRoom(room);
             }
             broadcast(room, msg, ws);
             return;
