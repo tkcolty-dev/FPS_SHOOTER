@@ -1197,6 +1197,7 @@
         <button class="rowBtn diffBtn" data-diff="extreme">Extreme</button>
       </span></div>
       <div class="row"><span>Screen shake</span><input type="checkbox" class="setTog" id="togShake"></div>
+      <div class="row"><span>Controller rumble <small style="opacity:.6">(your own pad buzzes when YOU are hit)</small></span><input type="checkbox" class="setTog" id="togRumble"></div>
       <div class="row"><span>Damage numbers</span><input type="checkbox" class="setTog" id="togDmg"></div>
       <div class="row"><span>Red hit flash</span><input type="checkbox" class="setTog" id="togFlash"></div>
       <div class="row"><span>Particle effects</span><input type="checkbox" class="setTog" id="togParticles"></div>
@@ -2310,6 +2311,28 @@ function moveSpeedOf(p) {
   if (upLvl('tailwind') > 0 && game.time - (p.lastHurtT || -99) > 5) sp *= 1 + 0.12 * upLvl('tailwind');
   return sp;
 }
+/* The join picker used to open on ROSTER[0] — which is usually the knight P1 is
+   already riding. P2 would press A, get "already rides with P1!", and be stuck in
+   the picker forever; on a TV the toast is easy to miss, so it reads as a dead
+   controller. These two helpers open the picker on a knight that is actually free,
+   and, if you do land on a taken one, move you to the next free knight so the very
+   next press of A gets you in. */
+function knightFree(idx, slot) {
+  const rk = ROSTER[idx];
+  if (!rk || !kdMeta.unlocked.includes(rk.key)) return false;
+  return !players.some((q, qi) => q.joined && qi !== slot && q.heroKey === rk.key);
+}
+function nextFreeKnight(from, slot) {
+  for (let k = 1; k <= ROSTER.length; k++) {
+    const idx = (from + k) % ROSTER.length;
+    if (knightFree(idx, slot)) return idx;
+  }
+  return -1;
+}
+function openJoinCursor(slot) {
+  const first = nextFreeKnight(ROSTER.length - 1, slot);
+  return first >= 0 ? first : 0;
+}
 function confirmSelection2() {
   const rk = ROSTER[game.cursor];
   if (!kdMeta.unlocked.includes(rk.key)) {
@@ -2334,7 +2357,13 @@ function confirmSelection2() {
   const takenBy = players.findIndex((q, qi) => q.joined && qi !== slot && q.heroKey === rk.key);
   if (takenBy >= 0) {
     SFX.denied();
-    gameToast('⚔ ' + rk.name + ' already rides with P' + (takenBy + 1) + '!');
+    const nx = nextFreeKnight(game.cursor, slot);
+    if (nx >= 0) {
+      game.cursor = nx;
+      gameToast('⚔ ' + rk.name + ' rides with P' + (takenBy + 1) + ' — here is ' + ROSTER[nx].name + '. Press A!');
+    } else {
+      gameToast('⚔ ' + rk.name + ' already rides with P' + (takenBy + 1) + '!');
+    }
     return;
   }
   const p2 = players[slot];
@@ -2756,6 +2785,8 @@ function levelUp() {
   const joinedIdx = players.map((p2, i2) => ({ p2, i2 })).filter(o => o.p2.joined).map(o => o.i2);
   game.chooser = joinedIdx.length ? joinedIdx[(game.chooserRot = (game.chooserRot || 0)) % joinedIdx.length] : 0;
   game.chooserRot++;
+  // a nudge on the chooser's own pad — in co-op that is how you know it's your pick
+  playerRumble(players[game.chooser], 0.35, 0.6, 220);
   buildChoices();
 }
 function buildChoices() {
@@ -2983,6 +3014,7 @@ function hitPlayer(t, e) {
   game.shake = 0.25;
   game.hurtFlash = 0.4;
   SFX.hurt();
+  playerRumble(t, 0.55, 0.3, 180);          // only the knight who got hit feels it
   if (e) {
     if (upLvl('thorn') > 0) {
       hurtEnemy(e, 3 * upLvl('thorn'), Math.atan2(e.y - t.y, e.x - t.x), 280);
@@ -2996,10 +3028,12 @@ function hitPlayer(t, e) {
     t.hp = 3;
     t.invuln = 2.5;
     particles.push({ x: t.x, y: t.y - 20, vx: 0, vy: 0, ring: true, life: 0.28, color: '#fb923c', size: 30 });
+    playerRumble(t, 0.8, 0.6, 380);
     gameToast('🔥 ' + t.name + ' rises from the ashes!');
   } else if (t.hp <= 0) {
     t.alive = false;
     t.reviveProgress = 0;
+    playerRumble(t, 1, 0.8, 600);           // a long, heavy buzz: you are down
     gameToast(t.name + ' is down! Stand close to revive!');
     if (!players.some(p => p.joined && p.alive)) {
       game.over = true;
@@ -3403,6 +3437,8 @@ function update(dt) {
         p.reviveProgress += dt * (1 + 0.4 * upLvl('rally'));
         if (p.reviveProgress >= 2.5) {
           p.alive = true; p.hp = 3; p.invuln = 2; p.reviveProgress = 0;
+          playerRumble(p, 0.5, 0.5, 260);   // the rescued knight
+          playerRumble(t, 0.3, 0.3, 160);   // and whoever hauled them up
           kdStats.revives = (kdStats.revives || 0) + 1;
           gameToast(p.name + ' is back on their feet!');
         }
@@ -3448,9 +3484,16 @@ function update(dt) {
       else if (vx > 0) p.dir = 'right';
       if (vy !== 0 && vx === 0) p.dir = vy < 0 ? 'up' : 'down';
       const len = Math.hypot(vx, vy);
+      // Dividing by len normalised EVERY input to full speed, so a stick resting
+      // at 0.25 walked the knight across the map and a gentle push was the same
+      // as slamming it. Direction still comes from the normalised vector (so
+      // diagonals aren't faster), but the SPEED now follows how far the stick
+      // actually moved — capped at 1 so the keyboard's 1.41-long diagonal doesn't
+      // sprint.
+      const push = Math.min(1, len);
       const msp = moveSpeedOf(p);
-      p.x += (vx / len) * msp * dt;
-      p.y += (vy / len) * msp * dt;
+      p.x += (vx / len) * push * msp * dt;
+      p.y += (vy / len) * push * msp * dt;
       p.x = Math.max(24, Math.min(WORLD_W - 24, p.x));
       p.y = Math.max(40, Math.min(WORLD_H - 10, p.y));
       const pres = pushOut(p.x, p.y, 15);
@@ -6965,6 +7008,17 @@ function renderLobby(t) {
     ctx.font = '700 13px Inter, sans-serif';
     ctx.fillStyle = PLAYER_COLORS[i];
     ctx.fillText('P' + (i + 1), x + w / 2, y + 26);
+    // Which physical controller drives this knight. Without it, a crossed pair
+    // ("why is MY stick moving HER knight?") is invisible until you're in a
+    // fight — now you can see it, and fix it, in the lobby.
+    if (inParty) {
+      const src = p.remote ? 'ONLINE'
+        : p.padResolved >= 0 ? 'CONTROLLER ' + (p.padResolved + 1)
+        : 'KEYBOARD';
+      ctx.font = '600 9px Inter, sans-serif';
+      ctx.fillStyle = p.padResolved >= 0 || p.remote ? 'rgba(220,214,200,0.62)' : 'rgba(224,150,90,0.85)';
+      ctx.fillText(src, x + w / 2, y + 40);
+    }
     if (inParty) {
       const bob = Math.sin(t * 3 + i) * 3;
       if (!drawHeroImg(p.heroKey, x + w / 2, y + 170 + bob, 110)) {
@@ -7010,7 +7064,7 @@ function renderLobby(t) {
         game.joinVia = game.joinAnim.via;
         game.joinPad = game.joinAnim.pad;
         game.phase = 'select2';
-        game.cursor = 0;
+        game.cursor = openJoinCursor(game.joinSlot);
         game.joinAnim = null;
       }
     } else {
@@ -9012,7 +9066,7 @@ function render(t) {
     ctx.restore();
     if (ja >= 1) {
       game.joinSlot=game.joinAnim.slot; game.joinVia=game.joinAnim.via; game.joinPad=game.joinAnim.pad;
-      game.phase='select2'; game.cursor=0; game.joinAnim=null;
+      game.phase='select2'; game.cursor=openJoinCursor(game.joinSlot); game.joinAnim=null;
     }
   }
 
@@ -9694,7 +9748,7 @@ const SONGBOOK = [
 
 // ---- settings (persisted) ----
 const settings = Object.assign(
-  { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false, anthem: 'march', difficulty: 'normal', keepParty: true },
+  { music: 70, sfx: 80, shake: true, dmgnums: true, flash: true, particles: true, fps: false, anthem: 'march', difficulty: 'normal', keepParty: true, rumble: true },
   loadSave('kd_settings')
 );
 function saveSettings() {
@@ -9717,11 +9771,15 @@ setSfx.value = settings.sfx;
 setMusic.addEventListener('input', () => { settings.music = +setMusic.value; saveSettings(); });
 setSfx.addEventListener('input', () => { settings.sfx = +setSfx.value; saveSettings(); });
 for (const [id, key] of [['togShake', 'shake'], ['togDmg', 'dmgnums'], ['togFlash', 'flash'],
-                         ['togParticles', 'particles'], ['togFps', 'fps'], ['togKeepParty', 'keepParty']]) {
+                         ['togParticles', 'particles'], ['togFps', 'fps'], ['togKeepParty', 'keepParty'],
+                         ['togRumble', 'rumble']]) {
   const el = document.getElementById(id);
   el.checked = settings[key] !== false;
   if (key === 'fps') el.checked = settings.fps === true;
-  el.addEventListener('change', () => { settings[key] = el.checked; saveSettings(); playSample('ui-toggle', 0.6); });
+  el.addEventListener('change', () => {
+    settings[key] = el.checked; saveSettings(); playSample('ui-toggle', 0.6);
+    if (key === 'rumble' && el.checked) allRumble(0.6, 0.4, 260);   // feel it turn on
+  });
 }
 function refreshDiffBtns() {
   document.querySelectorAll('#diffPick .diffBtn').forEach(b => b.classList.toggle('on', b.dataset.diff === settings.difficulty));
@@ -10506,9 +10564,12 @@ function guestTick(dt) {
     if (keys.has('KeyD') || keys.has('ArrowRight')) vx += 1;
     if (keys.has('KeyW') || keys.has('ArrowUp')) vy -= 1;
     if (keys.has('KeyS') || keys.has('ArrowDown')) vy += 1;
-    if (PADS.p0) {
-      vx += PADS.p0.ax + (PADS.p0.left ? -1 : 0) + (PADS.p0.right ? 1 : 0);
-      vy += PADS.p0.ay + (PADS.p0.up ? -1 : 0) + (PADS.p0.down ? 1 : 0);
+    // whichever slot the guest's own controller landed in — hardcoding slot 0
+    // left an online guest unable to move if their pad woke up elsewhere
+    const gpad = localPad();
+    if (gpad) {
+      vx += gpad.ax + (gpad.left ? -1 : 0) + (gpad.right ? 1 : 0);
+      vy += gpad.ay + (gpad.up ? -1 : 0) + (gpad.down ? 1 : 0);
     }
     vx = Math.max(-1, Math.min(1, vx));
     vy = Math.max(-1, Math.min(1, vy));
@@ -10518,8 +10579,9 @@ function guestTick(dt) {
       else if (vx > 0) s.dir = 'right';
       else s.dir = vy < 0 ? 'up' : 'down';
       const len = Math.hypot(vx, vy);
-      s.x = Math.max(24, Math.min(WORLD_W - 24, s.x + (vx / len) * s.speed * dt));
-      s.y = Math.max(40, Math.min(WORLD_H - 10, s.y + (vy / len) * s.speed * dt));
+      const push = Math.min(1, len);          // analog speed online too
+      s.x = Math.max(24, Math.min(WORLD_W - 24, s.x + (vx / len) * push * s.speed * dt));
+      s.y = Math.max(40, Math.min(WORLD_H - 10, s.y + (vy / len) * push * s.speed * dt));
       const pr = pushOut(s.x, s.y, 15);
       s.x = pr.x; s.y = pr.y;
       s.animTime += dt;
@@ -10561,6 +10623,81 @@ document.getElementById('netJoinBtn').addEventListener('click', () => {
    LEVEL-UP     d-pad = highlight card · A = take it
    VICTORY/DEFEAT  d-pad = highlight button · A = press it · B = menu    */
 const PADS = { prev: [{}, {}, {}, {}], rep: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
+
+/* ── controller SLOTS ──────────────────────────────────────────────────────
+   Physical controllers arrive at whatever index the browser feels like, and
+   that index is NOT stable: an Xbox pad that sleeps and wakes up comes back at
+   4, 7, 12... Every loop below thinks in SLOTS 0-3 instead, and a slot sticks
+   to its controller for as long as it is plugged in. Before this, a pad whose
+   index drifted past 3 went completely dead — the "my controller stopped
+   working, I had to restart the game" bug.                                  */
+const PAD_SLOTS = [null, null, null, null];   // slot -> { id, index }
+function liveGamepads() {
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  const out = [];
+  for (let i = 0; i < gps.length; i++) if (gps[i] && gps[i].connected) out.push(gps[i]);
+  return out;
+}
+function refreshPadSlots() {
+  const live = liveGamepads();
+  const claimed = new Set();
+  // a slot keeps its controller: same index if it stayed put, otherwise the same
+  // make of pad that just reappeared somewhere else
+  for (let sl = 0; sl < 4; sl++) {
+    const slot = PAD_SLOTS[sl];
+    if (!slot) continue;
+    const gp = live.find(g => !claimed.has(g.index) && g.index === slot.index && g.id === slot.id)
+            || live.find(g => !claimed.has(g.index) && g.id === slot.id);
+    if (gp) { slot.index = gp.index; claimed.add(gp.index); }
+    else PAD_SLOTS[sl] = null;
+  }
+  // anything new takes the lowest free slot
+  for (const gp of live) {
+    if (claimed.has(gp.index)) continue;
+    const sl = PAD_SLOTS.findIndex(x => !x);
+    if (sl === -1) break;                       // four knights, four slots
+    PAD_SLOTS[sl] = { id: gp.id, index: gp.index };
+    claimed.add(gp.index);
+  }
+}
+function padAt(slot) {
+  const sl = PAD_SLOTS[slot];
+  if (!sl) return null;
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  const gp = gps[sl.index];
+  return gp && gp.connected ? gp : null;
+}
+function slotOfIndex(index) { return PAD_SLOTS.findIndex(s => s && s.index === index); }
+/* ── rumble ────────────────────────────────────────────────────────────────
+   Couch co-op's best trick: only the knight who got hit feels it. Buzzes the
+   controller in a given SLOT, so P2's pad shakes when P2 takes a blow and
+   nobody else's does. Silently does nothing on pads/browsers without haptics,
+   and respects the Rumble setting. */
+function padRumble(slot, strong, weak, ms) {
+  if (typeof settings !== 'undefined' && settings.rumble === false) return;
+  const gp = padAt(slot);
+  const act = gp && (gp.vibrationActuator || (gp.hapticActuators && gp.hapticActuators[0]));
+  if (!act || !act.playEffect) return;
+  try {
+    act.playEffect('dual-rumble', {
+      startDelay: 0, duration: ms, strongMagnitude: strong, weakMagnitude: weak
+    }).catch(() => {});
+  } catch (e) { /* older haptics API — not worth a crash */ }
+}
+/** Buzz the controller bound to a knight, if it has one. */
+function playerRumble(p, strong, weak, ms) {
+  if (p && p.padResolved >= 0) padRumble(p.padResolved, strong, weak, ms);
+}
+/** Buzz every connected controller — for things the whole room should feel. */
+function allRumble(strong, weak, ms) {
+  for (let i = 0; i < 4; i++) padRumble(i, strong, weak, ms);
+}
+
+/** The first controller this machine has, whatever slot it landed in. */
+function localPad() {
+  for (let i = 0; i < 4; i++) if (PADS['p' + i]) return PADS['p' + i];
+  return null;
+}
 // Re-baseline gamepad edge/repeat memory to the CURRENT pad state. Seeding prev
 // with what's held RIGHT NOW does two things: (1) a stale "still pressed" flag from
 // the previous run is cleared, so menus/armory aren't dead until you release+press;
@@ -10574,15 +10711,26 @@ function resetPadEdges() {
   }
 }
 function readPad(i) {
-  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
-  const gp = gps[i];
-  if (!gp || !gp.connected) return null;
-  const dz = v => (Math.abs(v) > 0.24 ? v : 0);
+  const gp = padAt(i);
+  if (!gp) return null;
   const b = n => !!(gp.buttons[n] && gp.buttons[n].pressed);
+  // RADIAL deadzone: a worn stick that rests at 0.25 on both axes used to walk
+  // the knight across the map on its own. Killing the whole vector under the
+  // threshold — then rescaling what's left from 0 — also gives back the slow
+  // creep you need to dodge, instead of snapping to quarter speed.
+  const rx = gp.axes[0] || 0, ry = gp.axes[1] || 0;
+  const mag = Math.hypot(rx, ry);
+  const DZ = 0.26;
+  let ax = 0, ay = 0;
+  if (mag > DZ) {
+    const k = Math.min(1, (mag - DZ) / (0.95 - DZ)) / mag;
+    ax = rx * k; ay = ry * k;
+  }
+  const dz = v => (Math.abs(v) > 0.24 ? v : 0);
   return {
-    ax: dz(gp.axes[0] || 0), ay: dz(gp.axes[1] || 0),
-    left: b(14) || dz(gp.axes[0] || 0) < -0.5, right: b(15) || dz(gp.axes[0] || 0) > 0.5,
-    up: b(12) || dz(gp.axes[1] || 0) < -0.5, down: b(13) || dz(gp.axes[1] || 0) > 0.5,
+    ax, ay,
+    left: b(14) || dz(rx) < -0.5, right: b(15) || dz(rx) > 0.5,
+    up: b(12) || dz(ry) < -0.5, down: b(13) || dz(ry) > 0.5,
     a: b(0), bBtn: b(1), x: b(2), y: b(3), lb: b(4), rb: b(5), start: b(9),
   };
 }
@@ -10686,9 +10834,8 @@ function nudgeRange(el, d) {
 // re-binding a knight to a free controller if its own was unplugged / slept and
 // came back on a different index (Xbox pads sleep after inactivity).
 function assignPads() {
-  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
   const connected = [];
-  for (let i = 0; i < 4; i++) if (gps[i] && gps[i].connected) connected.push(i);
+  for (let i = 0; i < 4; i++) if (padAt(i)) connected.push(i);
   const used = new Set();
   // pass 1 — honor each knight's bound pad while it's still connected & unclaimed
   for (const p of players) {
@@ -10707,6 +10854,7 @@ function assignPads() {
   }
 }
 function pollPads() {
+  refreshPadSlots();
   assignPads();
   for (let i = 0; i < 4; i++) {
     const s = readPad(i);
@@ -10903,13 +11051,17 @@ function pollPads() {
   }
 }
 window.addEventListener('gamepadconnected', e => {
-  gameToast('🎮 Controller ' + (e.gamepad.index + 1) + ' connected!');
+  refreshPadSlots();
+  const sl = slotOfIndex(e.gamepad.index);
+  gameToast('🎮 Controller ' + (sl >= 0 ? sl + 1 : '?') + ' connected!');
   if (menuOpen) menuToastShow('🎮 Controller connected — press A to play!');
 });
 window.addEventListener('gamepaddisconnected', e => {
-  const i = e.gamepad.index;
+  const i = slotOfIndex(e.gamepad.index);
+  if (i < 0) { refreshPadSlots(); return; }
   gameToast('🎮 Controller ' + (i + 1) + ' disconnected');
   PADS['p' + i] = null;
+  PAD_SLOTS[i] = null;
   // in the lobby, an unplugged controller gives up its seat — find the knight
   // BOUND to this pad (q.pad), not players[i]; pad number ≠ slot number
   if (game.phase === 'lobby') {
@@ -10923,6 +11075,22 @@ window.addEventListener('gamepaddisconnected', e => {
 // the home visibly slide and magnify, then bail. Desktop players get a full-bleed
 // window from the cover-fit art and can go true-fullscreen via Settings, the
 // green traffic-light button, or ⌃⌘F — all clean, no jank.
+/* Edge on the Xbox maps the controller's B button to browser BACK. Mid-run that
+   navigates straight out of the game — the console's own "B quit my game" bug,
+   and nothing in the page can cancel it once it happens. Parking one extra
+   history entry underneath us means a stray B pops back INTO the game instead of
+   out of it, and we immediately re-arm the trap. */
+history.pushState({ kd: 'root' }, '');
+history.pushState({ kd: 'play' }, '');
+window.addEventListener('popstate', () => {
+  history.pushState({ kd: 'play' }, '');
+  // treat it as the in-game Back, so B still does something sensible
+  if (!menuOpen && typeof game !== 'undefined') {
+    if (game.paused || game.phase === 'run') { /* pause screen handles its own B */ }
+    else window.dispatchEvent(Object.assign(new KeyboardEvent('keydown', { code: 'Escape' }), { __pad: true }));
+  }
+});
+
 const IS_XBOX = /Xbox/i.test(navigator.userAgent);
 if (IS_XBOX) {
   window.addEventListener('pointerdown', enterFS, { once: true });
