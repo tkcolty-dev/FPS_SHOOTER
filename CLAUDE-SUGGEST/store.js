@@ -50,7 +50,10 @@ function fileStore(file) {
 // ---------- postgres store ----------
 function pgStore(uri) {
   const { Pool } = require('pg');
-  const pool = new Pool({ connectionString: uri, ssl: { rejectUnauthorized: false }, max: 5 });
+  // Tanzu Postgres here speaks plaintext inside the platform network; only use TLS if asked for.
+  const wantSsl = /[?&]ssl(mode)?=(true|require|verify-ca|verify-full)/.test(uri);
+  const pool = new Pool({ connectionString: uri,
+                          ssl: wantSsl ? { rejectUnauthorized: false } : false, max: 5 });
   const q = (t, p) => pool.query(t, p);
   const rowP = r => ({ id: r.id, name: r.name, url: r.url || '', description: r.description || '',
                        createdAt: r.created_at.toISOString() });
