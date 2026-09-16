@@ -1,0 +1,10 @@
+applications:
+- name: cloudplug
+  memory: 256M
+  instances: 1
+  buildpacks:
+  - nodejs_buildpack
+  command: node server.js
+  services:
+  - cloudplug-db
+  - blockbuddy-ai

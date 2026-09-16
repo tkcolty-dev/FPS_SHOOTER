@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "CloudPlug for Scratch",
+  "version": "1.0.0",
+  "description": "Plugs new blocks into scratch.mit.edu while it runs: cloud saves, per-player saves, leaderboards, super cloud variables, chat, web fetch, AI — stored on your own server.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://scratch.mit.edu/*"],
+  "content_scripts": [{ "matches": ["https://scratch.mit.edu/*"], "js": ["content.js"], "run_at": "document_start" }],
+  "web_accessible_resources": [{ "resources": ["inject.js"], "matches": ["https://scratch.mit.edu/*"] }],
+  "action": { "default_popup": "popup.html", "default_title": "CloudPlug" },
+  "icons": { "128": "icon128.png" }
+}

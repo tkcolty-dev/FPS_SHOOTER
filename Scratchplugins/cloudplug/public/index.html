@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudPlug</title>
+<style>
+  :root { --bg:#0f1523; --panel:#161e31; --panel2:#1d2740; --line:#2a3650; --text:#e8eefb; --muted:#8ea0c4; --blue:#4c97ff; --green:#4ad18c; --red:#ff6b7a; --yellow:#ffcf5c; --orange:#ff9f43; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; background:var(--bg); color:var(--text); }
+  header { display:flex; align-items:center; gap:14px; padding:14px 20px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  header h1 { margin:0; font-size:20px; } header h1 span { color:var(--blue); }
+  header .spacer { flex:1; }
+  .pill { background:var(--panel2); border:1px solid var(--line); border-radius:999px; padding:5px 12px; font-size:13px; color:var(--muted); }
+  .pill b { color:var(--text); }
+  main { display:grid; grid-template-columns: 300px 1fr; gap:16px; padding:16px 20px; max-width:1500px; margin:0 auto; }
+  @media (max-width:900px){ main { grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:14px; }
+  .card h2 { margin:0 0 10px; font-size:15px; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+  input, select, textarea { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font:inherit; width:100%; }
+  textarea { min-height:60px; resize:vertical; }
+  button { background:var(--blue); color:#fff; border:0; border-radius:8px; padding:8px 12px; font:inherit; font-weight:600; cursor:pointer; }
+  button.ghost { background:var(--panel2); color:var(--text); border:1px solid var(--line); }
+  button.danger { background:var(--red); }
+  button.small { padding:4px 8px; font-size:12px; }
+  .row { display:flex; gap:8px; align-items:center; margin:6px 0; flex-wrap:wrap; }
+  .row > input { flex:1; min-width:120px; }
+  .proj { padding:10px 12px; border:1px solid var(--line); border-radius:10px; margin:8px 0; cursor:pointer; background:var(--panel2); }
+  .proj.active { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue) inset; }
+  .proj .t { font-weight:600; } .proj .s { color:var(--muted); font-size:12px; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; background:var(--muted); }
+  .dot.connected { background:var(--green); } .dot.connecting { background:var(--yellow); } .dot.offline { background:var(--red); }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .tabs button { background:var(--panel2); color:var(--muted); border:1px solid var(--line); }
+  .tabs button.on { background:var(--blue); color:#fff; border-color:var(--blue); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-word; }
+  th { color:var(--muted); font-weight:600; }
+  code, .mono { font-family: ui-monospace, Menlo, monospace; font-size:12.5px; }
+  .log { max-height:420px; overflow:auto; font-family: ui-monospace, Menlo, monospace; font-size:12px; }
+  .log div { padding:4px 6px; border-bottom:1px solid var(--line); }
+  .log .ok { color:var(--green); } .log .bad { color:var(--red); } .log .push { color:var(--orange); } .log time { color:var(--muted); margin-right:6px; }
+  .muted { color:var(--muted); } .small { font-size:12px; }
+  .steps li { margin:6px 0; }
+  .help td:first-child { white-space:nowrap; color:var(--blue); font-family: ui-monospace, Menlo, monospace; }
+  .err { color:var(--red); }
+  .copy { cursor:pointer; border-bottom:1px dashed var(--muted); }
+  details summary { cursor:pointer; color:var(--muted); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; } @media (max-width:1100px){ .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>☁🔌 <span>CloudPlug</span></h1>
+  <span class="pill" id="pillScratch">Scratch: <b>not logged in</b></span>
+  <span class="pill" id="pillAI">AI: <b>…</b></span>
+  <span class="spacer"></span>
+  <a class="pill" href="CloudPlug-template.sb3" download>⬇ template project (.sb3)</a>
+  <a class="pill" href="CloudPlug.sprite3" download>⬇ sprite only (.sprite3)</a>
+  <span class="pill">TurboWarp extension: <b class="copy mono" id="extUrl" title="click to copy">…</b></span>
+</header>
+<main>
+  <aside>
+    <div class="card">
+      <h2>Scratch account</h2>
+      <div id="loginBox">
+        <div class="row"><input id="u" placeholder="Scratch username" autocomplete="username"></div>
+        <div class="row"><input id="p" type="password" placeholder="password" autocomplete="current-password"></div>
+        <div class="row"><button onclick="login()">Log in</button><span class="small muted">needed to reach scratch.mit.edu projects</span></div>
+        <div class="err small" id="loginErr"></div>
+      </div>
+      <div id="logoutBox" hidden><div class="row">Logged in as <b id="who"></b> <button class="ghost small" onclick="logout()">log out</button></div></div>
+    </div>
+    <div class="card">
+      <h2>Projects</h2>
+      <div class="row"><input id="newId" placeholder="scratch project link / ID, or a room name"><button onclick="addProject()">Add</button></div>
+      <div id="projects"></div>
+    </div>
+    <div class="card">
+      <h2>How to use</h2>
+      <ol class="steps small">
+        <li><b>Browser plugin (the main way):</b> <a href="CloudPlug-browser-extension.zip">download the plugin</a>, unzip it, open <code>chrome://extensions</code>, turn on Developer mode, <b>Load unpacked</b> → pick the folder. Open any project on scratch.mit.edu: a blue <b>CloudPlug</b> category appears in the palette and the blocks work while the project runs (editor and project page). Players of your game need the plugin too.</li>
+        <li><b>No plugin? Template instead:</b> download the <a href="CloudPlug-template.sb3">template</a>, File → Load it, build your game inside it, share it, add its project ID on the left and turn the <b>bridge</b> on (needs the Scratch login above). Works for everyone who plays, using only cloud variables: <code>set [plug request] to (save&amp;highscore&amp;100)</code> → <code>broadcast [cloud plug] and wait</code> → answer in <code>plug response</code>.</li>
+        <li><b>Existing project without the plugin:</b> make 10 cloud variables named <code>☁ TO_HOST</code>, <code>☁ FROM_HOST_1</code> … <code>☁ FROM_HOST_9</code> (for all sprites), then Upload Sprite → <a href="CloudPlug.sprite3">CloudPlug.sprite3</a>.</li>
+        <li><b>TurboWarp:</b> Custom Extension → URL above for the same blocks, or open a project with <code>?cloud_host=</code> <span class="copy mono" id="cloudHost">…</span> so this server is its cloud.</li>
+      </ol>
+    </div>
+  </aside>
+  <section id="main">
+    <div class="card" id="empty"><h2>Pick a project</h2><p class="muted">Add a Scratch project on the left. Every request it sends shows up here live.</p></div>
+    <div id="detail" hidden>
+      <div class="card">
+        <div class="row">
+          <span class="dot" id="dot"></span><b id="title"></b><span class="muted small" id="sub"></span>
+          <span class="spacer" style="flex:1"></span>
+          <label class="small"><input type="checkbox" id="bridge" onchange="setSetting('bridge', this.checked)" style="width:auto"> bridge to scratch.mit.edu</label>
+          <label class="small"><input type="checkbox" id="enabled" onchange="setSetting('enabled', this.checked)" style="width:auto"> enabled</label>
+          <button class="danger small" onclick="removeProject()">remove</button>
+        </div>
+        <div class="row small muted"><span id="stats"></span></div>
+        <div class="row"><input id="pushText" placeholder="message to every running copy of the game (arrives as 'plug message' + broadcast 'cloud plug message')"><button onclick="pushMsg()">📣 Send</button></div>
+        <div class="row"><input id="runReq" placeholder="try a request here, e.g. top&high scores&5"><button class="ghost" onclick="runReq()">▶ Run</button><span class="mono small" id="runOut"></span></div>
+      </div>
+      <div class="tabs" id="tabs"></div>
+      <div class="card" id="tabBody"></div>
+    </div>
+    <div class="card">
+      <h2>Every request your project can send</h2>
+      <p class="small muted">Request text = <code>name&amp;arg1&amp;arg2…</code>. Put it in <code>plug request</code>, broadcast <code>cloud plug</code> and wait. Answers marked LIST fill <code>plug response list</code> (and <code>plug response</code> gets the items on separate lines).</p>
+      <table class="help" id="help"></table>
+    </div>
+  </section>
+</main>
+<script>
+let state = null, current = null, tab = 'log';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmtT = (t) => new Date(t).toLocaleTimeString();
+
+async function api(url, body, method) { const r = await fetch(url, { method: method || (body ? 'POST' : 'GET'), headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'failed'); return j; }
+async function refresh() { state = await api('/api/state'); render(); }
+function render() {
+  if (!state) return;
+  $('pillScratch').innerHTML = 'Scratch: <b>' + (state.scratch ? esc(state.scratch.username) : 'not logged in') + '</b>';
+  $('pillAI').innerHTML = 'AI: <b>' + (state.ai ? 'on' : 'off') + '</b>';
+  const origin = location.origin;
+  $('extUrl').textContent = origin + '/extension.js';
+  $('cloudHost').textContent = origin.replace(/^http/, 'ws');
+  $('loginBox').hidden = !!state.scratch; $('logoutBox').hidden = !state.scratch; if (state.scratch) $('who').textContent = state.scratch.username;
+  const ids = Object.keys(state.projects);
+  $('projects').innerHTML = ids.length ? ids.map((id) => { const p = state.projects[id]; return `<div class="proj ${id === current ? 'active' : ''}" onclick="pick('${esc(id)}')"><div class="t"><span class="dot ${p.bridge ? p.bridgeStatus : ''}"></span>${esc(p.title || id)}</div><div class="s">${/^\d+$/.test(id) ? 'scratch.mit.edu #' + id : 'room "' + esc(id) + '"'}${p.author ? ' by ' + esc(p.author) : ''} · ${p.stats.requests} requests · ${p.players + p.plugs} online${p.enabled ? '' : ' · PAUSED'}</div></div>`; }).join('') : '<p class="muted small">none yet</p>';
+  $('help').innerHTML = '<tr><th>request</th><th>arguments</th><th>what it does</th></tr>' + state.help.map(([n, a, d]) => `<tr><td>${esc(n)}</td><td class="mono">${esc(a)}</td><td>${esc(d)}</td></tr>`).join('');
+  if (current && !state.projects[current]) current = null;
+  $('empty').hidden = !!current; $('detail').hidden = !current;
+  if (current) renderDetail();
+}
+function pick(id) { current = id; render(); }
+function renderDetail() {
+  const p = state.projects[current];
+  $('dot').className = 'dot ' + (p.bridge ? p.bridgeStatus : '');
+  $('title').textContent = p.title || current;
+  $('sub').textContent = (/^\d+$/.test(current) ? ' #' + current + (p.author ? ' by ' + p.author : '') : ' room') + (p.bridge ? ' · bridge ' + p.bridgeStatus : ' · bridge off');
+  $('bridge').checked = !!p.bridge; $('enabled').checked = !!p.enabled;
+  $('bridge').disabled = !/^\d+$/.test(current);
+  $('stats').textContent = `${p.stats.requests} requests · last ${p.stats.last ? fmtT(p.stats.last) : 'never'} · ${p.players} cloud players + ${p.plugs} extension players online · ${Object.keys(p.kv).length} saved keys · ${Object.keys(p.users).length} player saves · ${Object.keys(p.boards).length} leaderboards · ${Object.keys(p.lists).length} lists · ${p.chat.length} chat`;
+  const tabs = [['log', 'Live log'], ['kv', 'Saved data'], ['users', 'Player saves'], ['boards', 'Leaderboards'], ['lists', 'Lists'], ['vars', 'Super cloud vars'], ['chat', 'Chat'], ['mail', 'Mail'], ['players', 'Players']];
+  $('tabs').innerHTML = tabs.map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" onclick="tab='${k}';renderDetail()">${l}</button>`).join('');
+  const body = $('tabBody');
+  const del = (kind, key, sub) => `<button class="ghost small" onclick="editData('${kind}', ${JSON.stringify(key).replace(/"/g, '&quot;')}, ${sub === undefined ? 'undefined' : JSON.stringify(sub).replace(/"/g, '&quot;')}, null, true)">✕</button>`;
+  if (tab === 'log') {
+    body.innerHTML = `<div class="row"><h2 style="margin:0">Live log</h2><span class="spacer" style="flex:1"></span><button class="ghost small" onclick="api('/api/projects/${current}/clearlog',{}).then(refresh)">clear</button></div><div class="log" id="log">` + p.log.slice().reverse().map(logLine).join('') + '</div>';
+  } else if (tab === 'kv') {
+    body.innerHTML = `<h2>Saved data (save / load / add)</h2><div class="row"><input id="kvK" placeholder="key"><input id="kvV" placeholder="value"><button class="small" onclick="editData('kv', $('kvK').value, undefined, $('kvV').value)">set</button></div><table><tr><th>key</th><th>value</th><th></th></tr>` + Object.entries(p.kv).map(([k, v]) => `<tr><td class="mono">${esc(k)}</td><td>${esc(v)}</td><td>${del('kv', k)}</td></tr>`).join('') + '</table>';
+  } else if (tab === 'users') {
+    body.innerHTML = '<h2>Player saves (usersave / userload)</h2>' + (Object.keys(p.users).length ? Object.entries(p.users).map(([u, bag]) => `<details open><summary><b>${esc(u)}</b> · ${Object.keys(bag).length} keys ${del('users', u)}</summary><table>` + Object.entries(bag).map(([k, v]) => `<tr><td class="mono">${esc(k)}</td><td>${esc(v)}</td><td>${del('users', u, k)}</td></tr>`).join('') + '</table></details>').join('') : '<p class="muted">no player saves yet</p>');
+  } else if (tab === 'boards') {
+    body.innerHTML = '<h2>Leaderboards (score / top / rank)</h2>' + (Object.keys(p.boards).length ? Object.entries(p.boards).map(([b, board]) => { const rows = Object.entries(board.scores).sort((x, y) => board.lowIsBetter ? x[1] - y[1] : y[1] - x[1]); return `<details open><summary><b>${esc(b)}</b> · ${rows.length} players · ${board.lowIsBetter ? 'lowest wins' : 'highest wins'} ${del('boards', b)}</summary><table><tr><th>#</th><th>player</th><th>score</th><th></th></tr>` + rows.map(([u, s], i) => `<tr><td>${i + 1}</td><td>${esc(u)}</td><td>${esc(s)}</td><td>${del('boards', b + '.scores', u)}</td></tr>`).join('') + '</table></details>'; }).join('') : '<p class="muted">no scores yet</p>');
+  } else if (tab === 'lists') {
+    body.innerHTML = '<h2>Cloud lists</h2>' + (Object.keys(p.lists).length ? Object.entries(p.lists).map(([n, l]) => `<details open><summary><b>${esc(n)}</b> · ${l.length} items ${del('lists', n)}</summary><table>` + l.map((v, i) => `<tr><td class="muted">${i + 1}</td><td>${esc(v)}</td></tr>`).join('') + '</table></details>').join('') : '<p class="muted">no lists yet</p>');
+  } else if (tab === 'vars') {
+    const rows = Object.entries(p.vars).filter(([n]) => !n.startsWith('☁ FROM_HOST_') && n !== '☁ TO_HOST');
+    body.innerHTML = `<h2>Super cloud variables (cset / cget, and plain cloud vars from TurboWarp players)</h2><div class="row"><input id="cvK" placeholder="name"><input id="cvV" placeholder="value"><button class="small" onclick="editData('vars', $('cvK').value, undefined, {value:$('cvV').value, updated:Date.now(), source:'dashboard'})">set</button></div><table><tr><th>name</th><th>value</th><th>updated</th><th></th></tr>` + rows.map(([n, v]) => `<tr><td class="mono">${esc(n)}</td><td>${esc(v.value)}</td><td class="muted small">${fmtT(v.updated)} · ${esc(v.source)}</td><td>${del('vars', n)}</td></tr>`).join('') + '</table>';
+  } else if (tab === 'chat') {
+    body.innerHTML = '<h2>Chat</h2><div class="log">' + p.chat.slice().reverse().map((m) => `<div><time>${fmtT(m.t)}</time><b>${esc(m.user)}</b>: ${esc(m.text)}</div>`).join('') + '</div>';
+  } else if (tab === 'mail') {
+    body.innerHTML = '<h2>Mail waiting to be picked up</h2>' + (Object.keys(p.mail).length ? Object.entries(p.mail).map(([u, box]) => `<details open><summary><b>${esc(u)}</b> · ${box.length} ${del('mail', u)}</summary><table>` + box.map((v) => `<tr><td>${esc(v)}</td></tr>`).join('') + '</table></details>').join('') : '<p class="muted">empty</p>');
+  } else if (tab === 'players') {
+    const rows = Object.entries(p.seen).sort((a, b) => b[1] - a[1]);
+    body.innerHTML = '<h2>Players seen</h2><table><tr><th>player</th><th>last seen</th></tr>' + rows.map(([u, t]) => `<tr><td>${esc(u)}</td><td class="muted">${new Date(t).toLocaleString()}</td></tr>`).join('') + '</table>';
+  }
+}
+function logLine(e) {
+  if (e.kind === 'push') return `<div class="push"><time>${fmtT(e.t)}</time>📣 pushed: ${esc(e.out)}</div>`;
+  return `<div><time>${fmtT(e.t)}</time><span class="${e.ok ? 'ok' : 'bad'}">${esc(e.name)}</span>${e.args && e.args.length ? ' <span class="muted">&amp; ' + e.args.map(esc).join(' &amp; ') + '</span>' : ''} → ${esc(e.out)} <span class="muted">(${e.ms} ms via ${esc(e.via)})</span></div>`;
+}
+async function login() { $('loginErr').textContent = ''; try { await api('/api/login', { username: $('u').value, password: $('p').value }); $('p').value = ''; refresh(); } catch (e) { $('loginErr').textContent = e.message; } }
+async function logout() { await api('/api/logout', {}); refresh(); }
+async function addProject() { const id = $('newId').value.trim(); if (!id) return; try { const r = await api('/api/projects', { id, bridge: /\d{4,}/.test(id) }); $('newId').value = ''; current = r.id; refresh(); } catch (e) { alert(e.message); } }
+async function removeProject() { if (!confirm('Remove this project and ALL its saved data from the server?')) return; await api('/api/projects/' + current, null, 'DELETE'); current = null; refresh(); }
+async function setSetting(k, v) { await api(`/api/projects/${current}/settings`, { [k]: v }); refresh(); }
+async function pushMsg() { const t = $('pushText').value; if (!t) return; await api(`/api/projects/${current}/push`, { text: t }); $('pushText').value = ''; }
+async function runReq() { const parts = $('runReq').value.split('&'); $('runOut').textContent = '…'; const r = await api(`/api/projects/${current}/run`, { name: parts[0], args: parts.slice(1) }); $('runOut').textContent = Array.isArray(r.result) ? JSON.stringify(r.result) : String(r.result); refresh(); }
+async function editData(kind, key, sub, value, remove) {
+  if (remove && !confirm('Delete?')) return;
+  if (kind === 'boards' && key.endsWith('.scores')) { const b = key.slice(0, -7); const board = state.projects[current].boards[b]; delete board.scores[sub]; await api(`/api/projects/${current}/data`, { kind: 'boards', key: b, value: board }); }
+  else await api(`/api/projects/${current}/data`, { kind, key, sub, value, remove: !!remove });
+  refresh();
+}
+for (const id of ['extUrl', 'cloudHost']) $(id).onclick = () => { navigator.clipboard.writeText($(id).textContent); $(id).textContent += ' ✓'; setTimeout(render, 900); };
+$('p').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+$('newId').addEventListener('keydown', (e) => { if (e.key === 'Enter') addProject(); });
+$('runReq').addEventListener('keydown', (e) => { if (e.key === 'Enter') runReq(); });
+// live updates
+function connect() {
+  const ws = new WebSocket(location.origin.replace(/^http/, 'ws') + '/dash');
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.type === 'snapshot') { state = m.state; render(); }
+    else if (m.type === 'log' && state && state.projects[m.projectId]) { const p = state.projects[m.projectId]; p.log.push(m.entry); p.stats.requests += m.entry.kind === 'request' ? 1 : 0; p.stats.last = m.entry.t; if (m.projectId === current && tab === 'log') renderDetail(); else render(); }
+    else if (m.type === 'status' && state && state.projects[m.projectId]) { const p = state.projects[m.projectId]; p.bridgeStatus = m.bridge; p.players = m.players; p.plugs = m.plugs; render(); }
+    else refresh();
+  };
+  ws.onclose = () => setTimeout(connect, 2000);
+}
+refresh(); connect();
+</script>
+</body>
+</html>

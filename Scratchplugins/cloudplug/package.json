@@ -1,0 +1,21 @@
+{
+  "name": "cloudplug",
+  "version": "1.0.0",
+  "description": "CloudPlug — plug your Scratch game into the cloud: saves, leaderboards, chat, web access, AI, super cloud variables. Works on scratch.mit.edu (cloud requests) and TurboWarp (extension).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build": "node tools/build-sprite.js",
+    "test": "node test/protocol.test.js && node test/sprite.test.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "express": "^5.2.1",
+    "jszip": "^3.10.1",
+    "pg": "^8.23.0",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "scratch-vm": "^5.0.300"
+  }
+}
