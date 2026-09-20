@@ -1,0 +1,21 @@
+{
+  "id": "tipsplit",
+  "name": "Tip & Split",
+  "subtitle": "Fair bills in seconds.",
+  "category": "Utilities",
+  "genre": "Finance",
+  "developer": "Two Forks Software",
+  "rating": 4.9,
+  "ratings": "17K",
+  "age": "4+",
+  "size": "1.1 MB",
+  "version": "2.2",
+  "statusBar": "dark",
+  "icon": {
+    "bg": "linear-gradient(155deg,#7bed8d 0%,#2fbf5b 50%,#0e8a4a 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><path d='M16 9h28v40l-4.7-3.5L34.6 49 30 45.5 25.4 49l-4.7-3.5L16 49z' fill='#fff'/><path d='M22 19h16M22 26h16' stroke='#2fbf5b' stroke-width='2.6' stroke-linecap='round' opacity='.55'/><text x='30' y='41.5' text-anchor='middle' font-family='-apple-system,Helvetica,Arial,sans-serif' font-size='13' font-weight='800' fill='#0e8a4a'>%</text></svg>"
+  },
+  "description": "The bill arrives, everyone reaches for their phone — and you're already done. Tip & Split works out the tip, the total and exactly what each person owes, live, as you type.\n\nPunch in the bill on the big built-in keypad, tap a tip percentage or dial in your own, and choose how many people are sharing. The receipt at the bottom keeps a clear, honest breakdown: bill, tip, total and each person's share.\n\nHate counting coins? Turn on Round Up and everyone pays a clean whole number — Tip & Split shows you the real tip percentage that works out to, so the server never loses out.",
+  "whatsNew": "New receipt view, custom tip slider up to 50%, and a Round Up option that shows the true tip percentage.",
+  "accent": "#1faa55"
+}

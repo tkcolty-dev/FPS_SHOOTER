@@ -1,0 +1,12 @@
+applications:
+  - name: iphone17
+    memory: 256M
+    disk_quota: 512M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node server.js
+    services:
+      - iphone17-ai
+    env:
+      NODE_ENV: production

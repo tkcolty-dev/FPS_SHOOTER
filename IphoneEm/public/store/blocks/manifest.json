@@ -1,0 +1,21 @@
+{
+  "id": "blocks",
+  "name": "Blockfall",
+  "subtitle": "Stack. Clear. Survive.",
+  "category": "Games",
+  "genre": "Puzzle",
+  "developer": "Nightshade Arcade",
+  "rating": 4.8,
+  "ratings": "38K",
+  "age": "4+",
+  "size": "2.1 MB",
+  "version": "1.2",
+  "statusBar": "light",
+  "icon": {
+    "bg": "linear-gradient(160deg,#7a66ff 0%,#4a2fd6 45%,#1d1266 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><g fill='#ffffff'><rect x='16' y='2' width='3' height='9' rx='1.5' opacity='.35'/><rect x='28.5' y='0' width='3' height='7' rx='1.5' opacity='.25'/><rect x='41' y='2' width='3' height='9' rx='1.5' opacity='.35'/><rect x='14' y='13' width='10' height='10' rx='2.6'/><rect x='25' y='13' width='10' height='10' rx='2.6'/><rect x='36' y='13' width='10' height='10' rx='2.6'/><rect x='25' y='24' width='10' height='10' rx='2.6'/><g opacity='.5'><rect x='3' y='37' width='10' height='10' rx='2.6'/><rect x='36' y='37' width='10' height='10' rx='2.6'/><rect x='47' y='37' width='10' height='10' rx='2.6'/></g><g opacity='.78'><rect x='3' y='48' width='10' height='10' rx='2.6'/><rect x='14' y='48' width='10' height='10' rx='2.6'/><rect x='36' y='48' width='10' height='10' rx='2.6'/><rect x='47' y='48' width='10' height='10' rx='2.6'/></g></g></svg>"
+  },
+  "description": "Blockfall is the falling-block puzzle you already know how to play, rebuilt to feel perfect on iPhone. Seven glossy pieces, a 10x20 well, and one simple goal: keep the stack low and the lines clearing.\n\nDrag anywhere to slide a piece, tap to rotate, flick down to slam it home, or use the chunky on-screen buttons. A ghost piece shows exactly where you'll land, the Hold slot saves a piece for later, and the Next queue lets you plan four moves ahead. Modern wall kicks, lock delay and a fair 7-bag randomiser mean every game is won or lost on skill.\n\nChain combos, land back-to-back four-line Blockfalls, and climb the levels as the speed ramps up. Pick your starting level, chase your best score, and see how long you can survive.",
+  "whatsNew": "Smoother drag controls, a brighter ghost piece, and new line-clear sparkles. Thanks for playing!",
+  "accent": "#7c5cff"
+}

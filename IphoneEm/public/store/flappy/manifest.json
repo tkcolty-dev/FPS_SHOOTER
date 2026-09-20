@@ -1,0 +1,21 @@
+{
+  "id": "flappy",
+  "name": "Paper Pilot",
+  "subtitle": "One tap. Endless sky.",
+  "category": "Games",
+  "genre": "Arcade",
+  "developer": "Foldwing Games",
+  "rating": 4.8,
+  "ratings": "38K",
+  "age": "4+",
+  "size": "2.1 MB",
+  "version": "1.2",
+  "statusBar": "light",
+  "icon": {
+    "bg": "linear-gradient(160deg,#5ec2ff 0%,#3b82f6 55%,#7c5cff 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><circle cx='46' cy='15' r='15' fill='#fff' opacity='.12'/><path d='M36 54a4.5 4.5 0 0 1 .6-9 6.5 6.5 0 0 1 12.4 1 4 4 0 0 1 .5 8z' fill='#fff' opacity='.45'/><path d='M6 53c7 0 12-3 15-9' stroke='#fff' stroke-width='2.6' stroke-linecap='round' stroke-dasharray='0.1 5.4' fill='none' opacity='.85'/><path d='M51 10 7 26l15 7z' fill='#fff'/><path d='M51 10 22 33l3 14z' fill='#c9ddf7'/><path d='M51 10 29 38l15 7z' fill='#fff'/><path d='M25 47l4-9 5 2.3z' fill='#9fbfe8'/></svg>"
+  },
+  "description": "Fold it. Flick it. Fly it. Paper Pilot is a one-tap flyer where a little paper plane threads its way through a desk-sized world of giant pencils.\n\nTap anywhere to flap and glide through the gaps. It starts easy, then the gates tighten, the pace picks up and some pencils even start to sway. Fly long enough and you will watch the sky melt from bright day into a golden sunset and a starry night.\n\nEarn Bronze, Silver, Gold and Platinum medals, chase your best score, and try not to say 'one more go' more than twenty times.",
+  "whatsNew": "Swaying gates after 20 points, a smoother day-to-night sky, and a new Platinum medal for ace pilots.",
+  "accent": "#3b82f6"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "convert",
+  "name": "Unit Converter",
+  "subtitle": "Every unit, instantly.",
+  "category": "Utilities",
+  "genre": "Reference",
+  "developer": "Meridian Apps",
+  "rating": 4.8,
+  "ratings": "54K",
+  "age": "4+",
+  "size": "1.8 MB",
+  "version": "3.0",
+  "statusBar": "dark",
+  "icon": {
+    "bg": "linear-gradient(150deg,#5ee7c5 0%,#1fb6a6 45%,#0a7d8c 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><path d='M14 23h27' stroke='#fff' stroke-width='5' stroke-linecap='round'/><path d='M34 14l9 9-9 9' fill='none' stroke='#fff' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/><path d='M46 38H19' stroke='rgba(255,255,255,.72)' stroke-width='5' stroke-linecap='round'/><path d='M26 29l-9 9 9 9' fill='none' stroke='rgba(255,255,255,.72)' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+  },
+  "description": "Unit Converter turns any measurement into any other as fast as you can type. Eight categories — length, weight, temperature, volume, speed, area, time and data — cover everything from homework to cooking to travel.\n\nA big, clear display and a purpose-built keypad mean there's no fiddling with tiny text boxes. Results update live with every key press, and the list underneath shows your value in every other unit at once. Tap any row to make it your target, or hit swap to flip the conversion around.\n\nUnit Converter remembers the units you used last in every category, works completely offline, and looks great in both light and dark mode.",
+  "whatsNew": "Redesigned from the ground up: live \"all units\" list, new Data and Time categories, and smarter number formatting.",
+  "accent": "#12a594"
+}

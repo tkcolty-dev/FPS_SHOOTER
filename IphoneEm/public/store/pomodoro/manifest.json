@@ -1,0 +1,21 @@
+{
+  "id": "pomodoro",
+  "name": "Focus Timer",
+  "subtitle": "Pomodoro, beautifully simple.",
+  "category": "Productivity",
+  "genre": "Time Management",
+  "developer": "Quiet Hour Co.",
+  "rating": 4.8,
+  "ratings": "29K",
+  "age": "4+",
+  "size": "1.6 MB",
+  "version": "2.0",
+  "statusBar": "dark",
+  "icon": {
+    "bg": "radial-gradient(circle at 30% 20%,#ff9a7b 0%,#ff5a4e 45%,#d92b3a 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><circle cx='30' cy='32' r='17' fill='none' stroke='rgba(255,255,255,.35)' stroke-width='5'/><path d='M30 15a17 17 0 1 1-14.700 8.500' fill='none' stroke='#fff' stroke-width='5' stroke-linecap='round'/><path d='M30 23v9.500l5.500 3.500' fill='none' stroke='#fff' stroke-width='3.600' stroke-linecap='round' stroke-linejoin='round'/><path d='M30 11c1-3 3.500-4.500 6.500-4.500-.5 3-3 5-6.500 4.500z' fill='#c8ffb0'/></svg>"
+  },
+  "description": "Focus Timer helps you get real work done using the Pomodoro Technique: focus hard for 25 minutes, take a short break, and repeat. After four sessions you've earned a long break.\n\nA calm animated ring shows exactly how much time is left, and the whole app gently changes colour so you always know whether it's time to work or time to rest. When a phase ends you'll get a chime and a notification — even if you've switched to another app, because Focus Timer keeps perfect time in the background.\n\nMake it yours by adjusting every length, turning on auto-start, and watching your daily sessions, focus minutes and streak grow in the built-in stats.",
+  "whatsNew": "All-new design with a smooth progress ring, seven-day chart, day streaks and auto-start.",
+  "accent": "#ff5a4e"
+}

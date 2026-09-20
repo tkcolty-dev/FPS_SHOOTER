@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tic Tac Toe</title>
+<style>
+:root{--x:#ff6b8b;--o:#3ee0cf;--line:#8a7cf5;--txt:#f4f2ff;--sub:#a9a4d8;--accent:#7c6cff;--card:rgba(255,255,255,.07);--stroke:rgba(255,255,255,.10)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+html,body{margin:0;height:100%;overflow:hidden;cursor:default;color:var(--txt);
+  font-family:system-ui,-apple-system,'SF Pro Text','SF Pro Display','Helvetica Neue',sans-serif;background:#120d33}
+::-webkit-scrollbar{display:none}
+button{font-family:inherit;border:0;outline:0;cursor:default;color:inherit;-webkit-appearance:none;appearance:none;background:none}
+#app{position:absolute;inset:0;overflow:hidden;
+  background:
+    radial-gradient(520px 380px at 88% -4%,rgba(124,108,255,.55),transparent 62%),
+    radial-gradient(460px 380px at -8% 104%,rgba(62,224,207,.20),transparent 62%),
+    radial-gradient(380px 300px at 100% 78%,rgba(255,107,139,.14),transparent 65%),
+    linear-gradient(180deg,#1d1550,#0e0a2a)}
+
+.rbtn{position:absolute;top:70px;width:40px;height:40px;border-radius:50%;z-index:50;
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.16);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;transition:transform .15s ease,background .2s}
+.rbtn:active{transform:scale(.88);background:rgba(255,255,255,.18)}
+.rbtn svg{width:20px;height:20px;display:block}
+#muteBtn{right:16px}
+#backBtn{left:16px}
+#muteBtn .off{display:none}
+#muteBtn.muted .off{display:block}
+#muteBtn.muted .on{display:none}
+
+.screen{position:absolute;inset:0;padding:62px 22px 34px;display:flex;flex-direction:column;align-items:center;
+  opacity:0;pointer-events:none;transition:opacity .32s ease,transform .42s cubic-bezier(.25,.8,.25,1)}
+#home{transform:translateX(-36px);justify-content:center;gap:0}
+#game{transform:translateX(36px)}
+.screen.show{opacity:1;pointer-events:auto;transform:none}
+
+/* ---------- home ---------- */
+#logo{width:132px;height:132px;display:block;filter:drop-shadow(0 10px 24px rgba(124,108,255,.45))}
+#logo .g{stroke:var(--line);stroke-width:5;opacity:.75}
+#logo .lx{stroke:var(--x);stroke-width:8}
+#logo .lo{stroke:var(--o);stroke-width:8}
+#logo .lw{stroke:#fff;stroke-width:5}
+#logo .d{fill:none;stroke-linecap:round;stroke-dasharray:100 200;stroke-dashoffset:101;opacity:0;animation:draw .4s ease-out forwards}
+h1{margin:18px 0 4px;font-size:40px;font-weight:800;letter-spacing:-1.2px;line-height:1}
+h1 i{font-style:normal;color:var(--x)} h1 u{text-decoration:none;color:var(--o)}
+.tag{margin:0 0 26px;font-size:15px;font-weight:500;color:var(--sub)}
+.card{width:100%;border-radius:26px;padding:16px;background:var(--card);border:1px solid var(--stroke);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);margin-bottom:14px}
+.card-h{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.ic{flex:0 0 44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+.ic svg{width:24px;height:24px}
+.ic.a{background:linear-gradient(145deg,#8f7bff,#5b3df0)}
+.ic.b{background:linear-gradient(145deg,#ff8aa3,#f0457a)}
+.card-h b{display:block;font-size:18px;font-weight:700;letter-spacing:-.3px}
+.card-h small{display:block;margin-top:2px;font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums}
+.seg{position:relative;display:grid;grid-template-columns:repeat(3,1fr);padding:3px;border-radius:14px;background:rgba(0,0,0,.28);margin-bottom:12px}
+.seg .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:calc((100% - 6px)/3);border-radius:11px;
+  background:rgba(255,255,255,.16);box-shadow:0 2px 8px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.18);
+  transition:transform .3s cubic-bezier(.3,1.3,.4,1)}
+.seg button{position:relative;z-index:1;height:36px;font-size:14px;font-weight:600;color:var(--sub);transition:color .2s}
+.seg button.on{color:#fff}
+.btn{width:100%;height:52px;border-radius:17px;font-size:17px;font-weight:700;letter-spacing:-.1px;transition:transform .12s ease,filter .2s}
+.btn:active{transform:scale(.965)}
+.btn.primary{background:linear-gradient(180deg,#8f80ff,#6350f2);box-shadow:0 8px 22px rgba(99,80,242,.45),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.rose{background:linear-gradient(180deg,#ff86a0,#ef4d7c);box-shadow:0 8px 22px rgba(239,77,124,.35),inset 0 1px 0 rgba(255,255,255,.3)}
+.btn.ghost{background:rgba(255,255,255,.08);border:1px solid var(--stroke);color:var(--sub);font-weight:600}
+
+/* ---------- game ---------- */
+.topbar{height:40px;margin-top:8px;display:flex;align-items:center;justify-content:center;width:100%}
+#modeLabel{font-size:15px;font-weight:600;color:var(--sub);letter-spacing:.1px}
+#modeLabel b{color:var(--txt);font-weight:700}
+.mid{flex:1;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px}
+.scores{display:grid;grid-template-columns:1fr .8fr 1fr;gap:10px;width:100%}
+.sc{position:relative;border-radius:20px;padding:12px 8px 10px;text-align:center;background:var(--card);border:1.5px solid var(--stroke);
+  transition:border-color .25s,box-shadow .25s,transform .25s,background .25s}
+.sc .lbl{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--sub)}
+.sc .lbl svg{width:13px;height:13px}
+.sc .num{display:block;margin-top:4px;font-size:32px;font-weight:800;letter-spacing:-.6px;font-variant-numeric:tabular-nums;line-height:1.1}
+.sc.x .num{color:var(--x)} .sc.o .num{color:var(--o)}
+.sc.x.active{border-color:var(--x);box-shadow:0 0 0 4px rgba(255,107,139,.14),0 8px 26px rgba(255,107,139,.22);transform:translateY(-2px);background:rgba(255,107,139,.09)}
+.sc.o.active{border-color:var(--o);box-shadow:0 0 0 4px rgba(62,224,207,.12),0 8px 26px rgba(62,224,207,.2);transform:translateY(-2px);background:rgba(62,224,207,.08)}
+.num.bump{animation:bump .45s cubic-bezier(.3,1.6,.4,1)}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.45)}100%{transform:scale(1)}}
+
+#status{height:30px;font-size:22px;font-weight:700;letter-spacing:-.4px;display:flex;align-items:center;gap:2px}
+#status.pop{animation:statusPop .4s cubic-bezier(.3,1.5,.4,1)}
+@keyframes statusPop{0%{transform:scale(.8);opacity:.2}100%{transform:none;opacity:1}}
+#status .cx{color:var(--x)} #status .co{color:var(--o)}
+.dots i{display:inline-block;width:5px;height:5px;margin-left:4px;border-radius:50%;background:currentColor;animation:dot 1s ease-in-out infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-5px);opacity:1}}
+
+.boardWrap{position:relative;width:346px;height:346px;border-radius:34px;padding:14px;
+  background:linear-gradient(160deg,rgba(255,255,255,.09),rgba(255,255,255,.04));border:1px solid var(--stroke);
+  box-shadow:0 24px 60px rgba(5,2,30,.5),inset 0 1px 0 rgba(255,255,255,.12)}
+#board{width:100%;height:100%;display:block;overflow:visible;touch-action:none}
+.grid{fill:none;stroke:var(--line);stroke-width:7;stroke-linecap:round;stroke-dasharray:100 200;stroke-dashoffset:101;opacity:0;animation:draw .45s ease-out forwards}
+.cellbg{fill:#fff;opacity:0;transition:opacity .18s}
+.cellbg.hover{opacity:.05}
+.cellbg.kb{opacity:.10}
+.hit{fill:transparent;pointer-events:all}
+.s{fill:none;stroke-width:13;stroke-linecap:round;stroke-dasharray:100 200;stroke-dashoffset:101;opacity:0;animation:draw .26s ease-out forwards}
+.s2{animation-delay:.17s}
+.mx .s{stroke:var(--x)} .mo .s{stroke:var(--o);animation-duration:.4s}
+@keyframes draw{0%{stroke-dashoffset:101;opacity:0}6%{opacity:1}100%{stroke-dashoffset:0;opacity:1}}
+.mark{transform-box:fill-box;transform-origin:center;transition:opacity .35s ease}
+.mark.dim{opacity:.28}
+.mark.win{animation:winPulse .6s ease-in-out .35s 2}
+@keyframes winPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.16)}}
+#marks{transition:opacity .22s ease,transform .22s ease;transform-origin:150px 150px}
+#marks.clearing,#winG.clearing{opacity:0;transform:scale(.9)}
+#winG{transition:opacity .22s ease,transform .22s ease;transform-origin:150px 150px}
+.ghost{opacity:.22;pointer-events:none}
+.ghost .gs{fill:none;stroke-width:13;stroke-linecap:round}
+.ghost.gx .gs{stroke:var(--x)}
+.ghost.go .gs{stroke:var(--o)}
+.winline{fill:none;stroke:#fff;stroke-width:8;stroke-linecap:round;stroke-dasharray:100 200;stroke-dashoffset:101;opacity:0;
+  animation:draw .45s cubic-bezier(.5,0,.2,1) .15s forwards}
+.winline.wx{filter:drop-shadow(0 0 8px var(--x))}
+.winline.wo{filter:drop-shadow(0 0 8px var(--o))}
+#confetti{position:absolute;inset:0;pointer-events:none;overflow:visible}
+#confetti i{position:absolute;left:50%;top:50%;width:9px;height:13px;margin:-6px 0 0 -4px;border-radius:3px;opacity:0}
+
+.actions{width:100%;display:grid;grid-template-columns:1.5fr 1fr;gap:10px;padding-bottom:14px}
+#newBtn.pulse{animation:btnPulse 1.4s ease-in-out infinite}
+@keyframes btnPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
+</style>
+</head>
+<body>
+<script src="/sdk.js"></script>
+
+<div id="app">
+  <button id="muteBtn" class="rbtn" aria-label="Sound">
+    <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M15.5 9a4.2 4.2 0 0 1 0 6"/><path d="M18.2 6.5a8 8 0 0 1 0 11"/></svg>
+    <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
+  </button>
+
+  <section id="home" class="screen show">
+    <div id="logoWrap">
+      <svg id="logo" viewBox="0 0 120 120">
+        <path class="d g" pathLength="100" d="M40 8v104" style="animation-delay:.05s"/>
+        <path class="d g" pathLength="100" d="M80 8v104" style="animation-delay:.12s"/>
+        <path class="d g" pathLength="100" d="M8 40h104" style="animation-delay:.19s"/>
+        <path class="d g" pathLength="100" d="M8 80h104" style="animation-delay:.26s"/>
+        <path class="d lx" pathLength="100" d="M11 11l18 18" style="animation-delay:.5s"/>
+        <path class="d lx" pathLength="100" d="M29 11l-18 18" style="animation-delay:.6s"/>
+        <path class="d lo" pathLength="100" d="M100 10a10 10 0 1 1-.01 0z" style="animation-delay:.75s"/>
+        <path class="d lx" pathLength="100" d="M51 51l18 18" style="animation-delay:.95s"/>
+        <path class="d lx" pathLength="100" d="M69 51l-18 18" style="animation-delay:1.05s"/>
+        <path class="d lo" pathLength="100" d="M20 90a10 10 0 1 1-.01 0z" style="animation-delay:1.2s"/>
+        <path class="d lx" pathLength="100" d="M91 91l18 18" style="animation-delay:1.4s"/>
+        <path class="d lx" pathLength="100" d="M109 91l-18 18" style="animation-delay:1.5s"/>
+        <path class="d lw" pathLength="100" d="M6 6l108 108" style="animation-delay:1.8s"/>
+      </svg>
+    </div>
+    <h1>Tic <i>Tac</i> <u>Toe</u></h1>
+    <p class="tag">Three in a row. Zero mercy.</p>
+
+    <div class="card">
+      <div class="card-h">
+        <div class="ic a"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9.5 2.5v3M14.5 2.5v3M9.5 18.5v3M14.5 18.5v3M2.5 9.5h3M2.5 14.5h3M18.5 9.5h3M18.5 14.5h3"/><circle cx="12" cy="12" r="1.6" fill="#fff" stroke="none"/></svg></div>
+        <div><b>vs Computer</b><small id="tally1">No games yet</small></div>
+      </div>
+      <div class="seg" id="diffSeg">
+        <span class="thumb"></span>
+        <button data-d="easy">Easy</button>
+        <button data-d="medium">Medium</button>
+        <button data-d="impossible">Impossible</button>
+      </div>
+      <button class="btn primary" id="play1">Play</button>
+    </div>
+
+    <div class="card">
+      <div class="card-h">
+        <div class="ic b"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c.4-3.4 2.8-5.5 6-5.5s5.6 2.1 6 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M17.5 14.2c2.3.4 3.7 2.3 4 5.3"/></svg></div>
+        <div><b>2 Players</b><small id="tally2">Pass and play on one phone</small></div>
+      </div>
+      <button class="btn rose" id="play2">Play</button>
+    </div>
+  </section>
+
+  <section id="game" class="screen">
+    <button id="backBtn" class="rbtn" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg>
+    </button>
+    <div class="topbar"><div id="modeLabel"></div></div>
+    <div class="mid">
+      <div class="scores">
+        <div class="sc x" id="scX">
+          <span class="lbl"><svg viewBox="0 0 14 14" fill="none" stroke="#ff6b8b" stroke-width="3" stroke-linecap="round"><path d="M3 3l8 8M11 3l-8 8"/></svg><span id="lblX">You</span></span>
+          <span class="num" id="numX">0</span>
+        </div>
+        <div class="sc d">
+          <span class="lbl">Draws</span>
+          <span class="num" id="numD">0</span>
+        </div>
+        <div class="sc o" id="scO">
+          <span class="lbl"><svg viewBox="0 0 14 14" fill="none" stroke="#3ee0cf" stroke-width="3"><circle cx="7" cy="7" r="4.5"/></svg><span id="lblO">Computer</span></span>
+          <span class="num" id="numO">0</span>
+        </div>
+      </div>
+      <div id="status"></div>
+      <div class="boardWrap">
+        <svg id="board" viewBox="0 0 300 300"></svg>
+        <div id="confetti"></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn primary" id="newBtn">Restart Round</button>
+      <button class="btn ghost" id="resetBtn">Reset Scores</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var iP = window.iPhone || {
+    haptic: function () {}, onPause: function () {}, onResume: function () {},
+    storage: { get: function (k, f) { return Promise.resolve(f); }, set: function () { return Promise.resolve(); } }
+  };
+  function haptic(t) { try { iP.haptic(t); } catch (e) {} }
+  function $(id) { return document.getElementById(id); }
+
+  /* ---------- audio ---------- */
+  var AC = null, master = null, muted = false, sysPaused = false;
+  function initAudio() {
+    if (!AC) {
+      try {
+        var Ctor = window.AudioContext || window.webkitAudioContext;
+        if (!Ctor) return;
+        AC = new Ctor();
+        master = AC.createGain();
+        master.gain.value = muted ? 0 : 0.5;
+        master.connect(AC.destination);
+      } catch (e) { AC = null; }
+    }
+    if (AC && AC.state === 'suspended' && !sysPaused) { try { AC.resume(); } catch (e) {} }
+  }
+  function tone(f, dur, type, vol, f2, delay) {
+    if (!AC || muted) return;
+    try {
+      var t = AC.currentTime + (delay || 0);
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(f, t);
+      if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + dur + 0.03);
+    } catch (e) {}
+  }
+  var sfx = {
+    x: function () { tone(620, 0.09, 'triangle', 0.2, 880); tone(880, 0.1, 'triangle', 0.16, 1100, 0.15); },
+    o: function () { tone(330, 0.3, 'sine', 0.22, 494); },
+    click: function () { tone(700, 0.05, 'sine', 0.12); },
+    win: function () { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.22, 'triangle', 0.16, 0, 0.25 + i * 0.1); }); },
+    lose: function () { [392, 330, 262].forEach(function (f, i) { tone(f, 0.3, 'sine', 0.16, 0, 0.25 + i * 0.16); }); },
+    draw: function () { tone(440, 0.18, 'sine', 0.14, 0, 0.1); tone(440, 0.26, 'sine', 0.14, 0, 0.3); },
+    clear: function () { tone(500, 0.14, 'sine', 0.08, 250); }
+  };
+  function setMuted(m) {
+    muted = m;
+    $('muteBtn').classList.toggle('muted', m);
+    if (master) master.gain.value = m ? 0 : 0.5;
+  }
+
+  /* ---------- game state ---------- */
+  var LINES = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
+  var DIFFS = ['easy', 'medium', 'impossible'];
+  var DIFF_NAME = { easy: 'Easy', medium: 'Medium', impossible: 'Impossible' };
+  var board = [null, null, null, null, null, null, null, null, null];
+  var mode = '1p', diff = 'medium';
+  var turn = 'X', starter = 'X', over = false, locked = false, overAt = 0;
+  var aiTimer = 0, aiPending = false, clearTimer = 0;
+  var inGame = false, kb = -1, hoverI = -1;
+  var tally = {};
+  function bucket() { var k = mode === '1p' ? diff : 'pvp'; if (!tally[k]) tally[k] = { x: 0, o: 0, d: 0 }; return tally[k]; }
+
+  function winnerOf(b) {
+    for (var i = 0; i < 8; i++) {
+      var L = LINES[i];
+      if (b[L[0]] && b[L[0]] === b[L[1]] && b[L[0]] === b[L[2]]) return { p: b[L[0]], line: L };
+    }
+    return null;
+  }
+  function empties(b) { var e = []; for (var i = 0; i < 9; i++) if (!b[i]) e.push(i); return e; }
+  function pick(a) { return a[Math.floor(Math.random() * a.length)]; }
+
+  /* ---------- AI (plays O) ---------- */
+  function minimax(b, p, depth, alpha, beta) {
+    var w = winnerOf(b);
+    if (w) return w.p === 'O' ? 10 - depth : depth - 10;
+    var i, full = true;
+    for (i = 0; i < 9; i++) if (!b[i]) { full = false; break; }
+    if (full) return 0;
+    var v;
+    if (p === 'O') {
+      v = -99;
+      for (i = 0; i < 9; i++) if (!b[i]) {
+        b[i] = 'O'; v = Math.max(v, minimax(b, 'X', depth + 1, alpha, beta)); b[i] = null;
+        if (v > alpha) alpha = v;
+        if (alpha >= beta) break;
+      }
+    } else {
+      v = 99;
+      for (i = 0; i < 9; i++) if (!b[i]) {
+        b[i] = 'X'; v = Math.min(v, minimax(b, 'O', depth + 1, alpha, beta)); b[i] = null;
+        if (v < beta) beta = v;
+        if (alpha >= beta) break;
+      }
+    }
+    return v;
+  }
+  function bestMove(b) {
+    var e = empties(b);
+    if (e.length === 9) return pick([0, 2, 4, 6, 8]);
+    var best = -99, moves = [];
+    for (var k = 0; k < e.length; k++) {
+      var i = e[k];
+      b[i] = 'O';
+      var s = minimax(b, 'X', 1, -99, 99);
+      b[i] = null;
+      if (s > best) { best = s; moves = [i]; } else if (s === best) moves.push(i);
+    }
+    return pick(moves);
+  }
+  function findWinning(b, p) {
+    for (var i = 0; i < 9; i++) if (!b[i]) {
+      b[i] = p; var w = winnerOf(b); b[i] = null;
+      if (w) return i;
+    }
+    return -1;
+  }
+  function aiChoose() {
+    var b = board.slice(), e = empties(b), w, k;
+    if (diff === 'easy') {
+      if (Math.random() < 0.45) { w = findWinning(b, 'O'); if (w >= 0) return w; }
+      if (Math.random() < 0.25) { k = findWinning(b, 'X'); if (k >= 0) return k; }
+      return pick(e);
+    }
+    if (diff === 'medium') {
+      w = findWinning(b, 'O'); if (w >= 0) return w;
+      k = findWinning(b, 'X'); if (k >= 0 && Math.random() < 0.9) return k;
+      if (Math.random() < 0.45) return bestMove(b);
+      return pick(e);
+    }
+    return bestMove(b);
+  }
+  function scheduleAI() {
+    clearTimeout(aiTimer);
+    aiPending = true;
+    if (sysPaused) return;               // will be rescheduled on resume
+    aiTimer = setTimeout(aiMove, 520 + Math.random() * 380);
+  }
+  function aiMove() {
+    aiPending = false;
+    if (!inGame || over || locked || mode !== '1p' || turn !== 'O') return;
+    place(aiChoose());
+  }
+
+  /* ---------- SVG board ---------- */
+  var NS = 'http://www.w3.org/2000/svg';
+  var svg = $('board'), cellBgs = [], markEls = [], marksG, winG, ghostG;
+  function el(name, attrs, parent) {
+    var e = document.createElementNS(NS, name);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function center(i) { return { x: (i % 3) * 100 + 50, y: Math.floor(i / 3) * 100 + 50 }; }
+
+  function buildBoard() {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    cellBgs = []; markEls = [];
+    var i;
+    for (i = 0; i < 9; i++) cellBgs.push(el('rect', { x: (i % 3) * 100 + 9, y: Math.floor(i / 3) * 100 + 9, width: 82, height: 82, rx: 20, 'class': 'cellbg' }, svg));
+    var gl = [[100, 8, 100, 292], [200, 8, 200, 292], [8, 100, 292, 100], [8, 200, 292, 200]];
+    for (i = 0; i < 4; i++) {
+      var g = el('path', { d: 'M' + gl[i][0] + ' ' + gl[i][1] + 'L' + gl[i][2] + ' ' + gl[i][3], pathLength: 100, 'class': 'grid' }, svg);
+      g.style.animationDelay = (0.08 + i * 0.09) + 's';
+    }
+    ghostG = el('g', { 'class': 'ghost' }, svg);
+    marksG = el('g', { id: 'marks' }, svg);
+    winG = el('g', { id: 'winG' }, svg);
+    for (i = 0; i < 9; i++) {
+      var h = el('rect', { x: (i % 3) * 100, y: Math.floor(i / 3) * 100, width: 100, height: 100, 'class': 'hit' }, svg);
+      bindCell(h, i);
+    }
+  }
+  function bindCell(h, i) {
+    h.addEventListener('click', function () { humanPlay(i); });
+    h.addEventListener('pointerenter', function (e) { if (e.pointerType === 'mouse') setHover(i); });
+    h.addEventListener('pointerleave', function () { if (hoverI === i) setHover(-1); });
+  }
+  function humanCanMove() { return inGame && !over && !locked && !(mode === '1p' && turn === 'O'); }
+  function setHover(i) {
+    hoverI = i;
+    for (var k = 0; k < 9; k++) cellBgs[k].classList.toggle('hover', k === i && humanCanMove() && !board[k]);
+    while (ghostG.firstChild) ghostG.removeChild(ghostG.firstChild);
+    if (i >= 0 && humanCanMove() && !board[i]) {
+      ghostG.setAttribute('class', 'ghost ' + (turn === 'X' ? 'gx' : 'go'));
+      markShapes(ghostG, i, turn, true);
+    }
+  }
+  function setKb(i) {
+    kb = i;
+    for (var k = 0; k < 9; k++) cellBgs[k].classList.toggle('kb', k === i);
+  }
+  function markShapes(parent, i, p, ghost) {
+    var c = center(i), ds;
+    if (p === 'X') {
+      ds = ['M' + (c.x - 26) + ' ' + (c.y - 26) + 'L' + (c.x + 26) + ' ' + (c.y + 26),
+            'M' + (c.x + 26) + ' ' + (c.y - 26) + 'L' + (c.x - 26) + ' ' + (c.y + 26)];
+    } else {
+      ds = ['M' + c.x + ' ' + (c.y - 28) + 'a28 28 0 1 1 -0.01 0z'];
+    }
+    for (var k = 0; k < ds.length; k++) {
+      if (ghost) el('path', { d: ds[k], 'class': 'gs' }, parent);
+      else el('path', { d: ds[k], pathLength: 100, 'class': 's s' + (k + 1) }, parent);
+    }
+  }
+  function drawMark(i, p) {
+    var g = el('g', { 'class': 'mark ' + (p === 'X' ? 'mx' : 'mo') }, marksG);
+    markShapes(g, i, p, false);
+    markEls[i] = g;
+  }
+  function drawWinLine(L, p) {
+    var a = center(L[0]), b = center(L[2]);
+    var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy), ext = 36;
+    dx /= len; dy /= len;
+    el('path', { d: 'M' + (a.x - dx * ext).toFixed(1) + ' ' + (a.y - dy * ext).toFixed(1) + 'L' + (b.x + dx * ext).toFixed(1) + ' ' + (b.y + dy * ext).toFixed(1), pathLength: 100, 'class': 'winline ' + (p === 'X' ? 'wx' : 'wo') }, winG);
+  }
+
+  /* ---------- UI ---------- */
+  function setStatus(html, pop) {
+    var s = $('status');
+    s.innerHTML = html;
+    if (pop) { s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop'); }
+  }
+  function updateTurnUI() {
+    $('scX').classList.toggle('active', !over && turn === 'X');
+    $('scO').classList.toggle('active', !over && turn === 'O');
+    if (over) return;
+    if (mode === '1p') {
+      if (turn === 'X') setStatus('<span class="cx">Your</span>&nbsp;turn');
+      else setStatus('<span class="co">Computer</span>&nbsp;is thinking<span class="dots co"><i></i><i></i><i></i></span>');
+    } else {
+      setStatus('<span class="' + (turn === 'X' ? 'cx' : 'co') + '">Player ' + turn + '</span>&rsquo;s turn');
+    }
+  }
+  function updateScores(bumpKey) {
+    var t = bucket();
+    $('numX').textContent = t.x; $('numO').textContent = t.o; $('numD').textContent = t.d;
+    if (bumpKey) {
+      var n = $(bumpKey === 'x' ? 'numX' : bumpKey === 'o' ? 'numO' : 'numD');
+      n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump');
+    }
+  }
+  function updateHome() {
+    var t = tally[diff], n = t ? t.x + t.o + t.d : 0;
+    $('tally1').textContent = n ? 'Won ' + t.x + '  ·  Drawn ' + t.d + '  ·  Lost ' + t.o : 'No games on ' + DIFF_NAME[diff] + ' yet';
+    var p = tally.pvp, pn = p ? p.x + p.o + p.d : 0;
+    $('tally2').textContent = pn ? 'X ' + p.x + '  ·  Draws ' + p.d + '  ·  O ' + p.o : 'Pass and play on one phone';
+    var btns = $('diffSeg').querySelectorAll('button'), idx = DIFFS.indexOf(diff);
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', i === idx);
+    $('diffSeg').querySelector('.thumb').style.transform = 'translateX(' + (idx * 100) + '%)';
+  }
+  function saveTally() { iP.storage.set('tally', tally); }
+
+  /* ---------- flow ---------- */
+  function startGame(m) {
+    mode = m; inGame = true; starter = 'X';
+    $('lblX').textContent = m === '1p' ? 'You' : 'Player X';
+    $('lblO').textContent = m === '1p' ? 'Computer' : 'Player O';
+    $('modeLabel').innerHTML = m === '1p' ? 'vs Computer &nbsp;·&nbsp; <b>' + DIFF_NAME[diff] + '</b>' : '<b>2 Players</b> &nbsp;·&nbsp; Pass and play';
+    buildBoard();
+    setKb(-1);
+    updateScores();
+    $('home').classList.remove('show');
+    $('game').classList.add('show');
+    beginRound();
+  }
+  function goHome() {
+    inGame = false;
+    clearTimeout(aiTimer); clearTimeout(clearTimer); aiPending = false; locked = false;
+    $('game').classList.remove('show');
+    $('home').classList.add('show');
+    updateHome();
+    var wrap = $('logoWrap'), logo = $('logo');
+    wrap.replaceChild(logo.cloneNode(true), logo);   // replay the logo drawing
+  }
+  function beginRound() {
+    for (var i = 0; i < 9; i++) board[i] = null;
+    markEls = [];
+    while (marksG.firstChild) marksG.removeChild(marksG.firstChild);
+    while (winG.firstChild) winG.removeChild(winG.firstChild);
+    marksG.classList.remove('clearing'); winG.classList.remove('clearing');
+    over = false; locked = false; turn = starter;
+    var nb = $('newBtn'); nb.textContent = 'Restart Round'; nb.classList.remove('pulse');
+    updateTurnUI();
+    setHover(hoverI);
+    if (mode === '1p' && turn === 'O') scheduleAI();
+  }
+  function newRound(alternate) {
+    if (!inGame || locked) return;
+    clearTimeout(aiTimer); aiPending = false;
+    if (alternate) starter = starter === 'X' ? 'O' : 'X';
+    var hasMarks = empties(board).length < 9;
+    if (!hasMarks) { beginRound(); return; }
+    locked = true;
+    setHover(-1);
+    sfx.clear();
+    marksG.classList.add('clearing'); winG.classList.add('clearing');
+    clearTimeout(clearTimer);
+    clearTimer = setTimeout(function () { if (inGame) beginRound(); }, 250);
+  }
+
+  function place(i) {
+    if (over || locked || board[i]) return;
+    var p = turn;
+    board[i] = p;
+    drawMark(i, p);
+    if (p === 'X') sfx.x(); else sfx.o();
+    haptic('light');
+    var w = winnerOf(board);
+    if (w) { finish(w); return; }
+    if (empties(board).length === 0) { finish(null); return; }
+    turn = p === 'X' ? 'O' : 'X';
+    updateTurnUI();
+    setHover(hoverI);
+    if (mode === '1p' && turn === 'O') scheduleAI();
+  }
+  function humanPlay(i) {
+    if (!inGame) return;
+    if (over) { if (performance.now() - overAt > 700) newRound(true); return; }
+    if (!humanCanMove() || board[i]) { if (board[i] && humanCanMove()) haptic('selection'); return; }
+    place(i);
+  }
+
+  function finish(w) {
+    over = true; overAt = performance.now();
+    var t = bucket(), i;
+    setHover(-1);
+    if (w) {
+      if (w.p === 'X') t.x++; else t.o++;
+      for (i = 0; i < 9; i++) if (markEls[i]) markEls[i].classList.add(w.line.indexOf(i) >= 0 ? 'win' : 'dim');
+      drawWinLine(w.line, w.p);
+      var cls = w.p === 'X' ? 'cx' : 'co';
+      if (mode === '1p') {
+        if (w.p === 'X') { setStatus('<span class="cx">You win!</span>', true); sfx.win(); confetti(['#ff6b8b', '#ffd166', '#ffffff', '#8f80ff']); setTimeout(function () { haptic('success'); }, 300); }
+        else { setStatus('<span class="co">Computer</span>&nbsp;wins', true); sfx.lose(); setTimeout(function () { haptic('error'); }, 300); }
+      } else {
+        setStatus('<span class="' + cls + '">Player ' + w.p + '</span>&nbsp;wins!', true);
+        sfx.win(); confetti(w.p === 'X' ? ['#ff6b8b', '#ffd166', '#ffffff', '#ff9db3'] : ['#3ee0cf', '#ffd166', '#ffffff', '#9af3ea']);
+        setTimeout(function () { haptic('success'); }, 300);
+      }
+      updateScores(w.p === 'X' ? 'x' : 'o');
+    } else {
+      t.d++;
+      for (i = 0; i < 9; i++) if (markEls[i]) markEls[i].classList.add('dim');
+      setStatus('It&rsquo;s a draw', true);
+      sfx.draw(); haptic('warning');
+      updateScores('d');
+    }
+    saveTally();
+    updateTurnUI();
+    var nb = $('newBtn'); nb.textContent = 'Next Round'; nb.classList.add('pulse');
+  }
+
+  function confetti(cols) {
+    var box = $('confetti');
+    if (!box.animate) return;
+    for (var i = 0; i < 34; i++) (function () {
+      var p = document.createElement('i');
+      var a = Math.random() * Math.PI * 2, d = 110 + Math.random() * 150;
+      var dx = Math.cos(a) * d, dy = Math.sin(a) * d - 40;
+      p.style.background = cols[i % cols.length];
+      if (i % 3 === 0) p.style.borderRadius = '50%';
+      box.appendChild(p);
+      var an = p.animate([
+        { transform: 'translate(0px,0px) scale(.4) rotate(0deg)', opacity: 0 },
+        { opacity: 1, offset: 0.08 },
+        { transform: 'translate(' + dx.toFixed(0) + 'px,' + dy.toFixed(0) + 'px) scale(1) rotate(' + (Math.random() * 540 - 270).toFixed(0) + 'deg)', opacity: 1, offset: 0.55 },
+        { transform: 'translate(' + (dx * 1.15).toFixed(0) + 'px,' + (dy + 150).toFixed(0) + 'px) scale(.9) rotate(' + (Math.random() * 900 - 450).toFixed(0) + 'deg)', opacity: 0 }
+      ], { duration: 1100 + Math.random() * 600, delay: 250, easing: 'cubic-bezier(.2,.7,.3,1)' });
+      an.onfinish = an.oncancel = function () { if (p.parentNode) p.parentNode.removeChild(p); };
+    })();
+  }
+
+  /* ---------- events ---------- */
+  window.addEventListener('pointerdown', initAudio, true);
+  window.addEventListener('keydown', initAudio, true);
+
+  $('muteBtn').addEventListener('click', function () {
+    setMuted(!muted);
+    iP.storage.set('muted', muted);
+    haptic('selection');
+    if (!muted) sfx.click();
+  });
+  $('backBtn').addEventListener('click', function () { sfx.click(); haptic('light'); goHome(); });
+  $('play1').addEventListener('click', function () { sfx.click(); haptic('medium'); startGame('1p'); });
+  $('play2').addEventListener('click', function () { sfx.click(); haptic('medium'); startGame('2p'); });
+  $('diffSeg').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b || !b.getAttribute('data-d') || b.getAttribute('data-d') === diff) return;
+    diff = b.getAttribute('data-d');
+    iP.storage.set('diff', diff);
+    sfx.click(); haptic('selection');
+    updateHome();
+  });
+  $('newBtn').addEventListener('click', function () { if (locked) return; haptic('light'); if (!over) sfx.click(); newRound(over); });
+  $('resetBtn').addEventListener('click', function () {
+    var t = bucket(); t.x = t.o = t.d = 0;
+    saveTally(); updateScores();
+    sfx.click(); haptic('medium');
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('button'), function (b) {
+    b.addEventListener('click', function () { b.blur(); });
+  });
+
+  window.addEventListener('keydown', function (e) {
+    if (e.repeat) return;
+    var k = e.key;
+    if (k === 'm' || k === 'M') { $('muteBtn').click(); return; }
+    if (!inGame) {
+      if (k === 'Enter' || k === ' ') { e.preventDefault(); $('play1').click(); }
+      else if (k === '2') $('play2').click();
+      else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+        var ni = Math.max(0, Math.min(2, DIFFS.indexOf(diff) + (k === 'ArrowRight' ? 1 : -1)));
+        if (DIFFS[ni] !== diff) { diff = DIFFS[ni]; iP.storage.set('diff', diff); sfx.click(); haptic('selection'); updateHome(); }
+      }
+      return;
+    }
+    if (k === 'Escape' || k === 'Backspace') { $('backBtn').click(); return; }
+    if (k === 'n' || k === 'N' || k === 'r' || k === 'R') { $('newBtn').click(); return; }
+    if (k >= '1' && k <= '9') { var ci = parseInt(k, 10) - 1; setKb(ci); humanPlay(ci); return; }
+    var cur = kb < 0 ? 4 : kb, r = Math.floor(cur / 3), c = cur % 3, moved = true;
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') c = kb < 0 ? c : (c + 2) % 3;
+    else if (k === 'ArrowRight' || k === 'd' || k === 'D') c = kb < 0 ? c : (c + 1) % 3;
+    else if (k === 'ArrowUp' || k === 'w' || k === 'W') r = kb < 0 ? r : (r + 2) % 3;
+    else if (k === 'ArrowDown' || k === 's' || k === 'S') r = kb < 0 ? r : (r + 1) % 3;
+    else moved = false;
+    if (moved) { e.preventDefault(); setKb(r * 3 + c); haptic('selection'); return; }
+    if (k === 'Enter' || k === ' ') {
+      e.preventDefault();
+      if (over) { $('newBtn').click(); return; }
+      if (kb < 0) setKb(4); else humanPlay(kb);
+    }
+  });
+  window.addEventListener('pointerdown', function () { if (kb >= 0) setKb(-1); });
+  window.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  /* ---------- pause / resume: hold the computer's move while the app is in the background ---------- */
+  function sysPause() {
+    if (sysPaused) return;
+    sysPaused = true;
+    clearTimeout(aiTimer);
+    if (AC && AC.state === 'running') { try { AC.suspend(); } catch (e) {} }
+  }
+  function sysResume() {
+    if (!sysPaused) return;
+    sysPaused = false;
+    if (AC && AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    if (aiPending && inGame && !over) scheduleAI();
+  }
+  iP.onPause(sysPause);
+  iP.onResume(sysResume);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) sysPause(); else sysResume(); });
+
+  /* ---------- boot ---------- */
+  updateHome();
+  Promise.all([iP.storage.get('tally', null), iP.storage.get('diff', 'medium'), iP.storage.get('muted', false)]).then(function (v) {
+    if (v[0] && typeof v[0] === 'object') {
+      for (var k in v[0]) {
+        var t = v[0][k];
+        if (t && typeof t === 'object' && !tally[k]) tally[k] = { x: Number(t.x) || 0, o: Number(t.o) || 0, d: Number(t.d) || 0 };
+      }
+    }
+    if (!inGame && DIFFS.indexOf(v[1]) >= 0) diff = v[1];
+    setMuted(!!v[2]);
+    updateHome();
+    if (inGame) updateScores();
+  }).catch(function () {});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Unit Converter</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--card2:#fff;--label:#000;--label2:rgba(60,60,67,.6);--label3:rgba(60,60,67,.3);--sep:rgba(60,60,67,.16);--fill:rgba(120,120,128,.12);--fill2:rgba(120,120,128,.2);--accent:#12a594;--accentSoft:rgba(18,165,148,.13);--key:#fff;--keyFn:#dfe1e7;--sheet:#f2f2f7;--shadow:0 1px 2px rgba(0,0,0,.05)}
+html[data-theme="dark"]{--bg:#000;--card:#1c1c1e;--card2:#2c2c2e;--label:#fff;--label2:rgba(235,235,245,.6);--label3:rgba(235,235,245,.3);--sep:rgba(84,84,88,.6);--fill:rgba(120,120,128,.24);--fill2:rgba(120,120,128,.36);--accent:#2fd4bf;--accentSoft:rgba(47,212,191,.16);--key:#2c2c2e;--keyFn:#1c1c1e;--sheet:#1c1c1e;--shadow:none}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:system-ui,-apple-system,'SF Pro Text','Helvetica Neue',sans-serif;background:var(--bg);color:var(--label);user-select:none;-webkit-user-select:none;cursor:default;-webkit-font-smoothing:antialiased;transition:background .3s}
+::-webkit-scrollbar{display:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:default}
+#app{height:100%;display:flex;flex-direction:column;padding:62px 0 34px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.4px;padding:2px 20px 8px}
+#cats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:0 16px}
+.cat{height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:11px;font-weight:600;color:var(--label2);transition:background .25s,color .25s,transform .3s cubic-bezier(.3,1.6,.5,1)}
+.cat:active{transform:scale(.92)}
+.cat i{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--c);transition:transform .35s cubic-bezier(.3,1.7,.5,1)}
+.cat svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.cat.on{background:var(--card);color:var(--label);box-shadow:var(--shadow),0 4px 14px rgba(0,0,0,.06)}
+.cat.on i{transform:scale(1.08)}
+#conv{margin:10px 16px 0;background:var(--card);border-radius:14px;position:relative;box-shadow:var(--shadow);transition:background .3s}
+.line{display:flex;align-items:center;height:66px;padding:0 14px 0 12px;gap:8px}
+.line+.line{border-top:.5px solid var(--sep)}
+.unitBtn{display:flex;flex-direction:column;align-items:flex-start;padding:6px 8px;border-radius:9px;flex:none;transition:background .15s}
+.unitBtn:active{background:var(--fill)}
+.unitBtn small{font-size:11px;font-weight:600;color:var(--label2);text-transform:uppercase;letter-spacing:.4px}
+.unitBtn span{font-size:15px;font-weight:600;color:var(--accent);display:flex;align-items:center;gap:3px;white-space:nowrap}
+.unitBtn span::after{content:'';width:6px;height:6px;border-right:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(45deg) translateY(-2px);margin-left:4px;opacity:.8}
+.num{flex:1;min-width:0;text-align:right;font-weight:300;font-size:38px;letter-spacing:-.5px;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1;overflow:hidden}
+.num em{font-style:normal;font-size:15px;font-weight:500;color:var(--label2);margin-left:5px;letter-spacing:0}
+.caret{display:inline-block;width:2px;height:.85em;background:var(--accent);margin-left:2px;vertical-align:-0.08em;border-radius:1px;animation:blink 1.1s steps(1) infinite}
+#fromNum em{margin-left:3px}
+@keyframes blink{50%{opacity:0}}
+#toNum{color:var(--accent);font-weight:400}
+#toNum.pop{animation:pop .3s cubic-bezier(.3,1.6,.5,1)}
+@keyframes pop{0%{transform:scale(.96);opacity:.6}100%{transform:none;opacity:1}}
+#swap{position:absolute;left:58%;top:50%;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;background:var(--card2);box-shadow:0 0 0 .5px var(--sep),0 3px 10px rgba(0,0,0,.14);display:grid;place-items:center;transition:transform .45s cubic-bezier(.3,1.5,.5,1)}
+#swap svg{width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.sect{font-size:13px;color:var(--label2);text-transform:uppercase;padding:12px 32px 6px;letter-spacing:.2px}
+#listWrap{flex:1;min-height:0;margin:0 16px;border-radius:14px;overflow:hidden;background:var(--card);box-shadow:var(--shadow);transition:background .3s;position:relative}
+#list{height:100%;overflow-y:auto;overscroll-behavior:contain}
+.li{display:flex;align-items:center;min-height:40px;padding:0 14px;position:relative;font-size:15px;transition:background .15s}
+.li:active{background:var(--fill)}
+.li+.li::before{content:'';position:absolute;left:14px;right:0;top:0;height:.5px;background:var(--sep)}
+.li span{color:var(--label2);white-space:nowrap}
+.li b{margin-left:auto;padding-left:10px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li.to b,.li.to span{color:var(--accent)}
+.li.from{opacity:.45}
+#pad{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px 16px 8px}
+.k{height:50px;border-radius:12px;background:var(--key);font-size:25px;font-weight:400;display:grid;place-items:center;box-shadow:0 1px 0 rgba(0,0,0,.12);transition:transform .18s cubic-bezier(.3,1.6,.5,1),background .12s,filter .12s}
+.k:active,.k.hit{transform:scale(.94);filter:brightness(.88)}
+html[data-theme="dark"] .k:active,html[data-theme="dark"] .k.hit{filter:brightness(1.5)}
+.k.fn{background:var(--keyFn);font-size:18px;font-weight:500}
+html[data-theme="dark"] .k.fn{background:#48484a}
+.k.acc{background:var(--accent);color:#fff}
+html[data-theme="dark"] .k.acc{color:#00302b}
+.k.wide{grid-column:span 2}
+.k svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.36);opacity:0;pointer-events:none;transition:opacity .28s;z-index:20}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:76%;z-index:21;background:var(--sheet);border-radius:16px 16px 0 0;padding:8px 16px 0;transform:translateY(105%);transition:transform .42s cubic-bezier(.22,1,.3,1);box-shadow:0 -10px 40px rgba(0,0,0,.2);display:flex;flex-direction:column}
+.sheet.on{transform:none}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--label3);margin:0 auto 10px;flex:none}
+.shead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex:none}
+.shead b{font-size:17px;font-weight:600}
+.shead button{color:var(--accent);font-size:17px;font-weight:600;padding:4px 2px}
+#pick{overflow-y:auto;min-height:0;flex:0 1 auto;border-radius:12px;background:var(--card);margin-bottom:46px}
+html[data-theme="dark"] #pick{background:#2c2c2e}
+.pi{display:flex;align-items:center;height:46px;padding:0 14px;font-size:17px;position:relative}
+.pi:active{background:var(--fill)}
+.pi+.pi::before{content:'';position:absolute;left:14px;right:0;top:0;height:.5px;background:var(--sep)}
+.pi span{color:var(--label2);margin-left:8px;font-size:15px}
+.pi svg{margin-left:auto;width:18px;height:18px;fill:none;stroke:var(--accent);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.pi.on svg{opacity:1}
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>Converter</h1>
+  <div id="cats"></div>
+  <div id="conv">
+    <div class="line"><button class="unitBtn" id="fromBtn"><small>From</small><span id="fromName"></span></button><div class="num" id="fromNum"></div></div>
+    <div class="line"><button class="unitBtn" id="toBtn"><small>To</small><span id="toName"></span></button><div class="num" id="toNum"></div></div>
+    <button id="swap" aria-label="Swap units"><svg viewBox="0 0 24 24"><path d="M8 4v15M8 4 4 8M8 4l4 4M16 20V5M16 20l-4-4M16 20l4-4"/></svg></button>
+  </div>
+  <div class="sect" id="sect">All units</div>
+  <div id="listWrap"><div id="list"></div></div>
+  <div id="pad"></div>
+</div>
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <div class="shead"><b id="pickTitle">Convert from</b><button id="pickDone">Done</button></div>
+  <div id="pick"></div>
+</div>
+
+<script src="/sdk.js"></script>
+<script>
+(function(){
+'use strict';
+var iPhone = window.iPhone || {theme:'light',haptic:function(){},sound:function(){},notify:function(){},setStatusBar:function(){},onPause:function(){},onResume:function(){},onTheme:function(){},
+  storage:{get:function(k,f){return Promise.resolve(f);},set:function(){return Promise.resolve();},remove:function(){return Promise.resolve();}}};
+function $(id){return document.getElementById(id);}
+function applyTheme(t){ document.documentElement.setAttribute('data-theme',t); iPhone.setStatusBar(t==='dark'?'light':'dark'); }
+var startTheme=iPhone.theme||'light';
+if(window.parent===window && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) startTheme='dark';
+applyTheme(startTheme); iPhone.onTheme(applyTheme);
+
+/* ---------- unit tables (factor = how many base units in one of this unit) ---------- */
+function U(id,name,sym,f){return {id:id,name:name,sym:sym,f:f};}
+var CATS=[
+ {id:'length',name:'Length',c:'#ff9500',icon:'<path d="M3 8h18v8H3z"/><path d="M7 8v3M11 8v4M15 8v3M19 8v4"/>',def:['m','ft'],units:[
+   U('mm','Millimeters','mm',.001),U('cm','Centimeters','cm',.01),U('m','Meters','m',1),U('km','Kilometers','km',1000),
+   U('in','Inches','in',.0254),U('ft','Feet','ft',.3048),U('yd','Yards','yd',.9144),U('mi','Miles','mi',1609.344),U('nmi','Nautical Miles','nmi',1852)]},
+ {id:'weight',name:'Weight',c:'#af52de',icon:'<path d="M7 9h10l2.500 11h-15z"/><circle cx="12" cy="6" r="3"/>',def:['kg','lb'],units:[
+   U('mg','Milligrams','mg',1e-6),U('g','Grams','g',.001),U('kg','Kilograms','kg',1),U('t','Metric Tons','t',1000),
+   U('oz','Ounces','oz',.028349523125),U('lb','Pounds','lb',.45359237),U('st','Stone','st',6.35029318),U('ton','US Tons','ton',907.18474)]},
+ {id:'temp',name:'Temp',c:'#ff3b30',icon:'<path d="M10 5a2 2 0 0 1 4 0v8.500a4 4 0 1 1-4 0z"/><path d="M12 10v7"/>',def:['c','f'],units:[
+   {id:'c',name:'Celsius',sym:'°C',to:function(v){return v;},from:function(v){return v;}},
+   {id:'f',name:'Fahrenheit',sym:'°F',to:function(v){return (v-32)*5/9;},from:function(v){return v*9/5+32;}},
+   {id:'k',name:'Kelvin',sym:'K',to:function(v){return v-273.15;},from:function(v){return v+273.15;}}]},
+ {id:'volume',name:'Volume',c:'#007aff',icon:'<path d="M12 3s6 6.500 6 11a6 6 0 0 1-12 0c0-4.500 6-11 6-11z"/>',def:['l','gal'],units:[
+   U('ml','Milliliters','mL',.001),U('l','Liters','L',1),U('m3','Cubic Meters','m³',1000),
+   U('tsp','Teaspoons','tsp',.00492892159375),U('tbsp','Tablespoons','tbsp',.01478676478125),U('floz','Fluid Ounces','fl oz',.0295735295625),
+   U('cup','Cups','cup',.2365882365),U('pt','Pints','pt',.473176473),U('qt','Quarts','qt',.946352946),U('gal','Gallons','gal',3.785411784)]},
+ {id:'speed',name:'Speed',c:'#34c759',icon:'<path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-7"/>',def:['kmh','mph'],units:[
+   U('ms','Meters per Second','m/s',1),U('kmh','Kilometers per Hour','km/h',1/3.6),U('mph','Miles per Hour','mph',.44704),
+   U('kn','Knots','kn',1852/3600),U('fts','Feet per Second','ft/s',.3048),U('mach','Mach (sea level)','Ma',340.29)]},
+ {id:'area',name:'Area',c:'#a2845e',icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h8V4"/>',def:['m2','ft2'],units:[
+   U('cm2','Square Centimeters','cm²',1e-4),U('m2','Square Meters','m²',1),U('ha','Hectares','ha',1e4),U('km2','Square Kilometers','km²',1e6),
+   U('in2','Square Inches','in²',.00064516),U('ft2','Square Feet','ft²',.09290304),U('yd2','Square Yards','yd²',.83612736),
+   U('ac','Acres','ac',4046.8564224),U('mi2','Square Miles','mi²',2589988.110336)]},
+ {id:'time',name:'Time',c:'#5856d6',icon:'<circle cx="12" cy="12" r="8.500"/><path d="M12 7.500V12l3 2"/>',def:['h','min'],units:[
+   U('ms','Milliseconds','ms',.001),U('s','Seconds','s',1),U('min','Minutes','min',60),U('h','Hours','h',3600),
+   U('d','Days','d',86400),U('wk','Weeks','wk',604800),U('mo','Months','mo',2629800),U('yr','Years','yr',31557600)]},
+ {id:'data',name:'Data',c:'#5ac8fa',icon:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.700 3.100 3 7 3s7-1.300 7-3V6"/><path d="M5 12c0 1.700 3.100 3 7 3s7-1.300 7-3"/>',def:['gb','mb'],units:[
+   U('bit','Bits','bit',.125),U('b','Bytes','B',1),U('kb','Kilobytes','KB',1e3),U('mb','Megabytes','MB',1e6),U('gb','Gigabytes','GB',1e9),U('tb','Terabytes','TB',1e12),
+   U('kib','Kibibytes','KiB',1024),U('mib','Mebibytes','MiB',1048576),U('gib','Gibibytes','GiB',1073741824),U('tib','Tebibytes','TiB',1099511627776)]}
+];
+var catById={}; CATS.forEach(function(c){catById[c.id]=c;});
+
+var st={cat:'length',sel:{},input:'1'};
+CATS.forEach(function(c){ st.sel[c.id]=c.def.slice(); });
+function cat(){return catById[st.cat];}
+function unit(c,id){ for(var i=0;i<c.units.length;i++) if(c.units[i].id===id) return c.units[i]; return c.units[0]; }
+function convert(v,a,b){
+  var base=a.to?a.to(v):v*a.f;
+  return b.from?b.from(base):base/b.f;
+}
+
+/* ---------- number formatting ---------- */
+var SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻'};
+function fmt(n){
+  if(!isFinite(n)) return '—';
+  n=parseFloat(n.toPrecision(12));
+  var a=Math.abs(n);
+  if(a===0) return '0';
+  if(a>=1e15||a<1e-7){
+    var p=n.toExponential(5).split('e'), m=parseFloat(p[0]).toString(), ex=String(parseInt(p[1],10));
+    return m+' × 10'+ex.split('').map(function(ch){return SUP[ch]||'';}).join('');
+  }
+  if(a>=1) return n.toLocaleString('en-US',{maximumFractionDigits:a>=1e9?0:a>=1e6?2:a>=1000?4:6});
+  return n.toLocaleString('en-US',{maximumSignificantDigits:8});
+}
+function fmtInput(s){
+  var neg=s.charAt(0)==='-'; if(neg) s=s.slice(1);
+  var p=s.split('.'), i=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return (neg?'−':'')+i+(p.length>1?'.'+p[1]:'');
+}
+var SIZES=[38,34,30,27,24,21,18,16,14,12,10];
+function fit(el){
+  for(var i=0;i<SIZES.length;i++){ el.style.fontSize=SIZES[i]+'px'; if(el.scrollWidth<=el.clientWidth+1) break; }
+}
+
+/* ---------- render ---------- */
+var lastTo='';
+function render(animate){
+  var c=cat(), a=unit(c,st.sel[c.id][0]), b=unit(c,st.sel[c.id][1]);
+  var v=parseFloat(st.input); if(isNaN(v)) v=0;
+  $('fromName').textContent=a.name; $('toName').textContent=b.name;
+  var fs=fmtInput(st.input), ts=fmt(convert(v,a,b));
+  var f=$('fromNum'), t=$('toNum');
+  f.innerHTML=''; f.appendChild(document.createTextNode(fs)); var cr=document.createElement('i'); cr.className='caret'; f.appendChild(cr); f.appendChild(em(a.sym));
+  t.innerHTML=''; t.appendChild(document.createTextNode(ts.replace(/^-/,'−'))); t.appendChild(em(b.sym));
+  fit(f); fit(t);
+  if(animate&&ts!==lastTo){ t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop'); }
+  lastTo=ts;
+  var rows=$('list').children;
+  for(var i=0;i<c.units.length;i++){
+    var u=c.units[i], r=rows[i]; if(!r) break;
+    r.lastChild.textContent=fmt(convert(v,a,u)).replace(/^-/,'−')+' '+u.sym;
+    r.className='li'+(u.id===b.id?' to':'')+(u.id===a.id?' from':'');
+  }
+  $('sect').textContent=fmtInput(st.input)+' '+a.sym+' in all units';
+}
+function em(txt){ var e=document.createElement('em'); e.textContent=txt; return e; }
+function buildList(){
+  var c=cat(), L=$('list'); L.innerHTML=''; L.scrollTop=0;
+  c.units.forEach(function(u){
+    var r=document.createElement('div'); r.className='li';
+    var s=document.createElement('span'); s.textContent=u.name; var b=document.createElement('b');
+    r.appendChild(s); r.appendChild(b);
+    r.addEventListener('click',function(){
+      var sel=st.sel[c.id];
+      if(u.id===sel[1]) return;
+      if(u.id===sel[0]){ doSwap(); return; }
+      sel[1]=u.id; iPhone.haptic('selection'); render(true); save();
+    });
+    L.appendChild(r);
+  });
+}
+function buildCats(){
+  var W=$('cats');
+  CATS.forEach(function(c){
+    var b=document.createElement('button'); b.className='cat'; b.dataset.id=c.id; b.style.setProperty('--c',c.c);
+    b.innerHTML='<i><svg viewBox="0 0 24 24">'+c.icon+'</svg></i>'+c.name;
+    b.addEventListener('click',function(){ if(st.cat!==c.id) setCat(c.id); });
+    W.appendChild(b);
+  });
+}
+function setCat(id,quiet){
+  st.cat=id;
+  [].forEach.call($('cats').children,function(b){ b.classList.toggle('on',b.dataset.id===id); });
+  if(id!=='temp'&&st.input.charAt(0)==='-') st.input=st.input.slice(1)||'0';
+  if(padEls.neg) padEls.neg.style.opacity=id==='temp'?'1':'.35';
+  buildList(); render(!quiet);
+  if(!quiet){ iPhone.haptic('selection'); save(); }
+}
+
+/* ---------- keypad ---------- */
+var KEYS=['7','8','9','del','4','5','6','clr','1','2','3','neg','0w','.','swap'];
+var DEL_IC='<svg viewBox="0 0 24 24"><path d="M9 5h10a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6-7z"/><path d="m12 9.500 5 5M17 9.500l-5 5"/></svg>';
+var SWAP_IC='<svg viewBox="0 0 24 24"><path d="M8 4v15M8 4 4 8M8 4l4 4M16 20V5M16 20l-4-4M16 20l4-4"/></svg>';
+var padEls={};
+function buildPad(){
+  var P=$('pad');
+  KEYS.forEach(function(k){
+    var b=document.createElement('button'), id=k==='0w'?'0':k;
+    b.className='k'+(k==='0w'?' wide':'')+(k==='del'||k==='clr'||k==='neg'?' fn':'')+(k==='swap'?' acc':'');
+    b.innerHTML = k==='del'?DEL_IC : k==='clr'?'C' : k==='neg'?'+/−' : k==='swap'?SWAP_IC : id;
+    b.addEventListener('pointerdown',function(e){ e.preventDefault(); press(id); });
+    padEls[id]=b; P.appendChild(b);
+  });
+}
+function digits(s){ return s.replace(/[^0-9]/g,'').length; }
+function press(k){
+  var s=st.input;
+  if(k==='swap'){ doSwap(); return; }
+  if(k==='clr'){ if(s==='0'){ iPhone.haptic('light'); return; } st.input='0'; iPhone.haptic('medium'); }
+  else if(k==='del'){
+    s=s.slice(0,-1); if(s===''||s==='-'||s==='-0') s='0';
+    st.input=s; iPhone.haptic('light');
+  }
+  else if(k==='neg'){
+    if(st.cat!=='temp'){ iPhone.haptic('warning'); return; }
+    st.input = s.charAt(0)==='-'?s.slice(1):'-'+s; iPhone.haptic('light');
+  }
+  else if(k==='.'){
+    if(s.indexOf('.')>=0){ iPhone.haptic('warning'); return; }
+    st.input=s+'.'; iPhone.haptic('light');
+  }
+  else{
+    if(digits(s)>=12){ iPhone.haptic('warning'); return; }
+    if(s==='0') s=''; else if(s==='-0') s='-';
+    st.input=s+k; iPhone.haptic('light');
+  }
+  render(true); saveSoon();
+}
+function doSwap(){
+  var sel=st.sel[st.cat]; sel.reverse();
+  swapTurn+=180; $('swap').style.transform='rotate('+swapTurn+'deg)';
+  iPhone.haptic('medium'); render(true); save();
+}
+var swapTurn=0;
+$('swap').addEventListener('click',doSwap);
+window.addEventListener('keydown',function(e){
+  if(e.metaKey||e.ctrlKey||e.altKey) return;
+  var k=e.key, id=null;
+  if(/^[0-9]$/.test(k)) id=k; else if(k==='.'||k===',') id='.'; else if(k==='Backspace') id='del';
+  else if(k==='Escape'||k==='Delete'||k==='c'||k==='C') id='clr'; else if(k==='-') id='neg'; else if(k==='Tab'||k==='s'||k==='S') id='swap';
+  if(!id) return;
+  if($('sheet').classList.contains('on')) return;
+  e.preventDefault(); press(id);
+  var b=padEls[id]; if(b){ b.classList.add('hit'); setTimeout(function(){b.classList.remove('hit');},110); }
+});
+
+/* ---------- unit picker sheet ---------- */
+var pickSide=0;
+function openPicker(side){
+  pickSide=side; var c=cat(), sel=st.sel[c.id];
+  $('pickTitle').textContent=side===0?'Convert from':'Convert to';
+  var P=$('pick'); P.innerHTML='';
+  c.units.forEach(function(u){
+    var r=document.createElement('div'); r.className='pi'+(u.id===sel[side]?' on':'');
+    r.innerHTML='<b style="font-weight:400"></b><span></span><svg viewBox="0 0 24 24"><path d="m5 12.500 4.500 4.500L19 7"/></svg>';
+    r.firstChild.textContent=u.name; r.children[1].textContent=u.sym;
+    r.addEventListener('click',function(){
+      if(u.id===sel[1-side]) sel.reverse(); else sel[side]=u.id;
+      iPhone.haptic('selection'); render(true); save(); closePicker();
+    });
+    P.appendChild(r);
+  });
+  $('scrim').classList.add('on'); $('sheet').classList.add('on');
+  iPhone.haptic('light');
+  var on=P.querySelector('.on'); if(on) P.scrollTop=Math.max(0,on.offsetTop-120);
+}
+function closePicker(){ $('scrim').classList.remove('on'); $('sheet').classList.remove('on'); }
+$('fromBtn').addEventListener('click',function(){openPicker(0);});
+$('toBtn').addEventListener('click',function(){openPicker(1);});
+$('scrim').addEventListener('click',closePicker);
+$('pickDone').addEventListener('click',closePicker);
+
+/* ---------- mouse drag-to-scroll for lists ---------- */
+function dragScroll(el){
+  var sy=0,s0=0,id=null,moved=false;
+  el.addEventListener('pointerdown',function(e){ if(e.pointerType!=='mouse') return; id=e.pointerId; sy=e.clientY; s0=el.scrollTop; moved=false; });
+  el.addEventListener('pointermove',function(e){
+    if(e.pointerId!==id) return; var d=e.clientY-sy;
+    if(!moved&&Math.abs(d)>6){ moved=true; try{el.setPointerCapture(id);}catch(err){} }
+    if(moved) el.scrollTop=s0-d;
+  });
+  function up(e){
+    if(e.pointerId!==id) return; id=null;
+    if(moved){ var kill=function(ev){ev.stopPropagation();ev.preventDefault();}; window.addEventListener('click',kill,true); setTimeout(function(){window.removeEventListener('click',kill,true);},0); }
+  }
+  el.addEventListener('pointerup',up); el.addEventListener('pointercancel',up);
+}
+dragScroll($('list')); dragScroll($('pick'));
+
+/* ---------- persistence ---------- */
+var saveT=0;
+function save(){ clearTimeout(saveT); iPhone.storage.set('state',{cat:st.cat,sel:st.sel,input:st.input}); }
+function saveSoon(){ clearTimeout(saveT); saveT=setTimeout(save,500); }
+iPhone.onPause(save);
+
+buildCats(); buildPad(); setCat('length',true);
+iPhone.storage.get('state',null).then(function(s){
+  if(!s) return;
+  if(s.sel) CATS.forEach(function(c){
+    var p=s.sel[c.id];
+    if(p&&p.length===2&&c.units.some(function(u){return u.id===p[0];})&&c.units.some(function(u){return u.id===p[1];})) st.sel[c.id]=[p[0],p[1]];
+  });
+  if(typeof s.input==='string'&&/^-?\d{1,12}(\.\d*)?$/.test(s.input)) st.input=s.input;
+  setCat(catById[s.cat]?s.cat:'length',true);
+}).catch(function(){});
+})();
+</script>
+</body>
+</html>

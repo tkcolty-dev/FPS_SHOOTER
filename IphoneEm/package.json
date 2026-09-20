@@ -1,0 +1,12 @@
+{
+  "name": "iphone17-emulator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "iPhone 17 emulator — case, real sounds, App Store, App Maker, Safari",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

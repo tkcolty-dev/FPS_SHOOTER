@@ -1,0 +1,179 @@
+/* ───────── The physical iPhone 17: aluminium band, buttons, glass, back, case ───────── */
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0b0d; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased; color: #f2f2f7;
+  user-select: none; -webkit-user-select: none; cursor: default;
+}
+#stage {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(900px 700px at 50% 45%, rgba(120,110,160,.20), transparent 70%),
+    radial-gradient(1200px 900px at 50% 120%, rgba(60,80,140,.18), transparent 70%),
+    #0b0b0d;
+}
+#device-wrap { width: 0; height: 0; position: relative; }
+/* 430 × 902 = the real 71.5 × 149.6 mm body at the screen's pt density */
+#device {
+  position: absolute; width: 430px; height: 902px; left: -215px; top: -451px;
+  transform: scale(var(--scale, 1)); transform-origin: 50% 50%;
+  perspective: 2400px;
+}
+.phone { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform .9s cubic-bezier(.3,.8,.2,1); }
+.phone.flipped { transform: rotateY(180deg); }
+.phone-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.phone-back { transform: rotateY(180deg); }
+.phone.shake { animation: shake .5s; }
+@keyframes shake { 10%,90%{transform:translateX(-3px) rotate(-.6deg)} 20%,80%{transform:translateX(6px) rotate(.9deg)} 30%,50%,70%{transform:translateX(-10px) rotate(-1.2deg)} 40%,60%{transform:translateX(10px) rotate(1.2deg)} }
+
+/* finishes */
+#device[data-color="lavender"] { --f-hi:#efe8fa; --f-mid:#cfc3e6; --f-lo:#a99cc6; --back:#dcd2ee; --back2:#c9bde0; --plateau:#d3c8e8; }
+#device[data-color="sage"]     { --f-hi:#eef2e2; --f-mid:#c3cdb0; --f-lo:#9aa688; --back:#d3dcc2; --back2:#bfcaac; --plateau:#c9d3b6; }
+#device[data-color="mist"]     { --f-hi:#eaf1fa; --f-mid:#b9cbe2; --f-lo:#8fa4c0; --back:#cbdaee; --back2:#b5c8e0; --plateau:#c0d1e8; }
+#device[data-color="white"]    { --f-hi:#ffffff; --f-mid:#e6e6e3; --f-lo:#bdbdb8; --back:#f4f4f1; --back2:#e6e6e2; --plateau:#ecece8; }
+#device[data-color="black"]    { --f-hi:#6a6b70; --f-mid:#3a3b40; --f-lo:#1d1e22; --back:#2c2d31; --back2:#1e1f23; --plateau:#26272b; }
+
+.frame {
+  position: absolute; inset: 0; border-radius: 72px;
+  background:
+    linear-gradient(90deg, var(--f-lo) 0%, var(--f-hi) 2.2%, var(--f-mid) 5%, var(--f-mid) 95%, var(--f-hi) 97.8%, var(--f-lo) 100%),
+    var(--f-mid);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.55),
+    inset 0 2px 3px rgba(255,255,255,.5),
+    inset 0 -2px 3px rgba(0,0,0,.25),
+    0 0 0 1px rgba(0,0,0,.55),
+    0 40px 80px -10px rgba(0,0,0,.75),
+    0 18px 30px rgba(0,0,0,.45);
+}
+.frame::before { /* top + bottom rolled edge */
+  content: ''; position: absolute; inset: 0; border-radius: 72px; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.55) 0, transparent 1.2%, transparent 98.8%, rgba(0,0,0,.28) 100%);
+}
+.antenna { position: absolute; background: rgba(0,0,0,.16); box-shadow: 0 0 0 .5px rgba(255,255,255,.25); }
+.antenna.a1 { left: 0; width: 5px; height: 3px; top: 84px; } .antenna.a2 { right: 0; width: 5px; height: 3px; top: 84px; }
+.antenna.a3 { left: 0; width: 5px; height: 3px; bottom: 84px; } .antenna.a4 { right: 0; width: 5px; height: 3px; bottom: 84px; }
+
+.bezel {
+  position: absolute; inset: 4.5px; border-radius: 67.5px; background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), inset 0 0 2px 1px rgba(0,0,0,.9);
+}
+#screen {
+  position: absolute; left: 9.5px; top: 9.5px; width: 402px; height: 874px;
+  border-radius: 58px; overflow: hidden; background: #000; isolation: isolate;
+  clip-path: inset(0 round 58px);
+}
+.glass-glare {
+  position: absolute; inset: 0; border-radius: 67.5px; pointer-events: none; z-index: 5;
+  background: linear-gradient(118deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.025) 22%, transparent 22.2%, transparent 100%);
+  mix-blend-mode: screen;
+}
+
+/* hardware buttons */
+.hw-btn {
+  position: absolute; width: 7px; border-radius: 2.5px; cursor: pointer; z-index: 0;
+  background: linear-gradient(90deg, var(--f-lo), var(--f-hi) 45%, var(--f-mid));
+  box-shadow: 0 0 0 .5px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(0,0,0,.25);
+  transition: transform .08s ease-out;
+}
+.hw-btn::after { content: ''; position: absolute; inset: -6px -10px; } /* generous hit area */
+.hw-action  { left: -3.5px; top: 128px; height: 34px; }
+.hw-volup   { left: -3.5px; top: 192px; height: 60px; }
+.hw-voldown { left: -3.5px; top: 266px; height: 60px; }
+.hw-power   { right: -3.5px; top: 222px; height: 98px; background: linear-gradient(270deg, var(--f-lo), var(--f-hi) 45%, var(--f-mid)); }
+.hw-camera  { right: -1.5px; top: 548px; height: 62px; width: 5px; border-radius: 2px;
+  background: linear-gradient(270deg, rgba(0,0,0,.55), rgba(40,40,46,.9)); box-shadow: 0 0 0 .5px rgba(255,255,255,.35), inset 0 0 2px rgba(0,0,0,.8); }
+.hw-action.pressed, .hw-volup.pressed, .hw-voldown.pressed { transform: translateX(2.5px); }
+.hw-power.pressed { transform: translateX(-2.5px); }
+.hw-camera.pressed { transform: translateX(-1px); filter: brightness(1.6); }
+
+/* back of the phone */
+.back-glass {
+  position: absolute; inset: 4.5px; border-radius: 67.5px; overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 20% 0%, rgba(255,255,255,.35), transparent 55%),
+    linear-gradient(160deg, var(--back), var(--back2));
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.35), inset 0 0 12px rgba(0,0,0,.18);
+}
+.plateau {
+  position: absolute; left: 22px; top: 22px; width: 98px; height: 196px; border-radius: 49px;
+  background: linear-gradient(150deg, rgba(255,255,255,.35), transparent 40%), var(--plateau);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.4), 0 2px 5px rgba(0,0,0,.28), inset 0 0 8px rgba(0,0,0,.08);
+}
+.lens { position: absolute; left: 12px; width: 74px; height: 74px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, #0a0a0c 0 34%, #1b1c22 35% 52%, #0c0c10 53% 100%);
+  box-shadow: 0 0 0 3px var(--f-mid), 0 0 0 4px rgba(0,0,0,.35), 0 2px 5px rgba(0,0,0,.4), inset 0 0 0 5px #15161a; }
+.lens.l1 { top: 12px; } .lens.l2 { top: 110px; }
+.lens i { position: absolute; inset: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(120,150,255,.55), rgba(30,20,80,.6) 35%, #05050a 70%);
+  box-shadow: inset 0 0 6px rgba(0,0,0,.9), 0 0 0 2px #23242b; }
+.lens i::after { content: ''; position: absolute; left: 18%; top: 14%; width: 26%; height: 18%; border-radius: 50%; background: rgba(255,255,255,.5); filter: blur(1.5px); transform: rotate(-30deg); }
+.flashled { position: absolute; left: 138px; top: 40px; width: 28px; height: 28px; border-radius: 50%;
+  background: radial-gradient(circle, #fff7d6 0 30%, #f1e2a6 45%, #d8c98d 70%); box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 1px 3px rgba(0,0,0,.3); }
+.flashled.on { background: #fff; box-shadow: 0 0 0 2px #fff, 0 0 40px 16px rgba(255,250,220,.95), 0 0 120px 50px rgba(255,250,220,.5); }
+.backmic { position: absolute; left: 148px; top: 100px; width: 7px; height: 7px; border-radius: 50%; background: rgba(0,0,0,.45); box-shadow: inset 0 1px 1px rgba(0,0,0,.6); }
+.back-logo {
+  position: absolute; left: 0; right: 0; top: 372px; text-align: center; font-size: 92px; line-height: 1;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+  color: rgba(255,255,255,.55); text-shadow: 0 1px 0 rgba(255,255,255,.4), 0 -1px 1px rgba(0,0,0,.18); mix-blend-mode: overlay; opacity: .95;
+}
+#device[data-color="black"] .back-logo { color: rgba(255,255,255,.22); }
+
+/* optional case */
+.case-shell { position: absolute; inset: -9px; border-radius: 80px; display: none; pointer-events: none; }
+#device[data-case] .case-shell { display: block; }
+#device[data-case] .phone-front .case-shell {
+  background: var(--case); box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), inset 0 -3px 8px rgba(0,0,0,.25), 0 40px 80px -10px rgba(0,0,0,.75), 0 18px 30px rgba(0,0,0,.45);
+}
+#device[data-case] .phone-back .case-shell {
+  background: var(--case); box-shadow: inset 0 0 0 2px rgba(255,255,255,.16), inset 0 -3px 10px rgba(0,0,0,.25), 0 40px 80px -10px rgba(0,0,0,.75);
+}
+/* the case covers the back glass; the camera plateau pokes through its cut-out */
+#device[data-case] .back-glass::before { content: ''; position: absolute; inset: 0; background: var(--case); z-index: 1; }
+#device[data-case] .back-glass::after { content: ''; position: absolute; left: 12px; top: 12px; width: 174px; height: 216px; border-radius: 59px; z-index: 1;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.25), 0 1px 0 rgba(255,255,255,.18); background: rgba(0,0,0,.18); }
+#device[data-case] .plateau, #device[data-case] .flashled, #device[data-case] .backmic { z-index: 2; }
+#device[data-case] .back-logo { z-index: 2; opacity: .35; }
+#device[data-case="clear"] .back-logo { opacity: .95; }
+#device[data-case="clear"] { --case: linear-gradient(140deg, rgba(255,255,255,.34), rgba(255,255,255,.12) 40%, rgba(255,255,255,.22)); }
+
+#device[data-case="midnight"] { --case: linear-gradient(150deg,#2b2f3a,#14161d); }
+#device[data-case="clay"]     { --case: linear-gradient(150deg,#c98a6b,#a96a4d); }
+#device[data-case="lake"]     { --case: linear-gradient(150deg,#4f86a8,#2f5f80); }
+#device[data-case="forest"]   { --case: linear-gradient(150deg,#55705a,#34493a); }
+#device[data-case="pink"]     { --case: linear-gradient(150deg,#f3b6c8,#dd8fa8); }
+#device[data-case] .hw-btn { background: var(--case); box-shadow: 0 0 0 .5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.25); width: 9px; }
+#device[data-case] .hw-action, #device[data-case] .hw-volup, #device[data-case] .hw-voldown { left: -13px; }
+#device[data-case] .hw-power { right: -13px; }
+#device[data-case] .hw-camera { right: -10px; width: 4px; background: rgba(0,0,0,.6); }
+
+/* charging cable */
+#cable { position: absolute; left: 50%; top: 100%; width: 40px; margin-left: -20px; height: 400px; pointer-events: none;
+  transform: translateY(60px); opacity: 0; transition: transform .55s cubic-bezier(.3,1.3,.5,1), opacity .25s; z-index: -1; }
+#cable.in { transform: translateY(-3px); opacity: 1; }
+#cable::before { content: ''; position: absolute; left: 8px; top: 0; width: 24px; height: 40px; border-radius: 4px 4px 7px 7px;
+  background: linear-gradient(90deg,#d9d9de,#fff 40%,#c9c9cf); box-shadow: 0 0 0 .5px rgba(0,0,0,.4); }
+#cable i { position: absolute; left: 15px; top: 38px; width: 10px; height: 400px; background: linear-gradient(90deg,#d5d5da,#fff 45%,#c6c6cc); border-radius: 0 0 5px 5px; }
+
+/* side panel */
+#panel {
+  position: fixed; right: 22px; top: 50%; transform: translateY(-50%); width: 208px; padding: 18px 16px 14px;
+  border-radius: 22px; background: rgba(28,28,32,.72); backdrop-filter: blur(24px) saturate(1.6); -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 20px 50px rgba(0,0,0,.45); font-size: 12px; color: #c7c7cc;
+}
+#panel h1 { margin: 0 0 12px; font-size: 17px; font-weight: 600; color: #fff; letter-spacing: -.3px; }
+.panel-group { margin-bottom: 14px; }
+.panel-group > label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: #8e8e93; margin-bottom: 7px; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25), inset 0 -3px 5px rgba(0,0,0,.2); position: relative; }
+.swatch.on::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #0a84ff; }
+.swatch.none { background: transparent; box-shadow: inset 0 0 0 1.5px #636366; }
+.swatch.none::before { content: ''; position: absolute; left: 3px; right: 3px; top: 11px; height: 1.5px; background: #636366; transform: rotate(-45deg); }
+.panel-group.row { display: flex; gap: 6px; }
+#panel button { flex: 1; height: 30px; border: 0; border-radius: 9px; background: rgba(120,120,128,.3); color: #fff; font: 500 12px -apple-system, sans-serif; cursor: pointer; }
+#panel button:hover { background: rgba(120,120,128,.45); } #panel button:active { transform: scale(.96); }
+#panel button.on { background: #30d158; color: #00210b; }
+.hints p { margin: 0 0 8px; line-height: 1.75; font-size: 11.5px; color: #98989f; } .hints b { color: #d1d1d6; font-weight: 500; }
+kbd { display: inline-block; min-width: 18px; padding: 0 5px; margin-right: 2px; border-radius: 5px; background: rgba(120,120,128,.3); color: #e5e5ea; font: 500 10.5px -apple-system, sans-serif; line-height: 17px; text-align: center; }
+@media (max-width: 900px) { #panel { display: none; } }

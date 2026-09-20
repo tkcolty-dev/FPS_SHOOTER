@@ -1,0 +1,21 @@
+{
+  "id": "piano",
+  "name": "Pocket Piano",
+  "subtitle": "Two octaves in your pocket.",
+  "category": "Music",
+  "genre": "Instruments",
+  "developer": "Major Seventh Labs",
+  "rating": 4.7,
+  "ratings": "21K",
+  "age": "4+",
+  "size": "3.1 MB",
+  "version": "1.4",
+  "statusBar": "light",
+  "icon": {
+    "bg": "linear-gradient(160deg,#3a3f52 0%,#1b1d29 55%,#0d0e15 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><rect x='8' y='14' width='44' height='34' rx='5' fill='#fff'/><path d='M19 14v34M30 14v34M41 14v34' stroke='#c9ccd6' stroke-width='1.2'/><rect x='15' y='14' width='8' height='20' rx='1.6' fill='#1b1d29'/><rect x='26' y='14' width='8' height='20' rx='1.6' fill='#1b1d29'/><rect x='37' y='14' width='8' height='20' rx='1.6' fill='#1b1d29'/><rect x='8' y='44' width='44' height='4' rx='2' fill='#ff375f'/></svg>"
+  },
+  "description": "Pocket Piano puts two full octaves under your fingers, stacked in two comfortable rows that fit the screen perfectly. Play chords, slide across the keys for a glissando, and shift octaves to reach from deep bass to sparkling highs.\n\nChoose from four hand-tuned instruments — a warm Grand, a bell-like Electric piano, a classic drawbar Organ and a glowing Synth pad — all generated live on your device with zero samples to download.\n\nGot a tune in your head? Hit record, play it, and listen back instantly. Your last melody is saved for next time. On a laptop you can even play from the keyboard: A S D F G H J for white keys, W E T Y U for black keys, Z and X to change octave.",
+  "whatsNew": "Sustain pedal, a brand new Synth pad instrument, and recordings now survive closing the app.",
+  "accent": "#ff375f"
+}

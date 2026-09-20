@@ -1,0 +1,21 @@
+{
+  "id": "memory",
+  "name": "Memory Match",
+  "subtitle": "Flip, remember, pair up",
+  "category": "Games",
+  "genre": "Puzzle",
+  "developer": "Paper Lantern Games",
+  "rating": 4.7,
+  "ratings": "18K",
+  "age": "4+",
+  "size": "1.1 MB",
+  "version": "2.0",
+  "statusBar": "light",
+  "icon": {
+    "bg": "linear-gradient(155deg,#ffb36b 0%,#ff5e8a 52%,#a445e0 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><rect x='10' y='12' width='26' height='36' rx='6.5' fill='#fff' opacity='.5' transform='rotate(-13 23 30)'/><rect x='24' y='12' width='26' height='36' rx='6.5' fill='#fff' transform='rotate(9 37 30)'/><path d='M37 20c1 6.5 3.5 9 10 10-6.5 1-9 3.5-10 10-1-6.5-3.5-9-10-10 6.5-1 9-3.5 10-10z' fill='#ff5e8a' transform='rotate(9 37 30)'/></svg>"
+  },
+  "description": "A beautifully simple pairs game that is easy to pick up and surprisingly hard to put down. Flip two cards, find the match, and clear the table in as few moves as you can.\n\nChoose from three table sizes: Breezy (3×4) for a quick warm-up, Classic (4×5) for a proper workout, or Brainy (5×6) when you are feeling brave. Every card is hand-drawn, every flip is a real 3D turn, and every round is shuffled fresh.\n\nEarn up to three stars per round, beat your best moves and time on each table, and enjoy a calm game with no ads and no interruptions.",
+  "whatsNew": "New Brainy 5×6 table, star ratings, match streak chimes, and smoother card flips.",
+  "accent": "#ff5e8a"
+}

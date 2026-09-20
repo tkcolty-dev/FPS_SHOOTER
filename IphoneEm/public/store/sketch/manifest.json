@@ -1,0 +1,21 @@
+{
+  "id": "sketch",
+  "name": "Sketchpad",
+  "subtitle": "Draw, doodle, save.",
+  "category": "Entertainment",
+  "genre": "Graphics & Design",
+  "developer": "Paper Fox Studio",
+  "rating": 4.8,
+  "ratings": "38K",
+  "age": "4+",
+  "size": "2.4 MB",
+  "version": "2.1",
+  "statusBar": "dark",
+  "icon": {
+    "bg": "linear-gradient(155deg,#ffd86b 0%,#ff8a5c 48%,#ff4f8b 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><path d='M9 46c6-9 10 3 16-4s4-14 11-15' fill='none' stroke='rgba(255,255,255,.55)' stroke-width='3.4' stroke-linecap='round'/><g transform='rotate(45 36 26)'><rect x='31' y='6' width='10' height='6' rx='2.2' fill='#fff' opacity='.7'/><rect x='31' y='13' width='10' height='24' fill='#fff'/><path d='M31 37h10l-5 10z' fill='#fff' opacity='.85'/><path d='M34.2 43.6h3.6L36 47z' fill='#ff4f8b'/></g></svg>"
+  },
+  "description": "Sketchpad is the fastest way to get an idea out of your head and onto the screen. Pick a tool, pick a colour and draw — strokes are smoothed as you go so every line looks confident, even with a mouse.\n\nSwitch between an inky Brush, a see-through Marker that layers like the real thing, and a precise Eraser. Mix any colour you like with the built-in colour mixer, and never worry about mistakes: Sketchpad keeps a deep undo and redo history.\n\nWhen you're done, tap Save to export a crisp, full-resolution PNG. Your drawing is also kept safe between launches, so you can pick up right where you left off.",
+  "whatsNew": "New colour mixer with hue and brightness control, smoother strokes, and your canvas is now restored when you come back.",
+  "accent": "#ff5e7e"
+}

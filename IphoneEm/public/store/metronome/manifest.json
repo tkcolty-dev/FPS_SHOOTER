@@ -1,0 +1,21 @@
+{
+  "id": "metronome",
+  "name": "Tempo",
+  "subtitle": "Metronome & tuning tone.",
+  "category": "Music",
+  "genre": "Music Tools",
+  "developer": "Downbeat Audio",
+  "rating": 4.9,
+  "ratings": "18K",
+  "age": "4+",
+  "size": "1.2 MB",
+  "version": "4.0",
+  "statusBar": "dark",
+  "icon": {
+    "bg": "linear-gradient(160deg,#31465c 0%,#1a2433 55%,#0c111a 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><path d='M24 9.5h12a2.5 2.5 0 0 1 2.4 1.9L47 47.500a3 3 0 0 1-2.9 3.700H15.900A3 3 0 0 1 13 47.500l8.600-36.100A2.500 2.500 0 0 1 24 9.500z' fill='rgba(255,255,255,.1)' stroke='#fff' stroke-width='3.4' stroke-linejoin='round'/><path d='M15.500 41.500h29' stroke='#fff' stroke-width='3.4'/><path d='M30 41.500L43.500 12' stroke='#4df0de' stroke-width='3.6' stroke-linecap='round'/><rect x='-5.500' y='-3.800' width='11' height='7.600' rx='2.200' transform='translate(38.200 23.600) rotate(24.600)' fill='#4df0de'/><circle cx='30' cy='41.500' r='3.200' fill='#fff'/></svg>"
+  },
+  "description": "Tempo is a rock-solid metronome for practice, rehearsal and recording. Beats are scheduled on the audio clock itself, so the click never drifts, even at 240 BPM.\n\nSpin the big dial to set any tempo from 30 to 240 BPM, nudge it one beat at a time, or just tap along and let Tempo find the speed for you. Choose 2/4, 3/4, 4/4 or 6/8, then tap any beat light to make it an accent, a normal click or a rest. A swinging pendulum and the Italian tempo marking, from Largo to Presto, keep you oriented at a glance.\n\nNeed to tune? Switch to Tuner Tone for a clean reference pitch on any note in seven octaves, with sine or triangle waves, gentle fades, and an adjustable A4 from 415 to 466 Hz for baroque or orchestral tuning.",
+  "whatsNew": "New Tuner Tone tab with adjustable A4, tappable accent lights for every beat, and a smoother pendulum.",
+  "accent": "#00a396"
+}

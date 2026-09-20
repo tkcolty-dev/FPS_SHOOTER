@@ -1,0 +1,21 @@
+{
+  "id": "mines",
+  "name": "Mines",
+  "subtitle": "Think first. Tap second.",
+  "category": "Games",
+  "genre": "Puzzle",
+  "developer": "Northbound Pixel",
+  "rating": 4.8,
+  "ratings": "31K",
+  "age": "4+",
+  "size": "1.4 MB",
+  "version": "1.2",
+  "statusBar": "light",
+  "icon": {
+    "bg": "radial-gradient(circle at 30% 20%,#8ea2ff 0%,#5670f5 45%,#2f35b8 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><g stroke='#fff' stroke-width='4.2' stroke-linecap='round'><path d='M30 8v44M8 30h44M14.5 14.5l31 31M45.5 14.5l-31 31'/></g><circle cx='30' cy='30' r='15' fill='#fff'/><circle cx='24' cy='24' r='4.2' fill='#5670f5' opacity='.5'/><path d='M27 36.5c2.5 2.2 6.5 2.2 9-.8' stroke='#5670f5' stroke-width='2.4' stroke-linecap='round' fill='none' opacity='.45'/></svg>"
+  },
+  "description": "The classic logic puzzle, rebuilt for your thumb. Mines gives you three boards sized perfectly for iPhone, buttery tile animations, and a first tap that is always safe.\n\nTap to dig, hold to plant a flag, or flip on Flag Mode when you want to mark a whole row in a hurry. Tap any number whose flags are already placed to clear everything around it in one go.\n\nRace the clock on Easy, Medium and Hard, and chase your best time on each. No ads, no timers telling you to come back tomorrow. Just you, the numbers, and one very bad square.",
+  "whatsNew": "Faster flood reveal, a new Flag Mode switch, and best times for every difficulty.",
+  "accent": "#5670f5"
+}

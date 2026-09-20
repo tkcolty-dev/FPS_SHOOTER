@@ -1,0 +1,21 @@
+{
+  "id": "breakout",
+  "name": "Brickburst",
+  "subtitle": "Smash every last brick",
+  "category": "Games",
+  "genre": "Arcade",
+  "developer": "Pocket Comet Games",
+  "rating": 4.6,
+  "ratings": "21K",
+  "age": "4+",
+  "size": "1.8 MB",
+  "version": "1.3",
+  "statusBar": "light",
+  "icon": {
+    "bg": "linear-gradient(165deg,#ffb347 0%,#ff5e62 48%,#c2185b 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><g fill='#ffffff'><rect x='4' y='7' width='15' height='7' rx='2.4'/><rect x='22.5' y='7' width='15' height='7' rx='2.4'/><rect x='41' y='7' width='15' height='7' rx='2.4'/><g opacity='.78'><rect x='4' y='17' width='15' height='7' rx='2.4'/><rect x='41' y='17' width='15' height='7' rx='2.4'/></g><g opacity='.5'><rect x='4' y='27' width='15' height='7' rx='2.4'/></g><path d='M26 47 L29 49.5 L38.5 31.5 L35.5 29.5 Z' opacity='.35'/><circle cx='38' cy='29' r='5'/><rect x='13' y='49' width='28' height='6.5' rx='3.25'/><circle cx='27' cy='20.5' r='1.3' opacity='.8'/><circle cx='32' cy='18' r='1' opacity='.6'/><circle cx='34' cy='22.5' r='1.1' opacity='.7'/></g></svg>"
+  },
+  "description": "Brickburst is a fast, juicy brick breaker made for one thumb. Slide the paddle, keep the ball alive and blast through eight hand-built stages — from a gentle rainbow warm-up to the armoured Core.\n\nCrack open bricks to release power-ups: stretch out with Wide Paddle, split the action with Multiball, take a breath with Slow Motion, or grab a rare Extra Life. Silver bricks need two hits, steel blocks never break, and every rally builds a combo that pushes your score higher.\n\nGlowing trails, showers of particles, crunchy sound and haptics make every hit feel great. Finish all eight stages and the game loops back faster than before. How far can you go on three lives?",
+  "whatsNew": "Two new stages (Invader and The Core), smarter ball angles off the paddle, and a gentler first level.",
+  "accent": "#ff5e62"
+}

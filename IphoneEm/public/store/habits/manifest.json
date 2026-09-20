@@ -1,0 +1,21 @@
+{
+  "id": "habits",
+  "name": "Streaks",
+  "subtitle": "Build habits that stick.",
+  "category": "Lifestyle",
+  "genre": "Health & Habits",
+  "developer": "Little Wins Studio",
+  "rating": 4.8,
+  "ratings": "41K",
+  "age": "4+",
+  "size": "1.4 MB",
+  "version": "3.1",
+  "statusBar": "dark",
+  "icon": {
+    "bg": "linear-gradient(150deg,#ffc145 0%,#ff7a2f 48%,#ff3d5e 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><circle cx='30' cy='31' r='17' fill='none' stroke='rgba(255,255,255,.32)' stroke-width='5.5'/><path d='M30 14a17 17 0 1 0 16.2 11.8' fill='none' stroke='#fff' stroke-width='5.5' stroke-linecap='round'/><path d='M21.5 31l6.8 6.8L46.5 17.5' fill='none' stroke='#fff' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+  },
+  "description": "Streaks makes building a habit feel like a game you actually want to win. Add the little things you want to do every day, tap the ring when you've done them, and watch your streak climb.\n\nEvery habit gets its own colour and icon, a seven-day strip so you can see your week at a glance, and a flame that lights up when today is done. Open a habit to see your current streak, your best streak ever, your total check-ins and a five-week calendar. Forgot to tick yesterday? Tap the day to fix it.\n\nFinish everything and you get a Perfect Day. No accounts, no nagging, no clutter. Just you, your habits, and one more day on the streak.",
+  "whatsNew": "New check-off animation, best-streak tracking and a five-week calendar you can edit.",
+  "accent": "#ff8a00"
+}

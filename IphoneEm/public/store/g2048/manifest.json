@@ -1,0 +1,21 @@
+{
+  "id": "g2048",
+  "name": "2048",
+  "subtitle": "Slide. Merge. Repeat.",
+  "category": "Games",
+  "genre": "Puzzle",
+  "developer": "Tilewright Studio",
+  "rating": 4.8,
+  "ratings": "48K",
+  "age": "4+",
+  "size": "1.4 MB",
+  "version": "2.1",
+  "statusBar": "light",
+  "icon": {
+    "bg": "linear-gradient(155deg,#fcd34d 0%,#fb923c 48%,#f43f5e 100%)",
+    "glyph": "<svg viewBox='0 0 60 60'><rect x='9' y='9' width='20' height='20' rx='6' fill='#fff' fill-opacity='.96'/><rect x='31' y='9' width='20' height='20' rx='6' fill='#fff' fill-opacity='.62'/><rect x='9' y='31' width='20' height='20' rx='6' fill='#fff' fill-opacity='.62'/><rect x='31' y='31' width='20' height='20' rx='6' fill='#fff' fill-opacity='.96'/><g font-family='-apple-system,Helvetica Neue,Arial,sans-serif' font-weight='800' font-size='14' text-anchor='middle' fill='#ea580c'><text x='19' y='24'>2</text><text x='41' y='24' fill='#fff'>0</text><text x='19' y='46' fill='#fff'>4</text><text x='41' y='46'>8</text></g></svg>"
+  },
+  "description": "The number puzzle that eats afternoons. Swipe to slide every tile on the board at once; when two matching tiles touch, they merge into one. Keep doubling until you reach the legendary 2048 tile — then see how far past it you can go.\n\nThis edition is built to feel great: buttery tile slides, a satisfying pop on every merge, soft sound design and haptics that make big combos land. Made a mistake? Take back your last move with Undo. Your board is saved automatically, so you can pick up right where you left off.\n\nPlay with swipes, a mouse drag, or the arrow keys. No ads, no timers, no nonsense — just you and the tiles.",
+  "whatsNew": "New midnight theme with glowing high-value tiles, one-step Undo, and automatic board saving. Keep going after 2048 to chase 4096 and beyond.",
+  "accent": "#f59e0b"
+}
