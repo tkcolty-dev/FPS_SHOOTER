@@ -461,7 +461,7 @@ const server = http.createServer(async (req, res) => {
       const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '';
       let body = {};
       if (req.method === 'POST') { try { body = JSON.parse(await readBody(req, 200000) || '{}'); } catch { return sendJSON(res, 400, { error: 'bad json' }); } }
-      if (limited(req, 'acct', /signup|login/.test(action) ? 20 : 1500)) return sendJSON(res, 429, { error: 'Too many requests — wait a minute.' });
+      if (limited(req, 'acct', /signup|login/.test(action) ? 40 : 6000)) return sendJSON(res, 429, { error: 'Too many requests — wait a minute.' });
       try {
         switch (action) {
           case 'signup': return sendJSON(res, 200, await accounts.signup(body));
@@ -477,6 +477,11 @@ const server = http.createServer(async (req, res) => {
           default: return sendJSON(res, 404, { error: 'unknown' });
         }
       } catch (e) { return sendJSON(res, e.message === 'Signed out' ? 401 : 400, { error: e.message }); }
+    }
+    if (p === '/api/ice') {
+      const ice = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+      if (process.env.TURN_URL) ice.push({ urls: process.env.TURN_URL.split(','), username: process.env.TURN_USER || '', credential: process.env.TURN_PASS || '' });
+      return sendJSON(res, 200, { iceServers: ice, relay: true });
     }
     if (p === '/proxy') return handleProxy(req, res, url.searchParams);
     if (p === '/api/frameable') return handleFrameable(req, res, url.searchParams);
@@ -498,6 +503,8 @@ const server = http.createServer(async (req, res) => {
     try { res.writeHead(500); res.end('Server error'); } catch {}
   }
 });
+
+try { require('./relay')(server, accounts); } catch (e) { console.error('[relay]', e.message); }
 
 server.listen(PORT, () => {
   const n = Object.keys(soundMap).length;

@@ -2,7 +2,8 @@
 (function () {
   const { el, esc } = OS.util;
   const A = () => OS.account;
-  const ICE = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
+  let ICE = { iceServers: [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }] };
+  fetch('/api/ice').then((r) => r.json()).then((j) => { if (j && j.iceServers) ICE = { iceServers: j.iceServers }; }).catch(() => {});
   let call = null, ui = null, ringer = null, timer = 0;
 
   OS.addStyle('calls', `
@@ -47,7 +48,7 @@
       ${call.mode === 'video' ? '<video class="remote" autoplay playsinline></video><video class="self" autoplay playsinline muted></video>' : '<audio class="remoteaudio" autoplay></audio>'}
       <div class="head"><div class="av">${A().avatar(p, 108)}</div><div class="nm">${esc(p.name)}</div><div class="st"></div></div>
       <div class="ctl ${call.state === 'incoming' ? 'incoming' : ''}"></div>
-      <div class="lbl">${call.mode === 'video' ? 'FaceTime' : 'iPhone Audio'}</div>`;
+      <div class="lbl">${call.relay ? 'Relay · lower quality' : call.mode === 'video' ? 'FaceTime' : 'iPhone Audio'}</div>`;
     if (call.mode !== 'video') h.querySelector('.ctl').parentElement.insertBefore(el('<audio class="remoteaudio" autoplay></audio>'), h.querySelector('.ctl'));
     const ctl = h.querySelector('.ctl');
     const btn = (cls, icon, label, fn) => { const b = el(`<div class="rb ${cls}">${icon}${label ? `<small>${label}</small>` : ''}</div>`); b.addEventListener('click', fn); ctl.appendChild(b); return b; };
@@ -90,7 +91,7 @@
     pc.onconnectionstatechange = () => {
       if (!call) return;
       if (pc.connectionState === 'connected' && call.state !== 'connected') { call.state = 'connected'; call.since = call.since || Date.now(); render(); }
-      if (pc.connectionState === 'failed') { call.state = 'failed'; render(); setTimeout(() => hangUp('failed'), 1600); }
+      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') { if (call.state === 'connected') return; OS.ui.toast('Using relay…'); startRelay(true); }
     };
     return pc;
   }
@@ -112,6 +113,7 @@
     const offer = await call.pc.createOffer(); await call.pc.setLocalDescription(offer);
     await A().signal(personId, { call: call.id, kind: 'offer', mode, data: offer });
     ringer = OS.sound.play('ringback', { loop: true, category: 'ringer' });
+    call.fallback = setTimeout(() => { if (call && call.state !== 'connected' && call.answered) { OS.ui.toast('Using relay…'); startRelay(true); } }, 9000);
     call.timeout = setTimeout(() => { if (call && call.state === 'calling') { OS.ui.toast(p.name + ' didn’t answer'); hangUp('noanswer'); } }, 45000);
   }
 
@@ -140,6 +142,7 @@
     call.pending = [];
     const ans = await call.pc.createAnswer(); await call.pc.setLocalDescription(ans);
     await A().signal(call.with, { call: call.id, kind: 'answer', data: ans });
+    call.fallback = setTimeout(() => { if (call && call.state !== 'connected') { OS.ui.toast('Using relay…'); startRelay(true); } }, 9000);
   }
 
   function toggleMute() { if (!call || !call.local) return; call.muted = !call.muted; call.local.getAudioTracks().forEach((t) => (t.enabled = !call.muted)); OS.haptic('light'); render(); }
@@ -158,9 +161,10 @@
   }
 
   function cleanup() {
-    clearInterval(timer); stopRing();
+    clearInterval(timer); stopRing(); stopRelay();
     if (call) {
       clearTimeout(call.timeout);
+      clearTimeout(call.fallback);
       if (call.local) call.local.getTracks().forEach((t) => t.stop());
       if (call.pc) { try { call.pc.close(); } catch {} }
     }
@@ -168,6 +172,7 @@
   }
   function hangUp(why) {
     if (!call) return;
+    if (OS._callDebug) console.log('[call] hangUp:', why, call.state);
     const other = call.with, id = call.id, missed = why === 'missed', p = call.person, mode = call.mode;
     if (why !== 'remote') A().signal(other, { call: id, kind: 'end' }).catch(() => {});
     if (call.state === 'connected') OS.sound.play('endcall'); else if (why === 'declined' || why === 'ended') OS.sound.play('facetime_leave');
@@ -188,7 +193,7 @@
     if (sig.kind === 'offer') return incoming(sig, p);
     if (!call || sig.call !== call.id) { if (sig.kind === 'ice' || sig.kind === 'answer') return; return; }
     if (sig.kind === 'answer') {
-      stopRing(); clearTimeout(call.timeout);
+      stopRing(); clearTimeout(call.timeout); call.answered = true;
       call.state = 'connecting'; render();
       try { await call.pc.setRemoteDescription(new RTCSessionDescription(sig.data)); } catch (e) { console.warn('answer', e); }
       for (const c of (call.pending || [])) { try { await call.pc.addIceCandidate(c); } catch {} }
@@ -200,11 +205,99 @@
     } else if (sig.kind === 'end') {
       if (call.state === 'incoming') { OS.sound.play('endcall'); logCall(call.person, call.mode, 0, 'missed'); cleanup(); OS.notify({ appId: call && call.mode === 'video' ? 'facetime' : 'phone', title: 'Missed Call', body: p.name, sound: false }); }
       else { OS.ui.toast(p.name + ' ended the call'); hangUp('remote'); }
+    } else if (sig.kind === 'relay') { clearTimeout(call.fallback); startRelay(false);
     } else if (sig.kind === 'busy') { OS.ui.toast(p.name + ' is on another call'); hangUp('remote'); }
   });
 
+  /* ───────── relay fallback (used when a direct connection can't be made) ───────── */
+  const RELAY = { fps: 10, w: 320, h: 240, rate: 16000 };
+  function startRelay(announce) {
+    if (!call || call.relay) return;
+    call.relay = { sending: false };
+    if (announce) A().signal(call.with, { call: call.id, kind: 'relay' }).catch(() => {});
+    if (call.pc) { try { call.pc.close(); } catch {} call.pc = null; }
+    const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const ws = call.relay.ws = new WebSocket(proto + location.host + '/relay?call=' + encodeURIComponent(call.id) + '&token=' + encodeURIComponent(OS.store.get('account.token', '')));
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => { if (call && call.relay) beginRelayMedia(); };
+    ws.onmessage = (e) => {
+      if (typeof e.data === 'string') { const m = JSON.parse(e.data || '{}'); if (m.type === 'bye') hangUp('remote'); return; }
+      const buf = new Uint8Array(e.data); const kind = buf[0], body = buf.subarray(1);
+      if (kind === 0) showRelayFrame(body); else if (kind === 1) playRelayAudio(body);
+    };
+    ws.onerror = () => { if (call) { call.state = 'failed'; render(); } };
+    ws.onclose = () => { if (call && call.relay && call.state === 'connected') hangUp('remote'); };
+  }
+  function beginRelayMedia() {
+    if (!call || !call.relay || call.relay.sending) return;
+    call.relay.sending = true;
+    call.state = 'connected'; call.since = call.since || Date.now(); stopRing(); render();
+    OS.sound.play('facetime_join');
+    const ws = call.relay.ws;
+    // video → JPEG frames
+    if (call.mode === 'video' && call.local && call.local.getVideoTracks().length) {
+      const v = document.createElement('video'); v.srcObject = call.local; v.muted = true; v.playsInline = true;
+      v.style.cssText = 'position:absolute;width:2px;height:2px;opacity:.01;pointer-events:none'; host().appendChild(v);
+      v.play().catch(() => {}); call.relay.capture = v;
+      const cv = document.createElement('canvas'); cv.width = RELAY.w; cv.height = RELAY.h; const g = cv.getContext('2d');
+      call.relay.video = setInterval(() => {
+        if (!call || !call.relay || ws.readyState !== 1 || call.camOff || !v.videoWidth) return;
+        g.drawImage(v, 0, 0, RELAY.w, RELAY.h);
+        cv.toBlob((b) => { if (!b || ws.readyState !== 1) return; b.arrayBuffer().then((ab) => { const out = new Uint8Array(ab.byteLength + 1); out[0] = 0; out.set(new Uint8Array(ab), 1); try { ws.send(out); } catch {} }); }, 'image/jpeg', .45);
+      }, 1000 / RELAY.fps);
+    }
+    // audio → 16-bit PCM
+    try {
+      const ctx = OS.sound.ctx; const src = ctx.createMediaStreamSource(call.local);
+      const node = ctx.createScriptProcessor(2048, 1, 1);
+      const ratio = ctx.sampleRate / RELAY.rate;
+      node.onaudioprocess = (e) => {
+        if (!call || !call.relay || ws.readyState !== 1 || call.muted) return;
+        const inp = e.inputBuffer.getChannelData(0); const len = Math.floor(inp.length / ratio);
+        const out = new Uint8Array(len * 2 + 1); out[0] = 1; const dv = new DataView(out.buffer);
+        for (let i = 0; i < len; i++) { const s = Math.max(-1, Math.min(1, inp[Math.floor(i * ratio)])); dv.setInt16(1 + i * 2, s * 32767, true); }
+        try { ws.send(out); } catch {}
+      };
+      const sink = ctx.createGain(); sink.gain.value = 0; src.connect(node); node.connect(sink); sink.connect(ctx.destination);   // silent sink keeps the processor running (no echo)
+      call.relay.audioNodes = [src, node, sink];
+    } catch (e) { console.warn('[relay audio]', e); }
+  }
+  function showRelayFrame(bytes) {
+    const h = host(); let img = h.querySelector('.relayimg');
+    if (!img) {
+      const rv = h.querySelector('.remote'); if (rv) rv.style.display = 'none';
+      img = el('<img class="relayimg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#111">');
+      h.insertBefore(img, h.firstChild.nextSibling);
+    }
+    const blob = new Blob([bytes], { type: 'image/jpeg' });
+    const url = URL.createObjectURL(blob);
+    const old = img.dataset.url; img.src = url; img.dataset.url = url;
+    if (old) setTimeout(() => URL.revokeObjectURL(old), 200);
+  }
+  function playRelayAudio(bytes) {
+    if (!call || !call.relay) return;
+    const ctx = OS.sound.ctx; if (!ctx) return;
+    const n = Math.floor(bytes.byteLength / 2);
+    const buf = ctx.createBuffer(1, n, RELAY.rate);
+    const ch = buf.getChannelData(0); const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    for (let i = 0; i < n; i++) ch[i] = dv.getInt16(i * 2, true) / 32768;
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(OS.sound.mediaOut);
+    const now = ctx.currentTime;
+    call.relay.playAt = Math.max(now + .06, call.relay.playAt || 0);
+    src.start(call.relay.playAt); call.relay.playAt += buf.duration;
+  }
+  function stopRelay() {
+    if (!call || !call.relay) return;
+    clearInterval(call.relay.video);
+    if (call.relay.capture) { try { call.relay.capture.remove(); } catch {} }
+    (call.relay.audioNodes || []).forEach((n) => { try { n.disconnect(); } catch {} });
+    try { call.relay.ws && call.relay.ws.close(); } catch {}
+    call.relay = null;
+  }
+
   OS.calls = {
     start, hangUp, accept,
+    useRelay: () => startRelay(true),
     get current() { return call; },
     get active() { return !!call; },
     log: () => OS.store.get('calls.log', []),
