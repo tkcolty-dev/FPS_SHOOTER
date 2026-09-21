@@ -118,6 +118,7 @@
       yearly('Halloween', 'holidays', 9, 31), yearly('Veterans Day', 'holidays', 10, 11), yearly('Christmas Day', 'holidays', 11, 25),
       E('Thanksgiving', 'holidays', thanks(Y), thanks(Y), { allDay: true }), E('Thanksgiving', 'holidays', thanks(Y + 1), thanks(Y + 1), { allDay: true }),
     ];
+    events = [];   // no made-up events
     OS.store.set('calendar.calendars', calendars);
     OS.store.set('calendar.events', events);
   }

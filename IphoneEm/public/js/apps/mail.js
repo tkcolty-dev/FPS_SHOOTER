@@ -673,5 +673,5 @@
 
   /* ------------------------------------------------------------------ page-level: badge + one new email per page load */
   setTimeout(() => { try { load(); updateBadge(); } catch (e) { console.warn('[mail] init', e); } }, 0);
-  setTimeout(() => { try { incoming(); } catch (e) { console.warn('[mail] incoming', e); } }, 175000 + Math.random() * 20000);
+  /* no fake incoming mail */
 })();

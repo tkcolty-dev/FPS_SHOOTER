@@ -1071,7 +1071,7 @@
       (async () => {
         await load(); if (!S) return;
         renderLibrary(true); renderAlbums(S.albumsPage.body); renderSearch(); syncStatusBar();
-        if (!OS.store.get('photos.seeded')) { S.lib.classList.remove('is-empty'); await seedLibrary(); if (S) { S.libReady = false; scheduleRefresh(); } }
+        if (false && !OS.store.get('photos.seeded')) { S.lib.classList.remove('is-empty'); await seedLibrary(); if (S) { S.libReady = false; scheduleRefresh(); } }
       })();
     },
     onResume(ctx, params) {

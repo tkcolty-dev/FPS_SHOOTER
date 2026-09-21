@@ -241,6 +241,7 @@
 
   /* ───────────────────────── data ───────────────────────── */
   function seed() {
+    return { folders: [], items: [] };   // a new iPhone has no notes
     const now = Date.now();
     const D = (t) => `<div>${t}</div>`, BR = '<div><br></div>', H = (t) => `<h2>${t}</h2>`;
     const C = (t, on) => `<div class="nt-check${on ? ' on' : ''}">${t}</div>`;

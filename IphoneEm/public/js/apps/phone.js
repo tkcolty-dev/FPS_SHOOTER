@@ -837,12 +837,12 @@
     return OS.account.people().find((x) => x.handle === h || x.id === number || x.name.toLowerCase() === h) || null;
   }
   function startCall(number) {
+    // a real account? place a real voice call over the internet (check before the number is cleaned up)
+    const acct = realAccount(number);
+    if (acct) { if (OS.calls.active) { OS.ui.toast('Already on a call'); return false; } OS.calls.start(acct.id, 'audio'); return true; }
     number = dialable(number);
     if (!number) return false;
     if (call) { OS.ui.toast('Already on a call'); return false; }
-    // a real account? place a real voice call over the internet
-    const acct = realAccount(number);
-    if (acct) { OS.calls.start(acct.id, 'audio'); return true; }
     if (OS.account && OS.account.signedIn && OS.account.people().length) {
       OS.ui.alert({ title: 'Can’t Call That Number', message: 'This iPhone calls the people who have accounts here. Tap Contacts to see who you can reach.' });
       return false;
@@ -1599,6 +1599,6 @@
       if (!pool.length) return;
       incomingCall(pool[Math.floor(Math.random() * pool.length)].id);
     };
-    setTimeout(() => tryRing(2), 90000 + Math.random() * 60000);
+    /* no fake incoming calls — only real calls from real accounts ring */
   }
 })();

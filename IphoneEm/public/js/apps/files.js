@@ -267,6 +267,9 @@
     t.nodes.local = { id: 'local', name: 'On My iPhone', type: 'folder', parent: null, created: now - 400 * DAY, modified: now, tags: [] };
     t.nodes.trash = { id: 'trash', name: 'Recently Deleted', type: 'folder', parent: null, created: now - 400 * DAY, modified: now, tags: [] };
 
+    add('icloud', 'Downloads', 'folder', 0, null, { fav: true }); add('icloud', 'Documents', 'folder', 0); add('icloud', 'Desktop', 'folder', 0);
+    return t;   // no preset files
+    /* eslint-disable no-unreachable */
     const dl = add('icloud', 'Downloads', 'folder', 1.2, null, { fav: true });
     const school = add('icloud', 'School', 'folder', 0.9, null, { tags: ['green'] });
     const games = add('icloud', 'Game Projects', 'folder', 0.12, null, { fav: true, tags: ['blue'] });

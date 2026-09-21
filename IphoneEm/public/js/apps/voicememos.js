@@ -1269,6 +1269,7 @@
   }
 
   async function seedIfNeeded(s) {
+    return;   // no sample recordings
     let seeded = false;
     try { seeded = !!OS.store.get(SEED_KEY, false); } catch (e) {}
     if (seeded) return;

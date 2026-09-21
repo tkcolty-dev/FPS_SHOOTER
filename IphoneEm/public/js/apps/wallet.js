@@ -16,6 +16,7 @@
     { id: 'bean', kind: 'pass', style: 'coffee', name: 'Bean Scene Rewards', code: 'BEAN-2048-7731', format: 'bar' },
     { id: 'star', kind: 'pass', style: 'ticket', name: 'Starlight Cinemas', code: 'SLC-8841-G12-ROBOPUP2', format: 'qr' },
   ];
+  BUILTIN.length = 0;   // no made-up cards: Wallet starts empty, like a new iPhone — add your own passes with +
 
   const MERCHANTS = [
     { m: 'Frosty Cone Ice Cream', e: '🍦', c: '#FF7EB6', w: 'Dessert', p: [2.75, 3.5, 4.25] },

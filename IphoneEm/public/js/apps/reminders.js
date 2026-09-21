@@ -87,6 +87,8 @@
     return it;
   }
   function seed() {
+    lists = [{ id: U.uid(), name: 'Reminders', color: '#007AFF', icon: 'list' }]; items = [];
+    OS.store.set(K_LISTS, lists); OS.store.set(K_ITEMS, items); return;
     const L = (name, color, icon) => ({ id: U.uid(), name, color, icon });
     const rem = L('Reminders', '#007AFF', 'list'), school = L('School', '#FF3B30', 'cap'), groc = L('Groceries', '#34C759', 'cart'), games = L('Game Ideas', '#AF52DE', 'gamepad');
     lists = [rem, school, groc, games];

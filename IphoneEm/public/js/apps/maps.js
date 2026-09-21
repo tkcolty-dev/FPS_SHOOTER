@@ -412,7 +412,7 @@
     // persisted state
     let favs = OS.store.get('maps.favs', null) || JSON.parse(JSON.stringify(SEED_FAVS));
     if (!Array.isArray(favs.list)) favs.list = [];
-    let recents = OS.store.get('maps.recents', null) || JSON.parse(JSON.stringify(SEED_RECENTS));
+    let recents = OS.store.get('maps.recents', null) || [];
     let units = OS.store.get('maps.units', 'mi') === 'km' ? 'km' : 'mi';
     let userLoc = OS.store.get('maps.userLoc', null) || Object.assign({}, DEFAULT_LOC);
     const savedView = OS.store.get('maps.view', null) || { lat: DEFAULT_LOC.lat - 0.012, lng: DEFAULT_LOC.lng, zoom: 13, mode: 'explore' };
