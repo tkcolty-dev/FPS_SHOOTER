@@ -84,7 +84,7 @@
   async function go(raw, opts = {}) {
     const url = unwrap(normalize(raw) || ''); if (!url || !cur) return;
     const t = cur; const token = ++loadToken;
-    input.blur(); t.url = url; t.title = host(url);
+    input.blur(); setTimeout(() => { input.blur(); OS.keyboard.hide(true); }, 60); t.url = url; t.title = host(url);
     if (!opts.fromHistory) { t.hist = t.hist.slice(0, t.idx + 1); t.hist.push(url); t.idx = t.hist.length - 1; }
     const st = view.querySelector('.sf-start'); if (st) st.style.display = 'none'; view.querySelectorAll('.sf-err').forEach((n) => n.remove());
     sync(); progress(.15);

@@ -273,6 +273,20 @@ async function handleFrameable(req, res, query) {
 // ───────────────────────────── Claude bridge ─────────────────────────────
 const CLAUDE_BIN = [path.join(os.homedir(), '.local/bin/claude'), '/opt/homebrew/bin/claude', '/usr/local/bin/claude'].find((p) => fs.existsSync(p)) || 'claude';
 
+// .env (gitignored): AI_UPSTREAM=https://iphone17.apps…  ACCESS_CODE=…   — lets the local copy borrow the deployed app's AI service
+try { for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split('\n')) { const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line); if (m && !process.env[m[1]]) process.env[m[1]] = m[2]; } } catch {}
+
+// Local dev: forward to the deployed app so the Cloud Foundry AI service answers (keeps Claude Code usage free).
+async function aiViaUpstream(req, res, body, send) {
+  const base = String(process.env.AI_UPSTREAM || '').replace(/\/$/, '');
+  const r = await fetch(base + '/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: 'ip17=' + upstreamToken() }, body: JSON.stringify(body) });
+  if (!r.ok || !r.body) throw new Error('upstream ' + r.status);
+  const reader = r.body.getReader(), dec = new TextDecoder(); let buf = '';
+  for (;;) { const { done, value } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true }); const lines = buf.split('\n\n'); buf = lines.pop();
+    for (const part of lines) { const l = part.split('\n').find((x) => x.startsWith('data: ')); if (!l) continue; try { const o = JSON.parse(l.slice(6)); if (o.t) send({ t: o.t }); else if (o.error) send({ error: o.error }); } catch {} } }
+}
+function upstreamToken() { const c = String(process.env.ACCESS_CODE_UPSTREAM || process.env.ACCESS_CODE || '').trim(); return c ? require('crypto').createHash('sha256').update('ip17-gate:' + c).digest('hex').slice(0, 40) : ''; }
+
 function genai() {
   try {
     for (const list of Object.values(JSON.parse(process.env.VCAP_SERVICES || '{}'))) for (const s of list || []) {
@@ -315,6 +329,10 @@ async function handleAI(req, res) {
         for (const l of lines) { if (!l.startsWith('data:')) continue; const p = l.slice(5).trim(); if (p === '[DONE]') continue; try { const d = JSON.parse(p).choices?.[0]?.delta?.content; if (d) send({ t: d }); } catch {} }
       }
     } catch (e) { send({ error: 'AI is unavailable right now.' }); }
+    send({ done: true }); return res.end();
+  }
+  if (process.env.AI_UPSTREAM) {   // local: borrow the deployed app's AI service
+    try { await aiViaUpstream(req, res, { prompt, system, fast: body.fast }, send); } catch (e) { send({ error: 'AI is unavailable right now.' }); }
     send({ done: true }); return res.end();
   }
   if (DEPLOYED) { send({ error: 'AI is not configured.' }); send({ done: true }); return res.end(); }
@@ -441,5 +459,5 @@ server.listen(PORT, () => {
   const n = Object.keys(soundMap).length;
   console.log(`\n  iPhone 17 emulator  →  http://localhost:${PORT}\n`);
   console.log(`  ${n} real system sounds found on this machine${n < 10 ? ' (not a Mac? the rest are synthesized)' : ''}`);
-  console.log(`  Claude CLI: ${CLAUDE_BIN}\n`);
+  console.log('  AI: ' + (genai() ? 'Cloud Foundry service' : process.env.AI_UPSTREAM ? 'via ' + process.env.AI_UPSTREAM : CLAUDE_BIN) + '\n');
 });

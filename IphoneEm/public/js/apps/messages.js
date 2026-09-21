@@ -319,7 +319,7 @@
   }
 
   function askAI(th) {
-    return Promise.reject(new Error('canned replies only'));   // texts never use AI (saves usage)
+    if (typeof OS.ai !== 'function') return Promise.reject(new Error('AI unavailable'));
     const name = displayName(th), me = owner(), p = personaFor(th);
     const lines = th.msgs.slice(-12).map((m) => `${m.me ? me : name}: ${m.photoId ? '[sent a photo]' : m.text}`).join('\n');
     const system = `You are role-playing as ${name} in a phone text-message conversation with ${me}, a kid who loves coding and making video games. ${p.bio} Stay fully in character. Reply with ONLY the text of your next message: 1-2 short sentences, natural texting style, kid-friendly and kind, only occasionally an emoji. Never say you are an AI. No name prefix, no quotation marks, no stage directions.`;
@@ -916,7 +916,11 @@
     try {
       const friend = ['Bailey Chen', 'Dylan Brooks', 'Alex Rivera'].map(byName).filter(Boolean)[0]; if (!friend) return;
       const lines = { 'bailey chen': ['are you doing the game jam this weekend?? we should team up ✨', 'I just shared a project and it has your sprite in it 😄 go look!!'], 'dylan brooks': ['yo did you see what happened at lunch 💀', 'bro you HAVE to see this video i found'], 'alex rivera': ['get on!! i found diamonds', 'bro are you coming over saturday'] };
-      OS.messages.receive(friend.id, pick(lines[OS.contacts.name(friend).toLowerCase()] || ['hey! you around?']));
+      const opts = lines[OS.contacts.name(friend).toLowerCase()] || ['hey! you around?'];
+      const th = (OS.store.get('messages.threads', {}) || {});
+      const seen = new Set(); Object.values(th).forEach((t) => (t && t.msgs || []).forEach((m) => seen.add(String(m.text || '').trim())));
+      const fresh = opts.filter((x) => !seen.has(x.trim()));           // never repeat a line the thread already has
+      OS.messages.receive(friend.id, pick(fresh.length ? fresh : ['hey! you around?', 'what are you building today?', 'wanna play later?']));
     } catch (e) { console.warn('[messages] unprompted text', e); }
   }, 125000 + Math.random() * 40000);
 })();

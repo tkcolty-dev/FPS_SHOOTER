@@ -75,7 +75,7 @@
     .app-photos .ph-lib-head { position: absolute; left: 0; right: 0; top: 0; height: 150px; padding: calc(var(--safe-top) + 2px) 14px 0 16px; display: flex; align-items: flex-start; justify-content: space-between;
       background: linear-gradient(180deg, rgba(0,0,0,.62), rgba(0,0,0,.34) 45%, transparent); pointer-events: none; color: #fff; z-index: 5; transition: opacity .25s; }
     .app-photos .ph-lib-head > * { pointer-events: auto; }
-    .app-photos .ph-lib-title b { display: block; font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: .3px; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
+    .app-photos .ph-lib-title b { display: block; font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: .3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px; text-shadow: 0 1px 8px rgba(0,0,0,.25); }
     .app-photos .ph-lib-title span { display: block; font-size: 15px; font-weight: 600; opacity: .85; letter-spacing: -.2px; }
     .app-photos .ph-lib-btns { display: flex; gap: 8px; padding-top: 3px; }
     .app-photos .ph-chip { height: 30px; padding: 0 13px; border-radius: 15px; font-size: 15px; font-weight: 600; letter-spacing: -.2px; color: #fff !important; background: rgba(70,70,74,.62) !important;
@@ -1071,7 +1071,7 @@
       (async () => {
         await load(); if (!S) return;
         renderLibrary(true); renderAlbums(S.albumsPage.body); renderSearch(); syncStatusBar();
-        if (!S.items.length && !OS.store.get('photos.seeded')) { S.lib.classList.remove('is-empty'); await seedLibrary(); if (S) { S.libReady = false; scheduleRefresh(); } }
+        if (!OS.store.get('photos.seeded')) { S.lib.classList.remove('is-empty'); await seedLibrary(); if (S) { S.libReady = false; scheduleRefresh(); } }
       })();
     },
     onResume(ctx, params) {
