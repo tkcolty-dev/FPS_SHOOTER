@@ -87,15 +87,7 @@
 
   // ── contacts ──
   const COLORS = ['#FF9500', '#34C759', '#5856D6', '#FF2D55', '#30B0C7', '#AF52DE', '#FF3B30', '#007AFF', '#A2845E', '#00C7BE'];
-  const SEED = [
-    ['Mom', '', '(555) 010-2210', 'mom@family.example', true, '❤️'],    ['Grandma', 'Rose', '(555) 010-3300', 'rose@family.example', true],
-    ['Alex', 'Rivera', '(555) 014-7781', 'alex.rivera@mail.example', false], ['Bailey', 'Chen', '(555) 012-9034', 'bailey.c@mail.example', false],
-    ['Coach', 'Daniels', '(555) 015-4420', 'coach.daniels@school.example', false], ['Dylan', 'Brooks', '(555) 013-6612', 'dylanb@mail.example', false],
-    ['Emma', 'Park', '(555) 016-1205', 'emma.park@mail.example', false], ['Jordan', 'Lee', '(555) 011-5567', 'jlee@mail.example', false],
-    ['Maya', 'Patel', '(555) 017-8890', 'maya.p@mail.example', false], ['Mr.', 'Hoffman', '(555) 018-2043', 'hoffman@school.example', false],
-    ['Noah', 'Kim', '(555) 019-3376', 'noahk@mail.example', false], ['Pixel Forge', 'Studio', '(555) 010-0042', 'hello@pixelforge.example', false],
-    ['Pizza', 'Planet', '(555) 010-7492', 'orders@pizzaplanet.example', false], ['Zoe', 'Martinez', '(555) 014-9021', 'zoe.m@mail.example', false],
-  ];
+  const SEED = [];   // no fake people — real accounts fill this in (see core/account.js)
   function load() {
     let list = OS.store.get('contacts', null);
     if (!list) {
@@ -106,7 +98,8 @@
   }
   const digits = (s) => String(s || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
   OS.contacts = {
-    all() { return load().slice().sort((a, b) => OS.contacts.name(a).localeCompare(OS.contacts.name(b))); },
+    all() { const acc = (OS.account && OS.account.signedIn) ? OS.account.people().map((p) => ({ id: p.id, first: p.name, last: '', phone: '@' + p.handle, handle: p.handle, email: '', favorite: false, emoji: p.emoji, color: p.color, account: true })) : [];
+      return load().concat(acc).slice().sort((a, b) => OS.contacts.name(a).localeCompare(OS.contacts.name(b))); },
     name(c) { return c ? [c.first, c.last].filter(Boolean).join(' ') || c.phone || 'No Name' : ''; },
     find(q) { if (q == null) return null; const d = digits(q); return load().find((c) => c.id === q || (d && digits(c.phone) === d)) || null; },
     add(c) { const list = load(); const n = { id: OS.util.uid(), first: '', last: '', phone: '', email: '', favorite: false, emoji: '', color: COLORS[list.length % COLORS.length], ...c }; list.push(n); OS.store.set('contacts', list); OS.emit('contacts:change'); return n; },

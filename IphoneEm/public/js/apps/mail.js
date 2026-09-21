@@ -134,7 +134,7 @@
   function load() {
     if (mails) return mails;
     const saved = OS.store.get(KEY, null);
-    if (Array.isArray(saved)) mails = saved; else { mails = seed(); OS.store.set(VIPKEY, ['mom@family.example', 'rose@family.example']); save(); }
+    if (Array.isArray(saved)) mails = saved; else { mails = []; OS.store.set(VIPKEY, ['mom@family.example', 'rose@family.example']); save(); }
     return mails;
   }
   const save = () => { if (mails) OS.store.set(KEY, mails.slice(0, 300)); };

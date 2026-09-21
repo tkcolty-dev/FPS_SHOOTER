@@ -14,6 +14,7 @@
     document.body.appendChild(s);
   })));
   OS.initWebApps();
+  OS.initAccount();
   OS.initHome();
 
   OS.lock.locked = true; OS.lock.asleep = true;

@@ -62,7 +62,7 @@
 
   function ensureContacts() {
     try {
-      if (!allContacts().length) SEED_CONTACTS.forEach((c) => OS.contacts.add(Object.assign({}, c)));
+      /* no seeded contacts — the Contacts list is the real accounts on this iPhone */
     } catch (e) { /* core not ready yet */ }
   }
 
