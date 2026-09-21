@@ -8,5 +8,6 @@ applications:
     command: node server.js
     services:
       - iphone17-ai
+      - iphone17-db
     env:
       NODE_ENV: production

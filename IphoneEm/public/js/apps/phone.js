@@ -68,6 +68,8 @@
 
   function ensureData() {
     ensureContacts();
+    return;   // no fake call history or voicemail — real calls fill Recents in
+    /* eslint-disable no-unreachable */
     if (OS.store.get('phone.seeded', false)) return;
     const all = allContacts();
     if (!all.length) return;                    // try again later
@@ -829,10 +831,24 @@
     };
   }
 
+  function realAccount(number) {
+    const h = String(number || '').trim().replace(/^@/, '').toLowerCase();
+    if (!OS.account || !OS.account.signedIn) return null;
+    return OS.account.people().find((x) => x.handle === h || x.id === number || x.name.toLowerCase() === h) || null;
+  }
   function startCall(number) {
     number = dialable(number);
     if (!number) return false;
     if (call) { OS.ui.toast('Already on a call'); return false; }
+    // a real account? place a real voice call over the internet
+    const acct = realAccount(number);
+    if (acct) { OS.calls.start(acct.id, 'audio'); return true; }
+    if (OS.account && OS.account.signedIn && OS.account.people().length) {
+      OS.ui.alert({ title: 'Can’t Call That Number', message: 'This iPhone calls the people who have accounts here. Tap Contacts to see who you can reach.' });
+      return false;
+    }
+    OS.ui.alert({ title: 'No One to Call Yet', message: 'Calls go to other people with an account on this iPhone. Ask a friend to open it and sign up.' });
+    return false;
     const d = digits(number);
     if (['911', '112', '999', '000'].includes(d)) {
       OS.ui.alert({ title: 'Emergency Calls Unavailable', message: 'This iPhone is an emulator and can\'t place real calls. In a real emergency, use a real phone.', buttons: [{ label: 'OK' }] });

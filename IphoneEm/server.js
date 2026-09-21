@@ -461,18 +461,19 @@ const server = http.createServer(async (req, res) => {
       const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '') || url.searchParams.get('token') || '';
       let body = {};
       if (req.method === 'POST') { try { body = JSON.parse(await readBody(req, 200000) || '{}'); } catch { return sendJSON(res, 400, { error: 'bad json' }); } }
-      if (limited(req, 'acct', /signup|login/.test(action) ? 20 : 600)) return sendJSON(res, 429, { error: 'Too many requests — wait a minute.' });
+      if (limited(req, 'acct', /signup|login/.test(action) ? 20 : 1500)) return sendJSON(res, 429, { error: 'Too many requests — wait a minute.' });
       try {
         switch (action) {
-          case 'signup': return sendJSON(res, 200, accounts.signup(body));
-          case 'login': return sendJSON(res, 200, accounts.login(body));
-          case 'me': return sendJSON(res, 200, accounts.me(token));
-          case 'update': return sendJSON(res, 200, accounts.updateMe(token, body));
-          case 'people': return sendJSON(res, 200, accounts.directory(token));
-          case 'send': return sendJSON(res, 200, accounts.send(token, body));
-          case 'inbox': return sendJSON(res, 200, accounts.inbox(token, url.searchParams.get('since')));
-          case 'read': return sendJSON(res, 200, accounts.markRead(token, body.with));
-          case 'logout': return sendJSON(res, 200, accounts.logout(token));
+          case 'signup': return sendJSON(res, 200, await accounts.signup(body));
+          case 'login': return sendJSON(res, 200, await accounts.login(body));
+          case 'me': return sendJSON(res, 200, await accounts.me(token));
+          case 'update': return sendJSON(res, 200, await accounts.updateMe(token, body));
+          case 'people': return sendJSON(res, 200, await accounts.directory(token));
+          case 'send': return sendJSON(res, 200, await accounts.send(token, body));
+          case 'inbox': return sendJSON(res, 200, await accounts.inbox(token, url.searchParams.get('since'), url.searchParams.get('sig')));
+          case 'read': return sendJSON(res, 200, await accounts.markRead(token, body.with));
+          case 'signal': return sendJSON(res, 200, await accounts.signal(token, body));
+          case 'logout': return sendJSON(res, 200, await accounts.logout(token));
           default: return sendJSON(res, 404, { error: 'unknown' });
         }
       } catch (e) { return sendJSON(res, e.message === 'Signed out' ? 401 : 400, { error: e.message }); }

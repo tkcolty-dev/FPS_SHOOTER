@@ -7,7 +7,7 @@
   let people = OS.store.get('account.people', []);
   let msgs = OS.store.get('account.msgs', []);
   let seq = OS.store.get('account.seq', 0);
-  let poll = 0, polling = false;
+  let poll = 0, polling = false, sigSeq = 0, fast = 0;
 
   async function api(action, body, method) {
     const opts = { method: method || (body ? 'POST' : 'GET'), headers: {} };
@@ -42,7 +42,7 @@
     if (!token || polling) return;
     polling = true;
     try {
-      const r = await api('inbox?since=' + seq);
+      const r = await api('inbox?since=' + seq + '&sig=' + sigSeq);
       people = r.people || people; seq = r.seq || seq;
       const fresh = (r.msgs || []).filter((m) => !msgs.some((x) => x.id === m.id));
       if (fresh.length) {
@@ -55,12 +55,16 @@
         });
         OS.emit('account:messages');
       }
+      if (r.sigSeq != null) sigSeq = r.sigSeq;
+      (r.signals || []).forEach((s) => OS.emit('account:signal', s));
       badge(); save();
       OS.emit('account:people');
     } catch (e) { if (!quiet) console.warn('[account]', e.message); }
     polling = false;
   }
-  function startPolling() { clearInterval(poll); if (token) { refresh(true); poll = setInterval(() => refresh(true), 4000); } }
+  function startPolling() { clearInterval(poll); if (token) { refresh(true); poll = setInterval(() => refresh(true), OS.calls && OS.calls.active ? 800 : 4000); } }
+  // while a call is being set up, signals have to move fast
+  OS.on('call:pace', () => startPolling());
 
   function signOut(silent) {
     const t = token;
@@ -87,6 +91,7 @@
       msgs.forEach((m) => { if (m.from === otherId && m.to === me.id && !m.read) { m.read = true; changed = true; } });
       if (changed) { save(); badge(); api('read', { with: otherId }).catch(() => {}); OS.emit('account:messages'); }
     },
+    signal(to, payload) { return api('signal', Object.assign({ to }, payload)); },
     async updateProfile(patch) { me = await api('update', patch); save(); OS.emit('account:change'); return me; },
     signOut, setup,
     avatar(p, size = 40) {
