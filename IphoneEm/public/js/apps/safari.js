@@ -43,6 +43,9 @@
     .app-safari .sf-tbar{height:88px;padding:0 20px 34px;display:flex;align-items:center;justify-content:space-between;background:var(--bar);box-shadow:0 -.5px 0 var(--sep);font-size:17px}
     .app-safari .sf-tbar b{font-weight:600} .app-safari .sf-tbar span{color:var(--tint);cursor:pointer;min-width:50px} .app-safari .sf-tbar span:last-child{text-align:right;font-weight:600}
     .app-safari .sf-err{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;color:var(--label2);background:var(--bg)} .app-safari .sf-err h3{color:var(--label);font-size:22px;margin:0 0 8px}
+    .app-safari .sf-blocked{position:absolute;left:12px;right:12px;bottom:14px;z-index:4;border-radius:18px;padding:16px;background:var(--material-thick);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);box-shadow:0 8px 34px rgba(0,0,0,.22);text-align:center;animation:sfpop .3s var(--ease)}
+    .app-safari .sf-blocked b{display:block;font-size:17px;margin-bottom:4px}.app-safari .sf-blocked span{display:block;font-size:13px;color:var(--label2);line-height:18px;margin-bottom:12px}
+    .app-safari .sf-blocked .x{margin-top:8px;font-size:15px;color:var(--tint);cursor:pointer}
   `);
 
   const ICON = { back: '<svg viewBox="0 0 24 24"><path d="M15 4.500 7.500 12l7.500 7.500"/></svg>', fwd: '<svg viewBox="0 0 24 24"><path d="M9 4.500 16.500 12 9 19.500"/></svg>', more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.300" fill="currentColor"/><circle cx="12" cy="12" r="1.300" fill="currentColor"/><circle cx="19" cy="12" r="1.300" fill="currentColor"/></svg>',
@@ -60,6 +63,11 @@
     return SEARCH(text);
   }
   function unwrap(url) {   // DuckDuckGo result links are redirects — go straight to the target
+    try {
+      const g = new URL(url);
+      // Google and Bing block proxies, so run the same search somewhere that works
+      if (/(^|\.)(google|bing)\.[a-z.]+$/i.test(g.hostname)) { const q = g.searchParams.get('q'); return q ? SEARCH(q) : SEARCH('search'); }
+    } catch {}
     try { const u = new URL(url); if (/duckduckgo\.com$/.test(u.hostname) && u.pathname === '/l/' && u.searchParams.get('uddg')) return u.searchParams.get('uddg'); if (u.hostname === 'duckduckgo.com' && u.searchParams.get('q') && (u.pathname === '/' || u.pathname === '/html' || u.pathname === '/html/')) return SEARCH(u.searchParams.get('q')); } catch {}
     return url;
   }
@@ -102,6 +110,13 @@
     root.style.setProperty('--sf-theme', 'var(--bg)');
     const s = state(); s.history = [{ url, title: t.title, time: Date.now() }, ...s.history.filter((h) => h.url !== url)].slice(0, 60); saveState(s);
     setTimeout(() => { if (token === loadToken) progress(1); }, 9000);
+  }
+  function showBlocked(t) {
+    if (t !== cur || root.querySelector('.sf-blocked')) return;
+    const n = el('<div class="sf-blocked"><b>This site won’t load here</b><span>' + esc(host(t.url)) + ' blocks other apps from showing it. Open it in your Mac’s browser instead.</span><button class="ios-btn small">Open on Mac</button><div class="x">Dismiss</div></div>');
+    n.querySelector('button').addEventListener('click', () => { window.open(t.url, '_blank', 'noopener'); n.remove(); });
+    n.querySelector('.x').addEventListener('click', () => n.remove());
+    view.appendChild(n); setTimeout(() => n.remove(), 12000);
   }
   function fail(t, msg) { const e = el(`<div class="sf-err"><h3>Safari Can’t Open the Page</h3><div>${esc(msg)}</div></div>`); view.appendChild(e); }
   function progress(p) { prog.style.opacity = p > 0 && p < 1 ? '1' : '0'; prog.style.width = p * 100 + '%'; root.querySelector('.sf-reload').innerHTML = p > 0 && p < 1 ? ICON.stop : ICON.reload; if (p >= 1) setTimeout(() => { prog.style.width = '0'; }, 350); }
@@ -152,7 +167,7 @@
   window.addEventListener('message', (e) => {
     const d = e.data; if (!d || !d.__safari) return; const t = tabs.find((x) => x.frame && x.frame.contentWindow === e.source); if (!t) return;
     if (d.type === 'nav' && typeof d.url === 'string' && /^https?:/i.test(d.url)) { if (t !== cur) select(t); go(d.url); }
-    else if (d.type === 'loaded') { if (d.title) t.title = String(d.title).slice(0, 80); if (typeof d.url === 'string' && /^https?:/.test(d.url) && !/\/proxy\?url=/.test(d.url)) { t.url = d.url; t.hist[t.idx] = d.url; } if (t === cur) { sync(); progress(1); if (d.theme && /^#|^rgb/.test(d.theme)) root.style.setProperty('--sf-theme', d.theme); } }
+    else if (d.type === 'loaded') { if (typeof d.len === 'number' && d.len < 40 && t.mode === 'proxy') showBlocked(t); if (d.title) t.title = String(d.title).slice(0, 80); if (typeof d.url === 'string' && /^https?:/.test(d.url) && !/\/proxy\?url=/.test(d.url)) { t.url = d.url; t.hist[t.idx] = d.url; } if (t === cur) { sync(); progress(1); if (d.theme && /^#|^rgb/.test(d.theme)) root.style.setProperty('--sf-theme', d.theme); } }
   });
 
   OS.registerApp({

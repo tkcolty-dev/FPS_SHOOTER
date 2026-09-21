@@ -189,6 +189,25 @@ function parseTarget(raw) {
 }
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
 
+// Injected FIRST into proxied pages: the frame is sandboxed (opaque origin), so storage and cookies throw and the
+// page's own API calls would be cross-origin. Shim them and route requests back through the proxy.
+const PROXY_SHIM = `<script>(function(){
+  var P='/proxy?url=';
+  function mem(){var d={};return{getItem:function(k){return Object.prototype.hasOwnProperty.call(d,k)?d[k]:null},setItem:function(k,v){d[k]=String(v)},removeItem:function(k){delete d[k]},clear:function(){d={}},key:function(i){return Object.keys(d)[i]||null},get length(){return Object.keys(d).length}}}
+  ['localStorage','sessionStorage'].forEach(function(n){var ok=false;try{window[n].setItem('__t','1');window[n].removeItem('__t');ok=true}catch(e){}
+    if(!ok){try{Object.defineProperty(window,n,{value:mem(),configurable:true})}catch(e){}}});
+  var ck='';try{document.cookie='__t=1';ck=document.cookie}catch(e){}
+  if(!ck){try{var store='';Object.defineProperty(document,'cookie',{configurable:true,get:function(){return store},set:function(v){var p=String(v).split(';')[0];if(p)store=store?store+'; '+p:p}})}catch(e){}}
+  var abs=function(u){try{return new URL(u,document.baseURI).href}catch(e){return null}};
+  var wrap=function(u){var a=abs(u);if(!a||!/^https?:/i.test(a))return u;if(a.indexOf(location.origin)===0)return a;return location.origin+P+encodeURIComponent(a)};
+  var of_=window.fetch;
+  if(of_)window.fetch=function(i,o){try{if(typeof i==='string')i=wrap(i);else if(i&&i.url)i=new Request(wrap(i.url),i);}catch(e){}return of_.call(this,i,o)};
+  var ox=window.XMLHttpRequest&&window.XMLHttpRequest.prototype.open;
+  if(ox)window.XMLHttpRequest.prototype.open=function(m,u){try{u=wrap(u)}catch(e){}return ox.apply(this,[m,u].concat([].slice.call(arguments,2)))};
+  try{var os_=navigator.serviceWorker;if(os_&&os_.register)os_.register=function(){return Promise.reject(new Error('disabled'))}}catch(e){}
+  window.open=function(u){try{parent.postMessage({__safari:true,type:'nav',url:abs(u)},'*')}catch(e){}return null};
+})();<\/script>`;
+
 // Script injected into proxied pages: keeps navigation inside the emulator's Safari.
 const PROXY_INJECT = `<script>(function(){
   var P=function(m){try{parent.postMessage(Object.assign({__safari:true},m),'*')}catch(e){}};
@@ -209,7 +228,8 @@ const PROXY_INJECT = `<script>(function(){
   var report=function(){
     var ic=document.querySelector('link[rel~="icon"]');
     var th=document.querySelector('meta[name="theme-color"]');
-    P({type:'loaded',title:document.title,url:document.baseURI,icon:ic?abs(ic.getAttribute('href')):null,theme:th?th.getAttribute('content'):null});
+    var len=0;try{len=(document.body&&document.body.innerText||'').trim().length}catch(e){}
+    P({type:'loaded',title:document.title,url:document.baseURI,icon:ic?abs(ic.getAttribute('href')):null,theme:th?th.getAttribute('content'):null,len:len});
   };
   if(document.readyState!=='loading')report(); else document.addEventListener('DOMContentLoaded',report);
   window.addEventListener('load',report);
@@ -236,8 +256,8 @@ async function handleProxy(req, res, query) {
       const base = `<base href="${finalUrl.href.replace(/"/g, '&quot;')}">`;
       // drop the page's own <base> and any meta CSP, then put ours first
       html = html.replace(/<base\b[^>]*>/gi, '').replace(/<meta[^>]+http-equiv=["']?content-security-policy["']?[^>]*>/gi, '');
-      if (/<head[^>]*>/i.test(html)) html = html.replace(/<head[^>]*>/i, (m) => m + base + PROXY_INJECT);
-      else html = base + PROXY_INJECT + html;
+      if (/<head[^>]*>/i.test(html)) html = html.replace(/<head[^>]*>/i, (m) => m + base + PROXY_SHIM + PROXY_INJECT);
+      else html = base + PROXY_SHIM + PROXY_INJECT + html;
       res.writeHead(r.status === 200 ? 200 : r.status, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'X-Final-Url': encodeURI(finalUrl.href) });
       return res.end(html);
     }
