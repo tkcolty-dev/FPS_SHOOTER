@@ -7,31 +7,48 @@
   let call = null, ui = null, ringer = null, timer = 0;
 
   OS.addStyle('calls', `
-    #callui{position:absolute;inset:0;z-index:84;display:none;background:#0b0b10;color:#fff;overflow:hidden}
+    #callui{position:absolute;inset:0;z-index:84;display:none;background:#0b0b10;color:#fff;overflow:hidden;font-family:-apple-system,system-ui,sans-serif}
     #callui.on{display:block}
-    #callui .bgwash{position:absolute;inset:0;background:radial-gradient(90% 60% at 50% 0%,#3a3a55,#0b0b10 70%)}
-    #callui video{position:absolute;object-fit:cover;background:#111}
+    #callui .bgwash{position:absolute;inset:-40px;background:radial-gradient(80% 55% at 50% 18%,color-mix(in srgb,var(--pc) 70%,#000) 0%,color-mix(in srgb,var(--pc) 25%,#07070a) 55%,#050507 100%);filter:saturate(1.1)}
+    #callui .bgwash::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(0,0,0,.55))}
+    #callui video{position:absolute;object-fit:cover;background:#000;display:none}
+    #callui video.has{display:block}
     #callui .remote{inset:0;width:100%;height:100%}
-    #callui .self{right:14px;top:calc(var(--safe-top) + 6px);width:112px;height:160px;border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.5);transform:scaleX(-1);z-index:3;cursor:grab}
-    #callui.audio .self,#callui.audio .remote{display:none}
-    #callui .head{position:absolute;left:0;right:0;top:calc(var(--safe-top) + 10px);text-align:center;z-index:4;transition:opacity .3s}
-    #callui .head .nm{font-size:30px;font-weight:600;letter-spacing:-.4px;margin-top:14px}
-    #callui .head .st{font-size:17px;opacity:.75;margin-top:4px;font-variant-numeric:tabular-nums}
-    #callui.connected.video .head{top:calc(var(--safe-top) + 4px)} #callui.connected.video .head .nm{font-size:19px;margin-top:0;text-shadow:0 1px 8px rgba(0,0,0,.6)} #callui.connected.video .head .st{font-size:13px;text-shadow:0 1px 8px rgba(0,0,0,.6)} #callui.connected.video .head .av{display:none}
-    #callui .ctl{position:absolute;left:24px;right:24px;bottom:calc(var(--safe-bottom) + 22px);display:grid;grid-template-columns:repeat(3,1fr);gap:22px 18px;justify-items:center;z-index:4}
-    #callui .rb{width:74px;height:74px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:transform .18s var(--ease),background .2s}
-    #callui .rb:active{transform:scale(.9)} #callui .rb.on{background:#fff;color:#111} #callui .rb svg{width:28px;height:28px;fill:currentColor}
-    #callui .rb small{font-size:11px;letter-spacing:.1px}
-    #callui .rb.end{background:#FF3B30;color:#fff;grid-column:1 / -1;justify-self:center}
-    #callui .incoming .rb.end{grid-column:auto} #callui .rb.accept{background:#34C759;color:#fff}
-    #callui .incoming .ctl{grid-template-columns:1fr 1fr;padding:0 30px}
-    #callui .lbl{position:absolute;left:0;right:0;bottom:calc(var(--safe-bottom) + 4px);text-align:center;font-size:12px;opacity:.5;z-index:4}
-    #callui .err{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);text-align:center;font-size:15px;opacity:.8;z-index:4;line-height:21px}
+    #callui .self{right:14px;top:calc(var(--safe-top) + 58px);width:104px;height:150px;border-radius:18px;box-shadow:0 8px 28px rgba(0,0,0,.55);transform:scaleX(-1);z-index:3;cursor:grab;border:1px solid rgba(255,255,255,.15)}
+    #callui:not(.connected) .self.has{inset:0;width:100%;height:100%;border-radius:0;border:0;box-shadow:none;z-index:1;filter:brightness(.55)}
+    #callui .head{position:absolute;left:0;right:0;top:calc(var(--safe-top) + 34px);text-align:center;z-index:4;transition:opacity .3s;text-shadow:0 1px 10px rgba(0,0,0,.35)}
+    #callui .head .av{display:inline-block;border-radius:50%;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+    #callui .head .nm{font-size:32px;font-weight:600;letter-spacing:-.5px;margin-top:16px}
+    #callui .head .st{font-size:17px;color:rgba(255,255,255,.72);margin-top:5px;font-variant-numeric:tabular-nums}
+    #callui.connected.video .head{top:calc(var(--safe-top) + 8px)} #callui.connected.video .head .nm{font-size:19px;margin-top:0} #callui.connected.video .head .st{font-size:14px;margin-top:1px} #callui.connected.video .head .av{display:none}
+    /* buttons */
+    #callui .bt{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+    #callui .bt i{width:var(--sz,74px);height:var(--sz,74px);border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.2);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);transition:transform .18s var(--ease),background .2s,color .2s}
+    #callui .bt:active i{transform:scale(.9)} #callui .bt i svg{width:44%;height:44%;fill:currentColor}
+    #callui .bt.on i{background:#fff;color:#111}
+    #callui .bt.end i{background:#FF3B30;color:#fff} #callui .bt.accept i{background:#34C759;color:#fff}
+    #callui .bt small{font-size:13px;font-weight:500;letter-spacing:-.08px;color:#fff}
+    /* incoming: decline left, accept right */
+    #callui .ctl{position:absolute;left:0;right:0;z-index:4}
+    #callui .ctl.incoming{bottom:calc(var(--safe-bottom) + 34px);display:flex;justify-content:space-between;padding:0 46px}
+    #callui .ctl.incoming .bt{--sz:78px}
+    #callui .ctl.incoming .bt.accept i{animation:callpulse 1.6s ease-out infinite}
+    @keyframes callpulse{0%{box-shadow:0 0 0 0 rgba(52,199,89,.55)}70%{box-shadow:0 0 0 18px rgba(52,199,89,0)}100%{box-shadow:0 0 0 0 rgba(52,199,89,0)}}
+    /* voice call: two round buttons, end button centred underneath */
+    #callui .ctl.audio{bottom:calc(var(--safe-bottom) + 30px);display:grid;grid-template-columns:repeat(3,1fr);row-gap:34px;justify-items:center;padding:0 34px}
+    #callui .ctl.audio .bt.end{grid-column:2}
+    /* FaceTime: one frosted bar of buttons */
+    #callui .ctl.video{bottom:calc(var(--safe-bottom) + 18px);left:16px;right:16px;display:flex;justify-content:space-around;align-items:center;padding:14px 10px;border-radius:34px;background:rgba(30,30,34,.45);backdrop-filter:blur(26px) saturate(1.6);-webkit-backdrop-filter:blur(26px) saturate(1.6);box-shadow:0 10px 40px rgba(0,0,0,.35)}
+    #callui .ctl.video .bt{--sz:58px} #callui .ctl.video .bt i{background:rgba(255,255,255,.18)} #callui .ctl.video .bt.on i{background:#fff} #callui .ctl.video .bt.end i{background:#FF3B30}
+    #callui .ctl.calling{bottom:calc(var(--safe-bottom) + 34px);display:flex;justify-content:center;gap:56px}
+    #callui .err{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);text-align:center;font-size:15px;opacity:.85;z-index:4;line-height:21px}
   `);
   const I = {
     mute: '<svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    muted: '<svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 3l16 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    camoff: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M17 12.5l4.5-3.2v5.4z"/><path d="M3 3.5l17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     cam: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M17 12.5l4.5-3.2v5.4z"/></svg>',
-    flip: '<svg viewBox="0 0 24 24"><path d="M12 6.5A8 8 0 0 1 19.7 12M12 17.5A8 8 0 0 1 4.3 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 3.5v4h-4M5 20.5v-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    flip: '<svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7l1.3-1.8c.3-.4.7-.7 1.2-.7h2.6c.5 0 .9.3 1.2.7L15.8 6h1.7A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><path d="M8.6 12.6a3.5 3.5 0 0 1 6-2.1M15.4 13.4a3.5 3.5 0 0 1-6 2.1" fill="none" stroke="#1c1c1e" stroke-width="1.5" stroke-linecap="round"/><path d="M15.3 8.8v1.9h-1.9M8.7 17.2v-1.9h1.9" fill="none" stroke="#1c1c1e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     end: '<svg viewBox="0 0 24 24"><g transform="rotate(134 12 12)"><path d="M6.6 10.8c3.4-2.4 7.4-2.4 10.8 0 .8.6 1 1.7.5 2.5l-1 1.5c-.4.6-1.2.8-1.8.5l-2-.9c-.5-.2-.8-.7-.8-1.2v-1c-1-.3-2-.3-3 0v1c0 .5-.3 1-.8 1.2l-2 .9c-.6.3-1.4.1-1.8-.5l-1-1.5c-.5-.8-.3-1.9.5-2.5z"/></g></svg>',
     phone: '<svg viewBox="0 0 24 24"><path d="M6.6 3.5c.7-.3 1.5 0 1.9.7l1.6 2.9c.3.6.2 1.4-.3 1.9L8.5 10.3c1 2 2.6 3.6 4.6 4.6l1.3-1.3c.5-.5 1.3-.6 1.9-.3l2.9 1.6c.7.4 1 1.2.7 1.9l-.9 2.1c-.3.7-1 1.1-1.8 1C9.6 19.1 4.9 14.4 4 6.8c-.1-.8.3-1.5 1-1.8z"/></svg>',
     speaker: '<svg viewBox="0 0 24 24"><path d="M3 9.5v5a1 1 0 0 0 1 1h3l4.4 3.7a.8.8 0 0 0 1.3-.6V5.4a.8.8 0 0 0-1.3-.6L7 8.5H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 5.5a9 9 0 0 1 0 13" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
@@ -42,25 +59,35 @@
 
   function render() {
     const h = host(); if (!call) { h.classList.remove('on'); h.innerHTML = ''; return; }
-    const p = call.person;
+    const p = call.person, live = call.state !== 'incoming' && call.state !== 'calling';
     h.className = 'on ' + call.mode + (call.state === 'connected' ? ' connected' : '');
+    h.style.setProperty('--pc', p.color || '#5856D6');
     h.innerHTML = `<div class="bgwash"></div>
       ${call.mode === 'video' ? '<video class="remote" autoplay playsinline></video><video class="self" autoplay playsinline muted></video>' : '<audio class="remoteaudio" autoplay></audio>'}
-      <div class="head"><div class="av">${A().avatar(p, 108)}</div><div class="nm">${esc(p.name)}</div><div class="st"></div></div>
-      <div class="ctl ${call.state === 'incoming' ? 'incoming' : ''}"></div>
-      <div class="lbl">${call.relay ? 'Relay · lower quality' : call.mode === 'video' ? 'FaceTime' : 'iPhone Audio'}</div>`;
+      <div class="head"><div class="av">${A().avatar(p, 112)}</div><div class="nm">${esc(p.name)}</div><div class="st"></div></div>
+      <div class="ctl"></div>`;
     const ctl = h.querySelector('.ctl');
-    const btn = (cls, icon, label, fn) => { const b = el(`<div class="rb ${cls}">${icon}${label ? `<small>${label}</small>` : ''}</div>`); b.addEventListener('click', fn); ctl.appendChild(b); return b; };
+    const btn = (cls, icon, label, fn) => { const b = el(`<div class="bt ${cls}"><i>${icon}</i>${label ? `<small>${label}</small>` : ''}</div>`); b.addEventListener('click', fn); ctl.appendChild(b); return b; };
     if (call.state === 'incoming') {
       ctl.classList.add('incoming');
       btn('end', I.end, 'Decline', () => hangUp('declined'));
       btn('accept', call.mode === 'video' ? I.cam : I.phone, 'Accept', accept);
-    } else {
-      btn(call.muted ? 'on' : '', I.mute, 'mute', toggleMute);
-      if (call.mode === 'video') btn(call.camOff ? 'on' : '', I.cam, 'camera', toggleCam); else btn(call.speaker ? 'on' : '', I.speaker, 'speaker', () => { call.speaker = !call.speaker; render(); });
-      btn('', I.flip, 'flip', flip);
+    } else if (call.mode === 'video' && live) {
+      ctl.classList.add('video');
+      btn(call.muted ? 'on' : '', call.muted ? I.muted : I.mute, '', toggleMute);
+      btn(call.camOff ? 'on' : '', call.camOff ? I.camoff : I.cam, '', toggleCam);
+      btn('', I.flip, '', flip);
       btn('end', I.end, '', () => hangUp('ended'));
-      if (call.mode === 'video') { btn('', I.mute, 'mic', toggleMute).style.display = 'none'; }
+    } else if (call.mode === 'video') {
+      ctl.classList.add('calling');
+      btn(call.muted ? 'on' : '', call.muted ? I.muted : I.mute, 'Mute', toggleMute);
+      btn('end', I.end, 'Cancel', () => hangUp('ended'));
+    } else {
+      ctl.classList.add('audio');
+      btn(call.speaker ? 'on' : '', I.speaker, 'Speaker', () => { call.speaker = !call.speaker; render(); });
+      ctl.appendChild(document.createElement('span'));
+      btn(call.muted ? 'on' : '', call.muted ? I.muted : I.mute, 'Mute', toggleMute);
+      btn('end', I.end, '', () => hangUp('ended'));
     }
     attachStreams();
     tick();
@@ -68,8 +95,8 @@
   function attachStreams() {
     const h = host();
     const rv = h.querySelector('.remote'), sv = h.querySelector('.self'), ra = h.querySelector('.remoteaudio');
-    if (rv && call.remote) rv.srcObject = call.remote;
-    if (sv && call.local) sv.srcObject = call.local;
+    if (rv && call.remote) { rv.srcObject = call.remote; rv.classList.add('has'); }
+    if (sv && call.local) { sv.srcObject = call.local; sv.classList.add('has'); }
     if (ra && call.remote) ra.srcObject = call.remote;
     if (sv) OS.util.drag(sv, { onMove(p) { sv.style.left = Math.max(8, Math.min(OS.W - 120, p.x - 56)) + 'px'; sv.style.top = Math.max(60, Math.min(OS.H - 200, p.y - 80)) + 'px'; sv.style.right = 'auto'; } });
   }
@@ -77,7 +104,7 @@
     const h = host(); const st = h.querySelector('.st'); if (!st || !call) return;
     st.textContent = call.state === 'incoming' ? (call.mode === 'video' ? 'FaceTime Video…' : 'iPhone…')
       : call.state === 'calling' ? 'Calling…' : call.state === 'connecting' ? 'Connecting…'
-      : call.state === 'connected' ? fmt((Date.now() - call.since) / 1000) : call.state === 'failed' ? 'Call Failed' : 'Ended';
+      : call.state === 'connected' ? fmt((Date.now() - call.since) / 1000) + (call.relay ? ' · Relay' : '') : call.state === 'failed' ? 'Call Failed' : 'Ended';
   }
 
   async function media(mode) {
