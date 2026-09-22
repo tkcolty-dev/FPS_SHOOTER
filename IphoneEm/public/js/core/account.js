@@ -2,12 +2,19 @@
 // other real accounts on this server and your texts actually travel between them.
 (function () {
   const { el, esc } = OS.util;
-  let me = OS.store.get('account.me', null);
-  let token = OS.store.get('account.token', '');
-  let people = OS.store.get('account.people', []);
-  let msgs = OS.store.get('account.msgs', []);
-  let seq = OS.store.get('account.seq', 0);
-  let poll = 0, polling = false, sigSeq = 0, fast = 0;
+  // Each browser tab keeps its own sign-in (sessionStorage), so two tabs can be two different people and call
+  // each other. A brand-new tab starts from the last account used on this browser (localStorage).
+  const tab = {
+    get(k, d) { try { const v = sessionStorage.getItem('ip17tab.' + k); if (v != null) return JSON.parse(v); } catch {} return OS.store.get(k, d); },
+    set(k, v) { try { sessionStorage.setItem('ip17tab.' + k, JSON.stringify(v)); } catch {} OS.store.set(k, v); },
+  };
+  let me = tab.get('account.me', null);
+  let token = tab.get('account.token', '');
+  let people = tab.get('account.people', []);
+  let msgs = tab.get('account.msgs', []);
+  let seq = tab.get('account.seq', 0);
+  let poll = 0, polling = false, sigSeq = null, events = null, eventsRetry = 0;
+  const seenSig = new Set();
 
   async function api(action, body, method) {
     const opts = { method: method || (body ? 'POST' : 'GET'), headers: {} };
@@ -18,7 +25,24 @@
     if (!r.ok) { if (r.status === 401) signOut(true); throw new Error(j.error || 'Something went wrong'); }
     return j;
   }
-  const save = () => { OS.store.set('account.me', me); OS.store.set('account.token', token); OS.store.set('account.people', people); OS.store.set('account.msgs', msgs); OS.store.set('account.seq', seq); };
+  const save = () => { tab.set('account.me', me); tab.set('account.token', token); tab.set('account.people', people); tab.set('account.msgs', msgs); tab.set('account.seq', seq); };
+  function gotSignal(s) {
+    if (!s || seenSig.has(s.id)) return;
+    seenSig.add(s.id); if (seenSig.size > 500) seenSig.delete(seenSig.values().next().value);
+    OS.emit('account:signal', s);
+  }
+  // Signals are pushed over a WebSocket the instant they're sent — background tabs throttle timers, so polling alone
+  // can leave a call ringing for a minute before the other tab notices. Polling stays on as a backup.
+  function connectEvents() {
+    clearTimeout(eventsRetry);
+    if (events) { try { events.onclose = null; events.close(); } catch {} events = null; }
+    if (!token) return;
+    const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+    let ws;
+    try { ws = events = new WebSocket(proto + location.host + '/relay?events=1&token=' + encodeURIComponent(token)); } catch { return; }
+    ws.onmessage = (e) => { try { const m = JSON.parse(e.data); if (m.type === 'signal') gotSignal(m.signal); } catch {} };
+    ws.onclose = () => { if (events === ws) { events = null; eventsRetry = setTimeout(connectEvents, 3000); } };
+  }
 
   function person(id) { return (me && id === me.id ? me : people.find((p) => p.id === id)) || null; }
   function threads() {
@@ -42,7 +66,7 @@
     if (!token || polling) return;
     polling = true;
     try {
-      const r = await api('inbox?since=' + seq + '&sig=' + sigSeq);
+      const r = await api('inbox?since=' + seq + '&sig=' + (sigSeq == null ? '' : sigSeq));
       people = r.people || people; seq = r.seq || seq;
       const fresh = (r.msgs || []).filter((m) => !msgs.some((x) => x.id === m.id));
       if (fresh.length) {
@@ -56,20 +80,21 @@
         OS.emit('account:messages');
       }
       if (r.sigSeq != null) sigSeq = r.sigSeq;
-      (r.signals || []).forEach((s) => OS.emit('account:signal', s));
+      (r.signals || []).forEach(gotSignal);
       badge(); save();
       OS.emit('account:people');
     } catch (e) { if (!quiet) console.warn('[account]', e.message); }
     polling = false;
   }
-  function startPolling() { clearInterval(poll); if (token) { refresh(true); poll = setInterval(() => refresh(true), OS.calls && OS.calls.active ? 800 : 4000); } }
+  function startPolling() { clearInterval(poll); if (token && !events) connectEvents(); if (token) { refresh(true); poll = setInterval(() => refresh(true), OS.calls && OS.calls.active ? 800 : 4000); } }
   // while a call is being set up, signals have to move fast
   OS.on('call:pace', () => startPolling());
 
   function signOut(silent) {
     const t = token;
-    me = null; token = ''; people = []; msgs = []; seq = 0; clearInterval(poll);
-    OS.store.set('account.me', null); OS.store.set('account.token', ''); OS.store.set('account.people', []); OS.store.set('account.msgs', []); OS.store.set('account.seq', 0);
+    if (OS.calls && OS.calls.active) OS.calls.hangUp('ended');
+    me = null; token = ''; people = []; msgs = []; seq = 0; sigSeq = null; clearInterval(poll); connectEvents();
+    save();
     OS.badge('messages', 0); OS.emit('account:change');
     if (t && !silent) api('logout', {}).catch(() => {});
     setup();
@@ -78,6 +103,7 @@
   const A = OS.account = {
     get me() { return me; },
     get signedIn() { return !!(me && token); },
+    get token() { return token; },
     people: () => people.slice(),
     person, threads, badge, refresh,
     msgsWith(id) { return msgs.filter((m) => m.from === id || m.to === id).sort((a, b) => a.t - b.t); },
@@ -180,7 +206,7 @@
     setTimeout(() => n.querySelector('.hd').focus(), 500);
   }
   function finish(r) {
-    me = r.user; token = r.token; msgs = []; seq = 0; save();
+    me = r.user; token = r.token; msgs = []; seq = 0; sigSeq = null; save(); connectEvents();
     OS.settings.set('ownerName', me.name); OS.settings.set('deviceName', me.name + '’s iPhone');
     OS.keyboard.hide(true); OS.haptic('success'); OS.sound.play('pay');
     const n = host.querySelector('.pane:not(.out)');

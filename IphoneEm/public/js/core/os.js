@@ -108,7 +108,13 @@
 
   function iconRect(id) {
     const page = OS.home && OS.home.visibleIcon ? OS.home.visibleIcon(id) : null;
-    if (page) { const r = OS.util.rect(page); if (r.w > 0) return r; }
+    if (page) {
+      const r = OS.util.rect(page);
+      // Home is shrunk to .92 while an app covers it — measure where the icon sits once home is back to full size,
+      // or the closing app lands short of its icon and snaps at the end.
+      const hr = OS.util.rect($('home')), s = hr.w / OS.W;
+      if (r.w > 0) return s > 0 && Math.abs(s - 1) > .001 ? { x: (r.x - hr.x) / s, y: (r.y - hr.y) / s, w: r.w / s, h: r.h / s } : r;
+    }
     return { x: OS.W / 2 - 31, y: OS.H / 2 - 31, w: 62, h: 62 };
   }
   const rectTransform = (r) => `translate(${r.x}px, ${r.y}px) scale(${r.w / OS.W}, ${r.h / OS.H})`;

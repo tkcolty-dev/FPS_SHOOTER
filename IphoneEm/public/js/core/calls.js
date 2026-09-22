@@ -49,7 +49,6 @@
       <div class="head"><div class="av">${A().avatar(p, 108)}</div><div class="nm">${esc(p.name)}</div><div class="st"></div></div>
       <div class="ctl ${call.state === 'incoming' ? 'incoming' : ''}"></div>
       <div class="lbl">${call.relay ? 'Relay · lower quality' : call.mode === 'video' ? 'FaceTime' : 'iPhone Audio'}</div>`;
-    if (call.mode !== 'video') h.querySelector('.ctl').parentElement.insertBefore(el('<audio class="remoteaudio" autoplay></audio>'), h.querySelector('.ctl'));
     const ctl = h.querySelector('.ctl');
     const btn = (cls, icon, label, fn) => { const b = el(`<div class="rb ${cls}">${icon}${label ? `<small>${label}</small>` : ''}</div>`); b.addEventListener('click', fn); ctl.appendChild(b); return b; };
     if (call.state === 'incoming') {
@@ -86,7 +85,11 @@
   }
   function peer() {
     const pc = new RTCPeerConnection(ICE);
-    pc.onicecandidate = (e) => { if (e.candidate && call) A().signal(call.with, { call: call.id, kind: 'ice', data: e.candidate.toJSON() }); };
+    pc.onicecandidate = (e) => {
+      if (!e.candidate || !call) return;
+      const sig = { call: call.id, kind: 'ice', data: e.candidate.toJSON() };
+      if (call.sdpSent) A().signal(call.with, sig).catch(() => {}); else (call.iceOut = call.iceOut || []).push(sig);
+    };
     pc.ontrack = (e) => { if (!call) return; call.remote = e.streams[0]; if (call.state !== 'connected') { call.state = 'connected'; call.since = Date.now(); OS.sound.play('facetime_join'); render(); } else attachStreams(); };
     pc.onconnectionstatechange = () => {
       if (!call) return;
@@ -95,6 +98,8 @@
     };
     return pc;
   }
+  // offer/answer first, then the ICE candidates — otherwise the other phone drops candidates for a call it hasn't seen yet
+  function flushIce() { if (!call) return; call.sdpSent = true; const q = call.iceOut || []; call.iceOut = []; q.forEach((sig) => A().signal(call.with, sig).catch(() => {})); }
   function stopRing() { if (ringer) { ringer.stop(); ringer = null; } }
   function startTimer() { clearInterval(timer); timer = setInterval(tick, 500); }
 
@@ -112,6 +117,7 @@
     attachStreams();
     const offer = await call.pc.createOffer(); await call.pc.setLocalDescription(offer);
     await A().signal(personId, { call: call.id, kind: 'offer', mode, data: offer });
+    flushIce();
     ringer = OS.sound.play('ringback', { loop: true, category: 'ringer' });
     call.fallback = setTimeout(() => { if (call && call.state !== 'connected' && call.answered) { OS.ui.toast('Using relay…'); startRelay(true); } }, 9000);
     call.timeout = setTimeout(() => { if (call && call.state === 'calling') { OS.ui.toast(p.name + ' didn’t answer'); hangUp('noanswer'); } }, 45000);
@@ -142,6 +148,7 @@
     call.pending = [];
     const ans = await call.pc.createAnswer(); await call.pc.setLocalDescription(ans);
     await A().signal(call.with, { call: call.id, kind: 'answer', data: ans });
+    flushIce();
     call.fallback = setTimeout(() => { if (call && call.state !== 'connected') { OS.ui.toast('Using relay…'); startRelay(true); } }, 9000);
   }
 
@@ -217,7 +224,7 @@
     if (announce) A().signal(call.with, { call: call.id, kind: 'relay' }).catch(() => {});
     if (call.pc) { try { call.pc.close(); } catch {} call.pc = null; }
     const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
-    const ws = call.relay.ws = new WebSocket(proto + location.host + '/relay?call=' + encodeURIComponent(call.id) + '&token=' + encodeURIComponent(OS.store.get('account.token', '')));
+    const ws = call.relay.ws = new WebSocket(proto + location.host + '/relay?call=' + encodeURIComponent(call.id) + '&token=' + encodeURIComponent(A().token));
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => { if (call && call.relay) beginRelayMedia(); };
     ws.onmessage = (e) => {

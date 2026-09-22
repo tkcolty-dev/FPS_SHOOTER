@@ -31,6 +31,7 @@ function pgConfig() {
 let store = null;                 // { kind, ready, ... } set below
 const signals = [];               // call signalling is always in memory: it is worthless a few seconds later
 let signalSeq = 0;
+const signalListeners = [];
 
 function fileStore() {
   let db = { users: [], msgs: [], seq: 0 };
@@ -131,7 +132,11 @@ async function send(token, { to, text }) {
 async function inbox(token, since, sinceSig) {
   const u = await need(token);
   const [msgs, seq, people] = await Promise.all([store.msgsFor(u.id, Number(since) || 0), store.maxSeq(), directory(token)]);
-  const sig = signals.filter((s) => s.to === u.id && s.n > (Number(sinceSig) || 0));
+  // First poll after a page load (no sig yet): don't replay old offers as phantom calls. If the server restarted and
+  // its counter is behind the phone's, start over from 0.
+  let from = sinceSig === '' || sinceSig == null ? signalSeq : Number(sinceSig) || 0;
+  if (from > signalSeq) from = 0;
+  const sig = signals.filter((s) => s.to === u.id && s.n > from);
   return { msgs, seq, people, signals: sig, sigSeq: signalSeq };
 }
 async function markRead(token, otherId) { const u = await need(token); await store.markRead(u.id, otherId); return { ok: true }; }
@@ -144,10 +149,13 @@ async function signal(token, body) {
   if (!to) throw new Error('No recipient.');
   const s = { n: ++signalSeq, id: crypto.randomUUID(), from: u.id, to, call: String(body.call || '').slice(0, 64), kind: String(body.kind || '').slice(0, 16), mode: body.mode === 'audio' ? 'audio' : 'video', data: body.data, t: Date.now() };
   signals.push(s);
+  signalListeners.forEach((fn) => { try { fn(s); } catch {} });
   const cutoff = Date.now() - 90000;
   while (signals.length && (signals[0].t < cutoff || signals.length > 4000)) signals.shift();
   return { ok: true, n: s.n };
 }
 async function stats() { return store.count(); }
 
-module.exports = { signup, login, me, updateMe, directory, send, inbox, markRead, logout, signal, stats };
+const onSignal = (fn) => signalListeners.push(fn);
+
+module.exports = { onSignal, signup, login, me, updateMe, directory, send, inbox, markRead, logout, signal, stats };

@@ -187,16 +187,24 @@
     mk('Finish', FIN, 'color'); mk('Case', CASES, 'caseColor');
     body.appendChild(el('<div class="ios-list-footer">Use the Flip button beside the phone to see the back.</div>'));
   });
+  function signOutList(body) {
+    const me = OS.account && OS.account.me; if (!me) return;
+    list(body, [{ label: 'Sign Out', color: 'var(--red)', center: true, onTap: async () => {
+      const i = await OS.ui.actionSheet({ message: 'Sign out of @' + me.handle + ' on this tab? You can then sign in as someone else — handy for calling between two tabs.', buttons: [{ label: 'Sign Out', style: 'destructive' }] });
+      if (i === 0) { OS.goHome(); OS.account.signOut(); setTimeout(() => OS.recents().forEach((id) => OS.killApp(id)), 600); }
+    } }], null, 'Signed in as @' + me.handle + '. Each browser tab can be signed in to a different account.');
+  }
   const profilePage = () => page('Apple Account', (body) => {
     body.appendChild(el(`<div class="st-about-hero">${OS.contacts.avatar({ first: S.get('ownerName'), color: '#8E8E93' }, 96)}<div style="font-size:26px;font-weight:600;margin-top:10px">${esc(S.get('ownerName'))}</div></div>`));
     list(body, [{ label: 'Name', value: () => S.get('ownerName'), watch: 'ownerName', chevron: true, onTap: async () => { const v = await OS.ui.prompt({ title: 'Your Name', value: S.get('ownerName') }); if (v) { S.set('ownerName', v.trim()); S.set('deviceName', v.trim() + '’s iPhone'); } } }]);
     list(body, [{ label: 'iCloud', value: '5 GB', chevron: true }, { label: 'Media & Purchases', chevron: true, onTap: () => OS.openApp('appstore') }]);
+    signOutList(body);
   });
 
   function root() {
     return { title: 'Settings', largeTitle: true, background: 'var(--bg2)', search: { placeholder: 'Search', onInput(q, pg) { q = q.toLowerCase(); pg.body.querySelectorAll('.ios-row').forEach((r) => { r.style.display = !q || r.textContent.toLowerCase().includes(q) ? '' : 'none'; }); } },
       render(body) {
-        const prof = el(`<div class="ios-row tappable st-profile">${OS.contacts.avatar({ first: S.get('ownerName'), color: '#8E8E93' }, 60)}<div style="flex:1"><b class="pn">${esc(S.get('ownerName'))}</b><small>Apple Account, iCloud+, and more</small></div><span class="ios-chevron"></span></div>`);
+        const prof = el(`<div class="ios-row tappable st-profile">${OS.contacts.avatar({ first: S.get('ownerName'), color: '#8E8E93' }, 60)}<div style="flex:1"><b class="pn">${esc(S.get('ownerName'))}</b><small>${OS.account && OS.account.me ? '@' + esc(OS.account.me.handle) + ' · ' : ''}Apple Account, iCloud+, and more</small></div><span class="ios-chevron"></span></div>`);
         prof.addEventListener('click', () => nav.push(profilePage())); OS.on('setting:ownerName', (v) => { prof.querySelector('.pn').textContent = v; });
         list(body, [{ node: prof }]);
         list(body, [{ label: 'Airplane Mode', icon: ['airplane', 'var(--orange)'], setting: 'airplane' }, { label: 'Wi-Fi', icon: ['wifi', 'var(--tint)'], value: () => (S.get('wifi') ? OS.store.get('settings.wifiName', NETWORKS[0]) : 'Off'), watch: 'wifi', page: wifiPage }, { label: 'Bluetooth', icon: ['bt', 'var(--tint)'], value: () => (S.get('bluetooth') ? 'On' : 'Off'), watch: 'bluetooth', page: btPage }, { label: 'Cellular', icon: ['cell', 'var(--green)'], setting: 'cellular' }, { label: 'Battery', icon: ['battery', 'var(--green)'], page: batteryPage }]);
@@ -204,6 +212,7 @@
         list(body, [{ label: 'Sounds & Haptics', icon: ['speaker', 'var(--pink)'], page: soundsPage }, { label: 'Do Not Disturb', icon: ['moon', 'var(--indigo)'], setting: 'focus' }]);
         list(body, [{ label: 'Face ID & Passcode', icon: ['faceid', 'var(--green)'], page: passcodePage }]);
         list(body, [{ label: 'App Store', icon: ['grid', 'var(--tint)'], chevron: true, onTap: () => OS.openApp('appstore') }]);
+        signOutList(body);
       } };
   }
 
