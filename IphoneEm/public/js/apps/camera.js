@@ -1,5 +1,5 @@
 /* Camera — real viewfinder (getUserMedia) with a simulated-scene fallback.
-   Modes: CINEMATIC · VIDEO · PHOTO · PORTRAIT · PANO. Saves through OS.photos. */
+   Modes: PHOTO · PORTRAIT · PANO (photos only — no video recording). Saves through OS.photos. */
 (function () {
   'use strict';
 
@@ -7,8 +7,6 @@
   const EASE = 'cubic-bezier(.32,.72,0,1)';
   const W = 402;
   const MODES = [
-    { id: 'cinematic', label: 'CINEMATIC' },
-    { id: 'video', label: 'VIDEO' },
     { id: 'photo', label: 'PHOTO' },
     { id: 'portrait', label: 'PORTRAIT' },
     { id: 'pano', label: 'PANO' },

@@ -46,6 +46,7 @@
   const I = {
     mute: '<svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
     muted: '<svg viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M4 3l16 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    shutter: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="6.2"/></svg>',
     camoff: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M17 12.5l4.5-3.2v5.4z"/><path d="M3 3.5l17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     cam: '<svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="3"/><path d="M17 12.5l4.5-3.2v5.4z"/></svg>',
     flip: '<svg viewBox="0 0 24 24"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.7l1.3-1.8c.3-.4.7-.7 1.2-.7h2.6c.5 0 .9.3 1.2.7L15.8 6h1.7A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5z"/><path d="M8.6 12.6a3.5 3.5 0 0 1 6-2.1M15.4 13.4a3.5 3.5 0 0 1-6 2.1" fill="none" stroke="#1c1c1e" stroke-width="1.5" stroke-linecap="round"/><path d="M15.3 8.8v1.9h-1.9M8.7 17.2v-1.9h1.9" fill="none" stroke="#1c1c1e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -76,6 +77,7 @@
       ctl.classList.add('video');
       btn(call.muted ? 'on' : '', call.muted ? I.muted : I.mute, '', toggleMute);
       btn(call.camOff ? 'on' : '', call.camOff ? I.camoff : I.cam, '', toggleCam);
+      btn('', I.shutter, '', snapPhoto);
       btn('', I.flip, '', flip);
       btn('end', I.end, '', () => hangUp('ended'));
     } else if (call.mode === 'video') {
@@ -179,6 +181,20 @@
     call.fallback = setTimeout(() => { if (call && call.state !== 'connected') { OS.ui.toast('Using relay…'); startRelay(true); } }, 9000);
   }
 
+  // FaceTime photo: saves what the other person's camera is showing right now to Photos
+  async function snapPhoto() {
+    if (!call) return;
+    const h = host(), rv = h.querySelector('.remote.has'), img = h.querySelector('.relayimg');
+    const src = rv && rv.videoWidth ? { el: rv, w: rv.videoWidth, h: rv.videoHeight } : img && img.naturalWidth ? { el: img, w: img.naturalWidth, h: img.naturalHeight } : null;
+    if (!src) return OS.ui.toast('No video yet');
+    const c = document.createElement('canvas'); c.width = src.w; c.height = src.h;
+    c.getContext('2d').drawImage(src.el, 0, 0, src.w, src.h);
+    OS.sound.play('shutter');
+    const fl = el('<div style="position:absolute;inset:0;background:#fff;z-index:9;pointer-events:none;transition:opacity .35s"></div>'); h.appendChild(fl);
+    requestAnimationFrame(() => { fl.style.opacity = '0'; setTimeout(() => fl.remove(), 400); });
+    try { await OS.photos.add({ src: c.toDataURL('image/jpeg', .9), kind: 'photo', meta: { facetime: call.person.name } }); OS.ui.toast('FaceTime photo saved to Photos'); }
+    catch { OS.ui.toast('Couldn’t save the photo'); }
+  }
   function toggleMute() { if (!call || !call.local) return; call.muted = !call.muted; call.local.getAudioTracks().forEach((t) => (t.enabled = !call.muted)); OS.haptic('light'); render(); }
   function toggleCam() { if (!call || !call.local) return; call.camOff = !call.camOff; call.local.getVideoTracks().forEach((t) => (t.enabled = !call.camOff)); OS.haptic('light'); render(); }
   async function flip() {

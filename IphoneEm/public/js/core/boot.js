@@ -6,6 +6,11 @@
 
   OS.initDevice(); OS.initCore(); OS.initKeyboard(); OS.initIsland(); OS.initOverlays(); OS.initLock(); OS.initSiri();
 
+  // videos are no longer saved — clear out any the Camera recorded before
+  if (!OS.store.get('cleanup.videos.v1')) {
+    try { (await OS.photos.all()).filter((p) => p.kind === 'video').forEach((p) => OS.photos.remove(p.id)); } catch {}
+    OS.store.set('cleanup.videos.v1', true);
+  }
   // one-time cleanup: remove the made-up sample content older versions put on this phone
   if (!OS.store.get('cleanup.presets.v1')) {
     ['notes.items', 'notes.folders', 'reminders.items', 'reminders.lists', 'calendar.events', 'files.tree', 'maps.recents',
