@@ -10,7 +10,9 @@ function pgConfig() {
   if (process.env.VCAP_SERVICES) {
     try {
       const vcap = JSON.parse(process.env.VCAP_SERVICES);
-      const svc = Object.values(vcap).flat().find(s => /postgres/i.test(s.label || '') || /postgres/i.test((s.tags || []).join(',')));
+      // Use BiteWise's own database. Other databases bound to this app (an old app's) are never touched.
+      const pgs = Object.values(vcap).flat().filter(s => /postgres/i.test(s.label || '') || /postgres/i.test((s.tags || []).join(',')));
+      const svc = pgs.find(s => s.name === (process.env.BW_DB_SERVICE || 'bitewise-db')) || pgs[0];
       if (svc) {
         const c = svc.credentials || {};
         if (c.uri || c.url) return { connectionString: (c.uri || c.url).replace(/^jdbc:/, ''), ssl: false };

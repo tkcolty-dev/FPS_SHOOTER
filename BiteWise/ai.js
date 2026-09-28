@@ -11,7 +11,9 @@ function detectOpenAI() {
   if (process.env.VCAP_SERVICES) {
     try {
       const vcap = JSON.parse(process.env.VCAP_SERVICES);
-      for (const svc of Object.values(vcap).flat()) {
+      // BiteWise's own AI service first (bitewise-ai), then any other one
+      const all = Object.values(vcap).flat().sort((a, b) => (b.name === 'bitewise-ai') - (a.name === 'bitewise-ai'));
+      for (const svc of all) {
         const tags = (svc.tags || []).join(',');
         const ep = svc.credentials?.endpoint || svc.credentials;
         if ((/genai|ai-models|llm/i.test(tags) || /genai|ai-models/i.test(svc.label || '')) && ep && (ep.openai_api_base || ep.api_base) && ep.api_key) {
