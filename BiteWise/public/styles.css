@@ -539,3 +539,34 @@ body[data-tab="coach"]:not(.sheet-open) .toast { bottom: calc(env(safe-area-inse
   .log-quick .amount { padding-top: 4px; }
   .log-quick .amount .n { font-size: 56px; min-height: 56px; }
 }
+
+/* ---------- goal screen ---------- */
+.goal-hero { text-align: center; padding: 20px 16px; }
+.goal-hero .big-num { font-size: 60px; }
+.goal-type button { height: 36px; font-size: 15px; }
+.pace-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 8px; margin-top: 12px; }
+.pace-row button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; border-radius: 12px; background: var(--card); box-shadow: var(--shadow); border: 2px solid transparent; transition: border-color .15s, transform .12s; }
+.pace-row button b { font-size: 15px; }
+.pace-row button span { font-size: 12px; color: var(--label2); }
+.pace-row button[aria-pressed="true"] { border-color: var(--accent); }
+.pace-row button[aria-pressed="true"] b { color: var(--accent); }
+.pace-row button:disabled { opacity: .4; }
+.pace-row button:not(:disabled):active { transform: scale(.96); }
+.own-input { flex: 1; min-width: 0; text-align: center; border: 0; background: transparent; font: 700 34px var(--round); color: var(--label); padding: 0; }
+.own-input:focus { outline: none; }
+.stepbtn { width: 44px; height: 44px; border-radius: 50%; background: var(--fill); font-size: 24px; font-weight: 500; display: grid; place-items: center; flex: none; }
+.stepbtn:active { transform: scale(.94); }
+
+/* ---------- account card (Me) ---------- */
+.acct-card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; margin-top: 12px; }
+.acct-card .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.acct-card b { font-size: 16px; }
+.acct-card span { font-size: 13px; color: var(--label2); }
+.acct-card .sync-ic { color: var(--blue); width: 22px; height: 22px; }
+.acct-card .sync-ic svg { width: 22px; height: 22px; }
+.sync-ic.spin svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.acct-card.cta { border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: 0; }
+.acct-btns { display: flex; gap: 8px; background: var(--card); padding: 0 16px 16px 58px; border-radius: 0 0 var(--r) var(--r); box-shadow: var(--shadow); }
+.acct-btns .btn.small { flex: 1; height: 38px; }
+.onb .foot .link-btn { align-self: center; }

@@ -220,6 +220,7 @@
     applyTheme();
     const active = document.activeElement, focusId = active?.id, selS = active?.selectionStart, selE = active?.selectionEnd;
     const view = $('#view');
+    if (view.style.padding) { view.style.padding = ''; view.oninput = null; view.innerHTML = ''; ob.p = null; } // leaving onboarding (also after signing in on a new device)
     const html = S.tab === 'today' ? viewToday() : S.tab === 'progress' ? viewProgress() : S.tab === 'coach' ? viewCoach() : viewMe();
     const next = document.createElement('main'); next.innerHTML = html;
     if (view.dataset.tab !== S.tab || !view.firstElementChild) { view.innerHTML = html; view.dataset.tab = S.tab; view.classList.remove('tab-in'); void view.offsetWidth; view.classList.add('tab-in'); }
@@ -470,9 +471,12 @@
       <div style="flex:1"><div style="font-size:20px;font-weight:600">${esc(p.name || 'Your profile')}</div><div class="caption" style="font-size:14px">Level ${lv.n} · ${lv.name}${p.demo ? ' · sample data' : ''}</div></div><span class="chev" style="color:var(--label3);font-size:22px">›</span>
     </button>
 
+    ${a && !a.auto ? `<button class="card acct-card" type="button" data-act="syncnow"><span class="icon-sq" style="background:var(--blue)">${I('cloud')}</span><div class="grow"><b>Signed in as ${esc(a.username)}</b><span>${BW.syncing ? 'Syncing…' : BW.dirtyCount ? BW.dirtyCount + ' change' + (BW.dirtyCount > 1 ? 's' : '') + ' waiting to sync' : lastSync ? 'Backed up ' + ago(lastSync) + ' · stays signed in' : 'Backed up · stays signed in'}</span></div><span class="sync-ic ${BW.syncing ? 'spin' : ''}">${I('sync')}</span></button>`
+      : `<div class="card acct-card cta"><span class="icon-sq" style="background:var(--blue)">${I('cloud')}</span><div class="grow"><b>${a ? 'Use BiteWise on other devices' : 'Save your log to the cloud'}</b><span>${a ? 'Add a username and password' : 'Open it on your iPad, Mac or a new phone'}</span></div></div>
+      <div class="acct-btns">${a ? `<button class="btn small" type="button" data-act="claim">Create login</button>` : `<button class="btn small" type="button" data-act="signup">Create account</button><button class="btn small tinted" type="button" data-act="signin">Sign in</button>`}</div>`}
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Goals</div><div class="group">
-      ${row('target', 'var(--accent)', 'Daily budget', fmt(g.budget) + ' cal', 'data-act="goals"', g.teen ? 'Teen mode · maintenance, no cutting' : g.pace ? `Lose ${g.pace} lb/week` : 'Maintain')}
-      ${row('scale', 'var(--teal)', 'Goal weight', g.teen ? '—' : p.goalLb + ' lb', 'data-act="goals"')}
+      ${row('target', 'var(--accent)', 'Daily goal', fmt(g.budget) + ' cal', 'data-act="goals"', g.custom ? 'Your own number' : g.goalType === 'lose' ? `Lose ${g.pace} lb a week` : g.goalType === 'gain' ? `Gain ${g.gain} lb a week` : 'Stay steady')}
+      ${row('scale', 'var(--teal)', 'Goal weight', g.goalType === 'maintain' ? '—' : p.goalLb + ' lb', 'data-act="goals"')}
       ${row('shoe', 'var(--pink)', 'Step goal', fmt(p.stepGoal), 'data-act="stepgoal"')}
       ${row('drop', 'var(--cyan)', 'Water goal', p.waterGoal + ' glasses', 'data-act="watergoal"')}
     </div></div>
@@ -482,12 +486,6 @@
       <div class="row indent"><span class="icon-sq" style="background:var(--orange)">${I('flame')}</span><div class="grow"><div class="title">Steps earn calories</div><div class="sub">Walking more adds to your daily budget</div></div><button class="switch" type="button" role="switch" aria-checked="${p.earnSteps}" data-act="earnsteps" aria-label="Steps earn calories"></button></div>
       ${row('edit', 'var(--label3)', 'Enter steps by hand', '', 'data-act="steps"')}
     </div></div>
-
-    <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Account & sync</div><div class="group">
-      ${a && a.auto ? `${row('cloud', 'var(--blue)', 'Backed up on this device', 'Create login', 'data-act="claim"', 'Add a username and password to use BiteWise on another device')}` : a ? `${row('cloud', 'var(--blue)', a.username, BW.syncing ? 'Syncing…' : BW.dirtyCount ? BW.dirtyCount + ' to sync' : 'Up to date', 'data-act="syncnow"', lastSync ? 'Last synced ' + new Date(lastSync).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Tap to sync now')}
-        <button class="row" type="button" data-act="signout" style="color:var(--red)">Sign out</button>`
-      : `${row('cloud', 'var(--blue)', 'Back up & sync', 'Sign in', 'data-act="signin"', 'Keep your log safe and use it on more devices')}`}
-    </div>${BW.syncError && a ? `<div class="footnote" style="color:var(--red)">${esc(BW.syncError)}</div>` : '<div class="footnote">BiteWise saves everything on this device first, so it works with no internet. Signing in adds a cloud backup.</div>'}</div>
 
     </div><div class="col-side">
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Rewards</div><div class="group">
@@ -499,6 +497,7 @@
       ${standalone ? '' : row('download', 'var(--purple)', 'Install BiteWise', '', 'data-act="install"', 'Add to your home screen — works offline')}
       ${row('mic', 'var(--pink)', 'Offline voice', '', 'data-act="voicehelp"', 'How voice logging works with no internet')}
       ${row('share', 'var(--label3)', 'Export my data', 'CSV', 'data-act="export"')}
+      ${a && !a.auto ? `<button class="row" type="button" data-act="signout" style="color:var(--red)">Sign out</button>` : ''}
       <button class="row" type="button" data-act="wipe" style="color:var(--red)">Delete all data</button>
     </div>
     <div class="footnote">BiteWise ${S.status.ai ? `· Coach runs on Cloud Foundry open models (${esc(String(S.status.model).split('/').pop())})` : '· Coach offline'} · Not medical advice. For weight goals under 18, talk with a doctor or parent.</div></div>
@@ -741,8 +740,8 @@
       footer: `<div class="footnote">Weigh in the morning after using the bathroom, before eating, for the most consistent numbers.</div>` });
   }
 
-  function signInSheet() {
-    let mode = 'signup';
+  function signInSheet(startMode = 'signup') {
+    let mode = startMode;
     openSheet({
       title: 'Back up & sync', body: '', mount: (b, close) => {
         const draw = (err = '') => {
@@ -755,7 +754,13 @@
           b.querySelectorAll('[data-m]').forEach(x => x.onclick = () => { mode = x.dataset.m; draw(); });
           $('#af', b).onsubmit = async e => {
             e.preventDefault(); const btn = $('#ab', b); btn.disabled = true; btn.textContent = 'One sec…';
-            try { await BW.signIn(mode, $('#au', b).value, $('#ap', b).value); close(); toast(mode === 'signup' ? 'Account created — you’re backed up' : 'Signed in and synced', { icon: 'cloud' }); await refreshMe(); }
+            try {
+              const r = await BW.signIn(mode, $('#au', b).value, $('#ap', b).value); close();
+              const onboarding = !$('#tabbar') || $('#tabbar').hidden;
+              if (onboarding && BW.profile().setup) { ob.p = null; finishOnboarding(); }
+              toast(mode === 'signup' ? 'Account created · you\u2019re backed up' : r.restored ? 'Welcome back · your log is here' : 'Signed in and synced', { icon: 'cloud' });
+              await refreshMe();
+            }
             catch (err) { draw(err.message); }
           };
         };
@@ -849,35 +854,79 @@
 
   function goalsSheet() {
     const p = { ...BW.profile() };
+    p.goalType ||= p.pace > 0 ? 'lose' : 'maintain';
     openSheet({
-      title: 'Goals', right: 'Save', tall: true, body: '',
-      mount: b => {
+      title: 'Your goal', left: 'Cancel', tall: true, body: '',
+      mount: (b, close) => {
+        const summary = () => {
+          const g = BW.goals(p), wk = g.weeklyChange;
+          const line = g.custom ? (Math.abs(wk) < .1 ? 'About the same as you burn, so your weight stays steady' : `That's about <b>${Math.abs(wk).toFixed(1)} lb a week</b> ${wk < 0 ? 'down' : 'up'}`)
+            : g.goalType === 'lose' ? `To lose about <b>${g.pace} lb a week</b>` : g.goalType === 'gain' ? `To gain about <b>${g.gain} lb a week</b>` : 'Keeps your weight steady';
+          const eta = g.goalType === 'lose' && p.goalLb < p.weightLb && wk < -0.05 ? (() => { const d = new Date(); d.setDate(d.getDate() + Math.round((p.weightLb - p.goalLb) / -wk * 7)); return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); })() : null;
+          return `<div class="caption" style="font-size:14px">Calories a day</div>
+            <div class="big-num num">${fmt(g.budget)}</div>
+            <div class="muted" style="font-size:15px;margin-top:2px">${line}${eta ? ` · reach ${p.goalLb} lb around <b>${eta}</b>` : ''}</div>
+            ${g.clamped ? `<div class="banner" style="margin:12px 0 0;text-align:left">${I('info')}<span>${g.teen ? `Under 18, BiteWise keeps you within 250 of maintenance (${fmt(g.tdee)}) so you have fuel to grow.` : `Raised to the ${fmt(g.floor)} cal safety minimum.`}</span></div>` : ''}`;
+        };
         const draw = () => {
-          const g = BW.goals(p);
+          const g = BW.goals(p), own = !!p.customBudget;
           b.innerHTML = `
-            <div class="card" style="text-align:center"><div class="caption" style="font-size:14px">Daily budget</div><div class="big-num num" style="font-size:52px">${fmt(g.budget)}</div><div class="muted" style="font-size:14px">${g.teen ? 'Maintenance for growing bodies' : `Maintenance ${fmt(g.tdee)} − ${fmt(g.pace * 500)} for ${g.pace} lb/week`}</div>${g.clamped ? `<div class="banner" style="margin:10px 0 0;text-align:left">${I('info')}<span>Raised to the ${fmt(g.floor)} cal safety minimum.</span></div>` : ''}</div>
-            <div class="footnote" style="margin:18px 16px 6px">ABOUT YOU</div>
+            <div class="card goal-hero" id="gsum">${summary()}</div>
+            <div class="seg goal-type" style="margin-top:16px">${[['lose', 'Lose'], ['maintain', 'Maintain'], ['gain', 'Gain']].map(([v, l]) => `<button type="button" data-gt="${v}" aria-pressed="${p.goalType === v && !own}">${l}</button>`).join('')}</div>
+            ${own ? '' : p.goalType === 'lose' ? `<div class="pace-row">${[[0.5, 'Easy', '½ lb/wk'], [1, 'Steady', '1 lb/wk'], [1.5, 'Faster', '1½ lb/wk'], [2, 'Fast', '2 lb/wk']].map(([v, n, d]) => `<button type="button" data-pace="${v}" aria-pressed="${g.pace === v}" ${v > g.maxPace ? 'disabled' : ''}><b>${n}</b><span>${v > g.maxPace ? (g.teen ? 'Not under 18' : 'Too fast') : d}</span></button>`).join('')}</div>`
+              : p.goalType === 'gain' ? `<div class="pace-row">${[[0.25, 'Slow', '¼ lb/wk'], [0.5, 'Steady', '½ lb/wk'], [1, 'Faster', '1 lb/wk']].map(([v, n, d]) => `<button type="button" data-gain="${v}" aria-pressed="${g.gain === v}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>` : ''}
+            ${own || p.goalType === 'maintain' ? '' : `<div class="group" style="margin-top:12px"><div class="row"><span class="grow">Goal weight</span><span class="value"><input class="inline-input num" id="g_goal" inputmode="decimal" value="${p.goalLb}" style="width:64px"> lb</span></div></div>`}
+
+            <div class="group" style="margin-top:16px">
+              <div class="row"><div class="grow"><div class="title">Set my own number</div><div class="sub">Type any daily calorie goal instead</div></div><button class="switch" type="button" role="switch" aria-checked="${own}" data-own aria-label="Set my own number"></button></div>
+              ${own ? `<div class="row"><button class="stepbtn" type="button" data-cb="-50" aria-label="50 less">−</button><input class="own-input num" id="g_cb" inputmode="numeric" value="${p.customBudget}" aria-label="Daily calories"><button class="stepbtn" type="button" data-cb="50" aria-label="50 more">+</button></div>` : ''}
+            </div>
+
+            <div class="footnote" style="margin:22px 16px 6px">ABOUT YOU · USED FOR THE MATH</div>
             <div class="group">
               <div class="row"><span class="grow">Name</span><input class="inline-input" id="g_name" value="${esc(p.name)}" placeholder="Optional" style="width:55%"></div>
               <div class="row"><span class="grow">Gender</span><div class="seg" style="width:210px"><button type="button" data-sex="female" aria-pressed="${p.sex === 'female'}">Female</button><button type="button" data-sex="male" aria-pressed="${p.sex === 'male'}">Male</button><button type="button" data-sex="other" aria-pressed="${p.sex === 'other'}">Other</button></div></div>
               <div class="row"><span class="grow">Age</span><input class="inline-input num" id="g_age" inputmode="numeric" value="${p.age}"></div>
               <div class="row"><span class="grow">Height</span><span class="value"><input class="inline-input num" id="g_ft" inputmode="numeric" value="${Math.floor(p.heightIn / 12)}" style="width:28px"> ft <input class="inline-input num" id="g_in" inputmode="numeric" value="${p.heightIn % 12}" style="width:28px"> in</span></div>
-              <div class="row"><span class="grow">Weight</span><span class="value"><input class="inline-input num" id="g_w" inputmode="decimal" value="${p.weightLb}" style="width:60px"> lb</span></div>
-              ${g.teen ? '' : `<div class="row"><span class="grow">Goal weight</span><span class="value"><input class="inline-input num" id="g_goal" inputmode="decimal" value="${p.goalLb}" style="width:60px"> lb</span></div>`}
+              <div class="row"><span class="grow">Weight now</span><span class="value"><input class="inline-input num" id="g_w" inputmode="decimal" value="${p.weightLb}" style="width:64px"> lb</span></div>
+              <div class="row"><span class="grow">Activity</span><div class="seg" style="width:210px">${[[1.2, 'Low'], [1.375, 'Light'], [1.55, 'Active'], [1.725, 'Very']].map(([v, n]) => `<button type="button" data-act2="${v}" aria-pressed="${p.activity === v}">${n}</button>`).join('')}</div></div>
             </div>
-            ${g.teen ? `<div class="banner info" style="margin-top:14px">${I('heart')}<span><b>Teen mode.</b> Under 18, BiteWise focuses on habits (steps, water, regular meals) instead of cutting calories. For weight goals, talk with a doctor or parent.</span></div>` : `
-            <div class="footnote" style="margin:18px 16px 6px">PACE</div>
-            <div class="stack" style="display:flex;flex-direction:column;gap:8px">${[[0, 'Maintain', 'Keep my weight'], [0.5, 'Relaxed', '½ lb a week'], [1, 'Steady', '1 lb a week · recommended'], [1.5, 'Ambitious', '1½ lb a week'], [2, 'Fast', '2 lb a week']].map(([v, n, d]) => `<button class="opt" type="button" data-pace="${v}" aria-pressed="${p.pace === v}" ${v > g.maxPace ? 'disabled style="opacity:.4"' : ''}><div><b>${n}</b><span>${v > g.maxPace ? 'Too fast for your weight' : d}</span></div><span class="ck">${I('check')}</span></button>`).join('')}</div>`}
-            <div class="footnote" style="margin:18px 16px 6px">ACTIVITY</div>
-            <div class="seg">${[[1.2, 'Low'], [1.375, 'Light'], [1.55, 'Active'], [1.725, 'Very']].map(([v, n]) => `<button type="button" data-act2="${v}" aria-pressed="${p.activity === v}">${n}</button>`).join('')}</div>
-            <div class="footnote">Low = mostly sitting. Light = some walking. Active = sports or workouts most days. Very = hard training daily.</div>`;
+            <div class="footnote">Low = mostly sitting · Light = some walking · Active = sports or workouts most days · Very = hard training daily. You burn about <b>${fmt(g.tdee)}</b> a day.</div>
+            <button class="btn" type="button" id="gsave" style="margin-top:20px">Save goal</button>`;
+          $('#gsave', b).onclick = save;
+        };
+        const refresh = () => { const el = $('#gsum', b); if (el) el.innerHTML = summary(); };
+        const save = () => {
+          if (p.age < 5 || p.age > 110 || p.heightIn < 36 || p.weightLb < 50) return toast('Check your age, height and weight', { icon: 'info' });
+          if (p.customBudget && (p.customBudget < 800 || p.customBudget > 6000)) return toast('Pick a number between 800 and 6,000', { icon: 'info' });
+          BW.saveProfile({ ...p }); haptic(12); close(); toast(`Goal saved · ${fmt(BW.goals().budget)} cal a day`);
         };
         draw();
-        b.oninput = e => { const t = e.target, n = parseFloat(t.value); if (t.id === 'g_name') p.name = t.value; if (t.id === 'g_age' && n > 0) p.age = n; if ((t.id === 'g_ft' || t.id === 'g_in')) p.heightIn = (parseInt($('#g_ft').value) || 0) * 12 + (parseInt($('#g_in').value) || 0); if (t.id === 'g_w' && n > 0) p.weightLb = n; if (t.id === 'g_goal' && n > 0) p.goalLb = n; };
-        b.onchange = () => { const f = document.activeElement?.id; draw(); if (f && $('#' + f)) $('#' + f).focus(); };
-        b.onclick = e => { const x = e.target.closest('button'); if (!x) return; if (x.dataset.sex) p.sex = x.dataset.sex; if (x.dataset.pace) p.pace = +x.dataset.pace; if (x.dataset.act2) p.activity = +x.dataset.act2; if (x.dataset.sex || x.dataset.pace || x.dataset.act2) { draw(); haptic(5); } };
+        b.oninput = e => {
+          const t = e.target, n = parseFloat(t.value);
+          if (t.id === 'g_name') p.name = t.value;
+          if (t.id === 'g_age' && n > 0) p.age = n;
+          if (t.id === 'g_ft' || t.id === 'g_in') p.heightIn = (parseInt($('#g_ft').value) || 0) * 12 + (parseInt($('#g_in').value) || 0);
+          if (t.id === 'g_w' && n > 0) p.weightLb = n;
+          if (t.id === 'g_goal' && n > 0) p.goalLb = n;
+          if (t.id === 'g_cb' && n > 0) p.customBudget = Math.round(n);
+          refresh();
+        };
+        b.onclick = e => {
+          const x = e.target.closest('button'); if (!x) return;
+          const d = x.dataset;
+          if (d.gt) { p.goalType = d.gt; p.customBudget = null; if (d.gt === 'lose' && !(p.pace > 0)) p.pace = 1; if (d.gt === 'lose' && p.goalLb >= p.weightLb) p.goalLb = Math.round(p.weightLb * .92); if (d.gt === 'gain' && p.goalLb <= p.weightLb) p.goalLb = Math.round(p.weightLb * 1.05); }
+          else if (d.pace) p.pace = +d.pace;
+          else if (d.gain) p.gainPace = +d.gain;
+          else if ('own' in d) p.customBudget = p.customBudget ? null : BW.goals(p).budget;
+          else if (d.cb) p.customBudget = Math.max(800, Math.min(6000, (p.customBudget || BW.goals(p).budget) + +d.cb));
+          else if (d.sex) p.sex = d.sex;
+          else if (d.act2) p.activity = +d.act2;
+          else return;
+          haptic(5);
+          if (d.cb) { $('#g_cb', b).value = p.customBudget; refresh(); } else draw();
+        };
       },
-      onRight: close => { if (p.age < 5 || p.age > 110 || p.heightIn < 36 || p.weightLb < 50) return toast('Check your age, height and weight', { icon: 'info' }); if (p.goalLb >= p.weightLb) p.pace = Math.min(p.pace, 0); BW.saveProfile({ ...p, customBudget: null }); close(); toast('Goals updated'); },
     });
   }
 
@@ -944,7 +993,8 @@
         case 'watergoal': return numberSheet({ title: 'Water goal', label: 'Every day', value: BW.profile().waterGoal, unit: 'glasses (8 oz)', step: 1, min: 1, max: 20, onSave: n => BW.saveProfile({ waterGoal: Math.round(n) }) });
         case 'earnsteps': BW.saveProfile({ earnSteps: !BW.profile().earnSteps }); haptic(6); return;
         case 'fitbit': return fitbitSheet();
-        case 'signin': return signInSheet();
+        case 'signin': return signInSheet('login');
+        case 'signup': return signInSheet('signup');
         case 'syncnow': await BW.sync(); await refreshMe(); toast(BW.syncError ? 'Sync failed: ' + BW.syncError : 'Synced', { icon: 'cloud' }); return;
         case 'signout': return confirmSheet({ title: 'Sign out?', text: 'Your log stays on this device. Sign back in any time to sync again.', confirm: 'Sign out', danger: true, onConfirm: async () => { await BW.signOut(); LS.set('healthLinked', false); toast('Signed out'); } });
         case 'themes': return themesSheet();
@@ -1034,7 +1084,7 @@
     $('#tabbar').hidden = true;
     ob.p ||= { ...BW.profile() };
     const p = ob.p, g = BW.goals(p), view = $('#view');
-    const steps = `<div class="steps">${[1, 2, 3, 4].map(i => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>`;
+    const steps = `<div class="steps">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>`;
     let body = '', foot = '';
     if (ob.step === 0) {
       body = `<div style="margin-top:6vh"><div class="logo">${I('bite')}</div></div><h1>Eat smart.<br>Log in seconds.</h1><p class="lead">BiteWise is the calorie counter you'll actually keep using. It works even with no internet.</p>
@@ -1044,7 +1094,7 @@
           <div class="feature"><span class="icon-sq" style="background:var(--purple)">${I('coach')}</span><div><b>Bitey, your AI coach</b><span>Meal ideas, check-ins, and it logs for you.</span></div></div>
           <div class="feature"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div><b>Steps, streaks and rewards</b><span>Fitbit steps, a Health Score, levels, badges and themes.</span></div></div>
         </div>`;
-      foot = `<button class="btn" type="button" data-ob="next">Get started</button><button class="btn gray" type="button" data-ob="demo">Explore with sample data</button>`;
+      foot = `<button class="btn" type="button" data-ob="next">Get started</button><button class="btn gray" type="button" data-ob="signin">I already have an account</button><button class="link-btn" type="button" data-ob="demo" style="font-size:15px;padding:6px">Just look around with sample data</button>`;
     } else if (ob.step === 1) {
       body = `${steps}<h1>About you</h1><p class="lead">This sets your daily calorie budget. It stays on your phone.</p>
         <div class="group">
@@ -1056,22 +1106,33 @@
         </div>`;
       foot = `<button class="btn" type="button" data-ob="next">Continue</button><button class="btn gray" type="button" data-ob="back">Back</button>`;
     } else if (ob.step === 2) {
-      body = g.teen ? `${steps}<h1>Healthy habits mode</h1><div class="card"><div class="feature"><span class="icon-sq" style="background:var(--green)">${I('heart')}</span><div><b>Under 18? We do this differently.</b><span>Your body is still growing and needs fuel. BiteWise won't set a calorie cut. Instead you'll earn XP for regular meals, water, steps and streaks. For any weight goal, talk with a doctor or a parent first.</span></div></div></div>`
-        : `${steps}<h1>Your goal</h1><div class="group"><div class="row"><span class="grow">Goal weight</span><span class="value"><input class="inline-input num" id="o_goal" inputmode="decimal" value="${p.goalLb}" style="width:60px"> lb</span></div></div>
-        <div style="display:flex;flex-direction:column;gap:8px">${[[0, 'Maintain', 'Keep my weight'], [0.5, 'Relaxed', '½ lb a week'], [1, 'Steady', '1 lb a week · recommended'], [1.5, 'Ambitious', '1½ lb a week'], [2, 'Fast', '2 lb a week']].map(([v, n, d]) => `<button class="opt" type="button" data-pace="${v}" aria-pressed="${p.pace === v}" ${v > g.maxPace ? 'disabled style="opacity:.4"' : ''}><div><b>${n}</b><span>${v > g.maxPace ? 'Too fast to be safe for your weight' : d}</span></div><span class="ck">${I('check')}</span></button>`).join('')}</div>`;
+      const gt = p.goalType || 'lose';
+      body = `${steps}<h1>What's your goal?</h1>
+        <div style="display:flex;flex-direction:column;gap:8px">${[['lose', 'Lose weight', g.teen ? 'Gently, with plenty of fuel to grow' : 'Eat a little less than you burn'], ['maintain', 'Stay where I am', 'Build healthy habits and keep steady'], ['gain', 'Gain weight', 'Build up, like for sports']].map(([v, n, d]) => `<button class="opt" type="button" data-gt="${v}" aria-pressed="${gt === v}"><div><b>${n}</b><span>${d}</span></div><span class="ck">${I('check')}</span></button>`).join('')}</div>
+        ${gt === 'maintain' ? '' : `<div class="group"><div class="row"><span class="grow">Goal weight</span><span class="value"><input class="inline-input num" id="o_goal" inputmode="decimal" value="${p.goalLb}" style="width:64px"> lb</span></div></div>`}
+        ${gt === 'lose' ? `<div class="pace-row">${[[0.5, 'Easy', '½ lb/wk'], [1, 'Steady', '1 lb/wk'], [1.5, 'Faster', '1½ lb/wk'], [2, 'Fast', '2 lb/wk']].map(([v, n, d]) => `<button type="button" data-pace="${v}" aria-pressed="${g.pace === v}" ${v > g.maxPace ? 'disabled' : ''}><b>${n}</b><span>${v > g.maxPace ? (g.teen ? 'Not under 18' : 'Too fast') : d}</span></button>`).join('')}</div>`
+          : gt === 'gain' ? `<div class="pace-row">${[[0.25, 'Slow', '¼ lb/wk'], [0.5, 'Steady', '½ lb/wk'], [1, 'Faster', '1 lb/wk']].map(([v, n, d]) => `<button type="button" data-gain="${v}" aria-pressed="${g.gain === v}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>` : ''}
+        ${g.teen && gt !== 'maintain' ? `<div class="banner info">${I('heart')}<span>Under 18, BiteWise keeps changes gentle so you have energy for school and sports. It's a good idea to check weight goals with a parent or doctor.</span></div>` : ''}
+        <div class="footnote" style="margin:0 4px">You can change this any time in Me → Goals, or type your own calorie number there.</div>`;
       foot = `<button class="btn" type="button" data-ob="next">Continue</button><button class="btn gray" type="button" data-ob="back">Back</button>`;
     } else if (ob.step === 3) {
       body = `${steps}<h1>How active are you?</h1><div style="display:flex;flex-direction:column;gap:8px">${[[1.2, 'Mostly sitting', 'School or desk, little exercise'], [1.375, 'Lightly active', 'Walk around, exercise 1–3 days'], [1.55, 'Active', 'Sports or workouts most days'], [1.725, 'Very active', 'Hard training every day']].map(([v, n, d]) => `<button class="opt" type="button" data-act2="${v}" aria-pressed="${p.activity === v}"><div><b>${n}</b><span>${d}</span></div><span class="ck">${I('check')}</span></button>`).join('')}</div>`;
       foot = `<button class="btn" type="button" data-ob="next">See my plan</button><button class="btn gray" type="button" data-ob="back">Back</button>`;
-    } else {
-      body = `${steps}<h1>${p.name ? esc(p.name) + ', your' : 'Your'} daily budget</h1><div class="card" style="text-align:center;padding:26px 16px"><div class="big-num num">${fmt(g.budget)}</div><div class="muted" style="font-weight:600">calories a day</div></div>
+    } else if (ob.step === 4) {
+      const wk = g.weeklyChange;
+      body = `${steps}<h1>${p.name ? esc(p.name) + ', your' : 'Your'} daily goal</h1><div class="card" style="text-align:center;padding:26px 16px"><div class="big-num num">${fmt(g.budget)}</div><div class="muted" style="font-weight:600">calories a day</div></div>
         <div class="group">
-          <div class="row"><span class="grow">Maintenance</span><span class="value num">${fmt(g.tdee)}</span></div>
-          ${g.teen ? `<div class="row"><span class="grow">Mode</span><span class="value">Healthy habits</span></div>` : `<div class="row"><span class="grow">Goal pace</span><span class="value">${g.pace ? g.pace + ' lb/week' : 'Maintain'}</span></div>
-          ${g.pace && p.goalLb < p.weightLb ? `<div class="row"><span class="grow">Goal date (about)</span><span class="value">${(() => { const d = new Date(); d.setDate(d.getDate() + Math.round((p.weightLb - p.goalLb) / g.pace * 7)); return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); })()}</span></div>` : ''}`}
-          <div class="row"><span class="grow">Walking bonus</span><span class="value">On · steps add calories</span></div>
-        </div>${g.clamped ? `<div class="banner">${I('info')}<span>We raised your budget to the ${fmt(g.floor)} cal safety minimum.</span></div>` : ''}`;
-      foot = `<button class="btn" type="button" data-ob="finish">Start logging</button><button class="btn gray" type="button" data-ob="back">Back</button>`;
+          <div class="row"><span class="grow">You burn about</span><span class="value num">${fmt(g.tdee)}</span></div>
+          <div class="row"><span class="grow">Goal</span><span class="value">${g.goalType === 'lose' ? `Lose ${g.pace} lb a week` : g.goalType === 'gain' ? `Gain ${g.gain} lb a week` : 'Stay steady'}</span></div>
+          ${g.goalType !== 'maintain' && Math.abs(wk) > .05 && ((g.goalType === 'lose' && p.goalLb < p.weightLb) || (g.goalType === 'gain' && p.goalLb > p.weightLb)) ? `<div class="row"><span class="grow">Reach ${p.goalLb} lb around</span><span class="value">${(() => { const d = new Date(); d.setDate(d.getDate() + Math.round(Math.abs(p.weightLb - p.goalLb) / Math.abs(wk) * 7)); return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); })()}</span></div>` : ''}
+          <div class="row"><span class="grow">Walking bonus</span><span class="value">Steps add calories</span></div>
+        </div>${g.clamped ? `<div class="banner">${I('info')}<span>${g.teen ? 'Kept gentle because you’re under 18.' : `Raised to the ${fmt(g.floor)} cal safety minimum.`}</span></div>` : ''}`;
+      foot = `<button class="btn" type="button" data-ob="next">Looks good</button><button class="btn gray" type="button" data-ob="back">Back</button>`;
+    } else {
+      body = `${steps}<div style="margin-top:2vh"><div class="icon-sq" style="background:var(--blue);width:64px;height:64px;border-radius:17px">${I('cloud', 'style="width:34px;height:34px"')}</div></div><h1>Save your progress</h1><p class="lead">Make an account to keep your log safe and open it on your iPad, Mac or a new phone. You'll stay signed in.</p>
+        <form id="obacct" class="group" autocomplete="on"><div class="row"><input class="field" style="background:transparent;padding:0" id="ob_u" placeholder="Pick a username" autocomplete="username" autocapitalize="off" spellcheck="false"></div><div class="row"><input class="field" style="background:transparent;padding:0" id="ob_p" type="password" placeholder="Password (6+ characters)" autocomplete="new-password"></div></form>
+        <div class="footnote" id="ob_err" style="margin:0 4px">${S.online ? 'Everything still works offline. The account just backs it up.' : 'You’re offline. You can make an account later in Me.'}</div>`;
+      foot = `<button class="btn" type="button" data-ob="create" ${S.online ? '' : 'disabled'}>Create account & start</button><button class="btn gray" type="button" data-ob="finish">Skip for now</button>`;
     }
     view.innerHTML = `<div class="onb fade-in"><div class="body">${body}</div><div class="foot">${foot}</div></div>`;
     view.style.padding = '0';
@@ -1080,12 +1141,22 @@
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.sex) { p.sex = b.dataset.sex; renderOnboarding(); return; }
       if (b.dataset.pace) { p.pace = +b.dataset.pace; renderOnboarding(); return; }
+      if (b.dataset.gain) { p.gainPace = +b.dataset.gain; renderOnboarding(); return; }
+      if (b.dataset.gt) { p.goalType = b.dataset.gt; if (p.goalType === 'lose') { p.pace ||= BW.goals(p).teen ? 0.5 : 1; if (p.goalLb >= p.weightLb) p.goalLb = Math.round(p.weightLb * .92); } if (p.goalType === 'gain' && p.goalLb <= p.weightLb) p.goalLb = Math.round(p.weightLb * 1.05); renderOnboarding(); return; }
       if (b.dataset.act2) { p.activity = +b.dataset.act2; renderOnboarding(); return; }
       const a = b.dataset.ob;
-      if (a === 'next') { if (ob.step === 1 && (p.age < 5 || p.age > 110 || p.heightIn < 36 || p.weightLb < 50)) return toast('Check your age, height and weight', { icon: 'info' }); if (ob.step === 2 && !BW.goals(p).teen && p.goalLb >= p.weightLb) p.pace = 0; ob.step++; renderOnboarding(); window.scrollTo(0, 0); }
+      if (a === 'next') { if (ob.step === 1 && (p.age < 5 || p.age > 110 || p.heightIn < 36 || p.weightLb < 50)) return toast('Check your age, height and weight', { icon: 'info' }); if (ob.step === 1) p.goalType ||= 'lose'; if (ob.step === 2 && p.goalType === 'lose' && p.goalLb >= p.weightLb) p.goalType = 'maintain'; ob.step++; renderOnboarding(); window.scrollTo(0, 0); }
       if (a === 'back') { ob.step--; renderOnboarding(); }
       if (a === 'demo') { BW.seedDemo(); finishOnboarding(); toast('Sample data loaded — delete it any time in Me', { icon: 'info' }); }
       if (a === 'finish') { BW.saveProfile({ ...p, setup: true }); BW.setWeight(BW.dayKey(), p.weightLb); finishOnboarding(); confetti(80); }
+      if (a === 'signin') { signInSheet('login'); }
+      if (a === 'create') {
+        const u = $('#ob_u').value.trim(), pw = $('#ob_p').value;
+        if (!u || pw.length < 6) { $('#ob_err').innerHTML = '<span style="color:var(--red)">Pick a username and a password with 6+ characters.</span>'; return; }
+        b.disabled = true; b.textContent = 'Creating…';
+        BW.signIn('signup', u, pw).then(() => { BW.saveProfile({ ...p, setup: true }); BW.setWeight(BW.dayKey(), p.weightLb); finishOnboarding(); confetti(80); toast('Account created · you\u2019re backed up', { icon: 'cloud' }); })
+          .catch(err => { b.disabled = false; b.textContent = 'Create account & start'; $('#ob_err').innerHTML = `<span style="color:var(--red)">${esc(err.message)}</span>`; });
+      }
     };
   }
   function finishOnboarding() { $('#view').style.padding = ''; $('#view').oninput = null; S.tab = 'today'; S.date = BW.dayKey(); render(); setTimeout(() => { LS.set('seenLevel', BW.level().n); LS.set('seenBadges', BW.badges().filter(b => b.earned).map(b => b.id)); LS.set('seenChallenge', BW.challenge().done ? BW.challenge().week : null); }, 50); }

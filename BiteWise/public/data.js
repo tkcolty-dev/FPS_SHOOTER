@@ -38,20 +38,27 @@
   const profile = () => ({ ...DEFAULT_PROFILE, ...(recs.profile || {}) });
   const saveProfile = p => put({ ...profile(), ...p, id: 'profile', kind: 'profile' });
 
+  // goalType: 'lose' | 'maintain' | 'gain'. customBudget (a number) overrides the math, but never below the safe floor.
   function goals(p = profile()) {
     const kg = p.weightLb * 0.4536, cm = p.heightIn * 2.54;
     // Mifflin–St Jeor; for "other" gender we use the midpoint of the two formulas
     const bmr = 10 * kg + 6.25 * cm - 5 * p.age + (p.sex === 'male' ? 5 : p.sex === 'female' ? -161 : -78);
     const tdee = Math.round(bmr * p.activity / 10) * 10;
     const teen = p.age < 18;
-    const floor = p.sex === 'male' ? 1500 : p.sex === 'female' ? 1200 : 1350;
-    const maxPace = Math.max(0.5, Math.floor(p.weightLb * 0.01 * 4) / 4); // ≤ ~1% of body weight per week
-    const pace = teen ? 0 : Math.min(p.pace, maxPace);
-    let budget = p.customBudget || Math.round((tdee - pace * 500) / 10) * 10;
-    let clamped = false;
+    const goalType = p.goalType || (p.pace > 0 ? 'lose' : 'maintain');
+    // adults: never under 1200/1500. under 18: never more than a gentle 250 cal under maintenance
+    const floor = teen ? Math.max(1400, tdee - 250) : p.sex === 'male' ? 1500 : p.sex === 'female' ? 1200 : 1350;
+    const maxPace = teen ? 0.5 : Math.max(0.5, Math.floor(p.weightLb * 0.01 * 4) / 4); // ≤ ~1% of body weight per week
+    const pace = goalType === 'lose' ? Math.min(p.pace || 1, maxPace) : 0;
+    const gain = goalType === 'gain' ? Math.min(p.gainPace || 0.5, 1) : 0;
+    const planned = Math.round((tdee - pace * 500 + gain * 500) / 10) * 10;
+    const custom = p.customBudget ? Math.round(p.customBudget) : null;
+    let budget = custom || planned, clamped = false;
     if (budget < floor) { budget = floor; clamped = true; }
-    return { bmr: Math.round(bmr), tdee, budget, teen, floor, pace, maxPace, clamped, losing: !teen && p.goalLb < p.weightLb };
+    const weeklyChange = (budget - tdee) * 7 / 3500; // lb per week, negative = losing
+    return { bmr: Math.round(bmr), tdee, budget, planned, custom, teen, floor, pace, gain, goalType, maxPace, clamped, weeklyChange, losing: goalType === 'lose' };
   }
+
 
   // ---------- per-day numbers ----------
   const byDate = memo('byDate', () => { const m = {}; all('entry').forEach(e => (m[e.date] ||= []).push(e)); Object.values(m).forEach(a => a.sort((x, y) => x.time - y.time)); return m; });
@@ -251,7 +258,10 @@
     syncing = true; emit();
     try {
       const ids = [...dirty];
-      const res = await api('sync', { since: LS.get('seq', 0), changes: ids.map(id => recs[id]).filter(Boolean) });
+      let res = await api('sync', { since: LS.get('seq', 0), changes: ids.map(id => recs[id]).filter(Boolean) });
+      const all = [...res.records];
+      for (let g = 0; g < 50 && res.records.length >= 5000; g++) { res = await api('sync', { since: res.seq, changes: [] }); all.push(...res.records); }
+      res = { ...res, records: all };
       ids.forEach(id => dirty.delete(id));
       let changed = false;
       for (const r of res.records) { const cur = recs[r.id]; if (!cur || (r.updatedAt || 0) > (cur.updatedAt || 0)) { recs[r.id] = r; changed = true; } }
@@ -263,8 +273,23 @@
   async function signIn(mode, username, password) {
     const j = await api(mode === 'signup' ? 'signup' : 'login', { username, password });
     LS.set('account', { token: j.token, username: j.username }); LS.set('seq', 0);
-    Object.keys(recs).forEach(id => dirty.add(id)); persist();
-    await sync(); return j;
+    let serverProfile = false;
+    if (mode !== 'signup') {
+      // Signing in on another device: the cloud copy wins for goals/settings, and everything else merges.
+      let since = 0;
+      for (let guard = 0; guard < 50; guard++) {
+        const res = await api('sync', { since, changes: [] });
+        for (const r of res.records) {
+          if (r.id === 'profile') { recs.profile = r; serverProfile = true; continue; }
+          const cur = recs[r.id]; if (!cur || (r.updatedAt || 0) > (cur.updatedAt || 0)) recs[r.id] = r;
+        }
+        since = res.seq; if (res.records.length < 5000) break;
+      }
+      LS.set('seq', since);
+    }
+    Object.keys(recs).forEach(id => { if (!(id === 'profile' && serverProfile)) dirty.add(id); });
+    persist(); emit();
+    await sync(); return { ...j, restored: serverProfile };
   }
   async function signOut() { try { await api('logout'); } catch {} LS.del('account'); LS.del('seq'); emit(); }
 
