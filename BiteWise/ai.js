@@ -127,7 +127,7 @@ ${SAFETY}
 Current app data for this user (use it; don't ask for things already here):
 ${JSON.stringify(context, null, 1)}
 ${results ? `
-LOOKUP RESULTS (from Wikipedia, DuckDuckGo and OpenStreetMap). Use them for facts about places, brands and foods. If they don't answer the question, say you couldn't find it. Don't guess an address or hours:
+LOOKUP RESULTS (from Wikipedia, DuckDuckGo and OpenStreetMap). Use them for facts about places, brands and foods. The lookup is DONE: answer the question directly in the reply now, with numbers. Never say you are looking it up. If the results don't include calories, give a typical estimate for that kind of item and say it's an estimate. Don't guess an address or hours:
 ${results}` : ''}
 
 ${CARD_SPEC}
@@ -183,6 +183,14 @@ async function coach({ messages, context }) {
     try { j = await ask(coachSystem(context, block)); }
     catch (e) { console.error('coach step 2:', e.message); j = { ...first, reply: first.reply || 'I looked it up but ran out of time putting it together. Ask me again?' }; }
     sources = results.filter(x => x.url).slice(0, 3).map(x => ({ title: x.title, url: x.url, kind: x.kind }));
+  }
+  // backstop: a reply must answer, not narrate the lookup
+  if (/^\s*(i['’]?m\s+)?(looking|searching|let me (look|check|search)|checking|one (sec|moment))/i.test(j.reply || '')) {
+    const last = convo[convo.length - 1]?.content || '';
+    if (/calorie|kcal|how many|nutrition/i.test(last)) {
+      try { const it = (await estimate(last.replace(/find|look up|search/gi, ''))).slice(0, 3); if (it.length) j = { ...j, reply: `${it.map(i => `${i.name}: about ${i.calories} calories`).join('. ')}. That's a typical estimate${searched ? ' since they don\u2019t post calories' : ''}.` }; } catch {}
+    }
+    if (/^\s*(i['’]?m\s+)?(looking|searching|let me|checking|one )/i.test(j.reply || '')) j = { ...j, reply: (j.cards || []).length ? 'Here\u2019s what I found.' : 'I couldn\u2019t find details on that. Try asking a little differently?' };
   }
   return {
     reply: clean(j.reply).slice(0, 1500) || (j.cards?.length ? 'Here you go:' : 'Hmm, try asking that another way?'),
