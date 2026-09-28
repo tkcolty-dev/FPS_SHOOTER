@@ -1,7 +1,17 @@
 {
-  "version": "1.7.0",
+  "version": "1.8.0",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.8.0",
+      "date": "2026-09-28",
+      "title": "Daily pace",
+      "changes": [
+        "New: Daily pace. Set how many calories you usually eat by certain times (Me → Daily pace), or pick Normal day, Big breakfast, Big dinner or Eating window.",
+        "New: Today shows a marker for where you'd usually be by now, and says if you're on pace, ahead or under.",
+        "New: Bitey knows your usual pace when it gives advice."
+      ]
+    },
     {
       "version": "1.7.0",
       "date": "2026-09-28",

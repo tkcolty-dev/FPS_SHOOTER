@@ -804,3 +804,26 @@ body[data-tab="coach"][data-cview="recipes"]:not(.sheet-open) .toast { bottom: c
 .checks input:checked + span { text-decoration: line-through; color: var(--label2); }
 .by { color: var(--purple); font-weight: 600; }
 .logfor { margin-top: 8px; align-self: flex-start; }
+
+/* ---------- daily pace ---------- */
+.pace-bar { position: relative; overflow: visible; }
+.pace-bar > i { position: relative; z-index: 1; }
+.pace-mark { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--label); z-index: 2; box-shadow: 0 0 0 2px var(--card); }
+.pace-line { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--label2); margin-top: 4px; }
+.pace-line b { color: var(--label); font-weight: 600; }
+.pace-line.ahead b { color: var(--orange); }
+.pace-dot { width: 10px; height: 3px; border-radius: 2px; background: var(--label); flex: none; }
+.pace-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pace-presets .opt { padding: 12px; }
+.pace-presets .opt b { font-size: 15px; }
+.pace-presets .opt span { font-size: 13px; }
+.pace-row-edit { gap: 8px; }
+.time-in { width: 118px; height: 36px; padding: 0 8px; font-size: 16px; flex: none; }
+.cal-in { width: 80px; height: 36px; padding: 0 8px; font: 600 16px var(--round); text-align: right; flex: none; }
+.pace-row-edit .x { margin-left: auto; color: var(--label3); width: 26px; height: 26px; display: grid; place-items: center; }
+.pace-row-edit .x svg { width: 20px; height: 20px; }
+@media (max-width: 370px) { .time-in { width: 104px; } .cal-in { width: 70px; } }
+.time-in { width: 138px; }
+.cal-in { width: 74px; }
+.pace-row-edit > .muted { font-size: 14px; }
+@media (max-width: 400px) { .pace-row-edit > .muted:first-of-type { display: none; } .time-in { width: 132px; } }

@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.8.0 · Daily pace
+_2026-09-28 · git tag `v1.8.0`_
+
+- New: Daily pace. Set how many calories you usually eat by certain times (Me → Daily pace), or pick Normal day, Big breakfast, Big dinner or Eating window.
+- New: Today shows a marker for where you'd usually be by now, and says if you're on pace, ahead or under.
+- New: Bitey knows your usual pace when it gives advice.
+
 ## 1.7.0 · Smarter Bitey, offline Bitey, logging for friends
 _2026-09-28 · git tag `v1.7.0`_
 

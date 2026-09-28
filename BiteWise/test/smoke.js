@@ -74,6 +74,13 @@ function dataTests() {
   BW.addEntry({ date: BW.addDays(k, -1), calories: 100 }); BW.addEntry({ calories: 100 });
   ok(BW.streak().days === 2, 'streak counts days', BW.streak().days);
   ok(typeof BW.level().n === 'number', 'level works');
+  const pts = BW.PACE_PRESETS.normal.points;
+  ok(BW.paceShare(pts, 300) === 0 && BW.paceShare(pts, 1439) === 1, 'pace: 0 early morning, 100% at night');
+  ok(Math.abs(BW.paceShare(pts, 780) - 0.5) < 1e-9 && BW.paceShare(pts, 660) > 0.2 && BW.paceShare(pts, 660) < 0.5, 'pace: exact at checkpoints, in between otherwise');
+  const noon = new Date(); noon.setHours(12, 0, 0, 0);
+  const pn = BW.paceNow(BW.dayKey(), noon);
+  ok(pn && pn.expected > 0 && pn.expected < BW.day(BW.dayKey()).budget, 'pace: expected-by-now is part of the goal', JSON.stringify(pn));
+  BW.saveProfile({ paceOn: false }); ok(BW.paceNow(BW.dayKey(), noon) === null, 'pace can be turned off'); BW.saveProfile({ paceOn: true });
 }
 
 // ---------- server API ----------

@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.7.0';
+  const APP_VERSION = '1.8.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -337,6 +337,7 @@
       : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : S.status.health ? 'Tap to connect Fitbit' : 'Tap to add steps';
     const es = d.entries.slice().sort((a, b) => b.time - a.time);
     const mealTot = MEALS.map(([m, l]) => [m, l, d.meals[m].reduce((a, e) => a + e.calories, 0)]);
+    const pace = BW.paceNow(k);
     return `
     <div class="topbar">
       <div class="daynav">
@@ -350,8 +351,9 @@
         <button class="t-cal-main" type="button" data-act="calinfo">
           <div class="st-k">Calories eaten</div>
           <div class="t-big"><span class="num" data-count="${d.eaten}">${fmt(d.eaten)}</span><small class="num"> / ${fmt(d.budget)}</small></div>
-          <div class="bar big"><i style="width:${calPct}%;${over ? 'background:var(--orange)' : ''}"></i></div>
+          <div class="bar big pace-bar"><i style="width:${calPct}%;${over ? 'background:var(--orange)' : ''}"></i>${pace ? `<span class="pace-mark" style="left:${Math.min(100, pace.share * 100)}%" title="Usually ${fmt(pace.expected)} by now"></span>` : ''}</div>
           <div class="st-sub ${over ? 'warn' : ''}"><b class="num">${fmt(Math.abs(d.remaining))}</b>&nbsp;${over ? 'over your goal' : 'left today'}${d.bonus ? ` · includes +${d.bonus} from steps` : ''}</div>
+          ${pace ? `<div class="pace-line ${pace.diff > d.budget * .1 ? 'ahead' : ''}"><span class="pace-dot"></span><span>${pace.expected ? `Usually ~<b class="num">${fmt(pace.expected)}</b> by now · ${Math.abs(pace.diff) <= Math.max(60, d.budget * .05) ? 'right on pace' : pace.diff > 0 ? `<b class="num">${fmt(pace.diff)}</b> ahead` : `<b class="num">${fmt(-pace.diff)}</b> under`}` : `Your day starts around ${minLabel(BW.paceSettings().points[0][0] - 60)}`}</span></div>` : ''}
         </button>
         <div class="meal-split">${mealTot.map(([m, l, v]) => `<button type="button" data-addmeal="${m}" style="--mc:${MEAL_ICON[m][1]}" aria-label="${l}: ${fmt(v)} calories. Add to ${l}"><span class="ms-ic">${I(MEAL_ICON[m][0])}</span><b class="num">${v ? fmt(v) : '—'}</b><span>${l}</span></button>`).join('')}</div>
       </div>
@@ -488,7 +490,7 @@
       now: new Date().toLocaleString(), user: { name: p.name || undefined, age: p.age, gender: p.sex, allergies: p.allergies || [], heightIn: p.heightIn, weightLb: p.weightLb, goalLb: p.goalLb, under18: g.teen },
       plan: { dailyBudget: g.budget, maintenanceCalories: g.tdee, lossPaceLbPerWeek: g.pace, stepGoal: p.stepGoal, waterGoalGlasses: p.waterGoal, stepsEarnCalories: p.earnSteps },
       today: { eaten: d.eaten, budgetWithStepBonus: d.budget, remaining: d.remaining, stepBonus: d.bonus, steps: d.steps, stepGoal: p.stepGoal, waterGlasses: d.water, foods: d.entries.map(e => `${e.meal}: ${e.name} (${e.calories})`) },
-      goalIsCustomNumber: !!p.customBudget, safetyMinimum: g.floor,
+      goalIsCustomNumber: !!p.customBudget, safetyMinimum: g.floor, usualByNow: BW.paceNow()?.expected ?? null,
       last7days: Array.from({ length: 7 }, (_, i) => { const x = BW.day(BW.addDays(today, i - 7)); return { date: x.k, eaten: x.eaten, budget: x.budget, steps: x.steps }; }),
       weight: tr ? { trendLb: tr.now, changePerWeek: tr.perWeek && +tr.perWeek.toFixed(2), goalEta: tr.eta && tr.eta.toDateString() } : null,
       streakDays: BW.streak().days, level: BW.level().name, usualFoods: BW.frequent().slice(0, 6).map(f => `${f.name} (${f.calories})`),
@@ -735,6 +737,7 @@
       ${row('scale', 'var(--teal)', 'Goal weight', g.goalType === 'maintain' ? '—' : p.goalLb + ' lb', 'data-act="goals"')}
       ${row('shoe', 'var(--pink)', 'Step goal', fmt(p.stepGoal), 'data-act="stepgoal"')}
       ${row('drop', 'var(--cyan)', 'Water goal', p.waterGoal + ' glasses', 'data-act="watergoal"')}
+      ${row('today', 'var(--indigo, #5856D6)', 'Daily pace', BW.paceSettings().on ? (BW.profile().pacePoints?.length ? 'Custom' : BW.PACE_PRESETS[BW.paceSettings().preset]?.name || 'Normal') : 'Off', 'data-act="pace"', 'How much you usually eat by certain times')}
       ${row('info', 'var(--red)', 'Allergies', (p.allergies || []).length ? (p.allergies.length > 2 ? p.allergies.length + ' set' : p.allergies.map(cap).join(', ')) : 'None', 'data-act="allergies"', 'Get a heads-up when a food has them')}
     </div></div>
 
@@ -1291,6 +1294,61 @@
       onRight: close => { BW.saveProfile({ share: pr }); lastShared = ''; scheduleShare(true); close(); toast('Sharing updated'); } });
   }
 
+  const minLabel = m => { m = ((m % 1440) + 1440) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}${mm ? ':' + String(mm).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
+  const toTimeInput = m => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  function paceChart(points, budget) {
+    const W = 320, H = 130, x0 = 30, x1 = W - 6, y0 = 8, y1 = H - 20, t0 = 300, t1 = 1380;
+    const x = m => x0 + (m - t0) / (t1 - t0) * (x1 - x0), y = s => y1 - s * (y1 - y0);
+    const pts = []; for (let m = t0; m <= t1; m += 15) pts.push([m, BW.paceShare(points, m)]);
+    const now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Your usual eating pace">
+      ${[0, .5, 1].map(v => `<line x1="${x0}" x2="${x1}" y1="${y(v)}" y2="${y(v)}" stroke="var(--sep)"/><text x="0" y="${y(v) + 4}">${v ? (budget * v / 1000).toFixed(1) + 'k' : '0'}</text>`).join('')}
+      <path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('')} L${x(t1)},${y1} L${x(t0)},${y1} Z" fill="color-mix(in srgb, var(--accent) 16%, transparent)"/>
+      <path d="${pts.map((p, i) => `${i ? 'L' : 'M'}${x(p[0]).toFixed(1)},${y(p[1]).toFixed(1)}`).join('')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
+      ${points.map(p => `<circle cx="${x(p[0])}" cy="${y(p[1])}" r="4" fill="var(--accent)" stroke="var(--card)" stroke-width="2"/>`).join('')}
+      ${nm >= t0 && nm <= t1 ? `<line x1="${x(nm)}" x2="${x(nm)}" y1="${y0}" y2="${y1}" stroke="var(--label2)" stroke-dasharray="3 3"/><text x="${x(nm)}" y="${H - 4}" text-anchor="middle" style="fill:var(--label)">now</text>` : ''}
+      ${[360, 720, 1080].map(m => `<text x="${x(m)}" y="${H - 4}" text-anchor="middle">${minLabel(m)}</text>`).join('')}</svg>`;
+  }
+  function paceSheet() {
+    const ps = BW.paceSettings(), budget = BW.goals().budget;
+    const st = { on: ps.on, preset: BW.profile().pacePoints?.length ? 'custom' : ps.preset, rows: ps.points.map(([m, sh]) => ({ m, cal: Math.round(budget * sh / 10) * 10 })) };
+    openSheet({ title: 'Daily pace', left: 'Cancel', right: 'Save', tall: true, body: '', mount: b => {
+      const pointsNow = () => { const rows = st.rows.filter(r => r.cal >= 0 && r.m >= 0).sort((a, z) => a.m - z.m); const top = Math.max(budget, ...rows.map(r => r.cal)) || 1; return rows.map(r => [r.m, Math.min(1, r.cal / top)]); };
+      const draw = () => {
+        b.innerHTML = `<p class="muted" style="text-align:center;margin:0 10px 14px;font-size:15px">How much of your ${fmt(budget)} calories you usually eat by certain times. Today shows if you're on pace.</p>
+          <div class="group"><div class="row"><div class="grow"><div class="title">Show my pace on Today</div></div><button class="switch" type="button" role="switch" data-pon aria-checked="${st.on}" aria-label="Show my pace"></button></div></div>
+          <div class="footnote" style="margin:18px 16px 6px">START FROM</div>
+          <div class="pace-presets">${Object.entries(BW.PACE_PRESETS).map(([k, p]) => `<button type="button" class="opt" data-pp="${k}" aria-pressed="${st.preset === k}"><div><b>${p.name}</b><span>${p.desc}</span></div><span class="ck">${I('check')}</span></button>`).join('')}</div>
+          <div class="card" style="margin-top:14px">${paceChart(pointsNow(), budget)}</div>
+          <div class="footnote" style="margin:18px 16px 6px">BY THIS TIME · ABOUT THIS MANY CALORIES</div>
+          <div class="group">${st.rows.map((r, i) => `<div class="row pace-row-edit"><input type="time" class="field time-in" data-pt="${i}" value="${toTimeInput(r.m)}" aria-label="Time"><span class="muted">about</span><input class="field num cal-in" inputmode="numeric" data-pc="${i}" value="${r.cal}" aria-label="Calories by then"><span class="muted">cal</span><button class="x" type="button" data-prm="${i}" aria-label="Remove">${I('xcircle')}</button></div>`).join('')}
+            <button class="row add-row" type="button" data-padd>${I('plus', 'style="width:20px;height:20px"')} Add a time</button></div>
+          <div class="footnote">The last time should be your whole goal (${fmt(budget)}). If your goal changes, these move with it.</div>`;
+      };
+      draw();
+      b.onclick = e => {
+        const x = e.target.closest('button'); if (!x) return;
+        if ('pon' in x.dataset) { st.on = !st.on; x.setAttribute('aria-checked', st.on); return; }
+        if (x.dataset.pp) { st.preset = x.dataset.pp; st.rows = BW.PACE_PRESETS[x.dataset.pp].points.map(([m, sh]) => ({ m, cal: Math.round(budget * sh / 10) * 10 })); haptic(5); draw(); return; }
+        if (x.dataset.prm) { if (st.rows.length <= 1) return; st.rows.splice(+x.dataset.prm, 1); st.preset = 'custom'; draw(); return; }
+        if ('padd' in x.dataset) { const last = st.rows[st.rows.length - 1]; st.rows.push({ m: Math.min(1410, (last?.m || 720) + 120), cal: budget }); st.preset = 'custom'; draw(); return; }
+      };
+      b.onchange = e => {
+        const t = e.target;
+        if (t.dataset.pt) { const [h, m] = t.value.split(':').map(Number); if (Number.isFinite(h)) st.rows[+t.dataset.pt].m = h * 60 + (m || 0); }
+        if (t.dataset.pc) st.rows[+t.dataset.pc].cal = Math.max(0, parseInt(t.value, 10) || 0);
+        st.preset = 'custom'; b.querySelector('.card').innerHTML = paceChart(pointsNow(), budget); $$('[data-pp]', b).forEach(x => x.setAttribute('aria-pressed', 'false'));
+      };
+    }, onRight: close => {
+      const rows = st.rows.filter(r => r.cal >= 0).sort((a, z) => a.m - z.m);
+      if (!rows.length) return toast('Add at least one time', { icon: 'info' });
+      const custom = st.preset === 'custom';
+      const top = Math.max(budget, ...rows.map(r => r.cal));
+      BW.saveProfile({ paceOn: st.on, pacePreset: custom ? 'normal' : st.preset, pacePoints: custom ? rows.map(r => [r.m, Math.round(r.cal / top * 1000) / 1000]) : null });
+      close(); toast(st.on ? 'Pace saved' : 'Pace hidden on Today');
+    } });
+  }
+
   function allergySheet() {
     const sel = new Set(BW.profile().allergies || []);
     const all = Object.values(window.BW_ALLERGENS);
@@ -1485,6 +1543,7 @@
         case 'badges': return badgesSheet();
         case 'claim': return claimSheet();
         case 'allergies': return allergySheet();
+        case 'pace': return paceSheet();
         case 'versions': checkVersion(); return whatsNew(true);
         case 'newgroup': return newGroupSheet();
         case 'joingroup': return joinGroupSheet();

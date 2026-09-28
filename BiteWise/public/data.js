@@ -60,6 +60,29 @@
   }
 
 
+  // ---------- daily pace: how much of the day's calories you usually eat by certain times ----------
+  // points are [minutes after midnight, share of the daily goal 0..1]; kept as shares so they follow goal changes
+  const PACE_PRESETS = {
+    normal: { name: 'Normal day', desc: 'Breakfast, lunch, dinner', points: [[540, .2], [780, .5], [960, .6], [1170, .9], [1320, 1]] },
+    bigbreakfast: { name: 'Big breakfast', desc: 'Eat more early', points: [[540, .35], [780, .65], [1140, .95], [1320, 1]] },
+    bigdinner: { name: 'Big dinner', desc: 'Light day, bigger evening', points: [[540, .15], [780, .4], [1170, .9], [1320, 1]] },
+    window: { name: 'Eating window', desc: 'Noon to 8 PM', points: [[750, .35], [960, .55], [1200, 1]] },
+  };
+  const paceSettings = () => { const p = profile(); return { on: p.paceOn !== false, preset: p.pacePreset || 'normal', points: (p.pacePoints && p.pacePoints.length ? p.pacePoints : PACE_PRESETS[p.pacePreset || 'normal']?.points || PACE_PRESETS.normal.points).slice().sort((a, b) => a[0] - b[0]) }; };
+  // share of the day you'd usually have eaten at this minute (straight line between checkpoints, starting from 0 at 6 AM)
+  function paceShare(points, minute) {
+    const pts = [[Math.min(360, points[0][0] - 60), 0], ...points];
+    if (minute <= pts[0][0]) return 0;
+    for (let i = 1; i < pts.length; i++) if (minute <= pts[i][0]) { const [m0, s0] = pts[i - 1], [m1, s1] = pts[i]; return s0 + (s1 - s0) * (minute - m0) / (m1 - m0); }
+    return pts[pts.length - 1][1];
+  }
+  function paceNow(k = dayKey(), now = new Date()) {
+    const ps = paceSettings(); if (!ps.on || k !== dayKey()) return null;
+    const d = day(k), minute = now.getHours() * 60 + now.getMinutes(), share = paceShare(ps.points, minute);
+    const expected = Math.round(d.budget * share / 10) * 10, next = ps.points.find(p => p[0] > minute);
+    return { expected, share, diff: d.eaten - expected, next: next ? { minute: next[0], calories: Math.round(d.budget * next[1] / 10) * 10 } : null };
+  }
+
   // ---------- per-day numbers ----------
   const byDate = memo('byDate', () => { const m = {}; all('entry').forEach(e => (m[e.date] ||= []).push(e)); Object.values(m).forEach(a => a.sort((x, y) => x.time - y.time)); return m; });
   const entriesOn = k => byDate()[k] || [];
@@ -366,7 +389,7 @@
   window.BW = {
     LS, dayKey, parseDay, addDays, uid, put, remove, all, get: id => recs[id], profile, saveProfile, goals, day, health, streak, level, LEVELS, xpBreakdown, badges, trend,
     challenge: () => challengeFor(weekStart()), weekStart, frequent, recentAmounts, mealForNow, addEntry, entriesOn,
-    setWater, setSteps, setWeight, stepBonus, stepSource, acct, sync, signIn, signOut, api, ensureAccount, claimAccount, pullHealth, exportCSV, wipe, seedDemo,
+    setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, api, ensureAccount, claimAccount, pullHealth, exportCSV, wipe, seedDemo,
     get syncing() { return syncing; }, get syncError() { return lastSyncErr; }, get dirtyCount() { return dirty.size; },
     on: f => listeners.add(f), hasData: () => Object.keys(recs).length > 0,
   };
