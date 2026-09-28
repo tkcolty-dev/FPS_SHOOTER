@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.9.1';
+  const APP_VERSION = '1.9.2';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -1820,6 +1820,8 @@
       const j = await fetch('/version.json', { cache: 'no-store' }).then(r => r.json());
       S.versionInfo = j; LS.set('remoteVersion', j.version); LS.set('versionChecked', Date.now());
       S.updateReady = vcmp(j.version, APP_VERSION) > 0 ? j.version : null;
+      // install new versions by themselves when the app opens (once per version, so it can never loop)
+      if (S.updateReady && !manual && LS.get('autoUpdated', '') !== j.version && !sheets.length) { LS.set('autoUpdated', j.version); toast(`Updating to ${j.version}…`, { icon: 'download' }); return setTimeout(applyUpdate, 700); }
       updateBar();
       if (manual) toast(S.updateReady ? `Version ${S.updateReady} is ready` : `You\u2019re up to date · ${APP_VERSION}`, { icon: S.updateReady ? 'download' : 'check' });
       if (S.tab === 'me') render();
@@ -1832,11 +1834,13 @@
     b.hidden = !waiting || !BW.profile().setup;
     if (waiting) b.innerHTML = `${I('download')}<span>${S.updateReady ? `Update ready · <b>${esc(waiting)}</b> · tap to update` : `Update ${esc(waiting)} is waiting · connect to the internet`}</span>`;
   }
+  // a real update: drop the old offline copy and service worker, then load fresh files (your data is untouched)
   async function applyUpdate() {
     if (!navigator.onLine) return toast('Connect to the internet to update', { icon: 'offline' });
     const b = $('#updbar'); if (b) b.innerHTML = `${I('sync')}<span>Updating…</span>`;
-    try { const reg = await navigator.serviceWorker?.getRegistration(); await reg?.update(); } catch {}
-    location.reload();
+    try { for (const r of await navigator.serviceWorker?.getRegistrations() || []) await r.unregister(); } catch {}
+    try { for (const k of await caches.keys()) await caches.delete(k); } catch {}
+    location.replace(location.pathname + '?u=' + Date.now() + location.hash);
   }
   async function whatsNew(all) {
     let info = S.versionInfo;
@@ -1959,6 +1963,7 @@
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { const t = BW.dayKey(); if (S.date !== t && S._lastToday !== t) { S.date = t; } S._lastToday = t; render(); BW.sync(); autoHealth(); } });
   S._lastToday = BW.dayKey();
 
+  if (location.search.includes('u=')) history.replaceState(null, '', location.pathname + location.hash);
   readHash(); render(); checkRewards();
   (window.requestIdleCallback || (f => setTimeout(f, 1200)))(() => BW_PARSE.loadUSDA());
   fetch('/api/status').then(r => r.json()).then(j => { S.status = j; if (BW.profile().setup) render(); setTimeout(flushPendingCoach, 800); }).catch(() => {});

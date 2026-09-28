@@ -21,7 +21,7 @@ To undo one release but keep everything after it: \`git revert <commit>\` (see \
 ## Releasing a new version
 
 1. Bump \`version\` and add an entry at the top of \`history\` in \`public/version.json\`.
-2. Set \`APP_VERSION\` in \`public/app.js\` to the same number, and bump \`VERSION\` in \`public/sw.js\`.
+2. Set \`APP_VERSION\` in \`public/app.js\` and the \`?v=\` links in \`public/index.html\` to the same number, and bump \`VERSION\` in \`public/sw.js\`.
 3. \`npm test\`. Everything must pass.
 4. \`node tools/changelog.js\`, then commit, tag (\`git tag v1.x.y\`), push, and deploy with \`cf push --strategy rolling\` (no downtime).
 `;

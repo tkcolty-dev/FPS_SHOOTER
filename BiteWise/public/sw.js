@@ -1,9 +1,10 @@
 // BiteWise service worker — the whole app shell is cached so BiteWise opens and works with no internet.
 // Bump VERSION when shipping changes; the page picks up the new files on the next open.
-const VERSION = 'bitewise-v20';
+const VERSION = 'bitewise-v21';
 const SHELL = ['/', '/index.html', '/styles.css', '/app.js', '/data.js', '/parse.js', '/foods.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-180.png', '/icons/icon-192.png', '/icons/icon-512.png', '/usda-foods.json', '/version.json'];
 
-self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
+// cache each file on its own so one slow/failed file (like the big food list) can't block the whole update
+self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => Promise.allSettled(SHELL.map(u => fetch(u, { cache: 'no-store' }).then(r => r.ok && c.put(u === '/' ? '/index.html' : u, r))))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 
 self.addEventListener('fetch', e => {
@@ -19,7 +20,9 @@ self.addEventListener('fetch', e => {
   e.respondWith((async () => {
     const cache = await caches.open(VERSION);
     try {
-      const r = await Promise.race([fetch(e.request), new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), 3500))]);
+      // wait longer for the page itself; fall back to the saved copy only when the network is really gone or very slow
+      const wait = e.request.mode === 'navigate' || /\.(js|css|json)$/.test(url.pathname) ? 9000 : 4000;
+      const r = await Promise.race([e.request.mode === 'navigate' ? fetch(e.request) : fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' }), new Promise((_, rej) => setTimeout(() => rej(new Error('slow')), wait))]);
       if (r.ok) { cache.put(key, r.clone()); return r; }
       // server hiccup (like a 503 while it restarts): use the saved copy if there is one
       if (r.status >= 500) { const hit = await cache.match(key); if (hit) return hit; }

@@ -40,6 +40,8 @@ function fileTests() {
   const app = fs.readFileSync(path.join(PUB, 'app.js'), 'utf8');
   ok(app.includes(`const APP_VERSION = '${v.version}'`), 'app.js version matches version.json', v.version);
   ok(v.history[0].version === v.version, 'newest history entry is the current version');
+  const html = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
+  ok((html.match(/\?v=([0-9.]+)"/g) || []).length >= 5 && (html.match(/\?v=([0-9.]+)"/g) || []).every(m => m === `?v=${v.version}"`), 'index.html file links carry the current version', v.version);
   const sw = fs.readFileSync(path.join(PUB, 'sw.js'), 'utf8');
   for (const f of (sw.match(/const SHELL = \[(.*?)\]/s)?.[1] || '').match(/'([^']+)'/g).map(x => x.slice(1, -1))) if (f !== '/') ok(fs.existsSync(path.join(PUB, f)), 'offline file exists: ' + f);
   const u = JSON.parse(fs.readFileSync(path.join(PUB, 'usda-foods.json'), 'utf8'));
