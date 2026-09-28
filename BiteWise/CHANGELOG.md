@@ -21,6 +21,15 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.6.0 · Bitey can do more
+_2026-09-27 · git tag `v1.6.0`_
+
+- New: Tell Bitey your steps. 'I walked 6,000 steps' sets them, and 'I walked 2,000 more' adds them.
+- New: Ask Bitey to change your daily goal, like 'make my goal 1,800'. The safety minimum still applies.
+- New: Ask Bitey to remove something you logged, like 'take off the chips'.
+- New: Log for yesterday, like 'I forgot to log a burrito yesterday'.
+- Changed: Everything Bitey changes shows in a card with an Undo button.
+
 ## 1.5.3 · No more 503 on reload
 _2026-09-27 · git tag `v1.5.3`_
 

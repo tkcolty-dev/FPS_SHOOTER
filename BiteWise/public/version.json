@@ -1,7 +1,19 @@
 {
-  "version": "1.5.3",
+  "version": "1.6.0",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.6.0",
+      "date": "2026-09-27",
+      "title": "Bitey can do more",
+      "changes": [
+        "New: Tell Bitey your steps. 'I walked 6,000 steps' sets them, and 'I walked 2,000 more' adds them.",
+        "New: Ask Bitey to change your daily goal, like 'make my goal 1,800'. The safety minimum still applies.",
+        "New: Ask Bitey to remove something you logged, like 'take off the chips'.",
+        "New: Log for yesterday, like 'I forgot to log a burrito yesterday'.",
+        "Changed: Everything Bitey changes shows in a card with an Undo button."
+      ]
+    },
     {
       "version": "1.5.3",
       "date": "2026-09-27",

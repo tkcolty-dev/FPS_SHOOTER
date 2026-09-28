@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.5.3';
+  const APP_VERSION = '1.6.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -475,7 +475,8 @@
     return {
       now: new Date().toLocaleString(), user: { name: p.name || undefined, age: p.age, gender: p.sex, allergies: p.allergies || [], heightIn: p.heightIn, weightLb: p.weightLb, goalLb: p.goalLb, under18: g.teen },
       plan: { dailyBudget: g.budget, maintenanceCalories: g.tdee, lossPaceLbPerWeek: g.pace, stepGoal: p.stepGoal, waterGoalGlasses: p.waterGoal, stepsEarnCalories: p.earnSteps },
-      today: { eaten: d.eaten, budgetWithStepBonus: d.budget, remaining: d.remaining, stepBonus: d.bonus, steps: d.steps, waterGlasses: d.water, foods: d.entries.map(e => `${e.meal}: ${e.name} (${e.calories})`) },
+      today: { eaten: d.eaten, budgetWithStepBonus: d.budget, remaining: d.remaining, stepBonus: d.bonus, steps: d.steps, stepGoal: p.stepGoal, waterGlasses: d.water, foods: d.entries.map(e => `${e.meal}: ${e.name} (${e.calories})`) },
+      goalIsCustomNumber: !!p.customBudget, safetyMinimum: g.floor,
       last7days: Array.from({ length: 7 }, (_, i) => { const x = BW.day(BW.addDays(today, i - 7)); return { date: x.k, eaten: x.eaten, budget: x.budget, steps: x.steps }; }),
       weight: tr ? { trendLb: tr.now, changePerWeek: tr.perWeek && +tr.perWeek.toFixed(2), goalEta: tr.eta && tr.eta.toDateString() } : null,
       streakDays: BW.streak().days, level: BW.level().name, usualFoods: BW.frequent().slice(0, 6).map(f => `${f.name} (${f.calories})`),
@@ -546,7 +547,7 @@
     ${coachSwitch()}
     ${note}
     ${msgs.length ? '' : `<div class="coach-hero"><div class="av">${I('coach')}</div><div style="font-size:20px;font-weight:700">Hi${BW.profile().name ? ', ' + esc(BW.profile().name) : ''}! I'm Bitey.</div><div class="muted" style="margin:4px auto 0;max-width:34ch;font-size:15px">Tell me what you ate and I'll log it. Ask for meal ideas, or ask how your week is going.</div></div>`}
-    <div class="chat" id="chat">${msgs.map((m, i) => m.role === 'user' ? `<div class="msg me">${esc(m.content)}</div>` : `<div class="msg ai">${linkify(m.content)}</div>${(m.done || []).length ? `<div class="action-card">${m.done.map(a => `<div class="ln"><span>${esc(a.label)}</span><b class="num">${esc(a.value)}</b></div>`).join('')}<div class="ln" style="margin-top:2px"><span class="ok">${I('check')}${m.undone ? 'Removed' : 'Added to your day'}</span>${m.undone ? '' : `<button class="link-btn" style="font-size:14px" type="button" data-undoact="${i}">Undo</button>`}</div></div>` : ''}`).join('')}
+    <div class="chat" id="chat">${msgs.map((m, i) => m.role === 'user' ? `<div class="msg me">${esc(m.content)}</div>` : `<div class="msg ai">${linkify(m.content)}</div>${(m.done || []).length ? `<div class="action-card">${m.done.map(a => `<div class="ln"><span>${esc(a.label)}</span><b class="num">${esc(a.value)}</b></div>`).join('')}<div class="ln" style="margin-top:2px"><span class="ok">${I('check')}${m.undone ? 'Undone' : 'Done'}</span>${m.undone ? '' : `<button class="link-btn" style="font-size:14px" type="button" data-undoact="${i}">Undo</button>`}</div></div>` : ''}`).join('')}
     ${S.coachBusy ? '<div class="msg ai typing"><i></i><i></i><i></i></div>' : ''}</div>
     <div class="chips wrap" style="margin-top:12px">${(msgs.length ? (msgs[msgs.length - 1].chips || []) : starters).map(c => `<button class="chip" type="button" data-say="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <div style="height:70px"></div>
@@ -563,10 +564,26 @@
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Coach is unavailable');
       const done = [], ids = [];
       const today = BW.dayKey();
+      const yesterday = BW.addDays(today, -1);
       for (const a of j.actions || []) {
-        if (a.type === 'log' && a.name && Number.isFinite(+a.calories)) { const e = BW.addEntry({ name: a.name, calories: +a.calories, meal: ['breakfast', 'lunch', 'dinner', 'snack'].includes(a.meal) ? a.meal : undefined, source: 'coach' }); ids.push({ id: e.id }); done.push({ label: a.name, value: fmt(+a.calories) + ' cal' }); }
+        const day = a.day === 'yesterday' ? yesterday : today;
+        if (a.type === 'log' && a.name && Number.isFinite(+a.calories)) { const e = BW.addEntry({ date: day, name: a.name, calories: +a.calories, meal: ['breakfast', 'lunch', 'dinner', 'snack'].includes(a.meal) ? a.meal : undefined, source: 'coach' }); ids.push({ id: e.id }); done.push({ label: a.name + (day === yesterday ? ' (yesterday)' : ''), value: fmt(+a.calories) + ' cal' }); }
         if (a.type === 'water' && +a.glasses) { const before = BW.day(today).water; BW.setWater(today, before + Math.round(+a.glasses)); ids.push({ water: before }); done.push({ label: 'Water', value: `+${Math.round(+a.glasses)} glass${+a.glasses > 1 ? 'es' : ''}` }); }
         if (a.type === 'weight' && +a.value > 50 && +a.value < 700) { const before = BW.day(today).weight; BW.setWeight(today, +a.value); ids.push({ weight: before }); done.push({ label: 'Weight', value: (+a.value).toFixed(1) + ' lb' }); }
+        if (a.type === 'steps' && Number.isFinite(+a.value) && +a.value >= 0 && +a.value <= 100000) {
+          const before = BW.day(day).steps, src = BW.stepSource(day), next = a.mode === 'add' ? before + Math.round(+a.value) : Math.round(+a.value);
+          BW.setSteps(day, next, 'manual'); ids.push({ steps: before, stepsDay: day, stepsSrc: src }); done.push({ label: 'Steps' + (day === yesterday ? ' (yesterday)' : ''), value: a.mode === 'add' ? `+${fmt(+a.value)} → ${fmt(next)}` : fmt(next) });
+        }
+        if (a.type === 'goal' && (a.calories === null || (Number.isFinite(+a.calories) && +a.calories >= 500 && +a.calories <= 6000))) {
+          const before = BW.profile().customBudget ?? null, want = a.calories === null ? null : Math.round(+a.calories);
+          BW.saveProfile({ customBudget: want ? Math.max(BW.goals().floor, want) : null }); ids.push({ goal: before });
+          done.push({ label: 'Daily goal', value: want ? `${fmt(BW.goals().budget)} cal${want < BW.goals().floor ? ' (lowest allowed)' : ''}` : `automatic · ${fmt(BW.goals().budget)} cal` });
+        }
+        if (a.type === 'remove' && a.name) {
+          const q = String(a.name).toLowerCase(), es = BW.day(today).entries.slice().reverse();
+          const e = es.find(x => x.name.toLowerCase() === q) || es.find(x => x.name.toLowerCase().includes(q) || q.includes(x.name.toLowerCase()));
+          if (e) { BW.remove(e.id); ids.push({ restore: e }); done.push({ label: 'Removed ' + e.name, value: '−' + fmt(e.calories) + ' cal' }); }
+        }
       }
       const m2 = chat(); m2.push({ role: 'assistant', content: j.reply || '…', chips: j.chips || [], done, ids }); saveChat(m2);
       if (done.length) haptic(12);
@@ -1391,8 +1408,15 @@
   function undoCoach(i) {
     const msgs = chat(), m = msgs[i]; if (!m || m.undone) return;
     const today = BW.dayKey();
-    (m.ids || []).forEach(x => { if (x.id) BW.remove(x.id); if ('water' in x) BW.setWater(today, x.water); if ('weight' in x) { x.weight ? BW.setWeight(today, x.weight) : BW.remove('weight:' + today); } });
-    m.undone = true; saveChat(msgs); render(); toast('Removed from your day');
+    (m.ids || []).forEach(x => {
+      if (x.id) BW.remove(x.id);
+      if ('water' in x) BW.setWater(today, x.water);
+      if ('weight' in x) { x.weight ? BW.setWeight(today, x.weight) : BW.remove('weight:' + today); }
+      if ('steps' in x) { x.steps || x.stepsSrc ? BW.setSteps(x.stepsDay, x.steps, x.stepsSrc || 'manual') : BW.remove('steps:' + x.stepsDay); }
+      if ('goal' in x) BW.saveProfile({ customBudget: x.goal });
+      if (x.restore) BW.put({ ...x.restore, deleted: false });
+    });
+    m.undone = true; saveChat(msgs); render(); toast('Undone');
   }
 
   function exportData() {
