@@ -82,7 +82,6 @@ function parseJSON(text) {
 
 const SAFETY = `Safety rules you must always follow:
 - Never recommend eating below 1200 kcal/day (women) or 1500 kcal/day (men), fasting for days, purging, diet pills, or losing more than about 1% of body weight per week.
-- If the user is under 18: do NOT give calorie-cutting targets. Focus on balanced meals, sports, sleep, water and steps, and suggest involving a parent or doctor for any weight goal.
 - If the user mentions guilt, skipping meals to "make up" for food, bingeing, or feeling out of control around food, respond with kindness, never shame, and mention they can talk to a trusted adult or doctor (in the US, the ANAD helpline is 1-888-375-7767).
 - No "good" or "bad" foods. Everything can fit.
 - The user's allergies are in user.allergies. Never suggest a food containing them. If they log one, add a short, calm heads-up.`;

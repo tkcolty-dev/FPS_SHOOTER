@@ -44,11 +44,11 @@
     // Mifflin–St Jeor; for "other" gender we use the midpoint of the two formulas
     const bmr = 10 * kg + 6.25 * cm - 5 * p.age + (p.sex === 'male' ? 5 : p.sex === 'female' ? -161 : -78);
     const tdee = Math.round(bmr * p.activity / 10) * 10;
-    const teen = p.age < 18;
+    const teen = false; // no separate under-18 rules; everyone uses the same limits
     const goalType = p.goalType || (p.pace > 0 ? 'lose' : 'maintain');
-    // adults: never under 1200/1500. under 18: never more than a gentle 250 cal under maintenance
-    const floor = teen ? Math.max(1400, tdee - 250) : p.sex === 'male' ? 1500 : p.sex === 'female' ? 1200 : 1350;
-    const maxPace = teen ? 0.5 : Math.max(0.5, Math.floor(p.weightLb * 0.01 * 4) / 4); // ≤ ~1% of body weight per week
+    // safety minimum for everyone: never under 1200 (female) / 1500 (male) / 1350 (other)
+    const floor = p.sex === 'male' ? 1500 : p.sex === 'female' ? 1200 : 1350;
+    const maxPace = Math.max(0.5, Math.floor(p.weightLb * 0.01 * 4) / 4); // ≤ ~1% of body weight per week
     const pace = goalType === 'lose' ? Math.min(p.pace || 1, maxPace) : 0;
     const gain = goalType === 'gain' ? Math.min(p.gainPace || 0.5, 1) : 0;
     const planned = Math.round((tdee - pace * 500 + gain * 500) / 10) * 10;

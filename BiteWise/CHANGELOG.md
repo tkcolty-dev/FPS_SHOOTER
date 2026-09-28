@@ -21,6 +21,12 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and `cf push`.
 
+## 1.4.2 · Same goal rules for everyone
+_2026-09-27 · git tag `v1.4.2`_
+
+- Changed: No separate under-18 rules. Everyone can pick any pace up to about 1% of body weight a week, or set their own number.
+- Changed: The lowest goal is 1,200 calories (1,500 for male) for everyone.
+
 ## 1.4.1 · Setting your own number
 _2026-09-27 · git tag `v1.4.1`_
 

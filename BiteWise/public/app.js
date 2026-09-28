@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.4.1';
+  const APP_VERSION = '1.4.2';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -589,7 +589,7 @@
       ${a && !a.auto ? `<button class="row" type="button" data-act="signout" style="color:var(--red)">Sign out</button>` : ''}
       <button class="row" type="button" data-act="wipe" style="color:var(--red)">Delete all data</button>
     </div>
-    <div class="footnote">BiteWise ${S.status.ai ? `· Coach runs on Cloud Foundry open models (${esc(String(S.status.model).split('/').pop())})` : '· Coach offline'} · Not medical advice. For weight goals under 18, talk with a doctor or parent.</div></div>
+    <div class="footnote">BiteWise ${S.status.ai ? `· Coach runs on Cloud Foundry open models (${esc(String(S.status.model).split('/').pop())})` : '· Coach offline'} · Not medical advice.</div></div>
     </div></div>`;
   }
 

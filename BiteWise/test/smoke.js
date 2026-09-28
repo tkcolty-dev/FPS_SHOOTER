@@ -60,7 +60,10 @@ function dataTests() {
   ok(BW.goals().budget === 1800, 'custom number used');
   BW.saveProfile({ customBudget: null, age: 14, goalType: 'lose', pace: 2 });
   g = BW.goals();
-  ok(g.teen && g.pace <= 0.5 && g.budget >= g.tdee - 250, 'teen limits', JSON.stringify({ pace: g.pace, budget: g.budget, tdee: g.tdee }));
+  ok(!g.teen && g.budget >= 1200 && g.pace > 0.5, 'under 18 uses the same limits as everyone', JSON.stringify({ pace: g.pace, budget: g.budget, floor: g.floor }));
+  BW.saveProfile({ customBudget: 1300 });
+  ok(BW.goals().budget === 1300, 'under 18 can set their own number above the minimum', BW.goals().budget);
+  BW.saveProfile({ customBudget: null });
   BW.saveProfile({ age: 30, goalType: 'gain', gainPace: 0.5 });
   ok(BW.goals().budget > BW.goals().tdee, 'gain adds calories');
   const k = BW.dayKey();
