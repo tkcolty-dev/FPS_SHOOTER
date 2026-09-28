@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>BiteWise</title>
+<meta name="description" content="Count calories in seconds — quick log, voice and text logging that work offline, an AI coach, Fitbit steps and rewards.">
+<meta name="theme-color" content="#F2F2F7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BiteWise">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div id="app">
+  <main id="view" aria-live="polite"></main>
+</div>
+<div class="minibar" id="minibar" aria-hidden="true"><div class="minibar-in"><span id="mbText"></span><button type="button" class="mb-add" id="mbAdd" aria-label="Log food"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button></div></div>
+<nav class="tabbar" id="tabbar" hidden aria-label="Tabs">
+  <div class="tabbar-in" role="tablist">
+    <div class="side-brand" aria-hidden="true"><img src="/icons/icon-192.png" alt="" width="32" height="32"><span>BiteWise</span></div>
+    <button class="tab" type="button" role="tab" data-tab="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>Today</button>
+    <button class="tab" type="button" role="tab" data-tab="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 20V11M10 20V5M16 20v-6M22 20H2"/></svg>Progress</button>
+    <button class="tab tab-add" type="button" data-tab="log" aria-label="Log food"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><em>Log food</em></button>
+    <button class="tab" type="button" role="tab" data-tab="coach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Coach</button>
+    <button class="tab" type="button" role="tab" data-tab="me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Me</button>
+    <div class="kbd-hint"><kbd>N</kbd> log food · <kbd>V</kbd> voice · <kbd>T</kbd> type<br><kbd>1</kbd>–<kbd>4</kbd> switch tabs · <kbd>Esc</kbd> close</div>
+  </div>
+</nav>
+<script src="/foods.js"></script>
+<script src="/parse.js"></script>
+<script src="/data.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

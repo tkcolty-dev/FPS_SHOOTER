@@ -1,0 +1,21 @@
+{
+  "name": "BiteWise",
+  "short_name": "BiteWise",
+  "description": "Count calories in seconds — works offline.",
+  "start_url": "/#today",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F2F2F7",
+  "theme_color": "#2FB866",
+  "orientation": "portrait",
+  "shortcuts": [
+    { "name": "Log calories", "short_name": "Log", "url": "/#log", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Voice log", "short_name": "Voice", "url": "/#voice", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

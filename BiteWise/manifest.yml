@@ -1,0 +1,16 @@
+applications:
+  - name: bitewise
+    memory: 256M
+    disk_quota: 512M
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node server.js
+    health-check-type: http
+    health-check-http-endpoint: /api/status
+    services:
+      - bitewise-db
+      - bitewise-ai
+    env:
+      NODE_ENV: production
+      OPTIMIZE_MEMORY: true
