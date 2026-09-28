@@ -16,6 +16,9 @@ function cleanStats(s = {}) {
   };
 }
 
+// members are addressed by a per-group key, never by their account id
+const memberKey = (gid, uid) => crypto.createHash('sha256').update(gid + ':' + uid).digest('hex').slice(0, 16);
+
 module.exports = function mountGroups(app, { store, needUser, limit }) {
   const myGroups = async uid => (await store.kvGet('ugroups:' + uid)) || [];
   const setMyGroups = (uid, ids) => store.kvSet('ugroups:' + uid, ids);
@@ -25,7 +28,7 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
       const share = await store.kvGet('share:' + m);
       const u = await store.userById(m);
       const auto = !u || u.auto || /^bw-/.test(u.username || '');
-      return { you: m === uid, owner: m === g.owner, username: auto ? null : u.username, stats: share?.stats || null, at: share?.at || null };
+      return { key: memberKey(g.id, m), you: m === uid, owner: m === g.owner, username: auto ? null : u.username, stats: share?.stats || null, at: share?.at || null, canLog: share?.allowLog !== false };
     }));
     return { id: g.id, name: g.name, code: g.code, created: g.created, members };
   }
@@ -72,9 +75,29 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     res.json({ ok: true });
   });
 
+  // a member logs food for someone else in the group (only if that person allows it). It lands in their log
+  // like any synced record, so it shows up on their phone the next time it syncs, even if they were offline.
+  app.post('/api/groups/:id/log', needUser, limit(60, 60 * 60e3), async (req, res) => {
+    const g = await store.kvGet('group:' + req.params.id);
+    if (!g || !g.members.includes(req.uid)) return res.status(404).json({ error: 'That group is gone.' });
+    const to = g.members.find(m => memberKey(g.id, m) === String(req.body.to || ''));
+    if (!to || to === req.uid) return res.status(404).json({ error: 'That person isn\u2019t in the group anymore.' });
+    const share = await store.kvGet('share:' + to);
+    if (share && share.allowLog === false) return res.status(403).json({ error: 'They\u2019ve turned off logging from their groups.' });
+    const name = String(req.body.name || 'Food').trim().slice(0, 80), calories = Math.round(+req.body.calories);
+    if (!(calories > 0 && calories <= 5000)) return res.status(400).json({ error: 'Enter calories between 1 and 5,000.' });
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : new Date().toISOString().slice(0, 10);
+    const meal = ['breakfast', 'lunch', 'dinner', 'snack'].includes(req.body.meal) ? req.body.meal : 'snack';
+    const me = await store.kvGet('share:' + req.uid);
+    const by = me?.stats?.name || (await store.userById(req.uid))?.username || 'A friend';
+    const now = Date.now();
+    await store.upsertRecords(to, [{ id: 'e:g-' + crypto.randomUUID(), kind: 'entry', date, time: now, meal, name, calories, source: 'group', by: String(by).slice(0, 30), updatedAt: now }]);
+    res.json({ ok: true });
+  });
+
   // the app posts a fresh summary of what the person chose to share whenever their numbers change
   app.post('/api/share', needUser, limit(60, 60e3), async (req, res) => {
-    await store.kvSet('share:' + req.uid, { stats: cleanStats(req.body.stats), at: Date.now() });
+    await store.kvSet('share:' + req.uid, { stats: cleanStats(req.body.stats), allowLog: req.body.allowLog !== false, at: Date.now() });
     res.json({ ok: true });
   });
 };

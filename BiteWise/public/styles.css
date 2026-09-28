@@ -761,3 +761,46 @@ body[data-tab="coach"][data-cview="recipes"]:not(.sheet-open) .toast { bottom: c
   .t-week .week-card { display: flex; flex-direction: column; }
   .t-week .wstats { flex: 1; grid-auto-rows: 1fr; }
 }
+
+/* ---------- theme picker ---------- */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 12px 8px; }
+.swatch { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 0; border-radius: 14px; }
+.swatch .dot { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; color: #fff; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); transition: transform .15s; }
+.swatch .dot svg { width: 22px; height: 22px; }
+.swatch.on .dot { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--label); }
+.swatch .nm { font-size: 13px; font-weight: 600; }
+.swatch .lv { font-size: 11px; color: var(--label2); margin-top: -4px; }
+.swatch.locked .dot { opacity: .45; }
+.swatch:active .dot { transform: scale(.92); }
+
+/* ---------- Bitey cards ---------- */
+.looked { align-self: flex-start; display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--label2); margin: -2px 0 2px 6px; }
+.looked svg { width: 13px; height: 13px; flex: none; }
+.looked a { color: var(--accent); }
+.bcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; width: 100%; margin: 2px 0 4px; }
+.bcard { background: var(--card); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.bcard img { width: 100%; height: 150px; object-fit: cover; display: block; background: var(--fill); }
+.bc-body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; }
+.bc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.bc-top b { font-size: 17px; line-height: 1.25; }
+.bc-top .pill { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); flex: none; }
+.bc-text { font-size: 14.5px; color: var(--label2); line-height: 1.4; }
+.bc-row { display: flex; gap: 6px; align-items: flex-start; font-size: 14px; }
+.bc-row svg { width: 15px; height: 15px; flex: none; margin-top: 2px; color: var(--label2); }
+.pl-ic { width: 28px; height: 28px; border-radius: 8px; background: var(--orange); color: #fff; display: grid; place-items: center; flex: none; }
+.pl-ic svg { width: 16px; height: 16px; }
+.ing { list-style: none; margin: 4px 0 0; padding: 0; font-size: 14px; display: flex; flex-direction: column; gap: 3px; }
+.ing li { display: flex; justify-content: space-between; gap: 10px; }
+.ing li span:last-child { color: var(--label2); font-variant-numeric: tabular-nums; }
+.bcard details { font-size: 14px; }
+.bcard summary { color: var(--accent); font-weight: 600; cursor: pointer; padding: 4px 0; list-style: none; }
+.bcard summary::-webkit-details-marker { display: none; }
+.bcard summary::after { content: " ›"; }
+.bcard details[open] summary::after { content: " ⌄"; }
+.bcard ol { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; line-height: 1.4; }
+.bcard .btn.small { align-self: flex-start; margin-top: 4px; }
+.checks { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.checks input { accent-color: var(--accent); width: 17px; height: 17px; vertical-align: -3px; }
+.checks input:checked + span { text-decoration: line-through; color: var(--label2); }
+.by { color: var(--purple); font-weight: 600; }
+.logfor { margin-top: 8px; align-self: flex-start; }

@@ -114,16 +114,32 @@ async function serverTests() {
       ok(fam?.members.some(m => m.stats?.name === 'Bob' && m.stats.streak === 3), 'shared stats visible');
       const eve = await call('signup', { username: 'eve', password: 'secret3' });
       ok(!((await call('groups', null, eve.j.token, 'GET')).j.groups || []).length, 'outsiders see nothing');
+      const bobKey = fam.members.find(m => m.stats?.name === 'Bob')?.key;
+      ok(!!bobKey, 'members have a key');
+      const lf = await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Pizza', calories: 300, meal: 'dinner', date: '2026-09-28' }, a.j.token);
+      ok(lf.status === 200, 'log food for a group member', JSON.stringify(lf.j));
+      const bs = await call('sync', { since: 0 }, bob.j.token);
+      ok(bs.j.records.some(r => r.name === 'Pizza' && r.source === 'group' && r.by), 'friend-logged food lands in their log');
+      await call('share', { stats: { name: 'Bob' }, allowLog: false }, bob.j.token);
+      ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, a.j.token)).status === 403, 'respects "don\'t let others log"');
+      ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, eve.j.token)).status === 404, 'outsiders cannot log for members');
       ok((await call(`groups/${fam.id}/leave`, {}, bob.j.token)).status === 200, 'leave group');
     }
   } catch (e) { fail++; console.log('  ✗ server tests crashed: ' + e.message + '\n' + log.slice(-800)); }
   srv.kill(); fs.rmSync(dir, { recursive: true, force: true });
 }
 
+function searchSafetyTests() {
+  const { isSafe } = require('../search');
+  ok(isSafe("Holtman's Donuts") && isSafe('calories in a big mac'), 'normal lookups allowed');
+  ok(!isSafe('how to purge after eating') && !isSafe('diet pills that work') && !isSafe('buy weed'), 'unsafe lookups refused');
+}
+
 (async () => {
   console.log('BiteWise smoke tests');
   try { parserTests(); } catch (e) { fail++; console.log('  ✗ parser crashed: ' + e.stack); }
   try { fileTests(); } catch (e) { fail++; console.log('  ✗ files crashed: ' + e.stack); }
+  try { searchSafetyTests(); } catch (e) { fail++; console.log('  ✗ search safety crashed: ' + e.stack); }
   try { dataTests(); } catch (e) { fail++; console.log('  ✗ data crashed: ' + e.stack); }
   await serverTests();
   console.log(`${pass} passed, ${fail} failed`);

@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.6.0';
+  const APP_VERSION = '1.7.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -67,17 +67,29 @@
   const BADGE_COLORS = { bite: '#FF9500', flame: '#FF3B30', crown: '#FFB800', drop: '#32ADE6', shoe: '#34C759', target: '#AF52DE', scale: '#5AC8FA', trophy: '#FFB800', mic: '#FF2D55', spark: '#5856D6', sun: '#FF9500', heart: '#FF2D55' };
 
   // ---------- themes (rewards) ----------
+  // accent colors: most are free; a few still unlock with levels as rewards
   const THEMES = [
     { id: 'fresh', name: 'Fresh', color: '#2FB866', dark: '#34D07A', level: 1 },
-    { id: 'ocean', name: 'Ocean', color: '#007AFF', dark: '#0A84FF', level: 2 },
-    { id: 'sunset', name: 'Sunset', color: '#FF7A2F', dark: '#FF8A45', level: 3 },
-    { id: 'berry', name: 'Berry', color: '#FF2D6F', dark: '#FF4D85', level: 5 },
-    { id: 'grape', name: 'Grape', color: '#8E5CF7', dark: '#A77BFF', level: 7 },
-    { id: 'gold', name: 'Gold', color: '#D99A00', dark: '#FFC53D', level: 9 },
+    { id: 'ocean', name: 'Ocean', color: '#007AFF', dark: '#0A84FF', level: 1 },
+    { id: 'sunset', name: 'Sunset', color: '#FF7A2F', dark: '#FF8A45', level: 1 },
+    { id: 'mint', name: 'Mint', color: '#00B3A6', dark: '#40D9CC', level: 1 },
+    { id: 'sky', name: 'Sky', color: '#1E9BD7', dark: '#5AC8FA', level: 1 },
+    { id: 'coral', name: 'Coral', color: '#F2545B', dark: '#FF7076', level: 1 },
+    { id: 'forest', name: 'Forest', color: '#2E7D32', dark: '#4CAF50', level: 1 },
+    { id: 'indigo', name: 'Indigo', color: '#5856D6', dark: '#7D7AFF', level: 1 },
+    { id: 'rose', name: 'Rose', color: '#E0457B', dark: '#FF6B9D', level: 1 },
+    { id: 'tangerine', name: 'Tangerine', color: '#F28C00', dark: '#FFA630', level: 1 },
+    { id: 'lavender', name: 'Lavender', color: '#9B6DD6', dark: '#B794F6', level: 1 },
+    { id: 'slate', name: 'Slate', color: '#4A6076', dark: '#8FA6BD', level: 1 },
+    { id: 'berry', name: 'Berry', color: '#FF2D6F', dark: '#FF4D85', level: 3 },
+    { id: 'grape', name: 'Grape', color: '#8E5CF7', dark: '#A77BFF', level: 5 },
+    { id: 'gold', name: 'Gold', color: '#D99A00', dark: '#FFC53D', level: 7 },
   ];
-  const darkMode = () => matchMedia('(prefers-color-scheme: dark)').matches;
+  const darkMode = () => { const a = BW.profile().appearance; return a === 'dark' ? true : a === 'light' ? false : matchMedia('(prefers-color-scheme: dark)').matches; };
   function applyTheme() {
-    const t = THEMES.find(x => x.id === BW.profile().theme) || THEMES[0];
+    const p = BW.profile(), t = THEMES.find(x => x.id === p.theme) || THEMES[0];
+    const ap = p.appearance === 'dark' || p.appearance === 'light' ? p.appearance : null;
+    if (ap) document.documentElement.dataset.theme = ap; else delete document.documentElement.dataset.theme;
     document.documentElement.style.setProperty('--accent', darkMode() ? t.dark : t.color);
     $('meta[name="theme-color"]')?.setAttribute('content', darkMode() ? '#000000' : '#F2F2F7');
   }
@@ -182,7 +194,7 @@
     if (from.nodeType !== to.nodeType || from.nodeName !== to.nodeName || (from.dataset && to.dataset && from.dataset.key !== to.dataset.key)) { from.replaceWith(to); return; }
     if (from.nodeType === 3) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
     if (from.nodeType !== 1) return;
-    for (const a of [...from.attributes]) if (!to.hasAttribute(a.name)) from.removeAttribute(a.name);
+    for (const a of [...from.attributes]) if (!to.hasAttribute(a.name) && !(a.name === 'open' && from.tagName === 'DETAILS')) from.removeAttribute(a.name);
     for (const a of [...to.attributes]) {
       if (from.getAttribute(a.name) === a.value) continue;
       if (a.name === 'value' && from === document.activeElement) continue;
@@ -364,7 +376,7 @@
       <div class="t-food">
       ${!linked && isToday && !LS.get('hideFitbitCard', false) && S.status.health ? `<div class="card connect-card t-connect" style="margin-bottom:12px"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div class="grow"><b>Count your Fitbit steps</b><span>Connect once. Steps fill in on their own.</span></div><button class="btn small" type="button" data-act="fitbit">Connect</button><button class="x-close" type="button" data-act="hidefitbit" aria-label="Hide">${I('x')}</button></div>` : ''}
         <div class="section-head food-head"><h2>${isToday ? 'Today’s food' : 'Food'}</h2>${es.length ? `<span class="caption num">${es.length} item${es.length > 1 ? 's' : ''} · ${finePointer ? 'click to edit' : 'swipe to delete'}</span>` : ''}</div>
-        ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${warnTag(e.allergens)}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>`
+        ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${e.by ? ` · <span class="by">added by ${esc(e.by)}</span>` : ''}${warnTag(e.allergens)}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>`
         : `<div class="card empty"><div class="icon-sq" style="background:var(--fill);color:var(--label2);width:44px;height:44px;border-radius:12px">${I('fork')}</div><b>${isToday ? 'Nothing logged yet' : 'Nothing logged this day'}</b><span>Type a number above and press ${finePointer ? 'Enter' : 'Add'}. That's it.</span></div>`}
       </div>
       ${isToday ? fitsCard(d) : ''}
@@ -534,63 +546,167 @@
         });
       } });
   }
+  // Bitey's rich answers: meal cards with photos, places with maps, facts and lists
+  function coachCards(m, mi) {
+    const cards = m.cards || [];
+    let h = '';
+    if (m.searched) h += `<div class="looked">${I('search')}<span>Looked up “${esc(m.searched)}”${(m.sources || []).length ? ' · ' + m.sources.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.kind === 'place' ? 'OpenStreetMap' : x.kind === 'duckduckgo' ? 'DuckDuckGo' : 'Wikipedia')}</a>`).join(', ') : ''}</span></div>`;
+    if (!cards.length) return h;
+    return h + `<div class="bcards">${cards.map((c, ci) => {
+      if (c.type === 'meal') { const bad = clash((c.ingredients || []).flatMap(x => BW_PARSE.parseLog(x.item).items.flatMap(y => y.allergens || [])));
+        return `<div class="bcard meal">${c.image ? `<img src="${esc(c.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div class="bc-body">
+          <div class="bc-top"><b>${esc(c.title)}</b><span class="pill num">${fmt(c.calories)} cal</span></div>
+          <div class="caption">${c.minutes ? `${c.minutes} min · ` : ''}${(c.ingredients || []).length} ingredients${bad.length ? ` · <span style="color:var(--red)">has ${esc([...new Set(bad)].join(', '))}</span>` : ''}</div>
+          ${(c.ingredients || []).length ? `<ul class="ing">${c.ingredients.map(x => `<li><span>${esc(x.item)}</span><span class="num">${x.calories ? fmt(x.calories) : ''}</span></li>`).join('')}</ul>` : ''}
+          ${(c.steps || []).length ? `<details><summary>How to make it</summary><ol>${c.steps.map(x => `<li>${esc(x)}</li>`).join('')}</ol></details>` : ''}
+          <button class="btn small" type="button" data-logcard="${mi}:${ci}">${I('plus')} Log this · ${fmt(c.calories)} cal</button></div></div>`; }
+      if (c.type === 'place') { const maps = `https://maps.apple.com/?q=${encodeURIComponent(c.name)}${c.lat != null ? `&ll=${c.lat},${c.lon}` : c.address ? '&address=' + encodeURIComponent(c.address) : ''}`;
+        return `<div class="bcard place"><div class="bc-body"><div class="bc-top"><b>${esc(c.name)}</b><span class="pl-ic">${I('fork')}</span></div>
+          ${c.about ? `<div class="bc-text">${esc(c.about)}</div>` : ''}
+          ${c.address ? `<div class="bc-row">${I('target')}<span>${esc(c.address)}</span></div>` : ''}${c.hours ? `<div class="bc-row">${I('today')}<span>${esc(c.hours)}</span></div>` : ''}
+          <div class="acct-btns flat" style="padding:8px 0 0"><a class="btn small tinted" href="${esc(maps)}" target="_blank" rel="noopener">Maps</a>${c.website ? `<a class="btn small tinted" href="${esc(c.website)}" target="_blank" rel="noopener noreferrer">Website</a>` : ''}</div></div></div>`; }
+      if (c.type === 'fact') return `<div class="bcard fact">${c.image ? `<img src="${esc(c.image)}" alt="" loading="lazy" onerror="this.remove()">` : ''}<div class="bc-body"><b>${esc(c.title)}</b><div class="bc-text">${esc(c.text)}</div></div></div>`;
+      if (c.type === 'list') return `<div class="bcard list"><div class="bc-body"><b>${esc(c.title)}</b><ul class="checks">${c.items.map(x => `<li><label><input type="checkbox"> <span>${esc(x)}</span></label></li>`).join('')}</ul></div></div>`;
+      return '';
+    }).join('')}</div>`;
+  }
   function viewCoach() {
     if (S.coachView === 'recipes') return viewRecipes();
     const msgs = chat();
     const g = BW.goals(), d = BW.day(BW.dayKey());
     const starters = [d.remaining > 200 ? `I have ${fmt(d.remaining)} cal left. What should I eat for dinner?` : 'Ideas for a filling snack under 200 cal?', 'I had a Big Mac and medium fries for lunch', 'How am I doing this week?', g.teen ? 'Tips for having more energy at practice?' : BW.trend() ? 'Why did my weight go up today?' : 'A high-protein lunch idea?'];
-    const note = !S.online ? `<div class="banner">${I('offline')}<span>You're offline. The coach needs internet, but logging still works.</span></div>`
-      : !S.status.ai ? `<div class="banner">${I('info')}<span>The AI coach isn't turned on for this server yet.</span></div>` : '';
+    const note = !S.online || !S.status.ai ? `<div class="banner">${I('offline')}<span><b>Offline Bitey.</b> I can still log food, steps, water, weight and goals, and look up calories. Other questions get answered when you're back online.</span></div>` : '';
     return `
     <div class="coach-wrap">
     <div class="topbar"><div><div class="subtitle">AI coach</div><h1 class="large-title">Bitey</h1></div>${msgs.length ? `<button class="link-btn" type="button" data-act="clearchat">Clear</button>` : ''}</div>
     ${coachSwitch()}
     ${note}
     ${msgs.length ? '' : `<div class="coach-hero"><div class="av">${I('coach')}</div><div style="font-size:20px;font-weight:700">Hi${BW.profile().name ? ', ' + esc(BW.profile().name) : ''}! I'm Bitey.</div><div class="muted" style="margin:4px auto 0;max-width:34ch;font-size:15px">Tell me what you ate and I'll log it. Ask for meal ideas, or ask how your week is going.</div></div>`}
-    <div class="chat" id="chat">${msgs.map((m, i) => m.role === 'user' ? `<div class="msg me">${esc(m.content)}</div>` : `<div class="msg ai">${linkify(m.content)}</div>${(m.done || []).length ? `<div class="action-card">${m.done.map(a => `<div class="ln"><span>${esc(a.label)}</span><b class="num">${esc(a.value)}</b></div>`).join('')}<div class="ln" style="margin-top:2px"><span class="ok">${I('check')}${m.undone ? 'Undone' : 'Done'}</span>${m.undone ? '' : `<button class="link-btn" style="font-size:14px" type="button" data-undoact="${i}">Undo</button>`}</div></div>` : ''}`).join('')}
+    <div class="chat" id="chat">${msgs.map((m, i) => m.role === 'user' ? `<div class="msg me">${esc(m.content)}</div>` : `<div class="msg ai">${linkify(m.content)}</div>${coachCards(m, i)}${(m.done || []).length ? `<div class="action-card">${m.done.map(a => `<div class="ln"><span>${esc(a.label)}</span><b class="num">${esc(a.value)}</b></div>`).join('')}<div class="ln" style="margin-top:2px"><span class="ok">${I('check')}${m.undone ? 'Undone' : 'Done'}</span>${m.undone ? '' : `<button class="link-btn" style="font-size:14px" type="button" data-undoact="${i}">Undo</button>`}</div></div>` : ''}`).join('')}
     ${S.coachBusy ? '<div class="msg ai typing"><i></i><i></i><i></i></div>' : ''}</div>
     <div class="chips wrap" style="margin-top:12px">${(msgs.length ? (msgs[msgs.length - 1].chips || []) : starters).map(c => `<button class="chip" type="button" data-say="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <div style="height:70px"></div>
     </div>
-    <div class="composer"><form class="composer-in" id="coachForm"><textarea id="coachInput" rows="1" placeholder="Message Bitey" aria-label="Message Bitey">${esc(LS.get('coachDraft', ''))}</textarea><button class="send" type="submit" aria-label="Send" ${!S.online || !S.status.ai || S.coachBusy ? 'disabled' : ''}>${I('up')}</button></form></div>`;
+    <div class="composer"><form class="composer-in" id="coachForm"><textarea id="coachInput" rows="1" placeholder="Message Bitey" aria-label="Message Bitey">${esc(LS.get('coachDraft', ''))}</textarea><button class="send" type="submit" aria-label="Send" ${S.coachBusy ? 'disabled' : ''}>${I('up')}</button></form></div>`;
   }
-  async function sendCoach(text) {
+  // ---------- apply what Bitey decided (same code for online AI and offline Bitey, so Undo works for both) ----------
+  function applyCoachActions(actions) {
+    const done = [], ids = [], today = BW.dayKey(), yesterday = BW.addDays(today, -1);
+    for (const a of actions || []) {
+      const day = a.day === 'yesterday' ? yesterday : today;
+      if (a.type === 'log' && a.name && Number.isFinite(+a.calories)) { const e = BW.addEntry({ date: day, name: a.name, calories: +a.calories, meal: ['breakfast', 'lunch', 'dinner', 'snack'].includes(a.meal) ? a.meal : undefined, source: 'coach', allergens: a.allergens }); ids.push({ id: e.id }); done.push({ label: a.name + (day === yesterday ? ' (yesterday)' : ''), value: fmt(+a.calories) + ' cal' }); }
+      if (a.type === 'water' && +a.glasses) { const before = BW.day(today).water; BW.setWater(today, before + Math.round(+a.glasses)); ids.push({ water: before }); done.push({ label: 'Water', value: `+${Math.round(+a.glasses)} glass${+a.glasses > 1 ? 'es' : ''}` }); }
+      if (a.type === 'weight' && +a.value > 50 && +a.value < 700) { const before = BW.day(today).weight; BW.setWeight(today, +a.value); ids.push({ weight: before }); done.push({ label: 'Weight', value: (+a.value).toFixed(1) + ' lb' }); }
+      if (a.type === 'steps' && Number.isFinite(+a.value) && +a.value >= 0 && +a.value <= 100000) {
+        const before = BW.day(day).steps, src = BW.stepSource(day), next = a.mode === 'add' ? before + Math.round(+a.value) : Math.round(+a.value);
+        BW.setSteps(day, next, 'manual'); ids.push({ steps: before, stepsDay: day, stepsSrc: src }); done.push({ label: 'Steps' + (day === yesterday ? ' (yesterday)' : ''), value: a.mode === 'add' ? `+${fmt(+a.value)} → ${fmt(next)}` : fmt(next) });
+      }
+      if (a.type === 'goal' && (a.calories === null || (Number.isFinite(+a.calories) && +a.calories >= 500 && +a.calories <= 6000))) {
+        const before = BW.profile().customBudget ?? null, want = a.calories === null ? null : Math.round(+a.calories);
+        BW.saveProfile({ customBudget: want ? Math.max(BW.goals().floor, want) : null }); ids.push({ goal: before });
+        done.push({ label: 'Daily goal', value: want ? `${fmt(BW.goals().budget)} cal${want < BW.goals().floor ? ' (lowest allowed)' : ''}` : `automatic · ${fmt(BW.goals().budget)} cal` });
+      }
+      if (a.type === 'remove' && a.name) {
+        const q = String(a.name).toLowerCase(), es = BW.day(today).entries.slice().reverse();
+        const e = es.find(x => x.name.toLowerCase() === q) || es.find(x => x.name.toLowerCase().includes(q) || q.includes(x.name.toLowerCase()));
+        if (e) { BW.remove(e.id); ids.push({ restore: e }); done.push({ label: 'Removed ' + e.name, value: '−' + fmt(e.calories) + ' cal' }); }
+      }
+    }
+    return { done, ids };
+  }
+
+  // ---------- offline Bitey: understands the common commands with no internet, using the on-device food database ----------
+  const WORDNUM = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+  const toNum = v => { v = String(v).toLowerCase().replace(/,/g, ''); if (v in WORDNUM) return WORDNUM[v]; if (/^\d+(\.\d+)?k$/.test(v)) return parseFloat(v) * 1000; return parseFloat(v); };
+  function offlineBitey(text) {
+    const t = BW_PARSE.wordsToNumbers(text.toLowerCase()).replace(/[’']/g, '').trim(), yd = /\byesterday\b/.test(t) ? 'yesterday' : undefined;
+    let m;
+    if ((m = t.match(/(\d[\d,]*(?:\.\d+)?k?)\s*(?:more\s+|extra\s+|additional\s+)?steps\b/))) {
+      const add = /\b(more|another|extra|additional)\b/.test(t), n = toNum(m[1]);
+      return { reply: add ? `Nice! Added ${fmt(n)} steps.` : `Got it. Your steps are set to ${fmt(n)}.`, actions: [{ type: 'steps', value: n, mode: add ? 'add' : 'set', day: yd }] };
+    }
+    if ((m = t.match(/\b(\d+|a|an|one|two|three|four|five|six|seven|eight)\s+(?:big\s+|small\s+)?(?:glass(?:es)?|cups?|bottles?)\s+(?:of\s+)?water\b/)) || /\b(drank|had)\s+(some\s+)?water\b/.test(t)) {
+      const g = m ? toNum(m[1]) : 1;
+      return { reply: `Added ${g} glass${g > 1 ? 'es' : ''} of water. 💧`, actions: [{ type: 'water', glasses: g }] };
+    }
+    if ((m = t.match(/\b(?:i\s+)?(?:weigh(?:ed)?|weight(?:\s+is|\s+was|\s+today)?|(?:im|i am)\s+now)\s*(\d{2,3}(?:\.\d)?)\s*(?:lb|lbs|pounds)?\b/))) {
+      return { reply: `Logged your weight: ${toNum(m[1]).toFixed(1)} lb.`, actions: [{ type: 'weight', value: toNum(m[1]) }] };
+    }
+    if (/\b(goal|budget|target)\b/.test(t) && /\b(set|change|make|put|update|want)\b/.test(t)) {
+      if (/\b(auto|automatic|reset|normal)\b/.test(t)) return { reply: 'Your goal is back to automatic.', actions: [{ type: 'goal', calories: null }] };
+      if ((m = t.match(/(\d{3,4})/))) return { reply: `Done. Your daily goal is ${fmt(Math.max(BW.goals().floor, +m[1]))} calories.`, actions: [{ type: 'goal', calories: +m[1] }] };
+    }
+    if ((m = t.match(/\b(?:remove|delete|take off|take away|get rid of)\s+(?:the\s+|my\s+|that\s+)?(.+?)(?:\s+(?:i|that i)\s+(?:logged|had|ate|added).*)?(?:\s+from.*)?[.!?]?$/))) {
+      const q = m[1].trim(), hit = BW.day(BW.dayKey()).entries.some(e => e.name.toLowerCase().includes(q) || q.includes(e.name.toLowerCase()));
+      return hit ? { reply: `Removed ${q}.`, actions: [{ type: 'remove', name: q }] } : { reply: `I couldn't find “${q}” in today's food.`, actions: [] };
+    }
+    if ((m = t.match(/(?:how many\s+)?(?:cal(?:orie)?s?|kcal)\s+(?:are\s+|is\s+)?(?:in|for)\s+(?:a\s+|an\s+|one\s+)?(.+?)\??$/)) || (m = t.match(/^how many calories (?:does|do)\s+(?:a\s+|an\s+)?(.+?)\s+have\??$/))) {
+      const q = m[1], r = BW_PARSE.parseLog(q).items[0], f = r?.calories != null ? r : BW_PARSE.searchAll(q, 1)[0];
+      if (f && f.calories != null) return { reply: `${cap(f.name)}: about ${fmt(f.calories)} calories${f.detail ? ` (${f.detail.replace(' (USDA)', '')})` : f.portions?.[0] ? ` (${f.portions[0][0]})` : ''}. Want me to log it?`, actions: [], chips: [`Log ${f.name.toLowerCase()}`] };
+      return { reply: `I don't have “${q}” in my offline list. Ask me again when you're online and I'll look it up.`, actions: [] };
+    }
+    const food = t.replace(/^(?:i\s+)?(?:just\s+)?(?:ate|had|eat|drank|log(?:ged)?|add(?:ed)?)\s+/, '').replace(/\b(?:i forgot to log|forgot to log)\s+/, '').replace(/\byesterday\b/, '');
+    if (food !== t || /\b(breakfast|lunch|dinner|snack)\b/.test(t)) {
+      const r = BW_PARSE.parseLog(food);
+      const known = r.items.filter(i => i.calories != null), unknown = r.items.filter(i => i.calories == null);
+      if (known.length) return {
+        reply: `Logged ${known.map(i => `${i.name} (${fmt(i.calories)})`).join(', ')}${yd ? ' for yesterday' : ''}.${unknown.length ? ` I don't know ${unknown.map(i => i.name).join(', ')} offline. Say it with a number, like “${unknown[0].name.toLowerCase()} 300”.` : ''}`,
+        actions: known.map(i => ({ type: 'log', name: i.name, calories: i.calories, meal: r.meal || undefined, day: yd, allergens: i.allergens })),
+      };
+    }
+    return null; // needs the full AI
+  }
+
+  async function sendCoach(text, { resend } = {}) {
     text = text.trim(); if (!text || S.coachBusy) return;
-    if (!S.online) return toast('You’re offline — the coach needs internet', { icon: 'offline' });
-    const msgs = chat(); msgs.push({ role: 'user', content: text }); saveChat(msgs); LS.set('coachDraft', ''); LS.set('usedCoach', true);
+    if (!resend) { const msgs = chat(); msgs.push({ role: 'user', content: text }); saveChat(msgs); LS.set('coachDraft', ''); LS.set('usedCoach', true); }
+    const useOffline = !S.online || !S.status.ai;
+    if (useOffline) {
+      const r = offlineBitey(text), m2 = chat();
+      if (r) { const { done, ids } = applyCoachActions(r.actions); m2.push({ role: 'assistant', content: r.reply, chips: r.chips || [], done, ids, offline: true }); if (done.length) haptic(12); }
+      else { const u = m2[m2.length - 1]; if (u && u.role === 'user') u.pending = true; m2.push({ role: 'assistant', content: 'You’re offline, so I saved this question. I’ll answer it as soon as you’re back online. I can still log food, steps, water, weight and goals right now.', offline: true, waiting: true }); }
+      saveChat(m2); render(); scrollChat(); return;
+    }
     S.coachBusy = true; render(); scrollChat();
     try {
+      const msgs = chat().filter(m => !m.waiting);
       const r = await fetch('/api/coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: msgs.map(m => ({ role: m.role, content: m.content })), context: coachContext() }) });
       const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Coach is unavailable');
-      const done = [], ids = [];
-      const today = BW.dayKey();
-      const yesterday = BW.addDays(today, -1);
-      for (const a of j.actions || []) {
-        const day = a.day === 'yesterday' ? yesterday : today;
-        if (a.type === 'log' && a.name && Number.isFinite(+a.calories)) { const e = BW.addEntry({ date: day, name: a.name, calories: +a.calories, meal: ['breakfast', 'lunch', 'dinner', 'snack'].includes(a.meal) ? a.meal : undefined, source: 'coach' }); ids.push({ id: e.id }); done.push({ label: a.name + (day === yesterday ? ' (yesterday)' : ''), value: fmt(+a.calories) + ' cal' }); }
-        if (a.type === 'water' && +a.glasses) { const before = BW.day(today).water; BW.setWater(today, before + Math.round(+a.glasses)); ids.push({ water: before }); done.push({ label: 'Water', value: `+${Math.round(+a.glasses)} glass${+a.glasses > 1 ? 'es' : ''}` }); }
-        if (a.type === 'weight' && +a.value > 50 && +a.value < 700) { const before = BW.day(today).weight; BW.setWeight(today, +a.value); ids.push({ weight: before }); done.push({ label: 'Weight', value: (+a.value).toFixed(1) + ' lb' }); }
-        if (a.type === 'steps' && Number.isFinite(+a.value) && +a.value >= 0 && +a.value <= 100000) {
-          const before = BW.day(day).steps, src = BW.stepSource(day), next = a.mode === 'add' ? before + Math.round(+a.value) : Math.round(+a.value);
-          BW.setSteps(day, next, 'manual'); ids.push({ steps: before, stepsDay: day, stepsSrc: src }); done.push({ label: 'Steps' + (day === yesterday ? ' (yesterday)' : ''), value: a.mode === 'add' ? `+${fmt(+a.value)} → ${fmt(next)}` : fmt(next) });
-        }
-        if (a.type === 'goal' && (a.calories === null || (Number.isFinite(+a.calories) && +a.calories >= 500 && +a.calories <= 6000))) {
-          const before = BW.profile().customBudget ?? null, want = a.calories === null ? null : Math.round(+a.calories);
-          BW.saveProfile({ customBudget: want ? Math.max(BW.goals().floor, want) : null }); ids.push({ goal: before });
-          done.push({ label: 'Daily goal', value: want ? `${fmt(BW.goals().budget)} cal${want < BW.goals().floor ? ' (lowest allowed)' : ''}` : `automatic · ${fmt(BW.goals().budget)} cal` });
-        }
-        if (a.type === 'remove' && a.name) {
-          const q = String(a.name).toLowerCase(), es = BW.day(today).entries.slice().reverse();
-          const e = es.find(x => x.name.toLowerCase() === q) || es.find(x => x.name.toLowerCase().includes(q) || q.includes(x.name.toLowerCase()));
-          if (e) { BW.remove(e.id); ids.push({ restore: e }); done.push({ label: 'Removed ' + e.name, value: '−' + fmt(e.calories) + ' cal' }); }
-        }
-      }
-      const m2 = chat(); m2.push({ role: 'assistant', content: j.reply || '…', chips: j.chips || [], done, ids }); saveChat(m2);
+      const { done, ids } = applyCoachActions(j.actions);
+      const m2 = chat(); m2.push({ role: 'assistant', content: j.reply || '…', chips: j.chips || [], cards: j.cards || [], sources: j.sources || [], searched: j.searched || null, done, ids }); saveChat(m2);
       if (done.length) haptic(12);
     } catch (e) {
-      const m2 = chat(); m2.push({ role: 'assistant', content: 'I couldn’t reach the coach right now (' + e.message + '). Your logging still works — try me again in a bit.' }); saveChat(m2);
+      const m2 = chat(); m2.push({ role: 'assistant', content: 'I couldn’t reach the coach right now (' + e.message + '). Your logging still works. Try me again in a bit.' }); saveChat(m2);
     }
     S.coachBusy = false; render(); scrollChat();
+  }
+  // ---------- outbox: online actions made while offline are sent automatically when the connection is back ----------
+  function queueOnline(path, body, label) {
+    const q = LS.get('outbox', []); q.push({ path, body, label, at: Date.now() }); LS.set('outbox', q);
+    return flushOutbox();
+  }
+  let flushing = false;
+  async function flushOutbox() {
+    if (flushing || !navigator.onLine || !BW.acct()) return false;
+    flushing = true; let sent = 0, q = LS.get('outbox', []);
+    while (q.length) {
+      try { await BW.api(q[0].path, q[0].body); sent++; }
+      catch (e) { if (!e.status || e.status >= 500 || e.status === 429) break; } // network/server trouble: try again later; bad requests are dropped
+      q.shift(); LS.set('outbox', q);
+    }
+    flushing = false;
+    if (sent) { toast(`Sent ${sent} thing${sent > 1 ? 's' : ''} you did offline`, { icon: 'cloud' }); loadGroups().then(() => render()); }
+    return !q.length;
+  }
+  // questions asked while offline get answered automatically once the connection is back
+  async function flushPendingCoach() {
+    if (!S.online || !S.status.ai || S.coachBusy) return;
+    const msgs = chat(), i = msgs.findIndex(m => m.pending); if (i < 0) return;
+    msgs[i].pending = false; const q = msgs[i].content;
+    saveChat(msgs.filter(m => !m.waiting));
+    toast('Back online. Bitey is answering your saved question', { icon: 'coach' });
+    await sendCoach(q, { resend: true });
+    setTimeout(flushPendingCoach, 500);
   }
   const scrollChat = () => requestAnimationFrame(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }));
 
@@ -630,7 +746,7 @@
 
     </div><div class="col-side">
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Rewards</div><div class="group">
-      ${row('palette', theme.color, 'App theme', theme.name, 'data-act="themes"', `${THEMES.filter(t => t.level <= lv.n).length} of ${THEMES.length} unlocked`)}
+      ${row('palette', theme.color, 'Look', theme.name + (p.appearance && p.appearance !== 'auto' ? ' · ' + cap(p.appearance) : ''), 'data-act="themes"', `Colors and light or dark mode · ${THEMES.filter(t => t.level <= lv.n).length} of ${THEMES.length} colors`)}
       ${row('person', 'var(--purple)', 'Groups', (S.groups || LS.get('groupsCache', [])).length || 'None', 'data-go="progress"', 'Friends and family see each other\u2019s progress')}
       ${row('eye', 'var(--label3)', 'What groups see', '', 'data-act="shareprefs"')}
       ${row('trophy', '#FFB800', 'Badges', `${BW.badges().filter(b => b.earned).length} / ${BW.badges().length}`, 'data-go="progress"')}
@@ -1038,7 +1154,7 @@
   }
 
   // ---------- groups ----------
-  const SHARE_DEFAULTS = { goal: true, streak: true, today: true, steps: true, level: true, lost: false };
+  const SHARE_DEFAULTS = { goal: true, streak: true, today: true, steps: true, level: true, lost: false, letLog: true };
   const sharePrefs = () => ({ ...SHARE_DEFAULTS, ...(BW.profile().share || {}) });
   const MEMBER_COLORS = ['#FF9500', '#34C759', '#007AFF', '#AF52DE', '#FF2D55', '#30B0C7', '#FFB800', '#5856D6'];
   function myShareStats() {
@@ -1060,9 +1176,9 @@
     clearTimeout(shareT);
     shareT = setTimeout(async () => {
       if (!navigator.onLine) return;
-      const stats = myShareStats(), key = JSON.stringify(stats);
+      const stats = myShareStats(), key = JSON.stringify(stats) + sharePrefs().letLog;
       if (key === lastShared) return;
-      try { await BW.api('share', { stats }); lastShared = key; } catch {}
+      try { await BW.api('share', { stats, allowLog: sharePrefs().letLog }); lastShared = key; } catch {}
     }, now ? 50 : 4000);
   }
   async function loadGroups() {
@@ -1127,6 +1243,7 @@
             <div class="grow"><div class="title">${esc(nm)}${m.owner ? ' <span class="caption">· started it</span>' : ''}</div>
               <div class="sub">${info || (m.stats ? 'Keeps their numbers private' : 'Hasn’t opened BiteWise yet')}</div>
               ${st.todayPct != null ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, st.todayPct)}%;${st.todayPct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="caption num" style="margin-top:3px">Today ${st.todayPct}% of goal${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div>` : ''}
+              ${!m.you && m.canLog ? `<button class="btn small tinted logfor" type="button" data-logfor="${esc(m.key)}" data-lfname="${esc(nm)}">${I('plus')} Log for ${esc(nm)}</button>` : ''}
             </div>${st.streak != null ? `<span class="pill streak">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>`; }).join('')}</div>
         <button class="btn gray" type="button" id="gprefs" style="margin-top:16px">${I('eye')} What I share</button>
         <button class="btn danger" type="button" id="gleave" style="margin-top:10px">Leave group</button>
@@ -1134,6 +1251,7 @@
       $('#gcopy', b).onclick = async () => { try { await navigator.clipboard.writeText(g.code); toast('Code copied'); } catch { toast('Code: ' + g.code, { icon: 'info' }); } };
       $('#gshare', b) && ($('#gshare', b).onclick = () => navigator.share({ title: 'Join my BiteWise group', text: `Join my BiteWise group “${g.name}” with code ${g.code}`, url: location.origin }).catch(() => {}));
       $('#gprefs', b).onclick = () => sharePrefsSheet();
+      b.querySelectorAll('[data-logfor]').forEach(x => x.onclick = () => logForSheet(g, x.dataset.logfor, x.dataset.lfname));
       $('#gleave', b).onclick = () => confirmSheet({ title: `Leave ${g.name}?`, text: 'You can join again later with the code.', confirm: 'Leave group', danger: true, onConfirm: async () => { try { await BW.api(`groups/${g.id}/leave`); } catch {} await loadGroups(); LS.set('inGroups', (S.groups || []).length > 0); sheets.slice().forEach(x => x.close()); render(); toast('You left the group'); } });
     };
     const cached = (S.groups || LS.get('groupsCache', [])).find(x => x.id === id);
@@ -1145,9 +1263,29 @@
         if (g) draw(b, g); else if (!cached) b.innerHTML = `<div class="banner">${I('info')}<span>${S.online ? 'That group is gone.' : 'Connect to the internet to see your group.'}</span></div>`;
       } });
   }
+  function logForSheet(g, key, name) {
+    let meal = qMeal();
+    openSheet({ title: `Log for ${name}`, body: `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">This goes into ${esc(name)}'s day and shows that you added it.${S.online ? '' : ' You\u2019re offline, so it\u2019ll send when you reconnect.'}</p>
+      <div class="edit-amount"><input id="lf_cal" class="num" inputmode="numeric" placeholder="0" aria-label="Calories"><span>calories</span></div>
+      <input class="name-input" id="lf_name" placeholder="What was it?" aria-label="Food name">
+      <div id="lf_meal">${mealPills(meal, 'data-lfm')}</div>
+      <button class="btn" type="button" id="lf_go" style="margin-top:18px">Add to ${esc(name)}'s day</button>`,
+      mount: (b, close) => {
+        setTimeout(() => $('#lf_cal', b)?.focus(), 350);
+        b.onclick = e => { const m = e.target.closest('[data-lfm]'); if (m) { meal = m.dataset.lfm; $('#lf_meal', b).innerHTML = mealPills(meal, 'data-lfm'); } };
+        $('#lf_name', b).oninput = e => { const r = BW_PARSE.parseLog(e.target.value); if (r.allKnown && r.total > 0 && !$('#lf_cal', b).value) $('#lf_cal', b).placeholder = String(r.total); };
+        $('#lf_go', b).onclick = async () => {
+          const cal = parseInt($('#lf_cal', b).value || $('#lf_cal', b).placeholder, 10), nm = $('#lf_name', b).value.trim() || 'Food';
+          if (!(cal > 0)) return toast('Enter the calories', { icon: 'info' });
+          close();
+          const ok = await queueOnline(`groups/${g.id}/log`, { to: key, name: nm, calories: cal, meal, date: BW.dayKey() }, `${nm} for ${name}`);
+          toast(ok ? `Added ${nm} to ${name}'s day` : `Saved. It'll send to ${name} when you're back online`, { icon: ok ? 'check' : 'cloud' });
+        };
+      } });
+  }
   function sharePrefsSheet() {
     const pr = sharePrefs();
-    const rows = [['goal', 'My goal', 'Like “Lose 1 lb a week”'], ['streak', 'Streak', 'Days in a row you logged'], ['today', 'Today’s progress', 'How much of your calorie goal you’ve used'], ['steps', 'Steps', 'Today’s step count'], ['level', 'Level', 'Your BiteWise level'], ['lost', 'Weight lost', 'Only “down 3 lb”, never your actual weight']];
+    const rows = [['goal', 'My goal', 'Like “Lose 1 lb a week”'], ['streak', 'Streak', 'Days in a row you logged'], ['today', 'Today’s progress', 'How much of your calorie goal you’ve used'], ['steps', 'Steps', 'Today’s step count'], ['level', 'Level', 'Your BiteWise level'], ['lost', 'Weight lost', 'Only “down 3 lb”, never your actual weight'], ['letLog', 'Let them log food for me', 'Group members can add food to your day. It shows who added it.']];
     openSheet({ title: 'What I share', left: 'Cancel', right: 'Save', body: `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">Everyone in your groups sees your name, plus whatever you turn on here.</p><div class="group">${rows.map(([k, t, d]) => `<div class="row"><div class="grow"><div class="title">${t}</div><div class="sub">${d}</div></div><button class="switch" type="button" role="switch" data-pk="${k}" aria-checked="${pr[k]}" aria-label="${t}"></button></div>`).join('')}</div>`,
       mount: b => { b.onclick = e => { const x = e.target.closest('[data-pk]'); if (!x) return; pr[x.dataset.pk] = !pr[x.dataset.pk]; x.setAttribute('aria-checked', pr[x.dataset.pk]); haptic(5); }; },
       onRight: close => { BW.saveProfile({ share: pr }); lastShared = ''; scheduleShare(true); close(); toast('Sharing updated'); } });
@@ -1170,13 +1308,27 @@
   }
 
   function themesSheet() {
-    const lv = BW.level().n, p = BW.profile();
+    const lv = BW.level().n;
     openSheet({
-      title: 'App theme', left: 'Done',
-      body: `<div class="footnote" style="margin:0 4px 12px">Level up to unlock new colors. You're level ${lv}.</div><div class="group">${THEMES.map(t => `<button class="row" type="button" data-t="${t.id}" ${t.level > lv ? 'aria-disabled="true"' : ''}><span style="width:30px;height:30px;border-radius:50%;background:${t.color};flex:none;${t.level > lv ? 'opacity:.35' : ''}"></span><div class="grow"><div class="title">${t.name}</div><div class="sub">${t.level > lv ? 'Unlocks at level ' + t.level : 'Unlocked'}</div></div>${t.level > lv ? `<span style="color:var(--label3);width:20px">${I('lock')}</span>` : p.theme === t.id ? `<span style="color:var(--accent);width:22px">${I('check')}</span>` : ''}</button>`).join('')}</div>`,
-      mount: (b, close) => { b.onclick = e => { const r = e.target.closest('[data-t]'); if (!r) return; const t = THEMES.find(x => x.id === r.dataset.t); if (t.level > lv) return toast(`Reach level ${t.level} to unlock ${t.name}`, { icon: 'lock' }); BW.saveProfile({ theme: t.id }); haptic(8); close(); }; },
+      title: 'Look', left: 'Done', body: '', mount: b => {
+        const draw = () => {
+          const p = BW.profile();
+          b.innerHTML = `<div class="footnote" style="margin:0 16px 6px">APPEARANCE</div>
+            <div class="seg">${[['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => `<button type="button" data-ap="${v}" aria-pressed="${(p.appearance || 'auto') === v}">${l}</button>`).join('')}</div>
+            <div class="footnote" style="margin:20px 16px 8px">COLOR · ${THEMES.filter(t => t.level <= lv).length} OF ${THEMES.length} UNLOCKED</div>
+            <div class="swatches">${THEMES.map(t => { const locked = t.level > lv; return `<button type="button" class="swatch ${p.theme === t.id ? 'on' : ''} ${locked ? 'locked' : ''}" data-t="${t.id}" aria-label="${t.name}${locked ? ', unlocks at level ' + t.level : ''}"><span class="dot" style="background:linear-gradient(135deg, ${t.color}, ${t.dark})">${locked ? I('lock') : p.theme === t.id ? I('check') : ''}</span><span class="nm">${t.name}</span>${locked ? `<span class="lv">Level ${t.level}</span>` : ''}</button>`; }).join('')}</div>`;
+        };
+        draw();
+        b.onclick = e => {
+          const ap = e.target.closest('[data-ap]'); if (ap) { BW.saveProfile({ appearance: ap.dataset.ap }); haptic(6); draw(); return; }
+          const r = e.target.closest('[data-t]'); if (!r) return; const t = THEMES.find(x => x.id === r.dataset.t);
+          if (t.level > lv) return toast(`Reach level ${t.level} to unlock ${t.name}`, { icon: 'lock' });
+          BW.saveProfile({ theme: t.id }); haptic(8); draw();
+        };
+      },
     });
   }
+
 
   // what the "Set my own number" box can go down to, said plainly
   function ownNote(g, typed) {
@@ -1311,9 +1463,10 @@
       if (d.water) { BW.setWater(S.date, BW.day(S.date).water + +d.water); haptic(6); return; }
       if (d.range) { S.progRange = +d.range; render(); return; }
       if (d.badge) return badgeSheet(d.badge);
-      if (d.say) { if (!S.online || !S.status.ai) return toast(!S.online ? 'You’re offline — the coach needs internet' : 'The coach isn’t turned on yet', { icon: 'info' }); return sendCoach(d.say); }
+      if (d.say) return sendCoach(d.say);
       if (d.undoact) { undoCoach(+d.undoact); return; }
       if (d.group) return groupSheet(d.group);
+      if (d.logcard) { const [mi, ci] = d.logcard.split(':').map(Number), c = chat()[mi]?.cards?.[ci]; if (!c) return; const en = BW.addEntry({ name: c.title, calories: c.calories, meal: qMeal(), source: 'coach' }); haptic(12); toast(`${c.title} · ${fmt(c.calories)} cal`, { undo: () => BW.remove(en.id) }); return; }
       if (d.cview) { S.coachView = d.cview; if (d.cview === 'recipes' && !S.recipes && !S.rloading) loadRecipes(); else render(); haptic(5); return; }
       if (d.rcat) { S.rcat = S.rcat === d.rcat ? '' : d.rcat; S.rq = ''; loadRecipes(); return; }
       if (d.recipe) return recipeSheet(S.recipes[+d.recipe]);
@@ -1400,7 +1553,7 @@
       ta.oninput = () => { LS.set('coachDraft', ta.value); grow(); };
       ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); f.requestSubmit(); } };
       // clear the box right away: the page keeps a focused box's text between redraws, so it must be emptied by hand
-      f.onsubmit = e => { e.preventDefault(); if (!S.online || !S.status.ai || !ta.value.trim()) return; const text = ta.value; ta.value = ''; LS.set('coachDraft', ''); grow(); sendCoach(text); };
+      f.onsubmit = e => { e.preventDefault(); if (!ta.value.trim()) return; const text = ta.value; ta.value = ''; LS.set('coachDraft', ''); grow(); sendCoach(text); };
       grow();
     }
   }
@@ -1596,6 +1749,14 @@
   // ---------- boot ----------
   let renderQueued = false;
   BW.on(() => scheduleShare());
+  BW.on(() => {
+    const seen = new Set(LS.get('seenGroupLogs', [])), fresh = BW.all('entry').filter(e => e.source === 'group' && !seen.has(e.id));
+    if (!fresh.length) return;
+    LS.set('seenGroupLogs', [...seen, ...fresh.map(e => e.id)].slice(-300));
+    if (LS.get('groupLogInit', false)) { const e = fresh[fresh.length - 1]; toast(`${e.by || 'A friend'} added ${e.name} (${fmt(e.calories)} cal) to your day`, { icon: 'person' }); haptic(15); }
+  });
+  setTimeout(() => LS.set('groupLogInit', true), 3000);
+  setInterval(() => { if (document.visibilityState === 'visible' && BW.acct() && navigator.onLine) BW.sync(); }, 90e3);
   BW.on(() => { if (renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; if (BW.profile().setup) render(); else if (!ob.p) renderOnboarding(); checkRewards(); }); });
   const setOnline = () => { S.online = navigator.onLine; if (BW.profile().setup) render(); if (S.online) { BW.sync(); autoHealth(); } };
   addEventListener('online', setOnline); addEventListener('offline', setOnline);
@@ -1606,10 +1767,10 @@
 
   readHash(); render(); checkRewards();
   (window.requestIdleCallback || (f => setTimeout(f, 1200)))(() => BW_PARSE.loadUSDA());
-  fetch('/api/status').then(r => r.json()).then(j => { S.status = j; if (BW.profile().setup) render(); }).catch(() => {});
+  fetch('/api/status').then(r => r.json()).then(j => { S.status = j; if (BW.profile().setup) render(); setTimeout(flushPendingCoach, 800); }).catch(() => {});
   checkVersion().then(() => { if (BW.profile().setup) { if (LS.get('seenVersion', null) == null && !BW.hasData()) LS.set('seenVersion', APP_VERSION); else if (vcmp(APP_VERSION, LS.get('seenVersion', '0.0.0')) > 0) setTimeout(() => whatsNew(false), 900); } });
   setInterval(() => document.visibilityState === 'visible' && checkVersion(), 30 * 60e3);
-  addEventListener('online', () => checkVersion());
+  addEventListener('online', () => { checkVersion(); setTimeout(flushPendingCoach, 1500); scheduleShare(true); flushOutbox(); });
   BW.sync(); refreshMe(); loadGroups().then(() => { if (S.tab === 'progress' || S.tab === 'me') render(); scheduleShare(true); });
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 })();

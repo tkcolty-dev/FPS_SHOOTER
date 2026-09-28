@@ -1,0 +1,386 @@
+- generic [active] [ref=f2e1]:
+  - generic:
+    - generic:
+      - link "Skip to main content" [ref=f2e2] [cursor=pointer]
+      - link "Accessibility help" [ref=f2e3] [cursor=pointer]:
+        - /url: https://support.google.com/websearch/answer/181196?hl=en
+  - generic [ref=f2e8]:
+    - search [ref=f2e9]:
+      - generic [ref=f2e11]:
+        - link "Go to Google Home" [ref=f2e13] [cursor=pointer]:
+          - /url: https://www.google.com/webhp?hl=en&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38QPHoECAYQBA
+        - generic [ref=f2e22]:
+          - combobox "Search" [ref=f2e24]: holtmans donuts holtmans donuts
+          - generic [ref=f2e25]:
+            - button "Clear" [ref=f2e29] [cursor=pointer]
+            - generic [ref=f2e34]:
+              - button "Search by voice" [ref=f2e37] [cursor=pointer]
+              - button "Search by image" [ref=f2e42] [cursor=pointer]
+    - generic [ref=f2e45]:
+      - button "Settings" [ref=f2e47] [cursor=pointer]
+      - button "Share" [ref=f2e52] [cursor=pointer]
+      - generic [ref=f2e58]:
+        - button "Google apps" [ref=f2e60] [cursor=pointer]
+        - link "Sign in" [ref=f2e65] [cursor=pointer]:
+          - /url: https://accounts.google.com/ServiceLogin?hl=en&passive=true&continue=https://www.google.com/search%3Fq%3Dholtmans%2Bdonuts%26sei%3DTnG6aozOOrnIruEPrePciQw&ec=futura_srp_og_si_72236_p
+  - generic [ref=f2e68]:
+    - navigation [ref=f2e74]:
+      - generic [ref=f2e80]:
+        - list [ref=f2e81]:
+          - listitem [ref=f2e82]:
+            - link "AI Mode" [ref=f2e85] [cursor=pointer]:
+              - /url: /search?q=holtman%27s+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&udm=50&fbs=ABfTbFVyMZGZf1hfvX9uKjN_-G8cqCQj_06QnZs315LoFmPf5bBLHMJ0vMQmTbuI72DM7jlpsWGRtNGtQlW06Yj2g-bIOMeBoD3RPN7CuHeP-F9ZIfcx1vEscIl7GaGgBtW_0woBIR8unep7Rd5ChYE2M34oeGZ93nZ1nEtzGyb-jOZ6jedu0yruGrOmhEVbm02SBKDUyqCOirMNnjPRS-SR4oW2CLJ1Jw&vsint=&aep=1&ntc=1&cs=0&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q2J8OegQIFBAD
+          - listitem [ref=f2e89]:
+            - link "All" [disabled] [ref=f2e90]
+          - listitem [ref=f2e93]:
+            - link "Shopping" [ref=f2e94] [cursor=pointer]:
+              - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&udm=28&fbs=ABfTbFVyMZGZf1hfvX9uKjN_-G8cqCQj_06QnZs315LoFmPf5bBLHMJ0vMQmTbuI72DM7jlpsWGRtNGtQlW06Yj2g-bIOMeBoD3RPN7CuHeP-F9ZIfcx1vEscIl7GaGgBtW_0woBIR8unep7Rd5ChYE2M34oeGZ93nZ1nEtzGyb-jOZ6jedu0yruGrOmhEVbm02SBKDUyqCOirMNnjPRS-SR4oW2CLJ1Jw&q=holtman%27s+donuts&ved=1t:220175&ictx=111
+          - listitem [ref=f2e97]:
+            - link "Images" [ref=f2e98] [cursor=pointer]:
+              - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&udm=2&fbs=ABfTbFVyMZGZf1hfvX9uKjN_-G8cqCQj_06QnZs315LoFmPf5bBLHMJ0vMQmTbuI72DM7jlpsWGRtNGtQlW06Yj2g-bIOMeBoD3RPN7CuHeP-F9ZIfcx1vEscIl7GaGgBtW_0woBIR8unep7Rd5ChYE2M34oeGZ93nZ1nEtzGyb-jOZ6jedu0yruGrOmhEVbm02SBKDUyqCOirMNnjPRS-SR4oW2CLJ1Jw&q=holtman%27s+donuts&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38QtKgLegQIIBAB
+          - listitem [ref=f2e101]:
+            - link "Maps" [ref=f2e102] [cursor=pointer]:
+              - /url: https://maps.google.com/maps?sca_esv=080dae4805299e94&output=search&q=holtman's+donuts&source=lnms&fbs=ABfTbFVyMZGZf1hfvX9uKjN_-G8cqCQj_06QnZs315LoFmPf5bBLHMJ0vMQmTbuI72DM7jlpsWGRtNGtQlW06Yj2g-bIOMeBoD3RPN7CuHeP-F9ZIfcx1vEscIl7GaGgBtW_0woBIR8unep7Rd5ChYE2M34oeGZ93nZ1nEtzGyb-jOZ6jedu0yruGrOmhEVbm02SBKDUyqCOirMNnjPRS-SR4oW2CLJ1Jw&entry=mc&ved=1t:200715&ictx=111
+          - listitem [ref=f2e105]:
+            - link "Short videos" [ref=f2e106] [cursor=pointer]:
+              - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&udm=39&fbs=ABfTbFVyMZGZf1hfvX9uKjN_-G8cqCQj_06QnZs315LoFmPf5bBLHMJ0vMQmTbuI72DM7jlpsWGRtNGtQlW06Yj2g-bIOMeBoD3RPN7CuHeP-F9ZIfcx1vEscIl7GaGgBtW_0woBIR8unep7Rd5ChYE2M34oeGZ93nZ1nEtzGyb-jOZ6jedu0yruGrOmhEVbm02SBKDUyqCOirMNnjPRS-SR4oW2CLJ1Jw&q=holtman%27s+donuts&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Qs6gLegQIIxAB
+          - listitem [ref=f2e109]:
+            - link "News" [ref=f2e110] [cursor=pointer]:
+              - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=holtman%27s+donuts&tbm=nws&source=lnms&fbs=ABfTbFVyMZGZf1hfvX9uKjN_-G8cqCQj_06QnZs315LoFmPf5bBLHMJ0vMQmTbuI72DM7jlpsWGRtNGtQlW06Yj2g-bIOMeBoD3RPN7CuHeP-F9ZIfcx1vEscIl7GaGgBtW_0woBIR8unep7Rd5ChYE2M34oeGZ93nZ1nEtzGyb-jOZ6jedu0yruGrOmhEVbm02SBKDUyqCOirMNnjPRS-SR4oW2CLJ1Jw&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q0pQJegQIIhAB
+          - listitem [ref=f2e113]:
+            - button [ref=f2e114] [cursor=pointer]:
+              - generic "More filters" [ref=f2e115]: More
+        - button "Tools" [ref=f2e122] [cursor=pointer]
+    - heading "Search Results" [level=1] [ref=f2e129]
+    - generic [ref=f2e134]:
+      - generic [ref=f2e135]:
+        - generic [ref=f2e138]:
+          - heading [level=2] [ref=f2e140]:
+            - text: These are results for
+            - button "holtman's donuts" [ref=f2e141] [cursor=pointer]:
+              - generic [ref=f2e142]: holtman's
+              - text: donuts
+            - generic [ref=f2e143]:
+              - text: Search instead for
+              - button "holtmans donuts" [ref=f2e144] [cursor=pointer]
+          - generic [ref=f2e148]:
+            - heading "Blanchester, OH" [level=2] [ref=f2e149]
+            - generic [ref=f2e158]:
+              - text: ∙
+              - button "Choose area" [ref=f2e159] [cursor=pointer]
+            - button "How location is used" [ref=f2e162] [cursor=pointer]
+        - generic [ref=f2e173]:
+          - 'heading "Locations: Location results for holtman''s donuts" [level=2] [ref=f2e178]':
+            - generic [ref=f2e179]: Locations
+          - generic [ref=f2e181]:
+            - generic [ref=f2e185]:
+              - generic [ref=f2e190]:
+                - generic [ref=f2e196]:
+                  - link "A. Holtman's Donut Shop Rated 4.7 out of 5 1.5K reviews for Holtman's Donut Shop · $1–10 · Bakery Open · Closes 10 PM · Loveland, OH ⁦\"Great service full ⁩⁦donut⁩⁦ case they make 10\" ⁩⁦donuts⁩⁦ for special order\"⁩":
+                    - /url: /url?sa=t&source=web&rct=j&url=/searchviewer/10?sca_esv%3D080dae4805299e94%26output%3Dsearch%26svid%3DCAwSGxIZCgNwdnESEkNnc3ZaeTh4ZEhCbU4zUm1OZxgK&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1t4PegQILhAE&opi=89978449&usg=AOvVaw3xcMFgcRBwW7MLxyZT3wcb
+                  - generic [ref=f2e199] [cursor=pointer]:
+                    - generic [ref=f2e201]:
+                      - generic [ref=f2e202]: A.
+                      - heading "Holtman's Donut Shop" [level=3] [ref=f2e203]
+                    - generic [ref=f2e204]:
+                      - generic [ref=f2e205]:
+                        - generic [ref=f2e206]:
+                          - generic [ref=f2e207]:
+                            - generic [aria-hidden] [ref=f2e208]: "4.7"
+                            - img "Rated 4.7 out of 5" [ref=f2e209]
+                          - generic "1.5K reviews for Holtman's Donut Shop" [ref=f2e212]: (1.5K)
+                        - text: · $1–10 · Bakery
+                      - generic [ref=f2e213]:
+                        - generic [ref=f2e214]: Open · Closes 10 PM
+                        - text: · Loveland, OH
+                      - generic [ref=f2e215]: ⁦"Great service full ⁩⁦donut⁩⁦ case they make 10" ⁩⁦donuts⁩⁦ for special order"⁩
+                - generic [ref=f2e232]:
+                  - link "Order button for Holtman's Donut Shop" [ref=f2e233]:
+                    - generic [ref=f2e234] [cursor=pointer]: Order
+                  - link "Directions to Holtman's Donut Shop" [ref=f2e240] [cursor=pointer]:
+                    - /url: https://maps.google.com/maps?um=1&ie=UTF-8&fb=1&gl=us&sa=X&geocode=Keved31n_kCIMWErDC2DIvvv&daddr=1399+OH-28,+Loveland,+OH+45140
+                    - generic [ref=f2e241]: Directions
+                  - link "Website for Holtman's Donut Shop" [ref=f2e250] [cursor=pointer]:
+                    - /url: http://www.holtmansdonutshop.com/
+                    - generic [ref=f2e251]: Website
+                  - button "Share Holtman's Donut Shop" [ref=f2e258]:
+                    - generic [ref=f2e259] [cursor=pointer]: Share
+              - generic [ref=f2e270]:
+                - generic [ref=f2e276]:
+                  - link "B. Holtman's Donut Shop Rated 4.5 out of 5 144 reviews for Holtman's Donut Shop · $1–10 · Donuts Closed · Opens 5 AM Tue · Williamsburg, OH ⁦\"Delicious fried cinnamon ⁩⁦donuts⁩⁦,just like Grandma used to make.\"⁩":
+                    - /url: /url?sa=t&source=web&rct=j&url=/searchviewer/10?sca_esv%3D080dae4805299e94%26output%3Dsearch%26svid%3DCAwSGxIZCgNwdnESEkNnc3ZaeTh4ZEhOc2EyUm9adxgK&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1t4PegQILxAE&opi=89978449&usg=AOvVaw26I-7Mc3e4YiQmrZZh7EHC
+                  - generic [ref=f2e279] [cursor=pointer]:
+                    - generic [ref=f2e281]:
+                      - generic [ref=f2e282]: B.
+                      - heading "Holtman's Donut Shop" [level=3] [ref=f2e283]
+                    - generic [ref=f2e284]:
+                      - generic [ref=f2e285]:
+                        - generic [ref=f2e286]:
+                          - generic [ref=f2e287]:
+                            - generic [aria-hidden] [ref=f2e288]: "4.5"
+                            - img "Rated 4.5 out of 5" [ref=f2e289]
+                          - generic "144 reviews for Holtman's Donut Shop" [ref=f2e292]: (144)
+                        - text: · $1–10 · Donuts
+                      - generic [ref=f2e293]:
+                        - generic [ref=f2e294]: Closed · Opens 5 AM Tue
+                        - text: · Williamsburg, OH
+                      - generic [ref=f2e295]: ⁦"Delicious fried cinnamon ⁩⁦donuts⁩⁦,just like Grandma used to make."⁩
+                - generic [ref=f2e312]:
+                  - link "Directions to Holtman's Donut Shop" [ref=f2e314] [cursor=pointer]:
+                    - /url: https://maps.google.com/maps?um=1&ie=UTF-8&fb=1&gl=us&sa=X&geocode=KW-YOWqvG0GIMecdmsgGpDJD&daddr=214+W+Main+St,+Williamsburg,+OH+45176
+                    - generic [ref=f2e315]: Directions
+                  - link "Website for Holtman's Donut Shop" [ref=f2e324] [cursor=pointer]:
+                    - /url: http://www.holtmansdonutshop.com/
+                    - generic [ref=f2e325]: Website
+                  - button "Share Holtman's Donut Shop" [ref=f2e332]:
+                    - generic [ref=f2e333] [cursor=pointer]: Share
+            - heading "Map" [level=3] [ref=f2e339]
+      - main [ref=f2e341]:
+        - generic [ref=f2e345]:
+          - generic [ref=f2e348]:
+            - heading "Web results" [level=2] [ref=f2e349]
+            - generic [ref=f2e350]:
+              - generic [ref=f2e353]:
+                - link "Holtman's Donuts | Best Donuts in Cincinnati holtmansdounuts.com https://www.holtmansdounuts.com" [ref=f2e355] [cursor=pointer]:
+                  - /url: /goto?url=CAESWwHrOzAV2uFRHSCpqDy6s1muFvIzWP7JkgWLq8orDz_P-GIpBmf0pld2QGYVLMDGUKnqpUcNy7DvpEVRuePOkdG-c0uxNd-Uh1n4cZ0cD8vtJWh5oY6RhwKo3c4
+                  - heading "Holtman's Donuts | Best Donuts in Cincinnati" [level=3] [ref=f2e356]
+                  - generic [ref=f2e365]:
+                    - generic [ref=f2e366]: holtmansdounuts.com
+                    - generic [ref=f2e368]: https://www.holtmansdounuts.com
+                - button "About this result" [ref=f2e374] [cursor=pointer]
+              - generic [ref=f2e381]:
+                - text: Join us for
+                - emphasis [ref=f2e382]: handcrafted, delectable donuts in Cincinnati, Ohio
+                - text: . Donuts has been a family tradition since 1960, our donuts from scratch with the highest quality ...
+              - link [aria-hidden] [ref=f2e385] [cursor=pointer]:
+                - /url: /goto?url=CAESWwHrOzAV2uFRHSCpqDy6s1muFvIzWP7JkgWLq8orDz_P-GIpBmf0pld2QGYVLMDGUKnqpUcNy7DvpEVRuePOkdG-c0uxNd-Uh1n4cZ0cD8vtJWh5oY6RhwKo3c4
+          - generic [ref=f2e392]:
+            - heading "People also ask" [level=2] [ref=f2e394]
+            - generic [ref=f2e395]:
+              - button "What makes Holtman's donuts unique?" [ref=f2e401] [cursor=pointer]
+              - button "What is the most famous donut store?" [ref=f2e415] [cursor=pointer]
+              - button "Are Holtman's donuts made fresh daily?" [ref=f2e429] [cursor=pointer]
+              - button "What is the best donut shop in Shreveport, Louisiana?" [ref=f2e443] [cursor=pointer]
+          - generic [ref=f2e453]:
+            - heading "Web results" [level=2] [ref=f2e454]
+            - generic [ref=f2e455]:
+              - generic [ref=f2e458]:
+                - link "Holtman's Donuts (@holtmansdonuts) · Cincinnati, OH Instagram · holtmansdonuts 28K+ followers" [ref=f2e460] [cursor=pointer]:
+                  - /url: /goto?url=CAESagHrOzAVdsAYCMkXMbZGSoSfO8ta3JmMb4N4uGaZL_Yw3u_7M3VTqu-eYo9DrL7gCmCOpWHmliptQwW5EFVua8pKkOOeip8GHF28mVcOSbCwHei4hUk9k01R7t8frAw4soLbgaAB-ldrP2w
+                  - heading "Holtman's Donuts (@holtmansdonuts) · Cincinnati, OH" [level=3] [ref=f2e461]
+                  - generic [ref=f2e467]:
+                    - generic [ref=f2e468]: Instagram · holtmansdonuts
+                    - generic [ref=f2e470]: 28K+ followers
+                - button "About this result" [ref=f2e476] [cursor=pointer]
+              - generic [ref=f2e483]:
+                - emphasis [ref=f2e484]: Cincinnati's destination for the BEST handmade from scratch donuts
+                - text: "! 🍩 🙌🏻 Loveland & Williamsburg. Swing by, grab a box, and make the day better. glazed donut ..."
+              - link [aria-hidden] [ref=f2e487] [cursor=pointer]:
+                - /url: /goto?url=CAESagHrOzAVdsAYCMkXMbZGSoSfO8ta3JmMb4N4uGaZL_Yw3u_7M3VTqu-eYo9DrL7gCmCOpWHmliptQwW5EFVua8pKkOOeip8GHF28mVcOSbCwHei4hUk9k01R7t8frAw4soLbgaAB-ldrP2w
+          - generic [ref=f2e493]:
+            - generic [ref=f2e496]:
+              - link "HOLTMAN'S DONUT SHOP, Loveland - 1399 State Route ... Tripadvisor https://www.tripadvisor.com › ... › Loveland Restaurants" [ref=f2e498] [cursor=pointer]:
+                - /url: /goto?url=CAESpwEB6zswFaj69DmbI6Nmg2gPf3tEavfHLuIJrAR6kL2Nr1NqFttbMSSytMGPXHa-f8R04LfizRkpTj6tZEqjLTLpNZeJ552SWnhV4NMWfpXpXrTztPrvgKFs0eETFhO_ZTc1sMW-9wWJYlD-oZM_zjXHTthwY8M4-99Mba-AHBXug83aU1FPA0qF03vNBvWa3bAlTdgG7t9FO6lPMduqLO8eHMCLi2Tq_w
+                - heading "HOLTMAN'S DONUT SHOP, Loveland - 1399 State Route ..." [level=3] [ref=f2e499]
+                - generic [ref=f2e505]:
+                  - generic [ref=f2e506]: Tripadvisor
+                  - generic [ref=f2e508]: https://www.tripadvisor.com › ... › Loveland Restaurants
+              - button "About this result" [ref=f2e514] [cursor=pointer]
+            - generic [ref=f2e521]:
+              - emphasis [ref=f2e522]: Holtman's Donut Shop, Loveland
+              - text: ": See 151 unbiased reviews of Holtman's Donut Shop, rated 4.8 of 5 on Tripadvisor and ranked #1 of 54 restaurants in Loveland."
+            - link [aria-hidden] [ref=f2e525] [cursor=pointer]:
+              - /url: /goto?url=CAESpwEB6zswFaj69DmbI6Nmg2gPf3tEavfHLuIJrAR6kL2Nr1NqFttbMSSytMGPXHa-f8R04LfizRkpTj6tZEqjLTLpNZeJ552SWnhV4NMWfpXpXrTztPrvgKFs0eETFhO_ZTc1sMW-9wWJYlD-oZM_zjXHTthwY8M4-99Mba-AHBXug83aU1FPA0qF03vNBvWa3bAlTdgG7t9FO6lPMduqLO8eHMCLi2Tq_w
+            - generic [ref=f2e530]:
+              - generic [ref=f2e531]:
+                - img "Rated 4.8 out of 5, (151) user reviews" [ref=f2e532]: 4.8(151)
+                - text: ·
+              - text: "Price range: $"
+          - generic [ref=f2e539]:
+            - generic [ref=f2e542]:
+              - link "Holtman's Donuts Yelp https://www.yelp.com › Loveland, OH › Food › Donuts" [ref=f2e544] [cursor=pointer]:
+                - /url: /goto?url=CAESbAHrOzAV--eV-ydWd2nl4uTvLyX4ydxbljKZuAAIXA_scqNASEHsnSUo5oGNYyvfT48h7pnrt70QAnmsF5_kkdgqPnt3Bxeed523D64w4batzPj2D8LkLDd8yNt80BfxcFhiurVBRNi_uAuT2A
+                - heading "Holtman's Donuts" [level=3] [ref=f2e545]
+                - generic [ref=f2e551]:
+                  - generic [ref=f2e552]: Yelp
+                  - generic [ref=f2e554]: https://www.yelp.com › Loveland, OH › Food › Donuts
+              - button "About this result" [ref=f2e560] [cursor=pointer]
+            - generic [ref=f2e567]:
+              - text: HOLTMAN'S DONUTS - Try Our New Menu -
+              - emphasis [ref=f2e568]: 1399 State Rt 28, Loveland, OH 45140
+              - text: ", 124 Photos, (513) 575-1077, Mon - 5:00 am - 10:00 pm, Tue - 5:00 am - 10:00 pm, ..."
+            - link [aria-hidden] [ref=f2e571] [cursor=pointer]:
+              - /url: /goto?url=CAESbAHrOzAV--eV-ydWd2nl4uTvLyX4ydxbljKZuAAIXA_scqNASEHsnSUo5oGNYyvfT48h7pnrt70QAnmsF5_kkdgqPnt3Bxeed523D64w4batzPj2D8LkLDd8yNt80BfxcFhiurVBRNi_uAuT2A
+            - generic [ref=f2e576]:
+              - generic [ref=f2e577]:
+                - img "Rated 4.6 out of 5, (202) user reviews" [ref=f2e578]: 4.6(202)
+                - text: ·
+              - text: "Price range: $"
+          - generic [ref=f2e585]:
+            - generic [ref=f2e588]:
+              - link "Holtman's Donut Shop (@Holtmansdonuts) Facebook · Holtman's Donut Shop 29.4K+ followers" [ref=f2e590] [cursor=pointer]:
+                - /url: /goto?url=CAESYwHrOzAVgVV_uS1h20jtjdZ1UR7Og9htczfNefBigYXmg7MAVW5MJ6qqpiGxA6_GjvX5qtF4XF_PMqY7vsJeRd0d1L4lo7-rAzeV-WVmBtMh__7ApWvNJ9D6t0E4-fryCgHD9g
+                - heading "Holtman's Donut Shop (@Holtmansdonuts)" [level=3] [ref=f2e591]
+                - generic [ref=f2e597]:
+                  - generic [ref=f2e598]: Facebook · Holtman's Donut Shop
+                  - generic [ref=f2e600]: 29.4K+ followers
+              - button "About this result" [ref=f2e606] [cursor=pointer]
+            - generic [ref=f2e613]:
+              - text: We've made the decision to
+              - emphasis [ref=f2e614]: close our West Chester Holtman's Donuts location
+              - text: . Our last day in West Chester will be December 31, 2025.
+            - link [aria-hidden] [ref=f2e617] [cursor=pointer]:
+              - /url: /goto?url=CAESYwHrOzAVgVV_uS1h20jtjdZ1UR7Og9htczfNefBigYXmg7MAVW5MJ6qqpiGxA6_GjvX5qtF4XF_PMqY7vsJeRd0d1L4lo7-rAzeV-WVmBtMh__7ApWvNJ9D6t0E4-fryCgHD9g
+          - generic [ref=f2e623]:
+            - generic [ref=f2e626]:
+              - link "Holtman's Donuts announces closure of West Chester ... Reddit · r/cincinnati 110+ comments · 9 months ago" [ref=f2e628] [cursor=pointer]:
+                - /url: /goto?url=CAESogEB6zswFb_jQB1tY5tK8EKO0i-Y7de2U1TNYtFyQiiUhugMoupL9UR2WsV1jP256Cp1OPKA9qY-JwzWuUAJXDjHxxk0hVfqPoUoTedQ1wCu1i67uGmc5B4J91nicCMEG6mOZTIOEue5W9Lsv7baq34kRAZY2pqngL6HPzBNuWcl8TKBlQ6Yi8AV_9EEhPs-XC-fk2wdoUb2znptM7yWGCjmBSo
+                - heading "Holtman's Donuts announces closure of West Chester ..." [level=3] [ref=f2e629]
+                - generic [ref=f2e635]:
+                  - generic [ref=f2e636]: Reddit · r/cincinnati
+                  - generic [ref=f2e638]: 110+ comments · 9 months ago
+              - button "About this result" [ref=f2e644] [cursor=pointer]
+            - generic [ref=f2e651]:
+              - text: The WC location has been open for almost a decade.
+              - emphasis [ref=f2e652]: Holtman's Donut Shop announces location in Oakley will close July 13th
+              - text: .
+            - generic [ref=f2e655]:
+              - generic [ref=f2e656]:
+                - link [ref=f2e659] [cursor=pointer]:
+                  - /url: /goto?url=CAESoQEB6zswFa245czA3Gyv6rlExZtuWuN5a_af9ctG2gyTjIS4tjS3UBHw9KYq191lJ-mYuAYP6B5Qa_2P-4VTo-rNVkrIR1V_TD6IppoR2p-TCiyy4W57yl2gIep3qTN3dO44MsyXppLV5UjKNLjSSCVY-S8RRJo0omKzS4z8XxTMro4ilPARN229KTiwINbngc0F-sjjghIntTd4PeAVco1hkw
+                  - generic [ref=f2e660]:
+                    - emphasis [ref=f2e661]: Holtman's Donut
+                    - text: Shop announces location in Oakley ...
+                - generic [ref=f2e662]: 84 posts
+                - generic [ref=f2e664]: Jul 5, 2025
+              - generic [ref=f2e666]:
+                - link [ref=f2e669] [cursor=pointer]:
+                  - /url: /goto?url=CAESnAEB6zswFc9Qo0w6NDU4y4F9eLfNzm70sTULUzOeRHG_ObTKf68KGKi-B3lF6355RoHitdHBac8OOnHYBtxS_tPUuIabXRle9qgUuWzagvqeCRv7_O6nby0MMglrE2n4zgIcnRAKi_G_9eHTFqJXWdGxAmMnwjJYO37PXwzKfeU8llYLrNbJnnjciTg8wR5mjoVvk_LyRKZC09CaXT4
+                  - generic [ref=f2e670]:
+                    - text: r/cincinnati -
+                    - emphasis [ref=f2e671]: Holtman's Donut
+                    - text: Shop Over-the-Rhine ...
+                - generic [ref=f2e672]: 147 posts
+                - generic [ref=f2e674]: Jul 22, 2022
+              - link "More results from www.reddit.com" [ref=f2e679] [cursor=pointer]:
+                - /url: /search?q=holtman's+donuts+site:www.reddit.com&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38QrQIoAnoECEEQAw
+          - generic [ref=f2e683]:
+            - generic [ref=f2e686]:
+              - link "Holtman's Donut Shop - Loveland Discover Clermont https://discoverclermont.com › bakery-breakfast-dessert" [ref=f2e688] [cursor=pointer]:
+                - /url: /goto?url=CAESmgEB6zswFcV_xz9NsN2R5bR1XdY_jMRjxuWa6837GhFO75OwKxzTD7FRxZ4V2OhRsoR5FCpOP_kCnWp2xTtV3tcfEkax9OoFOrLoGGa7ToJDno4JXFtqhtNETR65-mzHDyPwXaBvr4yM_phZjG3iFB0d1eA9l8e2bAwpzCjoojLW6sOsL9YEf2DklJdEzJwElbFby8NMKBdtRiUY
+                - heading "Holtman's Donut Shop - Loveland" [level=3] [ref=f2e689]
+                - generic [ref=f2e695]:
+                  - generic [ref=f2e696]: Discover Clermont
+                  - generic [ref=f2e698]: https://discoverclermont.com › bakery-breakfast-dessert
+              - button "About this result" [ref=f2e704] [cursor=pointer]
+            - generic [ref=f2e711]:
+              - text: Holtman's Donuts is a family shop that opened in 1960 by Charles Holtman. Address
+              - emphasis [ref=f2e712]: 1399 St. Rte. 28 Loveland, OH 45140
+              - text: "map it Contact Info Phone: (513) 575-1077 ..."
+            - link [aria-hidden] [ref=f2e715] [cursor=pointer]:
+              - /url: /goto?url=CAESmgEB6zswFcV_xz9NsN2R5bR1XdY_jMRjxuWa6837GhFO75OwKxzTD7FRxZ4V2OhRsoR5FCpOP_kCnWp2xTtV3tcfEkax9OoFOrLoGGa7ToJDno4JXFtqhtNETR65-mzHDyPwXaBvr4yM_phZjG3iFB0d1eA9l8e2bAwpzCjoojLW6sOsL9YEf2DklJdEzJwElbFby8NMKBdtRiUY
+          - generic [ref=f2e721]:
+            - generic [ref=f2e724]:
+              - link "Holtman's Donut Shop 1399 Ohio 28 - Order Online order.online https://order.online › holtman-s-donuts-loveland-1051318" [ref=f2e726] [cursor=pointer]:
+                - /url: /goto?url=CAESdwHrOzAVHcUbd7BQSpGgcuAsHJvOl8lZYld9uEe2SAJLBXE-YuSbfzoqk8tRPJcmLTZ4lEWjGH25oWecG4HL0LBY3JfDVRLdwqr3f_isAFkaF2qChLWieRC76HEfXJUffTeVCV_xbAS_wbxMVL5q8M_MC5ayw0Hd
+                - heading "Holtman's Donut Shop 1399 Ohio 28 - Order Online" [level=3] [ref=f2e727]
+                - generic [ref=f2e736]:
+                  - generic [ref=f2e737]: order.online
+                  - generic [ref=f2e739]: https://order.online › holtman-s-donuts-loveland-1051318
+              - button "About this result" [ref=f2e745] [cursor=pointer]
+            - generic [ref=f2e752]:
+              - text: Get delivery or takeout from Holtman&#39;s Donut Shop at
+              - emphasis [ref=f2e753]: 1399 Ohio 28 in Loveland
+              - text: . An assortment of twelve classic donuts, including the up to 4 filled ones. ...
+            - link [aria-hidden] [ref=f2e756] [cursor=pointer]:
+              - /url: /goto?url=CAESdwHrOzAVHcUbd7BQSpGgcuAsHJvOl8lZYld9uEe2SAJLBXE-YuSbfzoqk8tRPJcmLTZ4lEWjGH25oWecG4HL0LBY3JfDVRLdwqr3f_isAFkaF2qChLWieRC76HEfXJUffTeVCV_xbAS_wbxMVL5q8M_MC5ayw0Hd
+          - generic [ref=f2e762]:
+            - generic [ref=f2e765]:
+              - link "Order Holtman's Donuts (Loveland) - Menu & Prices Uber Eats https://www.ubereats.com › holtmans-donuts-loveland" [ref=f2e767] [cursor=pointer]:
+                - /url: /goto?url=CAESywEB6zswFahwqnTxraPFQ5gwNNuB3K4vDrxdyLD5WDUDK426UWIfY0shyZ_CSVH8OUDlWX5gjnpRBpC_Ej3UUUKtOcHOSZS67fbqvmwlN7fEtwE4oNYMaV-t37iNcevADYQNlTVdYFfMvlcwF2fLtfZLoOm-g41EACN5xcUcqWCFfchiwJ7cpPf99-PRpn-G0rxg2kVRfFBYgIdRu6-QzozQwKzJ7gaiptQJJ_kr4a2mhmv-NAr0LMR-ezUbVp74xxs4WhO8yQ5_9WStEw
+                - heading "Order Holtman's Donuts (Loveland) - Menu & Prices" [level=3] [ref=f2e768]
+                - generic [ref=f2e774]:
+                  - generic [ref=f2e775]: Uber Eats
+                  - generic [ref=f2e777]: https://www.ubereats.com › holtmans-donuts-loveland
+              - button "About this result" [ref=f2e783] [cursor=pointer]
+            - generic [ref=f2e789]:
+              - generic [ref=f2e790]:
+                - text: Featured items ·
+                - emphasis [ref=f2e791]: "Mixed Classic Dozen (12 pcs): $22.00"
+                - text: "· Mixed Classics (6 pcs): $12.99 · Vanilla Icing and Sprinkles Yeast Donut: $2.34 · White Cream Filled ..."
+              - link "Read more" [ref=f2e792] [cursor=pointer]:
+                - /url: /goto?url=CAESyQMB6zswFUQJMkP7Egh2tlk-4-i7TBB8w9gCwdlB-RQ-crKbzwq8y6XXSBmPoLAmqqL9uNiIURTqboVY_Mfbe5TpnM2xb45X906IYEcn4eBgS8fpcXy-8LXMvBPxvasv792UdKQq1pRqqJK5gNtaOaRro56kwr9SrZdSvx8_y9-WlrxaMyKakbu5h3N4F7Vxtuxlzr0jRY4iApNQe5EjfPeZRAoBPGcDxlPLl9c-xQ11wg7OSL4JTJJfiJhJyrmY3YTGmHbXe6E2Jg_AV10f3xwd4wu583BNRwuFegHgFKdlWo6WI-1rmcFTZy4hXz-fPljasVUATCgzIf-F5cKaWAEOoLYhrLXsYFqdD8iixdd8Lhddhk8KFUrpjO6Oe-rEF3meTaLCFysdbBIiv0G8eKv3yo_Y5zyuHOfha2pcmrSPqOvSv0Vh4PVvtosuBIuPPjDhf9ZC7WccE_8TPAMXMPisK017stPQ9s6jt1RQ84fPxpEtyCBCjrTKS0yGtX4oEheOokh7RORCs6CAl9d1X9IH6pjKdTjMttKHsiLp199IB6pwgMeSHbhGlQt2bRWw6EcfHJjvaZGCl5GGMKeWGWBg6-xV1VaA8gdN
+            - img "Rated 4.7 out of 5, (82) user reviews" [ref=f2e797]: 4.7(82)
+        - generic [ref=f2e802]:
+          - generic [ref=f2e807]:
+            - heading "People also search for" [level=2] [ref=f2e809]
+            - generic [ref=f2e811]:
+              - generic [ref=f2e812]:
+                - link "Holtman's donuts menu" [ref=f2e816] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+donuts+menu&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAgxEAE
+                - link "Holtman's donuts locations" [ref=f2e830] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+donuts+locations&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAhAEAE
+                - link "Holtman's donuts near me" [ref=f2e844] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+donuts+near+me&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAg_EAE
+                - link "Holtman's donuts Oakley" [ref=f2e858] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+donuts+Oakley&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAg6EAE
+              - generic [ref=f2e869]:
+                - link "Holtman's Donuts West Chester" [ref=f2e873] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+Donuts+West+Chester&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAg2EAE
+                - link "Holtman's Donuts Cincinnati" [ref=f2e887] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+Donuts+Cincinnati&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAg0EAE
+                - link "Holtman's donuts prices" [ref=f2e901] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+donuts+prices&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAgzEAE
+                - link "Holtman's donuts hours" [ref=f2e915] [cursor=pointer]:
+                  - /url: /search?sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&q=Holtman%27s+donuts+hours&sa=X&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q1QJ6BAgyEAE
+          - navigation [ref=f2e926]:
+            - heading "Page Navigation" [level=1] [ref=f2e927]
+            - text: "1"
+            - link "Page 2" [ref=f2e930] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=10&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAE
+              - text: "2"
+            - link "Page 3" [ref=f2e932] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=20&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAG
+              - text: "3"
+            - link "Page 4" [ref=f2e934] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=30&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAI
+              - text: "4"
+            - link "Page 5" [ref=f2e936] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=40&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAK
+              - text: "5"
+            - link "Page 6" [ref=f2e938] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=50&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAM
+              - text: "6"
+            - link "Page 7" [ref=f2e940] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=60&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAO
+              - text: "7"
+            - link "Page 8" [ref=f2e942] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=70&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAQ
+              - text: "8"
+            - link "Page 9" [ref=f2e944] [cursor=pointer]:
+              - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=80&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8tMDegQIRRAS
+              - text: "9"
+            - heading [level=2] [ref=f2e946]:
+              - link "Next" [ref=f2e947] [cursor=pointer]:
+                - /url: /search?q=holtman's+donuts&sca_esv=080dae4805299e94&sxsrf=APpeQnvDup5x9ieKNpaoQgwSy0EIBN-Xtw:1790603599699&ei=T3G6aqDqKLHcptQPwr3O-Qc&start=10&sa=N&sstk=AS6-VmJh_FWFt29NAlugUkf4vcbXzT2Cfpnpk5EDDRDSfjv0KX_4okAg2BRMFloUxdxq3tZ3ZauL0fHTqTCFfd4JgxGxXifw9molqw&ved=2ahUKEwjgzfebtpGXAxUxrokEHcKeM38Q8NMDegQIRRAU
+        - navigation
+    - contentinfo [ref=f2e950]:
+      - heading "Footer Links" [level=1] [ref=f2e951]
+      - generic [ref=f2e955]:
+        - generic [ref=f2e959]:
+          - button "Blanchester, Ohio - From your IP address" [ref=f2e961] [cursor=pointer]:
+            - generic [ref=f2e962]: Blanchester, Ohio
+            - generic [ref=f2e964]:
+              - text: "-"
+              - generic [ref=f2e965]: From your IP address
+          - text: "-"
+          - button "Update location" [ref=f2e967] [cursor=pointer]
+        - generic [ref=f2e970]:
+          - link "Help" [ref=f2e971] [cursor=pointer]:
+            - /url: https://support.google.com/websearch/?p=ws_results_help&hl=en&fg=1
+          - link "Send feedback" [ref=f2e972] [cursor=pointer]:
+            - /url: "#"
+          - link "Privacy" [ref=f2e973] [cursor=pointer]:
+            - /url: https://policies.google.com/privacy?hl=en&fg=1
+          - link "Terms" [ref=f2e974] [cursor=pointer]:
+            - /url: https://policies.google.com/terms?hl=en&fg=1

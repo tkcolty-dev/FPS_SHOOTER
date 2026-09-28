@@ -1,7 +1,20 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.7.0",
+      "date": "2026-09-28",
+      "title": "Smarter Bitey, offline Bitey, logging for friends",
+      "changes": [
+        "New: Bitey can look things up, like 'what is Holtman's Donuts', using Wikipedia, DuckDuckGo and OpenStreetMap. Lookups are safe, food and fitness only, and show their sources.",
+        "New: Bitey answers with cards: meal ideas with photos, ingredients, calories that add up, steps and a Log this button. Places come with an address, hours, Maps and Website.",
+        "New: Offline Bitey. With no internet it still logs food, steps, water, weight and goals, and looks up calories. Other questions are answered automatically when you're back online.",
+        "New: People in your group can log food for you (you can turn this off in What I share). It shows who added it, and it arrives even if you were offline.",
+        "New: Anything you do offline that needs the internet is saved and sent when you reconnect.",
+        "New: 12 free colors, plus Light, Dark or Automatic appearance (Me → Look)."
+      ]
+    },
     {
       "version": "1.6.0",
       "date": "2026-09-27",
