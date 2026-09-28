@@ -35,6 +35,7 @@ function fileBackend() {
     async createUser(u) { if (Object.values(db.users).some(x => x.username === u.username)) return false; db.users[u.id] = u; save(); return true; },
     async userByName(name) { return Object.values(db.users).find(x => x.username === name) || null; },
     async userById(id) { return db.users[id] || null; },
+    async renameUser(id, username, salt, hash) { if (Object.values(db.users).some(x => x.username === username && x.id !== id)) return false; Object.assign(db.users[id], { username, salt, hash, auto: false }); save(); return true; },
     async addSession(hash, uid) { db.sessions[hash] = { uid, at: Date.now() }; save(); },
     async sessionUser(hash) { return db.sessions[hash]?.uid || null; },
     async dropSession(hash) { delete db.sessions[hash]; save(); },
@@ -76,6 +77,10 @@ function pgBackend(cfg) {
     },
     async userByName(name) { const r = await q('SELECT data FROM bw_users WHERE username = $1', [name]); return r.rows[0]?.data || null; },
     async userById(id) { const r = await q('SELECT data FROM bw_users WHERE id = $1', [id]); return r.rows[0]?.data || null; },
+    async renameUser(id, username, salt, hash) {
+      try { const r = await q(`UPDATE bw_users SET username = $2, data = data || jsonb_build_object('username', $2::text, 'salt', $3::text, 'hash', $4::text, 'auto', false) WHERE id = $1`, [id, username, salt, hash]); return r.rowCount === 1; }
+      catch (e) { if (e.code === '23505') return false; throw e; }
+    },
     async addSession(hash, uid) { await q('INSERT INTO bw_sessions (hash, uid) VALUES ($1, $2) ON CONFLICT DO NOTHING', [hash, uid]); },
     async sessionUser(hash) { const r = await q('SELECT uid FROM bw_sessions WHERE hash = $1', [hash]); return r.rows[0]?.uid || null; },
     async dropSession(hash) { await q('DELETE FROM bw_sessions WHERE hash = $1', [hash]); },

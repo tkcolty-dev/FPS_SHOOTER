@@ -75,7 +75,7 @@
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
 
   // ---------- app state ----------
-  const S = { tab: 'today', date: BW.dayKey(), progRange: 7, status: { ai: false, fitbit: false, model: '' }, online: navigator.onLine, coachBusy: false, installEvt: null };
+  const S = { tab: 'today', date: BW.dayKey(), progRange: 7, status: { ai: false, health: null, model: '' }, online: navigator.onLine, coachBusy: false, installEvt: null };
   const MEALS = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['dinner', 'Dinner'], ['snack', 'Snacks']];
   const dayLabel = k => { const t = BW.dayKey(); if (k === t) return 'Today'; if (k === BW.addDays(t, -1)) return 'Yesterday'; return BW.parseDay(k).toLocaleDateString(undefined, { weekday: 'long' }); };
   const longDate = k => BW.parseDay(k).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
@@ -165,6 +165,50 @@
   }
   const miniRing = (pct, color, label) => `<div class="mini">${ringSVG([{ pct, color }], 34)}<b>${label}</b></div>`;
 
+  // ---------- smooth rendering: patch the page in place instead of replacing it ----------
+  // Keeps elements alive between renders so CSS transitions (bars, rings) animate and focus/scroll never jump.
+  function morph(from, to) {
+    if (from.nodeType !== to.nodeType || from.nodeName !== to.nodeName || (from.dataset && to.dataset && from.dataset.key !== to.dataset.key)) { from.replaceWith(to); return; }
+    if (from.nodeType === 3) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
+    if (from.nodeType !== 1) return;
+    for (const a of [...from.attributes]) if (!to.hasAttribute(a.name)) from.removeAttribute(a.name);
+    for (const a of [...to.attributes]) {
+      if (from.getAttribute(a.name) === a.value) continue;
+      if (a.name === 'value' && from === document.activeElement) continue;
+      from.setAttribute(a.name, a.value);
+    }
+    if ((from.tagName === 'INPUT' || from.tagName === 'TEXTAREA') && from !== document.activeElement && from.value !== (to.getAttribute('value') ?? to.value ?? '')) from.value = to.tagName === 'TEXTAREA' ? to.value : (to.getAttribute('value') ?? '');
+    if (from.tagName === 'svg' || from.namespaceURI === 'http://www.w3.org/2000/svg') { if (from.innerHTML !== to.innerHTML) { morphChildren(from, to); } return; }
+    morphChildren(from, to);
+  }
+  function morphChildren(from, to) {
+    const a = [...from.childNodes], b = [...to.childNodes];
+    // keyed children (food rows) are matched by data-key so inserting one doesn't rebuild the list
+    const keyed = new Map(); a.forEach(n => n.dataset?.key && keyed.set(n.dataset.key, n));
+    let i = 0;
+    for (const nb of b) {
+      const k = nb.dataset?.key; let na = k ? keyed.get(k) : a[i];
+      if (k && na && from.childNodes[i] !== na) from.insertBefore(na, from.childNodes[i] || null);
+      na = from.childNodes[i];
+      if (!na) from.appendChild(nb);
+      else if (k && na.dataset?.key !== k) from.insertBefore(nb, na);
+      else morph(na, nb);
+      i++;
+    }
+    while (from.childNodes.length > b.length) from.lastChild.remove();
+  }
+  const counts = new WeakMap();
+  function animateCounts(root) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    $$('[data-count]', root).forEach(el => {
+      const to = +el.dataset.count, from = counts.has(el) ? counts.get(el) : null; counts.set(el, to);
+      if (from == null || from === to) { el.textContent = fmt(to); return; }
+      const t0 = performance.now(), dur = 520;
+      const step = now => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * e); if (k < 1 && counts.get(el) === to) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    });
+  }
+
   // ---------- rendering ----------
   function render() {
     const p = BW.profile();
@@ -173,7 +217,10 @@
     const active = document.activeElement, focusId = active?.id, selS = active?.selectionStart, selE = active?.selectionEnd;
     const view = $('#view');
     const html = S.tab === 'today' ? viewToday() : S.tab === 'progress' ? viewProgress() : S.tab === 'coach' ? viewCoach() : viewMe();
-    view.innerHTML = html;
+    const next = document.createElement('main'); next.innerHTML = html;
+    if (view.dataset.tab !== S.tab || !view.firstElementChild) { view.innerHTML = html; view.dataset.tab = S.tab; view.classList.remove('tab-in'); void view.offsetWidth; view.classList.add('tab-in'); }
+    else morphChildren(view, next);
+    animateCounts(view);
     $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === S.tab));
     $('#tabbar').hidden = false;
     bindView();
@@ -197,92 +244,56 @@
     if (!r.items.length) return 'Type a number, or what you ate';
     return r.items.map(i => `${esc(i.name)} <b>${i.calories ?? '?'}</b>`).join(' · ') + (r.allKnown ? ` = <b>${fmt(r.total)} cal</b>` : ' · Enter to finish');
   }
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : 'a while ago'; };
   function viewToday() {
-    const p = BW.profile(), k = S.date, d = BW.day(k), st = BW.streak(), h = BW.health(k), today = BW.dayKey();
-    const pctCal = d.eaten / d.budget, over = d.remaining < 0;
-    const ws = BW.weekStart(k);
-    const week = Array.from({ length: 7 }, (_, i) => {
-      const dk = BW.addDays(ws, i), dd = BW.day(dk);
-      const pct = dd.eaten / dd.budget, col = pct > 1.1 ? 'var(--orange)' : 'var(--accent)';
-      return `<button class="wd ${dk > today ? 'future' : ''}" type="button" data-day="${dk}" aria-current="${dk === k}" aria-label="${longDate(dk)}"><span class="n">${BW.parseDay(dk).toLocaleDateString(undefined, { weekday: 'narrow' })}</span>${miniRing(pct, col, BW.parseDay(dk).getDate())}</button>`;
-    }).join('');
-    const ch = BW.challenge();
+    const p = BW.profile(), k = S.date, d = BW.day(k), st = BW.streak(), today = BW.dayKey(), isToday = k === today;
+    const over = d.remaining < 0, calPct = Math.min(100, d.eaten / d.budget * 100), stepPct = Math.min(100, d.steps / p.stepGoal * 100);
+    const linked = !!LS.get('healthLinked', false), pulled = LS.get('healthPulled', 0), src = BW.stepSource(k);
     const usuals = BW.frequent().slice(0, 6);
-    const src = s => s === 'voice' ? 'mic' : s === 'text' ? 'keyboard' : s === 'coach' ? 'spark' : 'bolt';
+    const chips = usuals.length ? usuals.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
+      : [100, 200, 300, 500].map(n => `<button class="chip fill" type="button" data-quick="${n}">+${n}</button>`).join('');
+    const stepLine = S.syncingSteps ? `<span class="sync-dot"></span>Syncing Fitbit…`
+      : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : `Tap to connect Fitbit`;
+    const es = d.entries.slice().sort((a, b) => b.time - a.time);
+    const srcIcon = s => s === 'voice' ? 'mic' : s === 'text' ? 'keyboard' : s === 'coach' ? 'spark' : 'bolt';
     return `
-    <div class="topbar fade-in">
-      <div><div class="subtitle">${longDate(k)}</div><h1 class="large-title">${dayLabel(k)}</h1></div>
-      <div style="display:flex;gap:6px;align-items:center">${offlinePill()}<button class="pill" type="button" data-act="streak" style="color:var(--orange)">${I('flame')}<span class="num">${st.days}</span></button></div>
+    <div class="topbar">
+      <div class="daynav">
+        <div class="subtitle">${longDate(k)}</div>
+        <div class="daynav-row"><button class="dn" type="button" data-shift="-1" aria-label="Previous day">${I('left')}</button><h1 class="large-title">${dayLabel(k)}</h1>${isToday ? '' : `<button class="dn" type="button" data-shift="1" aria-label="Next day">${I('right')}</button>`}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">${offlinePill()}<button class="pill streak" type="button" data-act="streak" aria-label="${st.days} day streak">${I('flame')}<span class="num">${st.days}</span></button></div>
     </div>
     <div class="cols"><div class="col-main">
-    <div class="card" id="heroCard">
-      <div class="hero">
-        <button class="rings" type="button" data-act="rings" aria-label="Calories, steps and water rings">
-          ${ringSVG([{ pct: pctCal, color: over ? 'var(--orange)' : 'var(--accent)', over: 'var(--orange)' }, { pct: d.steps / p.stepGoal, color: 'var(--pink)' }, { pct: d.water / p.waterGoal, color: 'var(--cyan)' }])}
-          <div class="center"><div><div class="big num">${fmt(Math.abs(d.remaining))}</div><div class="lbl">${over ? 'Over' : 'Left'}</div></div></div>
-        </button>
-        <div class="legend">
-          <div class="li"><div class="k"><i style="background:${over ? 'var(--orange)' : 'var(--accent)'}"></i>Eaten</div><div class="v num">${fmt(d.eaten)}<small>/ ${fmt(d.budget)}</small></div></div>
-          <div class="li"><div class="k"><i style="background:var(--pink)"></i>Steps</div><div class="v num">${fmt(d.steps)}${d.bonus ? `<small>+${d.bonus} cal</small>` : ''}</div></div>
-          <div class="li"><div class="k"><i style="background:var(--cyan)"></i>Water</div><div class="v num">${d.water}<small>/ ${p.waterGoal} glasses</small></div></div>
+      <div class="card summary" id="heroCard">
+        <div class="stats">
+          <button class="stat-tile" type="button" data-act="calinfo">
+            <div class="st-k">Calories eaten</div>
+            <div class="st-v"><span class="num" data-count="${d.eaten}">${fmt(d.eaten)}</span></div>
+            <div class="bar big"><i style="width:${calPct}%;${over ? 'background:var(--orange)' : ''}"></i></div>
+            <div class="st-sub ${over ? 'warn' : ''}"><b class="num">${fmt(Math.abs(d.remaining))}</b> ${over ? 'over' : 'left'} of ${fmt(d.budget)}</div>
+          </button>
+          <button class="stat-tile" type="button" data-act="steps">
+            <div class="st-k">Steps</div>
+            <div class="st-v"><span class="num" data-count="${d.steps}">${fmt(d.steps)}</span></div>
+            <div class="bar big"><i style="width:${stepPct}%;background:var(--pink)"></i></div>
+            <div class="st-sub src">${stepLine}</div>
+          </button>
         </div>
+        <form class="qlog" id="qlogForm" autocomplete="off">
+          <label class="qfield"><input id="qcal" inputmode="${finePointer ? 'text' : 'numeric'}" enterkeyhint="done" placeholder="Add calories" value="${esc(S.qdraft || '')}" aria-label="Add calories"><span class="u">cal</span></label>
+          <button class="qadd" type="submit" ${S.qdraft ? '' : 'disabled'} aria-label="Add">${I('plus')}</button>
+          <button class="qicon" type="button" data-act="voice" aria-label="Say what you ate">${I('mic')}</button>
+        </form>
+        <div class="qhint" id="qhint">${qHint()}</div>
+        <div class="chips" style="margin-top:10px">${chips}</div>
       </div>
-      <form class="qlog" id="qlogForm" autocomplete="off">
-        <label class="qfield"><input id="qcal" inputmode="${finePointer ? 'text' : 'numeric'}" enterkeyhint="done" placeholder="Add calories" value="${esc(S.qdraft || '')}" aria-label="Add calories"><span class="u">cal</span></label>
-        <button class="qadd" type="submit" ${S.qdraft ? '' : 'disabled'} aria-label="Add">${I('plus')}</button>
-        <button class="qicon" type="button" data-act="voice" aria-label="Log with your voice">${I('mic')}</button>
-        <button class="qicon" type="button" data-act="type" aria-label="Type what you ate">${I('keyboard')}</button>
-      </form>
-      <div class="qhint" id="qhint">${qHint()}</div>
-      ${usuals.length ? `<div class="chips" style="margin-top:10px">${usuals.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')}</div>` : ''}
-    </div>
-
-    <div class="week" style="margin:18px -4px 0">${week}</div>
-
-    ${MEALS.map(([m, label]) => {
-      const es = d.meals[m], tot = es.reduce((a, e) => a + e.calories, 0);
-      return `<div class="meal-head"><h3>${label}</h3><span class="t">${tot ? fmt(tot) + ' cal' : ''}</span></div>
-      <div class="group">${es.map(e => `<div class="swipe"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="src">${I(src(e.source))}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div></div><span class="kcal">${fmt(e.calories)}</span></div></div>`).join('')}
-      <button class="row add-row" type="button" data-addmeal="${m}">${I('plus', 'style="width:20px;height:20px"')} Add ${label === 'Snacks' ? 'a snack' : label.toLowerCase()}</button></div>`;
-    }).join('')}
+      ${!linked && isToday && !LS.get('hideFitbitCard', false) && S.status.health !== false ? `<div class="card connect-card" style="margin-top:12px"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div class="grow"><b>Count your Fitbit steps</b><span>Connect once. Steps fill in on their own.</span></div><button class="btn small" type="button" data-act="fitbit">Connect</button><button class="x-close" type="button" data-act="hidefitbit" aria-label="Hide">${I('x')}</button></div>` : ''}
     </div><div class="col-side">
-    <div class="section">
-      <div class="duo">
-        <div class="card">
-          <div class="card-title"><span class="dot" style="background:var(--cyan)">${I('drop', 'style="width:13px;height:13px"')}</span>Water</div>
-          <div class="stat"><div class="v num">${d.water}<small> / ${p.waterGoal}</small></div></div>
-          <div class="water-glasses" style="margin:10px 0 12px">${Array.from({ length: Math.max(p.waterGoal, d.water) }, (_, i) => `<span class="glass ${i < d.water ? 'on' : ''}"></span>`).join('')}</div>
-          <div class="stepper" style="width:max-content"><button type="button" data-water="-1" aria-label="Remove a glass">−</button><button type="button" data-water="1" aria-label="Add a glass">+</button></div>
-        </div>
-        <button class="card" type="button" data-act="steps" style="text-align:left">
-          <div class="card-title"><span class="dot" style="background:var(--pink)">${I('shoe', 'style="width:13px;height:13px"')}</span>Steps<span class="more">›</span></div>
-          <div class="stat"><div class="v num">${fmt(d.steps)}</div></div>
-          <div class="bar" style="margin:12px 0 8px"><i style="width:${Math.min(100, d.steps / p.stepGoal * 100)}%;background:var(--pink)"></i></div>
-          <div class="caption">${BW.stepSource(k) === 'fitbit' ? 'From Fitbit · ' : ''}Goal ${fmt(p.stepGoal)}${p.earnSteps ? ` · earned <b style="color:var(--label)">${d.bonus} cal</b>` : ''}</div>
-        </button>
-      </div>
-    </div>
-
-    <div class="section">
-      <button class="card" type="button" data-act="health" style="width:100%;text-align:left">
-        <div style="display:flex;gap:14px;align-items:center">
-          <div class="score-ring">${ringSVG([{ pct: h.score / 100, color: h.score >= 70 ? 'var(--green)' : h.score >= 40 ? 'var(--yellow)' : 'var(--orange)' }], 64)}<b class="num">${h.score}</b></div>
-          <div class="grow" style="flex:1"><div style="font-size:17px;font-weight:600">Health Score</div><div class="caption" style="font-size:14px">${h.score >= 80 ? 'Crushing it today.' : h.score >= 60 ? 'Solid day — keep it going.' : h.score >= 35 ? 'A few easy wins left today.' : 'Log food, water and steps to fill it up.'}</div></div>
-          <span style="color:var(--label3);font-size:22px">›</span>
-        </div>
-        <div class="parts">${Object.entries(h.parts).map(([n, v]) => `<div><div class="pb"><i style="height:${v / h.max[n] * 100}%;background:${n === 'Calories' ? 'var(--accent)' : n === 'Steps' ? 'var(--pink)' : n === 'Water' ? 'var(--cyan)' : n === 'Logging' ? 'var(--purple)' : 'var(--orange)'}"></i></div><span>${n}</span></div>`).join('')}</div>
-      </button>
-    </div>
-
-    <div class="section">
-      <div class="card">
-        <div class="card-title"><span class="dot" style="background:var(--purple)">${I('target', 'style="width:13px;height:13px"')}</span>Weekly challenge<span class="more caption">${ch.done ? 'Done!' : ch.daysLeft === 0 ? 'Ends today' : ch.daysLeft === 1 ? '1 day left' : ch.daysLeft + ' days left'}</span></div>
-        <div style="font-size:20px;font-weight:700">${ch.title}</div>
-        <div class="muted" style="font-size:15px;margin:2px 0 10px">${ch.desc} · <b style="color:var(--label)">+${ch.xp} XP</b></div>
-        <div class="bar"><i style="width:${ch.progress / ch.need * 100}%;background:var(--purple)"></i></div>
-        <div class="caption" style="margin-top:6px">${ch.progress} of ${ch.need}</div>
-      </div>
-    </div>
+      <div class="section-head food-head"><h2>${isToday ? 'Today’s food' : 'Food'}</h2>${es.length ? `<span class="caption num">${es.length} item${es.length > 1 ? 's' : ''}</span>` : ''}</div>
+      ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="src">${I(srcIcon(e.source))}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>
+        <div class="footnote">${finePointer ? 'Click a food to edit it.' : 'Swipe left to delete · tap to edit'}</div>`
+      : `<div class="card empty"><div class="icon-sq" style="background:var(--fill);color:var(--label2);width:44px;height:44px;border-radius:12px">${I('fork')}</div><b>${isToday ? 'Nothing logged yet' : 'Nothing logged this day'}</b><span>Type a number above and press ${finePointer ? 'Enter' : 'Add'}. That's it.</span></div>`}
     </div></div>`;
   }
 
@@ -318,64 +329,64 @@
       <text x="${pad}" y="${H - 2}">${BW.parseDay(pts[0].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text>
       <text x="${W}" y="${H - 2}" text-anchor="end">${BW.parseDay(pts[pts.length - 1].date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text></svg>`;
   }
+  function stepsChart(n) {
+    const today = BW.dayKey(), goal = BW.profile().stepGoal, days = Array.from({ length: n }, (_, i) => BW.day(BW.addDays(today, i - n + 1)));
+    const W = 340, H = 150, pad = 26, max = Math.max(goal * 1.15, ...days.map(d => d.steps)) || 10000;
+    const bw = (W - pad) / n, y = v => H - 18 - (v / max) * (H - 30);
+    return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Steps per day">
+      <line x1="${pad}" x2="${W}" y1="${y(goal)}" y2="${y(goal)}" stroke="var(--label2)" stroke-dasharray="4 4"/>
+      <text x="0" y="${y(goal) + 4}">${Math.round(goal / 1000)}k</text><text x="0" y="${y(0) + 4}">0</text>
+      ${days.map((d, i) => `<rect x="${pad + i * bw + bw * .18}" y="${y(d.steps)}" width="${bw * .64}" height="${Math.max(0, H - 18 - y(d.steps))}" rx="${Math.min(4, bw * .25)}" fill="var(--pink)" opacity="${d.steps >= goal ? 1 : .55}"/>`).join('')}
+      ${days.map((d, i) => (n <= 7 || i % 5 === 0 || i === n - 1) ? `<text x="${pad + i * bw + bw / 2}" y="${H - 3}" text-anchor="middle">${n <= 7 ? BW.parseDay(d.k).toLocaleDateString(undefined, { weekday: 'narrow' }) : BW.parseDay(d.k).getDate()}</text>` : '').join('')}</svg>`;
+  }
   function viewProgress() {
-    const n = S.progRange, today = BW.dayKey(), g = BW.goals();
-    const days = Array.from({ length: n }, (_, i) => BW.day(BW.addDays(today, i - n + 1))).filter(d => d.entries.length);
-    const done = days.filter(d => d.k !== today);
-    const avg = done.length ? done.reduce((a, d) => a + d.eaten, 0) / done.length : 0;
-    const inBudget = done.filter(d => Math.abs(1 - d.eaten / d.budget) <= .1 || d.eaten <= d.budget).length;
-    const tr = BW.trend(), lv = BW.level(), bs = BW.badges(), st = BW.streak();
-    const next = THEMES.find(t => t.level > lv.n);
-    // streak calendar: last 5 weeks
-    const start = BW.addDays(BW.weekStart(), -28);
-    const cal = Array.from({ length: 35 }, (_, i) => { const k = BW.addDays(start, i), d = BW.day(k); const cls = k > today ? '' : d.entries.length ? (d.eaten > d.budget * 1.1 && k !== today ? 'over' : 'hit') : ''; return `<div class="${cls} ${k === today ? 'today' : ''}" style="${k > today ? 'opacity:.3' : ''}">${BW.parseDay(k).getDate()}</div>`; }).join('');
+    const n = S.progRange, today = BW.dayKey(), g = BW.goals(), p = BW.profile();
+    const range = Array.from({ length: n }, (_, i) => BW.day(BW.addDays(today, i - n + 1)));
+    const logged = range.filter(d => d.entries.length && d.k !== today);
+    const avg = logged.length ? logged.reduce((a, d) => a + d.eaten, 0) / logged.length : 0;
+    const onBudget = logged.filter(d => d.eaten <= d.budget * 1.1).length;
+    const stepDays = range.filter(d => d.steps > 0), avgSteps = stepDays.length ? stepDays.reduce((a, d) => a + d.steps, 0) / stepDays.length : 0;
+    const tr = BW.trend(), lv = BW.level(), st = BW.streak(), ch = BW.challenge(), h = BW.health(today), d0 = BW.day(today);
+    const earned = BW.badges().filter(b => b.earned);
+    const word = n === 7 ? 'this week' : 'this month';
+    const calLine = !logged.length ? 'Log a few days to see your average.' : avg <= g.budget ? `You're averaging <b>${fmt(g.budget - avg)} under</b> your budget ${word}. Nice.` : `You're averaging <b>${fmt(avg - g.budget)} over</b> your budget ${word}.`;
+    const stepLine = !stepDays.length ? 'Connect Fitbit or add steps to see them here.' : avgSteps >= p.stepGoal ? `Averaging <b>${fmt(avgSteps)}</b> a day. Above your goal!` : `Averaging <b>${fmt(avgSteps)}</b> a day, <b>${fmt(p.stepGoal - avgSteps)}</b> short of your goal.`;
     return `
-    <div class="topbar"><div><div class="subtitle">${g.teen ? 'Healthy habits' : 'Your journey'}</div><h1 class="large-title">Progress</h1></div>${offlinePill()}</div>
+    <div class="topbar"><div><div class="subtitle">${g.teen ? 'Healthy habits' : 'How you’re doing'}</div><h1 class="large-title">Progress</h1></div>
+      <div class="seg" style="width:150px"><button type="button" data-range="7" aria-pressed="${n === 7}">Week</button><button type="button" data-range="30" aria-pressed="${n === 30}">Month</button></div></div>
     <div class="cols"><div class="col-main">
-    <div class="level-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div><small>Level</small><div class="lv num">${lv.n}</div><div style="font-weight:700;font-size:18px">${lv.name}</div></div>
-        <div style="text-align:right"><small>Streak</small><div style="font:800 28px var(--round)" class="num">${st.days}d</div><small>${st.freezes ? `${st.freezes} freeze${st.freezes > 1 ? 's' : ''} saved` : `Best ${st.best}d`}</small></div>
-      </div>
-      <div class="bar"><i style="width:${lv.pct * 100}%"></i></div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px"><small class="num">${fmt(lv.xp)} XP</small><small class="num">${lv.next ? fmt(lv.next - lv.xp) + ' XP to level ' + (lv.n + 1) : 'Max level!'}</small></div>
-      ${next ? `<div style="margin-top:10px;font-size:13px;opacity:.9">${I('gift', 'style="width:14px;height:14px;vertical-align:-2px"')} Level ${next.level} unlocks the <b>${next.name}</b> theme</div>` : ''}
-    </div>
-
-    <div class="section">
-      <div class="section-head"><h2>Calories</h2><div class="seg" style="width:150px"><button type="button" data-range="7" aria-pressed="${n === 7}">Week</button><button type="button" data-range="30" aria-pressed="${n === 30}">Month</button></div></div>
       <div class="card">
-        <div class="duo" style="margin-bottom:12px"><div class="stat"><div class="caption">Daily average</div><div class="v num">${fmt(avg)}<small> cal</small></div></div><div class="stat"><div class="caption">On budget</div><div class="v num">${inBudget}<small> / ${done.length} days</small></div></div></div>
+        <div class="card-head"><div><div class="st-k">Calories · average</div><div class="big-stat"><span class="num" data-count="${Math.round(avg)}">${fmt(avg)}</span><small> / day</small></div></div><div class="mini-stat"><b class="num">${onBudget}/${logged.length || 0}</b><span>days on budget</span></div></div>
+        <p class="insight">${calLine}</p>
         ${calChart(n)}
-        <div class="caption" style="margin-top:6px">Dashed line = your ${fmt(g.budget)} cal budget${BW.profile().earnSteps ? ' (before step bonus)' : ''}</div>
       </div>
-    </div>
-
-    <div class="section">
-      <div class="section-head"><h2>Weight</h2><button class="link" type="button" data-act="weight">Log weight</button></div>
-      <div class="card">${tr ? `
-        <div class="duo" style="margin-bottom:12px">
-          <div class="stat"><div class="caption">Trend weight</div><div class="v num">${tr.now.toFixed(1)}<small> lb</small></div></div>
-          <div class="stat"><div class="caption">${tr.lost >= 0 ? 'Lost so far' : 'Gained'}</div><div class="v num" style="color:${tr.lost > 0 ? 'var(--green)' : 'var(--label)'}">${Math.abs(tr.lost).toFixed(1)}<small> lb</small></div></div>
-        </div>
-        ${tr.pts.length > 1 ? weightChart(tr) : ''}
-        <div class="banner info" style="margin:12px 0 0">${I('info')}<span>${tr.eta ? `At ${Math.abs(tr.perWeek).toFixed(1)} lb/week you'll reach ${BW.profile().goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.perWeek != null ? `Your trend is ${tr.perWeek > 0 ? 'up' : 'steady'} (${tr.perWeek > 0 ? '+' : ''}${tr.perWeek.toFixed(1)} lb/week). The trend line ignores daily water-weight swings.` : 'Log your weight a few times a week. The trend line smooths out daily water-weight swings.'}</span></div>`
-        : `<div style="text-align:center;padding:14px 0"><div class="icon-sq" style="background:var(--teal);margin:0 auto 10px;width:44px;height:44px;border-radius:12px">${I('scale')}</div><div style="font-weight:600">No weigh-ins yet</div><div class="caption" style="margin:4px 0 12px">Weigh in 2–3 times a week, same time of day.</div><button class="btn tinted small" type="button" data-act="weight">Log weight</button></div>`}
+      <div class="card">
+        <div class="card-head"><div><div class="st-k">Steps · average</div><div class="big-stat"><span class="num" data-count="${Math.round(avgSteps)}">${fmt(avgSteps)}</span><small> / day</small></div></div>${LS.get('healthLinked', false) ? `<span class="pill">${I('watch')}Fitbit</span>` : `<button class="btn small tinted" type="button" data-act="fitbit">Connect Fitbit</button>`}</div>
+        <p class="insight">${stepLine}</p>
+        ${stepsChart(n)}
       </div>
-    </div>
-
+      <div class="card">
+        <div class="card-head"><div><div class="st-k">Weight · trend</div><div class="big-stat">${tr ? `<span class="num">${tr.now.toFixed(1)}</span><small> lb</small>` : '<small>No weigh-ins yet</small>'}</div></div><button class="btn small tinted" type="button" data-act="weight">Log weight</button></div>
+        ${tr ? `<p class="insight">${tr.eta ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. At this pace you'll hit ${p.goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.lost > 0 ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. Keep weighing in a few times a week.` : 'The line smooths out daily water-weight ups and downs.'}</p>${tr.pts.length > 1 ? weightChart(tr) : ''}` : `<p class="insight">Weigh in 2–3 times a week, in the morning. The trend line ignores day-to-day swings.</p>`}
+      </div>
     </div><div class="col-side">
-    <div class="section">
-      <div class="section-head"><h2>Streak calendar</h2><span class="caption">last 5 weeks</span></div>
-      <div class="card"><div class="cal-grid">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(x => `<span class="caption" style="text-align:center;font-weight:600">${x}</span>`).join('')}${cal}</div>
-      <div class="caption" style="margin-top:10px;display:flex;gap:14px"><span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--accent)"></i> Logged</span><span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--orange)"></i> Over budget</span></div></div>
-    </div>
-
-    <div class="section">
-      <div class="section-head"><h2>Badges</h2><span class="caption">${bs.filter(b => b.earned).length} of ${bs.length}</span></div>
-      <div class="card"><div class="badges">${bs.map(b => `<button class="badge ${b.earned ? '' : 'off'}" type="button" data-badge="${b.id}"><div class="med" style="background:${BADGE_COLORS[b.icon] || 'var(--accent)'}">${I(b.icon === 'bite' ? 'bite' : b.icon)}</div>${esc(b.name)}</button>`).join('')}</div></div>
-    </div>
+      <div class="card">
+        <div class="card-head"><div><div class="st-k">Today’s habits</div></div><button class="link-btn" type="button" data-act="health" style="font-size:15px">Health Score ${h.score}</button></div>
+        <div class="habit"><span class="icon-sq" style="background:var(--cyan)">${I('drop')}</span><div class="grow"><b>Water</b><span class="num">${d0.water} of ${p.waterGoal} glasses</span></div><div class="stepper"><button type="button" data-water="-1" aria-label="Remove a glass">−</button><button type="button" data-water="1" aria-label="Add a glass">+</button></div></div>
+        <div class="bar" style="margin:10px 0 2px"><i style="width:${Math.min(100, d0.water / p.waterGoal * 100)}%;background:var(--cyan)"></i></div>
+      </div>
+      <div class="card rewards">
+        <div class="card-head"><div><div class="st-k">Level ${lv.n}</div><div class="big-stat" style="font-size:24px">${lv.name}</div></div><button class="pill streak" type="button" data-act="streak">${I('flame')}<span class="num">${st.days} days</span></button></div>
+        <div class="bar" style="margin-top:4px"><i style="width:${lv.pct * 100}%"></i></div>
+        <div class="caption num" style="margin-top:6px">${lv.next ? `${fmt(lv.next - lv.xp)} XP to level ${lv.n + 1}` : 'Max level!'}</div>
+        <div class="challenge"><div class="grow"><b>${ch.title}</b><span>${ch.desc} · ${ch.done ? 'done!' : `${ch.progress} of ${ch.need}`}</span></div><span class="pill" style="color:var(--purple)">+${ch.xp} XP</span></div>
+        <button class="badge-row" type="button" data-act="badges">${earned.slice(0, 6).map(b => `<span class="med sm" style="background:${BADGE_COLORS[b.icon] || 'var(--accent)'}">${I(b.icon)}</span>`).join('')}<span class="caption" style="margin-left:auto">${earned.length} of ${BW.badges().length} badges ›</span></button>
+      </div>
     </div></div>`;
+  }
+  function badgesSheet() {
+    const bs = BW.badges();
+    openSheet({ title: 'Badges', left: 'Done', body: `<div class="badges" style="padding:6px 0 10px">${bs.map(b => `<button class="badge ${b.earned ? '' : 'off'}" type="button" data-badge="${b.id}"><div class="med" style="background:${BADGE_COLORS[b.icon] || 'var(--accent)'}">${I(b.icon)}</div>${esc(b.name)}</button>`).join('')}</div>`, mount: b => { b.onclick = e => { const x = e.target.closest('[data-badge]'); if (x) badgeSheet(x.dataset.badge); }; } });
   }
 
   // ---------- coach ----------
@@ -437,7 +448,7 @@
   // ---------- me ----------
   function viewMe() {
     const p = BW.profile(), g = BW.goals(), lv = BW.level(), a = BW.acct();
-    const fitbitOn = !!LS.get('fitbitLinked', false);
+    const fitbitOn = !!LS.get('healthLinked', false);
     const lastSync = LS.get('lastSync', 0);
     const theme = THEMES.find(t => t.id === p.theme) || THEMES[0];
     const initials = (p.name || 'You').split(' ').map(s => s[0]).join('').slice(0, 2).toUpperCase();
@@ -459,13 +470,13 @@
     </div></div>
 
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Health data</div><div class="group">
-      ${row('watch', '#00B0B9', 'Fitbit', fitbitOn ? 'Connected' : 'Connect', 'data-act="fitbit"', fitbitOn ? `Steps and weight sync automatically${LS.get('fitbitPulled', 0) ? ' · last pulled ' + new Date(LS.get('fitbitPulled', 0)).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}` : 'Sync your steps into your Health Score')}
+      ${row('watch', '#00B0B9', 'Fitbit', fitbitOn ? 'Connected' : 'Connect', 'data-act="fitbit"', fitbitOn ? `Steps sync on their own · ${LS.get('healthPulled', 0) ? 'last ' + ago(LS.get('healthPulled', 0)) : 'syncing soon'}` : 'Count your steps automatically')}
       <div class="row indent"><span class="icon-sq" style="background:var(--orange)">${I('flame')}</span><div class="grow"><div class="title">Steps earn calories</div><div class="sub">Walking more adds to your daily budget</div></div><button class="switch" type="button" role="switch" aria-checked="${p.earnSteps}" data-act="earnsteps" aria-label="Steps earn calories"></button></div>
       ${row('edit', 'var(--label3)', 'Enter steps by hand', '', 'data-act="steps"')}
     </div></div>
 
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Account & sync</div><div class="group">
-      ${a ? `${row('cloud', 'var(--blue)', a.username, BW.syncing ? 'Syncing…' : BW.dirtyCount ? BW.dirtyCount + ' to sync' : 'Up to date', 'data-act="syncnow"', lastSync ? 'Last synced ' + new Date(lastSync).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Tap to sync now')}
+      ${a && a.auto ? `${row('cloud', 'var(--blue)', 'Backed up on this device', 'Create login', 'data-act="claim"', 'Add a username and password to use BiteWise on another device')}` : a ? `${row('cloud', 'var(--blue)', a.username, BW.syncing ? 'Syncing…' : BW.dirtyCount ? BW.dirtyCount + ' to sync' : 'Up to date', 'data-act="syncnow"', lastSync ? 'Last synced ' + new Date(lastSync).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Tap to sync now')}
         <button class="row" type="button" data-act="signout" style="color:var(--red)">Sign out</button>`
       : `${row('cloud', 'var(--blue)', 'Back up & sync', 'Sign in', 'data-act="signin"', 'Keep your log safe and use it on more devices')}`}
     </div>${BW.syncError && a ? `<div class="footnote" style="color:var(--red)">${esc(BW.syncError)}</div>` : '<div class="footnote">BiteWise saves everything on this device first, so it works with no internet. Signing in adds a cloud backup.</div>'}</div>
@@ -656,9 +667,45 @@
   }
 
   function stepsSheet() {
-    const has = !!LS.get('fitbitLinked', false);
-    numberSheet({ title: 'Steps', label: dayLabel(S.date), value: BW.day(S.date).steps, unit: 'steps', step: 500, max: 100000, onSave: n => { BW.setSteps(S.date, n, 'manual'); toast('Steps saved'); },
-      footer: `<div class="footnote">${has ? 'Fitbit is connected, so steps sync automatically. A number you enter here is used until the next sync.' : 'Tip: connect Fitbit in Me → Health data so steps fill in automatically.'}</div>` });
+    const linked = !!LS.get('healthLinked', false), k = S.date, p = BW.profile();
+    openSheet({
+      title: 'Steps', left: 'Done', body: '', mount: (b, close) => {
+        const draw = () => {
+          const dd = BW.day(k);
+          b.innerHTML = `<div class="card" style="text-align:center;padding:20px 16px">
+              <div class="caption" style="font-size:14px">${dayLabel(k)}</div>
+              <div class="big-num num" style="color:var(--pink);font-size:60px">${fmt(dd.steps)}</div>
+              <div class="bar big" style="margin:12px 0 8px"><i style="width:${Math.min(100, dd.steps / p.stepGoal * 100)}%;background:var(--pink)"></i></div>
+              <div class="muted" style="font-size:15px">${dd.steps >= p.stepGoal ? 'Goal reached!' : fmt(p.stepGoal - dd.steps) + ' to your ' + fmt(p.stepGoal) + ' goal'}${p.earnSteps && dd.bonus ? ` · earned <b style="color:var(--label)">${dd.bonus} cal</b>` : ''}</div></div>
+            ${linked ? `<div class="group" style="margin-top:14px"><div class="row"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div class="grow"><div class="title">Fitbit</div><div class="sub">${S.syncingSteps ? 'Syncing…' : 'Synced ' + ago(LS.get('healthPulled', 0))}</div></div><button class="btn small tinted" type="button" id="ssync" ${S.syncingSteps ? 'disabled' : ''}>${I('sync')} Sync</button></div></div>`
+              : `<button class="btn" type="button" id="sconn" style="margin-top:14px;background:#00B0B9">${I('watch')} Connect Fitbit</button>`}
+            <div class="footnote" style="margin:18px 16px 6px">ADD STEPS BY HAND</div>
+            <form class="qlog" id="sform" style="margin-top:0"><label class="qfield"><input id="sval" inputmode="numeric" placeholder="${fmt(dd.steps)}" aria-label="Steps"><span class="u">steps</span></label><button class="qadd" type="submit" aria-label="Save">${I('check')}</button></form>
+            <div class="footnote">${linked ? 'Fitbit replaces a hand-entered number the next time it syncs.' : 'Or connect Fitbit and never type steps again.'}</div>`;
+          $('#ssync', b) && ($('#ssync', b).onclick = async () => { await autoHealth(true); draw(); });
+          $('#sconn', b) && ($('#sconn', b).onclick = () => { close(); connectHealth(); });
+          $('#sform', b).onsubmit = e => { e.preventDefault(); const n = parseInt($('#sval', b).value.replace(/\D/g, ''), 10); if (!(n >= 0 && n <= 100000)) return toast('Enter a step count', { icon: 'info' }); BW.setSteps(k, n, 'manual'); haptic(10); close(); toast(`${fmt(n)} steps saved`); };
+        };
+        draw();
+      },
+    });
+  }
+
+  function calSheet() {
+    const k = S.date, d = BW.day(k), g = BW.goals(), over = d.remaining < 0;
+    const meals = MEALS.map(([m, l]) => [l, d.meals[m].reduce((a, e) => a + e.calories, 0)]);
+    openSheet({ title: 'Calories', left: 'Done', body: `
+      <div class="card" style="text-align:center;padding:20px 16px"><div class="caption" style="font-size:14px">${dayLabel(k)}</div>
+        <div class="big-num num" style="font-size:60px;color:${over ? 'var(--orange)' : 'var(--accent)'}">${fmt(Math.abs(d.remaining))}</div><div class="muted" style="font-weight:600">${over ? 'calories over' : 'calories left'}</div></div>
+      <div class="group" style="margin-top:14px">
+        <div class="row"><span class="grow">Daily budget</span><span class="value num">${fmt(d.base)}</span></div>
+        ${d.bonus ? `<div class="row"><span class="grow">Earned from steps</span><span class="value num" style="color:var(--pink)">+${fmt(d.bonus)}</span></div>` : ''}
+        <div class="row"><span class="grow">Eaten</span><span class="value num">−${fmt(d.eaten)}</span></div>
+        <div class="row"><b class="grow">${over ? 'Over by' : 'Left'}</b><b class="num">${fmt(Math.abs(d.remaining))}</b></div>
+      </div>
+      <div class="footnote" style="margin:18px 16px 6px">BY MEAL</div>
+      <div class="group">${meals.map(([l, v]) => `<div class="row"><span class="grow">${l}</span><span class="value num">${v ? fmt(v) : '—'}</span></div>`).join('')}</div>
+      <div class="footnote">${g.teen ? 'Teen mode: your budget is set to maintenance, so you have plenty of fuel for growing and sports.' : `Your budget is ${fmt(g.tdee)} (what you burn) minus ${fmt(g.pace * 500)} to lose about ${g.pace} lb a week. Change it in Me → Goals.`}</div>` });
   }
 
   function weightSheet() {
@@ -692,33 +739,57 @@
 
   async function refreshMe() {
     if (!BW.acct() || !navigator.onLine) return;
-    try { const me = await BW.api('me', null, 'GET'); LS.set('fitbitLinked', !!me.fitbit); if (me.fitbit) autoFitbit(); render(); } catch {}
+    try { const me = await BW.api('me', null, 'GET'); LS.set('healthLinked', !!me.health); if (me.health) autoHealth(); render(); } catch {}
   }
-  async function autoFitbit(force) {
-    if (!LS.get('fitbitLinked', false) || !navigator.onLine) return;
-    if (!force && Date.now() - LS.get('fitbitPulled', 0) < 15 * 60e3) return;
-    try { const r = await BW.pullFitbit(7); if (force) toast(`Fitbit synced · ${r.days} day${r.days === 1 ? '' : 's'} updated`, { icon: 'watch' }); }
-    catch (e) { if (e.status === 401 || e.status === 404) LS.set('fitbitLinked', false); if (force) toast(e.message, { icon: 'info' }); }
+  // Steps sync quietly: on open, when the app comes back to the front, and every 10 minutes while it's open.
+  async function autoHealth(force) {
+    if (!LS.get('healthLinked', false) || !navigator.onLine || !BW.acct()) return;
+    if (!force && Date.now() - LS.get('healthPulled', 0) < 5 * 60e3) return;
+    S.syncingSteps = true; render();
+    try {
+      const r = await BW.pullHealth();
+      if (force) toast(`Fitbit synced · ${fmt(r.today)} steps today`, { icon: 'watch' });
+    } catch (e) {
+      if (e.status === 401 || e.status === 404) { LS.set('healthLinked', false); toast('Fitbit needs to be connected again', { icon: 'info' }); }
+      else if (force) toast(e.message, { icon: 'info' });
+    }
+    S.syncingSteps = false; render();
+  }
+  setInterval(() => { if (document.visibilityState === 'visible') autoHealth(); }, 10 * 60e3);
+
+  async function connectHealth() {
+    if (!S.online) return toast('Connect to the internet to link Fitbit', { icon: 'offline' });
+    if (S.status.health === false) return fitbitSheet();
+    try {
+      toast('Opening Google sign-in…', { icon: 'watch' });
+      await BW.ensureAccount();
+      const j = await BW.api('health/start');
+      location.href = j.url;
+    } catch (e) { e.status === 501 ? fitbitSheet() : toast(e.message, { icon: 'info' }); }
   }
 
   function fitbitSheet() {
-    const linked = !!LS.get('fitbitLinked', false);
+    const linked = !!LS.get('healthLinked', false), ready = S.status.health !== false;
     openSheet({
       title: 'Fitbit', left: 'Done',
-      body: `<div style="text-align:center;margin:4px 0 16px"><div class="icon-sq" style="background:#00B0B9;width:60px;height:60px;border-radius:16px;margin:0 auto 10px">${I('watch', 'style="width:32px;height:32px"')}</div>
-        <div style="font-size:20px;font-weight:700">${linked ? 'Fitbit is connected' : 'Connect your Fitbit'}</div>
-        <div class="muted" style="font-size:15px;margin-top:4px">${linked ? 'Your steps (and weigh-ins from an Aria scale) sync in every time you open BiteWise.' : 'Steps flow into your Health Score and can earn back calories. Weigh-ins from a Fitbit scale come in too.'}</div></div>
-        ${!BW.acct() ? `<div class="banner info">${I('info')}<span>Fitbit links to your BiteWise account, so sign in first. It's free.</span></div><button class="btn" type="button" id="fs">Sign in</button>`
-          : !S.status.fitbit ? `<div class="banner">${I('info')}<span>Fitbit isn't set up on this server yet. The app owner needs to add a Fitbit Client ID. Until then, you can enter steps by hand.</span></div>`
-          : linked ? `<button class="btn" type="button" id="fp">${I('sync')} Sync now</button><button class="btn danger" type="button" id="fd" style="margin-top:10px">Disconnect</button>`
-          : `<button class="btn" type="button" id="fc" style="background:#00B0B9">Connect Fitbit</button><div class="footnote">You'll sign in on Fitbit's website and come right back.</div>`}`,
+      body: `<div style="text-align:center;margin:4px 0 18px"><div class="icon-sq" style="background:#00B0B9;width:64px;height:64px;border-radius:17px;margin:0 auto 12px">${I('watch', 'style="width:34px;height:34px"')}</div>
+        <div style="font-size:22px;font-weight:700">${linked ? 'Fitbit is connected' : 'Connect Fitbit'}</div>
+        <div class="muted" style="font-size:15px;margin:6px 8px 0">${linked ? `Steps sync on their own every time you open BiteWise. Last sync ${ago(LS.get('healthPulled', 0))}.` : 'Your steps show up on the home screen by themselves. Walking more can earn you extra calories.'}</div></div>
+        ${linked ? `<button class="btn" type="button" id="fp">${I('sync')} Sync now</button><button class="btn danger" type="button" id="fd" style="margin-top:10px">Disconnect</button>`
+          : ready ? `<div class="group" style="margin-bottom:16px">${[['1', 'Tap Connect'], ['2', 'Sign in with the Google account your Fitbit uses'], ['3', 'Tap Allow. You’ll come right back here.']].map(([n, t]) => `<div class="row"><span class="step-n">${n}</span><div class="grow"><div class="title" style="white-space:normal;font-size:16px">${t}</div></div></div>`).join('')}</div><button class="btn" type="button" id="fc" style="background:#00B0B9">Connect</button><div class="footnote" style="text-align:center">Fitbit data now comes through Google Health. BiteWise only reads your steps and weight.</div>`
+          : `<div class="banner">${I('info')}<span>Fitbit sync needs a one-time setup on the BiteWise server before anyone can connect. Until then, add steps by hand from the Steps card.</span></div>`}`,
       mount: (b, close) => {
-        $('#fs', b) && ($('#fs', b).onclick = () => { close(); signInSheet(); });
-        $('#fp', b) && ($('#fp', b).onclick = async () => { close(); await autoFitbit(true); });
-        $('#fd', b) && ($('#fd', b).onclick = async () => { try { await BW.api('fitbit/disconnect'); } catch {} LS.set('fitbitLinked', false); close(); render(); toast('Fitbit disconnected'); });
-        $('#fc', b) && ($('#fc', b).onclick = async () => { try { const j = await BW.api('fitbit/start'); location.href = j.url; } catch (e) { toast(e.message, { icon: 'info' }); } });
+        $('#fp', b) && ($('#fp', b).onclick = async () => { close(); await autoHealth(true); });
+        $('#fd', b) && ($('#fd', b).onclick = async () => { try { await BW.api('health/disconnect'); } catch {} LS.set('healthLinked', false); close(); render(); toast('Fitbit disconnected'); });
+        $('#fc', b) && ($('#fc', b).onclick = () => { close(); connectHealth(); });
       },
     });
+  }
+
+  function claimSheet() {
+    openSheet({ title: 'Create a login', body: `<p class="muted" style="text-align:center;margin:4px 12px 16px;font-size:15px">Your log is already backed up. Add a username and password to open it on another phone, iPad or Mac.</p>
+      <form id="cf2"><div class="group"><div class="row"><input class="field" style="background:transparent;padding:0" id="cu" placeholder="Username" autocomplete="username" autocapitalize="off" required></div><div class="row"><input class="field" style="background:transparent;padding:0" id="cp" type="password" placeholder="Password (6+ characters)" autocomplete="new-password" required></div></div><div class="footnote" id="cerr"></div><button class="btn" style="margin-top:12px">Save login</button></form>`,
+      mount: (b, close) => { $('#cf2', b).onsubmit = async e => { e.preventDefault(); try { await BW.claimAccount($('#cu', b).value, $('#cp', b).value); close(); toast('Login saved'); } catch (err) { $('#cerr', b).style.color = 'var(--red)'; $('#cerr', b).textContent = err.message; } }; } });
   }
 
   function themesSheet() {
@@ -742,7 +813,7 @@
             <div class="footnote" style="margin:18px 16px 6px">ABOUT YOU</div>
             <div class="group">
               <div class="row"><span class="grow">Name</span><input class="inline-input" id="g_name" value="${esc(p.name)}" placeholder="Optional" style="width:55%"></div>
-              <div class="row"><span class="grow">Sex</span><div class="seg" style="width:160px"><button type="button" data-sex="female" aria-pressed="${p.sex === 'female'}">Female</button><button type="button" data-sex="male" aria-pressed="${p.sex === 'male'}">Male</button></div></div>
+              <div class="row"><span class="grow">Gender</span><div class="seg" style="width:210px"><button type="button" data-sex="female" aria-pressed="${p.sex === 'female'}">Female</button><button type="button" data-sex="male" aria-pressed="${p.sex === 'male'}">Male</button><button type="button" data-sex="other" aria-pressed="${p.sex === 'other'}">Other</button></div></div>
               <div class="row"><span class="grow">Age</span><input class="inline-input num" id="g_age" inputmode="numeric" value="${p.age}"></div>
               <div class="row"><span class="grow">Height</span><span class="value"><input class="inline-input num" id="g_ft" inputmode="numeric" value="${Math.floor(p.heightIn / 12)}" style="width:28px"> ft <input class="inline-input num" id="g_in" inputmode="numeric" value="${p.heightIn % 12}" style="width:28px"> in</span></div>
               <div class="row"><span class="grow">Weight</span><span class="value"><input class="inline-input num" id="g_w" inputmode="decimal" value="${p.weightLb}" style="width:60px"> lb</span></div>
@@ -796,6 +867,7 @@
       const t = e.target.closest('button, [data-entry]'); if (!t) return;
       const d = t.dataset;
       if (d.day) { S.date = d.day; render(); haptic(5); return; }
+      if (d.shift) { const nd = BW.addDays(S.date, +d.shift); if (nd <= BW.dayKey()) { S.date = nd; render(); haptic(5); } return; }
       if (d.quick) { const en = BW.addEntry({ date: S.date, calories: +d.quick, source: 'quick' }); haptic(12); toast(`Added ${d.quick} cal to ${cap(en.meal)}`, { undo: () => BW.remove(en.id) }); return; }
       if (d.usual) { const u = BW.frequent()[+d.usual]; const en = BW.addEntry({ date: S.date, name: u.name, calories: u.calories, source: 'quick' }); haptic(12); toast(`${u.name} · ${u.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
       if (d.entry) { if (t.closest('.swipe')?.classList.contains('open')) { closeSwipes(); return; } editEntry(d.entry); return; }
@@ -814,6 +886,10 @@
         case 'rings': case 'health': return healthSheet();
         case 'streak': { const s = BW.streak(); return openSheet({ title: 'Streak', left: 'Done', body: `<div class="celebrate"><div class="med" style="background:var(--orange)">${I('flame')}</div><div style="font-size:44px;font-weight:800" class="num">${s.days} day${s.days === 1 ? '' : 's'}</div><div class="muted" style="margin:6px 10px 14px">${s.loggedToday ? 'You logged today. See you tomorrow!' : 'Log anything today to keep it going.'}</div></div><div class="group"><div class="row"><span class="grow">Best streak</span><span class="value num">${s.best} days</span></div><div class="row"><span class="grow">Streak freezes</span><span class="value num">${s.freezes} / 2</span></div></div><div class="footnote">Every 7 days in a row earns a freeze. It saves your streak if you miss a day.</div>` }); }
         case 'steps': return stepsSheet();
+        case 'calinfo': return calSheet();
+        case 'hidefitbit': LS.set('hideFitbitCard', true); render(); return;
+        case 'badges': return badgesSheet();
+        case 'claim': return claimSheet();
         case 'weight': return weightSheet();
         case 'clearchat': saveChat([]); render(); return;
         case 'profile': case 'goals': return goalsSheet();
@@ -823,7 +899,7 @@
         case 'fitbit': return fitbitSheet();
         case 'signin': return signInSheet();
         case 'syncnow': await BW.sync(); await refreshMe(); toast(BW.syncError ? 'Sync failed: ' + BW.syncError : 'Synced', { icon: 'cloud' }); return;
-        case 'signout': return confirmSheet({ title: 'Sign out?', text: 'Your log stays on this device. Sign back in any time to sync again.', confirm: 'Sign out', danger: true, onConfirm: async () => { await BW.signOut(); LS.set('fitbitLinked', false); toast('Signed out'); } });
+        case 'signout': return confirmSheet({ title: 'Sign out?', text: 'Your log stays on this device. Sign back in any time to sync again.', confirm: 'Sign out', danger: true, onConfirm: async () => { await BW.signOut(); LS.set('healthLinked', false); toast('Signed out'); } });
         case 'themes': return themesSheet();
         case 'install': return installSheet();
         case 'voicehelp': return voiceHelpSheet();
@@ -833,6 +909,7 @@
     };
     // swipe-to-delete on food rows
     $$('.swipe .row', v).forEach(row => {
+      if (row._sw) return; row._sw = true; // rows survive re-renders now, so bind once
       let x0 = null, y0 = 0, dx = 0, drag = false;
       row.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') return; x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; });
       row.addEventListener('pointermove', e => { if (x0 == null) return; const mx = e.clientX - x0, my = e.clientY - y0; if (!drag && Math.abs(mx) > 8 && Math.abs(mx) > Math.abs(my)) { drag = true; closeSwipes(row.parentNode); row.parentNode.classList.add('dragging'); row.style.transition = 'none'; } if (drag) { dx = Math.min(0, mx + (row.parentNode.classList.contains('open') ? -88 : 0)); row.style.transform = `translateX(${Math.max(-120, dx)}px)`; } });
@@ -860,6 +937,7 @@
             S.qdraft = ''; haptic(12); toast(`${made.length > 1 ? made.length + ' items' : made[0].name} · ${fmt(r.total)} cal`, { undo: () => made.forEach(m => BW.remove(m.id)) });
           } else { S.qdraft = ''; openLog({ mode: 'type', text: v }); }
         }
+        qi.value = S.qdraft || ''; add.disabled = !qi.value.trim(); $('#qhint').innerHTML = qHint();
         if (!finePointer) qi.blur();
       };
     }
@@ -924,7 +1002,7 @@
       body = `${steps}<h1>About you</h1><p class="lead">This sets your daily calorie budget. It stays on your phone.</p>
         <div class="group">
           <div class="row"><span class="grow">Name</span><input class="inline-input" id="o_name" value="${esc(p.name)}" placeholder="Optional" style="width:55%"></div>
-          <div class="row"><span class="grow">Sex</span><div class="seg" style="width:160px"><button type="button" data-sex="female" aria-pressed="${p.sex === 'female'}">Female</button><button type="button" data-sex="male" aria-pressed="${p.sex === 'male'}">Male</button></div></div>
+          <div class="row"><span class="grow">Gender</span><div class="seg" style="width:210px"><button type="button" data-sex="female" aria-pressed="${p.sex === 'female'}">Female</button><button type="button" data-sex="male" aria-pressed="${p.sex === 'male'}">Male</button><button type="button" data-sex="other" aria-pressed="${p.sex === 'other'}">Other</button></div></div>
           <div class="row"><span class="grow">Age</span><input class="inline-input num" id="o_age" inputmode="numeric" value="${p.age}"></div>
           <div class="row"><span class="grow">Height</span><span class="value"><input class="inline-input num" id="o_ft" inputmode="numeric" value="${Math.floor(p.heightIn / 12)}" style="width:28px"> ft <input class="inline-input num" id="o_in" inputmode="numeric" value="${p.heightIn % 12}" style="width:28px"> in</span></div>
           <div class="row"><span class="grow">Weight</span><span class="value"><input class="inline-input num" id="o_w" inputmode="decimal" value="${p.weightLb}" style="width:60px"> lb</span></div>
@@ -984,24 +1062,24 @@
     const [tab, q] = location.hash.slice(1).split('?');
     if (['today', 'progress', 'coach', 'me'].includes(tab)) S.tab = tab;
     if (tab === 'log' || tab === 'voice') { S.tab = 'today'; history.replaceState(null, '', '#today'); setTimeout(() => BW.profile().setup && openLog({ mode: tab === 'voice' ? 'voice' : 'quick' }), 300); }
-    const fb = new URLSearchParams(q || '').get('fitbit');
-    if (fb) {
+    const hl = new URLSearchParams(q || '').get('health');
+    if (hl) {
       history.replaceState(null, '', '#' + S.tab);
-      setTimeout(() => {
-        if (fb === 'connected') { LS.set('fitbitLinked', true); toast('Fitbit connected', { icon: 'watch' }); autoFitbit(true); }
-        else toast(fb === 'error' ? 'Fitbit didn’t connect. Try again.' : 'Fitbit isn’t available', { icon: 'info' });
-      }, 400);
+      setTimeout(async () => {
+        if (hl === 'connected') { LS.set('healthLinked', true); haptic(20); confetti(60); await autoHealth(true); }
+        else toast(hl === 'denied' ? 'Fitbit wasn\u2019t connected. You can try again any time.' : 'Fitbit didn\u2019t connect. Try again.', { icon: 'info' });
+      }, 350);
     }
   }
 
   // ---------- boot ----------
   let renderQueued = false;
   BW.on(() => { if (renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; if (BW.profile().setup) render(); else if (!ob.p) renderOnboarding(); checkRewards(); }); });
-  const setOnline = () => { S.online = navigator.onLine; if (BW.profile().setup) render(); if (S.online) { BW.sync(); autoFitbit(); } };
+  const setOnline = () => { S.online = navigator.onLine; if (BW.profile().setup) render(); if (S.online) { BW.sync(); autoHealth(); } };
   addEventListener('online', setOnline); addEventListener('offline', setOnline);
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.installEvt = e; });
   addEventListener('hashchange', () => { readHash(); render(); });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { const t = BW.dayKey(); if (S.date !== t && S._lastToday !== t) { S.date = t; } S._lastToday = t; render(); BW.sync(); autoFitbit(); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { const t = BW.dayKey(); if (S.date !== t && S._lastToday !== t) { S.date = t; } S._lastToday = t; render(); BW.sync(); autoHealth(); } });
   S._lastToday = BW.dayKey();
 
   readHash(); render(); checkRewards();

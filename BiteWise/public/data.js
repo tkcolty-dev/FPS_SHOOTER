@@ -40,10 +40,11 @@
 
   function goals(p = profile()) {
     const kg = p.weightLb * 0.4536, cm = p.heightIn * 2.54;
-    const bmr = 10 * kg + 6.25 * cm - 5 * p.age + (p.sex === 'male' ? 5 : -161);
+    // Mifflin–St Jeor; for "other" gender we use the midpoint of the two formulas
+    const bmr = 10 * kg + 6.25 * cm - 5 * p.age + (p.sex === 'male' ? 5 : p.sex === 'female' ? -161 : -78);
     const tdee = Math.round(bmr * p.activity / 10) * 10;
     const teen = p.age < 18;
-    const floor = p.sex === 'male' ? 1500 : 1200;
+    const floor = p.sex === 'male' ? 1500 : p.sex === 'female' ? 1200 : 1350;
     const maxPace = Math.max(0.5, Math.floor(p.weightLb * 0.01 * 4) / 4); // ≤ ~1% of body weight per week
     const pace = teen ? 0 : Math.min(p.pace, maxPace);
     let budget = p.customBudget || Math.round((tdee - pace * 500) / 10) * 10;
@@ -267,13 +268,36 @@
   }
   async function signOut() { try { await api('logout'); } catch {} LS.del('account'); LS.del('seq'); emit(); }
 
-  async function pullFitbit(days = 7) {
-    const j = await api('fitbit/pull', { days });
-    let n = 0;
-    for (const s of j.steps) if (s.steps !== stepsOn(s.date) || stepSource(s.date) !== 'fitbit') { if (s.steps > 0 || stepsOn(s.date)) { setSteps(s.date, s.steps, 'fitbit'); n++; } }
-    for (const w of j.weights || []) if (!weightOn(w.date)) setWeight(w.date, w.lb);
-    LS.set('fitbitPulled', Date.now());
-    return { days: n, weights: (j.weights || []).length };
+  // An automatic account is created behind the scenes the first time something needs the cloud (like Fitbit),
+  // so nobody has to sign up just to connect steps. It can be turned into a real login later.
+  async function ensureAccount() {
+    if (acct()) return acct();
+    const rand = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
+    const username = 'bw-' + rand(12), password = rand(24);
+    const j = await api('signup', { username, password });
+    LS.set('account', { token: j.token, username: j.username, auto: true }); LS.set('seq', 0);
+    Object.keys(recs).forEach(id => dirty.add(id)); persist(); await sync();
+    return acct();
+  }
+  async function claimAccount(username, password) {
+    const j = await api('account/claim', { username, password });
+    LS.set('account', { ...acct(), username: j.username, auto: false }); emit(); return j;
+  }
+
+  let pulling = null;
+  async function pullHealth() {
+    if (pulling) return pulling;
+    pulling = (async () => {
+      const today = dayKey();
+      const j = await api('health/pull', { start: addDays(today, -13), end: addDays(today, 1) });
+      let changed = 0;
+      for (const s of j.steps) if (s.date <= today && (s.steps !== stepsOn(s.date) || stepSource(s.date) !== 'fitbit') && (s.steps > 0 || stepSource(s.date) === 'fitbit')) { setSteps(s.date, s.steps, 'fitbit'); changed++; }
+      for (const w of j.weights || []) if (!weightOn(w.date)) setWeight(w.date, w.lb);
+      LS.set('healthPulled', Date.now());
+      emit();
+      return { changed, today: stepsOn(today) };
+    })();
+    try { return await pulling; } finally { pulling = null; }
   }
 
   function exportCSV() {
@@ -283,7 +307,7 @@
     allDays().forEach(k => rows.push([k, weightOn(k) || '', stepsOn(k) || '', waterOn(k) || '']));
     return rows.map(r => r.map(v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : v).join(',')).join('\n');
   }
-  function wipe() { recs = {}; dirty = new Set(); ['records', 'dirty', 'seq', 'lastSync', 'usedCoach', 'coachChat', 'fitbitPulled', 'seenLevel', 'seenBadges'].forEach(LS.del); emit(); }
+  function wipe() { recs = {}; dirty = new Set(); ['records', 'dirty', 'seq', 'lastSync', 'usedCoach', 'coachChat', 'healthPulled', 'healthLinked', 'seenLevel', 'seenBadges', 'seenChallenge'].forEach(LS.del); emit(); }
 
   // Demo data so a first-time visitor sees a lived-in app (clearly removable from Me → Delete all data)
   function seedDemo() {
@@ -317,7 +341,7 @@
   window.BW = {
     LS, dayKey, parseDay, addDays, uid, put, remove, all, get: id => recs[id], profile, saveProfile, goals, day, health, streak, level, LEVELS, xpBreakdown, badges, trend,
     challenge: () => challengeFor(weekStart()), weekStart, frequent, recentAmounts, mealForNow, addEntry, entriesOn,
-    setWater, setSteps, setWeight, stepBonus, stepSource, acct, sync, signIn, signOut, api, pullFitbit, exportCSV, wipe, seedDemo,
+    setWater, setSteps, setWeight, stepBonus, stepSource, acct, sync, signIn, signOut, api, ensureAccount, claimAccount, pullHealth, exportCSV, wipe, seedDemo,
     get syncing() { return syncing; }, get syncError() { return lastSyncErr; }, get dirtyCount() { return dirty.size; },
     on: f => listeners.add(f), hasData: () => Object.keys(recs).length > 0,
   };

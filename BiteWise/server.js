@@ -12,8 +12,6 @@ app.use(express.json({ limit: '2mb' }));
 app.disable('x-powered-by');
 
 const PORT = process.env.PORT || 4970;
-const FITBIT_ID = process.env.FITBIT_CLIENT_ID || '';
-const FITBIT_SECRET = process.env.FITBIT_CLIENT_SECRET || '';
 
 // ---------- helpers ----------
 const sha = s => crypto.createHash('sha256').update(s).digest('hex');
@@ -39,7 +37,7 @@ const needUser = (req, res, next) => req.uid ? next() : res.status(401).json({ e
 app.use('/api', auth);
 
 // ---------- status ----------
-app.get('/api/status', (req, res) => res.json({ ok: true, ai: ai.BACKEND !== 'none', model: ai.model, fitbit: !!(FITBIT_ID && FITBIT_SECRET), storage: store.name, signedIn: !!req.uid }));
+app.get('/api/status', (req, res) => res.json({ ok: true, ai: ai.BACKEND !== 'none', model: ai.model, health: health.configured(), storage: store.name, signedIn: !!req.uid }));
 
 // ---------- accounts ----------
 const cleanName = s => String(s || '').trim().toLowerCase();
@@ -68,7 +66,8 @@ app.post('/api/logout', async (req, res) => {
 });
 app.get('/api/me', needUser, async (req, res) => {
   const u = await store.userById(req.uid);
-  res.json({ username: u?.username, fitbit: !!(await store.getFitbit(req.uid)) });
+  const t = await store.getFitbit(req.uid);
+  res.json({ username: u?.username, health: !!(t && t.provider === 'google-health'), healthSince: t?.linkedAt || null });
 });
 
 // ---------- sync ----------
@@ -95,62 +94,18 @@ app.post('/api/estimate', limit(40, 60e3), async (req, res) => {
   catch (e) { console.error('estimate:', e.message); res.status(503).json({ error: e.message }); }
 });
 
-// ---------- Fitbit (OAuth 2 + PKCE) ----------
-const pending = new Map(); // state -> { uid, verifier, at }
-// The app POSTs here (so the session token stays out of URLs) and then navigates to the returned Fitbit URL.
-app.post('/api/fitbit/start', needUser, async (req, res) => {
-  if (!FITBIT_ID || !FITBIT_SECRET) return res.status(501).json({ error: 'Fitbit is not set up on this server yet.' });
-  for (const [k, v] of pending) if (Date.now() - v.at > 15 * 60e3) pending.delete(k);
-  const verifier = crypto.randomBytes(48).toString('base64url');
-  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
-  const state = crypto.randomBytes(16).toString('hex');
-  pending.set(state, { uid: req.uid, verifier, at: Date.now() });
-  const u = new URL('https://www.fitbit.com/oauth2/authorize');
-  u.search = new URLSearchParams({ response_type: 'code', client_id: FITBIT_ID, redirect_uri: origin(req) + '/api/fitbit/callback', scope: 'activity weight profile', code_challenge: challenge, code_challenge_method: 'S256', state }).toString();
-  res.json({ url: u.toString() });
+// ---------- Fitbit via Google Health ----------
+const health = require('./health')(app, { store, needUser, limit, origin });
+
+// Turn an automatic device account into a real login (username + password) so it works on other devices.
+app.post('/api/account/claim', needUser, limit(10, 60 * 60e3), async (req, res) => {
+  const username = cleanName(req.body.username), password = String(req.body.password || '');
+  if (!/^[a-z0-9_.-]{3,24}$/.test(username)) return res.status(400).json({ error: 'Usernames are 3–24 letters, numbers, dots or dashes.' });
+  if (password.length < 6) return res.status(400).json({ error: 'Use at least 6 characters for your password.' });
+  const salt = crypto.randomBytes(16).toString('hex');
+  if (!await store.renameUser(req.uid, username, salt, await hashPw(password, salt))) return res.status(409).json({ error: 'That username is taken.' });
+  res.json({ username });
 });
-
-async function fitbitToken(params) {
-  const r = await fetch('https://api.fitbit.com/oauth2/token', {
-    method: 'POST',
-    headers: { Authorization: 'Basic ' + Buffer.from(FITBIT_ID + ':' + FITBIT_SECRET).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams(params),
-  });
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.errors?.[0]?.message || 'Fitbit token error');
-  return { access: j.access_token, refresh: j.refresh_token, expires: Date.now() + (j.expires_in - 60) * 1000, fitbitUser: j.user_id };
-}
-
-app.get('/api/fitbit/callback', async (req, res) => {
-  const p = pending.get(String(req.query.state || '')); pending.delete(String(req.query.state || ''));
-  if (!p || !req.query.code) return res.redirect('/#me?fitbit=error');
-  try {
-    const tok = await fitbitToken({ grant_type: 'authorization_code', code: String(req.query.code), redirect_uri: origin(req) + '/api/fitbit/callback', code_verifier: p.verifier, client_id: FITBIT_ID });
-    await store.setFitbit(p.uid, tok);
-    res.redirect('/#me?fitbit=connected');
-  } catch (e) { console.error('fitbit callback:', e.message); res.redirect('/#me?fitbit=error'); }
-});
-
-async function fitbitGet(uid, urlPath) {
-  let tok = await store.getFitbit(uid);
-  if (!tok) throw Object.assign(new Error('Fitbit is not connected.'), { status: 404 });
-  if (Date.now() > tok.expires) { tok = await fitbitToken({ grant_type: 'refresh_token', refresh_token: tok.refresh }); await store.setFitbit(uid, tok); }
-  const r = await fetch('https://api.fitbit.com' + urlPath, { headers: { Authorization: 'Bearer ' + tok.access, 'Accept-Language': 'en_US' } });
-  if (r.status === 401) { await store.setFitbit(uid, null); throw Object.assign(new Error('Fitbit access ended. Connect it again.'), { status: 401 }); }
-  if (!r.ok) throw new Error('Fitbit error ' + r.status);
-  return r.json();
-}
-
-app.post('/api/fitbit/pull', needUser, limit(30, 60e3), async (req, res) => {
-  try {
-    const days = Math.min(30, Math.max(1, Number(req.body.days) || 7));
-    const steps = await fitbitGet(req.uid, `/1/user/-/activities/steps/date/today/${days}d.json`);
-    let weights = [];
-    try { const w = await fitbitGet(req.uid, `/1/user/-/body/log/weight/date/today/30d.json`); weights = (w.weight || []).map(x => ({ date: x.date, lb: x.weight })); } catch {}
-    res.json({ steps: (steps['activities-steps'] || []).map(s => ({ date: s.dateTime, steps: Number(s.value) || 0 })), weights });
-  } catch (e) { res.status(e.status || 502).json({ error: e.message }); }
-});
-app.post('/api/fitbit/disconnect', needUser, async (req, res) => { await store.setFitbit(req.uid, null); res.json({ ok: true }); });
 
 // ---------- static app ----------
 app.use((req, res, next) => { res.set('X-Content-Type-Options', 'nosniff'); next(); });
@@ -159,5 +114,5 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: 0, etag: true }
 app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 store.init().then(() => {
-  app.listen(PORT, () => console.log(`BiteWise on http://localhost:${PORT}  (storage: ${store.name}, ai: ${ai.BACKEND}, fitbit: ${FITBIT_ID ? 'on' : 'not set up'})`));
+  app.listen(PORT, () => console.log(`BiteWise on http://localhost:${PORT}  (storage: ${store.name}, ai: ${ai.BACKEND}, fitbit via google health: ${health.configured() ? 'on' : 'not set up'})`));
 }).catch(e => { console.error('storage init failed:', e); process.exit(1); });
