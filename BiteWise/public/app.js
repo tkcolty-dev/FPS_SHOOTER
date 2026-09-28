@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.5.1';
+  const APP_VERSION = '1.5.2';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -274,15 +274,24 @@
   }
   function weekCard() {
     const today = BW.dayKey(), days = Array.from({ length: 7 }, (_, i) => BW.day(BW.addDays(today, i - 6)));
-    const done = days.filter(d => d.entries.length && d.k !== today), max = Math.max(...days.map(d => Math.max(d.eaten, d.budget)), 1);
+    const done = days.filter(d => d.entries.length && d.k !== today);
     const avg = done.length ? done.reduce((a, d) => a + d.eaten, 0) / done.length : 0, on = done.filter(d => d.eaten <= d.budget * 1.1).length;
-    const tr = BW.trend(), g = BW.goals();
-    const line = !done.length ? 'Log a few days and your week shows up here.' : avg <= g.budget ? `Averaging <b>${fmt(avg)}</b> a day, <b>${fmt(g.budget - avg)} under</b> your goal.` : `Averaging <b>${fmt(avg)}</b> a day, <b>${fmt(avg - g.budget)} over</b> your goal.`;
-    const wline = tr && tr.perWeek != null ? `Weight trend <b>${tr.now.toFixed(1)} lb</b>, ${Math.abs(tr.perWeek) < .1 ? 'steady' : `${tr.perWeek < 0 ? 'down' : 'up'} ${Math.abs(tr.perWeek).toFixed(1)} lb a week`}.` : '';
-    return `<div class="card week-card"><div class="card-head"><div><div class="st-k">This week</div><div class="big-stat" style="font-size:22px">${done.length ? `${on} of ${done.length} days on track` : 'Getting started'}</div></div><button class="link-btn" type="button" data-go="progress" style="font-size:15px">More</button></div>
-      <div class="wbars">${days.map(d => { const h = Math.max(4, d.eaten / max * 100), bh = d.budget / max * 100, over = d.eaten > d.budget * 1.1; return `<button type="button" class="wbar ${d.k === S.date ? 'sel' : ''}" data-day="${d.k}" aria-label="${longDate(d.k)}: ${fmt(d.eaten)} calories"><span class="wtrack"><i class="wgoal" style="bottom:${bh}%"></i><i class="wfill" style="height:${d.entries.length ? h : 0}%;${over ? 'background:var(--orange)' : ''}"></i></span><span class="wday">${BW.parseDay(d.k).toLocaleDateString(undefined, { weekday: 'narrow' })}</span></button>`; }).join('')}</div>
-      <p class="insight" style="margin:10px 0 0">${line}${wline ? ' ' + wline : ''}</p></div>`;
+    const tr = BW.trend(), st = BW.streak(), g = BW.goals();
+    const title = !done.length ? (days.some(d => d.entries.length) ? 'Nice start' : 'Your week starts here') : on === done.length ? 'Every day on track' : `${on} of ${done.length} days on track`;
+    const stat = (k, v, sub, color) => `<div class="wstat"><span class="st-k">${k}</span><b class="num" ${color ? `style="color:${color}"` : ''}>${v}</b><span class="caption">${sub}</span></div>`;
+    return `<div class="card week-card">
+      <div class="card-head"><div><div class="st-k">This week</div><div class="big-stat" style="font-size:20px">${title}</div></div><button class="link-btn" type="button" data-go="progress" style="font-size:15px">More</button></div>
+      <div class="wdays">${days.map(d => { const pct = d.budget ? d.eaten / d.budget : 0, over = d.eaten > d.budget * 1.1, has = d.entries.length > 0;
+        return `<button type="button" class="wday ${d.k === S.date ? 'sel' : ''} ${d.k === today ? 'today' : ''}" data-day="${d.k}" aria-label="${longDate(d.k)}: ${fmt(d.eaten)} calories"><span class="wring">${ringSVG([{ pct: has ? pct : 0, color: !has ? 'var(--label3)' : over ? 'var(--orange)' : 'var(--accent)' }], 36)}</span><b class="num">${has ? (d.eaten >= 1000 ? (d.eaten / 1000).toFixed(1) + 'k' : fmt(d.eaten)) : '–'}</b><span>${BW.parseDay(d.k).toLocaleDateString(undefined, { weekday: 'narrow' })}</span></button>`; }).join('')}</div>
+      <div class="wstats">
+        ${stat('Average', done.length ? fmt(avg) : '–', done.length ? (avg <= g.budget ? `${fmt(g.budget - avg)} under goal` : `${fmt(avg - g.budget)} over goal`) : 'cal a day')}
+        ${stat('On track', done.length ? `${on}/${done.length}` : '–', 'days this week')}
+        ${stat('Streak', st.days, st.days === 1 ? 'day' : 'days', st.days ? 'var(--orange)' : '')}
+        ${stat('Weight', tr ? tr.now.toFixed(1) : '–', tr && tr.perWeek != null ? (Math.abs(tr.perWeek) < .1 ? 'steady' : `${tr.perWeek < 0 ? '↓' : '↑'} ${Math.abs(tr.perWeek).toFixed(1)} lb/wk`) : tr ? 'lb trend' : 'log a weigh-in')}
+      </div>
+    </div>`;
   }
+
   // "Fits your day": foods you eat often (then everyday staples) that fit in what's left, sized for the next meal
   const STAPLES = ['Greek yogurt', 'Apple', 'Banana', 'String cheese', 'Turkey sandwich', 'Grilled chicken', 'Side salad', 'Oatmeal', '2 eggs', 'Hummus', 'Almonds', 'Burrito bowl', 'Chicken wrap', 'Rice', 'Soup', 'Popcorn', 'Protein bar', 'Carrots', 'Grapes'];
   function fitsList(remaining, meal) {

@@ -1,7 +1,15 @@
 {
-  "version": "1.5.1",
+  "version": "1.5.2",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.5.2",
+      "date": "2026-09-27",
+      "title": "New This week card",
+      "changes": [
+        "Changed: 'This week' shows a ring for each day plus your average, days on track, streak and weight trend, instead of tall bars that stretched on big screens."
+      ]
+    },
     {
       "version": "1.5.1",
       "date": "2026-09-27",

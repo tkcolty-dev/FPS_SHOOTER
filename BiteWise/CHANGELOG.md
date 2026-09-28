@@ -21,6 +21,11 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and `cf push`.
 
+## 1.5.2 · New This week card
+_2026-09-27 · git tag `v1.5.2`_
+
+- Changed: 'This week' shows a ring for each day plus your average, days on track, streak and weight trend, instead of tall bars that stretched on big screens.
+
 ## 1.5.1 · Bitey stays on topic
 _2026-09-27 · git tag `v1.5.1`_
 
