@@ -21,6 +21,21 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and `cf push`.
 
+## 1.5.1 · Bitey stays on topic
+_2026-09-27 · git tag `v1.5.1`_
+
+- Fixed: Bitey sticks to food, fitness and BiteWise. For other things, like chess or homework, it politely steers back.
+- Fixed: Web links in Bitey's replies can be tapped.
+
+## 1.5.0 · A fuller Today page
+_2026-09-27 · git tag `v1.5.0`_
+
+- New: Today is laid out as a grid of cards that fills the screen on iPhone, iPad and Mac.
+- New: Calories card shows how much you ate at breakfast, lunch, dinner and snacks. Tap one to add to it.
+- New: 'Fits your day' suggests three foods that fit what you have left. One tap logs it, and it skips your allergies.
+- New: Search button next to the calorie box.
+- New: Steps card shows your last 7 days on iPad and Mac, plus calories earned from steps.
+
 ## 1.4.2 · Same goal rules for everyone
 _2026-09-27 · git tag `v1.4.2`_
 

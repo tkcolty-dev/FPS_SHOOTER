@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.4.2';
+  const APP_VERSION = '1.5.1';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -283,17 +283,39 @@
       <div class="wbars">${days.map(d => { const h = Math.max(4, d.eaten / max * 100), bh = d.budget / max * 100, over = d.eaten > d.budget * 1.1; return `<button type="button" class="wbar ${d.k === S.date ? 'sel' : ''}" data-day="${d.k}" aria-label="${longDate(d.k)}: ${fmt(d.eaten)} calories"><span class="wtrack"><i class="wgoal" style="bottom:${bh}%"></i><i class="wfill" style="height:${d.entries.length ? h : 0}%;${over ? 'background:var(--orange)' : ''}"></i></span><span class="wday">${BW.parseDay(d.k).toLocaleDateString(undefined, { weekday: 'narrow' })}</span></button>`; }).join('')}</div>
       <p class="insight" style="margin:10px 0 0">${line}${wline ? ' ' + wline : ''}</p></div>`;
   }
+  // "Fits your day": foods you eat often (then everyday staples) that fit in what's left, sized for the next meal
+  const STAPLES = ['Greek yogurt', 'Apple', 'Banana', 'String cheese', 'Turkey sandwich', 'Grilled chicken', 'Side salad', 'Oatmeal', '2 eggs', 'Hummus', 'Almonds', 'Burrito bowl', 'Chicken wrap', 'Rice', 'Soup', 'Popcorn', 'Protein bar', 'Carrots', 'Grapes'];
+  function fitsList(remaining, meal) {
+    const target = { breakfast: 400, lunch: 600, dinner: 700, snack: 250 }[meal] || 400;
+    const want = Math.min(remaining, target);
+    const foodAl = n => (window.BW_FOODS.find(f => f.aliases.some(a => a.toLowerCase() === n.toLowerCase().replace(/^\d+ /, ''))) || {}).allergens || [];
+    const pool = [];
+    for (const u of BW.frequent()) pool.push({ name: u.name, calories: u.calories, usual: true });
+    for (const n of STAPLES) { const r = BW_PARSE.parseLog(n).items[0]; if (r?.calories) pool.push({ name: r.name, calories: r.calories, allergens: r.allergens }); }
+    const seen = new Set();
+    return pool.filter(f => f.calories > 0 && f.calories <= remaining && !clash(f.allergens || foodAl(f.name)).length && !seen.has(f.name.toLowerCase()) && seen.add(f.name.toLowerCase()))
+      .sort((a, b) => (Math.abs(a.calories - want) - (a.usual ? 60 : 0)) - (Math.abs(b.calories - want) - (b.usual ? 60 : 0))).slice(0, 3);
+  }
+  function fitsCard(d) {
+    const meal = qMeal(), label = MEALS.find(x => x[0] === meal)[1].replace('Snacks', 'a snack').toLowerCase();
+    if (d.remaining <= 50) return `<div class="card t-fits"><div class="st-k">Fits your day</div><div class="big-stat" style="font-size:20px">${d.remaining < 0 ? 'Over for today, and that’s okay' : 'You’ve hit your goal'}</div><p class="insight" style="margin-bottom:0">${d.remaining < 0 ? 'One day doesn’t undo a week. Tomorrow is a fresh start.' : 'Water and veggies are free wins if you’re still hungry.'}</p></div>`;
+    const list = fitsList(d.remaining, meal);
+    if (!list.length) return '';
+    S.fits = list;
+    return `<div class="card t-fits"><div class="card-head"><div><div class="st-k">Fits your day</div><div class="big-stat" style="font-size:20px">Ideas for ${esc(label)}</div></div><span class="caption num">${fmt(d.remaining)} left</span></div>
+      <div class="fits">${list.map((f, i) => `<button class="fit" type="button" data-fit="${i}"><span class="grow"><b>${esc(f.name)}</b><span class="caption">${f.usual ? 'You have this a lot' : 'Everyday pick'}</span></span><span class="kcal num">${fmt(f.calories)}</span><span class="fit-add">${I('plus')}</span></button>`).join('')}</div></div>`;
+  }
   function viewToday() {
     const p = BW.profile(), k = S.date, d = BW.day(k), st = BW.streak(), today = BW.dayKey(), isToday = k === today;
     const over = d.remaining < 0, calPct = Math.min(100, d.eaten / d.budget * 100), stepPct = Math.min(100, d.steps / p.stepGoal * 100);
     const linked = !!LS.get('healthLinked', false), pulled = LS.get('healthPulled', 0), src = BW.stepSource(k);
-    const usuals = BW.frequent().slice(0, 6);
+    const usuals = BW.frequent().slice(0, 8);
     const chips = usuals.length ? usuals.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
       : [100, 200, 300, 500].map(n => `<button class="chip fill" type="button" data-quick="${n}">+${n}</button>`).join('');
     const stepLine = S.syncingSteps ? `<span class="sync-dot"></span>Syncing Fitbit…`
-      : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : d.steps ? `${fmt(Math.max(0, p.stepGoal - d.steps))} to go` : S.status.health ? `Tap to connect Fitbit` : `Tap to add steps`;
+      : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : S.status.health ? 'Tap to connect Fitbit' : 'Tap to add steps';
     const es = d.entries.slice().sort((a, b) => b.time - a.time);
-    const srcIcon = s => s === 'voice' ? 'mic' : s === 'text' ? 'keyboard' : s === 'coach' ? 'spark' : 'bolt';
+    const mealTot = MEALS.map(([m, l]) => [m, l, d.meals[m].reduce((a, e) => a + e.calories, 0)]);
     return `
     <div class="topbar">
       <div class="daynav">
@@ -302,38 +324,43 @@
       </div>
       <div style="display:flex;gap:6px;align-items:center">${offlinePill()}${st.days ? `<button class="pill streak" type="button" data-act="streak" aria-label="${st.days} day streak">${I('flame')}<span class="num">${st.days}</span></button>` : ''}</div>
     </div>
-    <div class="cols"><div class="col-main">
-      <div class="card summary" id="heroCard">
-        <div class="stats">
-          <button class="stat-tile" type="button" data-act="calinfo">
-            <div class="st-k">Calories eaten</div>
-            <div class="st-v"><span class="num" data-count="${d.eaten}">${fmt(d.eaten)}</span></div>
-            <div class="bar big"><i style="width:${calPct}%;${over ? 'background:var(--orange)' : ''}"></i></div>
-            <div class="st-sub ${over ? 'warn' : ''}"><b class="num">${fmt(Math.abs(d.remaining))}</b> ${over ? 'over' : 'left'} of ${fmt(d.budget)}</div>
-          </button>
-          <button class="stat-tile" type="button" data-act="steps">
-            <div class="st-k">Steps</div>
-            <div class="st-v"><span class="num" data-count="${d.steps}">${fmt(d.steps)}</span></div>
-            <div class="bar big"><i style="width:${stepPct}%;background:var(--pink)"></i></div>
-            <div class="st-sub src">${stepLine}</div>
-          </button>
-        </div>
-        <form class="qlog" id="qlogForm" autocomplete="off">
+    <div class="today-grid">
+      <div class="card t-cal" id="heroCard">
+        <button class="t-cal-main" type="button" data-act="calinfo">
+          <div class="st-k">Calories eaten</div>
+          <div class="t-big"><span class="num" data-count="${d.eaten}">${fmt(d.eaten)}</span><small class="num"> / ${fmt(d.budget)}</small></div>
+          <div class="bar big"><i style="width:${calPct}%;${over ? 'background:var(--orange)' : ''}"></i></div>
+          <div class="st-sub ${over ? 'warn' : ''}"><b class="num">${fmt(Math.abs(d.remaining))}</b>&nbsp;${over ? 'over your goal' : 'left today'}${d.bonus ? ` · includes +${d.bonus} from steps` : ''}</div>
+        </button>
+        <div class="meal-split">${mealTot.map(([m, l, v]) => `<button type="button" data-addmeal="${m}" style="--mc:${MEAL_ICON[m][1]}" aria-label="${l}: ${fmt(v)} calories. Add to ${l}"><span class="ms-ic">${I(MEAL_ICON[m][0])}</span><b class="num">${v ? fmt(v) : '—'}</b><span>${l}</span></button>`).join('')}</div>
+      </div>
+      <button class="card t-steps" type="button" data-act="steps">
+        <div class="st-k">Steps</div>
+        <div class="t-big"><span class="num" data-count="${d.steps}">${fmt(d.steps)}</span></div>
+        <div class="bar big"><i style="width:${stepPct}%;background:var(--pink)"></i></div>
+        <div class="st-sub">${d.steps >= p.stepGoal ? '<b>Goal reached!</b>' : `<b class="num">${fmt(Math.max(0, p.stepGoal - d.steps))}</b>&nbsp;to your ${fmt(p.stepGoal)} goal`}</div>
+        <div class="st-sub src">${stepLine}${p.earnSteps && d.bonus ? ` · <b>+${d.bonus} cal</b>` : ''}</div>
+        <div class="spark" aria-hidden="true">${(() => { const ds = Array.from({ length: 7 }, (_, i) => BW.day(BW.addDays(today, i - 6))), mx = Math.max(p.stepGoal, ...ds.map(x => x.steps)); return ds.map(x => `<span><i style="height:${Math.max(3, x.steps / mx * 100)}%;${x.steps >= p.stepGoal ? '' : 'opacity:.45'}"></i><em>${BW.parseDay(x.k).toLocaleDateString(undefined, { weekday: 'narrow' })}</em></span>`).join(''); })()}</div>
+      </button>
+      <div class="card t-log">
+        <form class="qlog" id="qlogForm" autocomplete="off" style="margin-top:0">
           <label class="qfield"><input id="qcal" inputmode="${finePointer ? 'text' : 'numeric'}" enterkeyhint="done" placeholder="Add calories" value="${esc(S.qdraft || '')}" aria-label="Add calories"><span class="u">cal</span></label>
           <button class="qadd" type="submit" ${S.qdraft ? '' : 'disabled'} aria-label="Add">${I('plus')}</button>
+          <button class="qicon" type="button" data-act="search" aria-label="Search foods">${I('search')}</button>
           <button class="qicon" type="button" data-act="voice" aria-label="Say what you ate">${I('mic')}</button>
         </form>
         <div class="qhint" id="qhint">${qHint()}</div>
         <div class="chips" id="qchips" style="margin-top:10px">${qChips(chips)}</div>
       </div>
-      ${!linked && isToday && !LS.get('hideFitbitCard', false) && S.status.health !== false ? `<div class="card connect-card" style="margin-top:12px"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div class="grow"><b>Count your Fitbit steps</b><span>Connect once. Steps fill in on their own.</span></div><button class="btn small" type="button" data-act="fitbit">Connect</button><button class="x-close" type="button" data-act="hidefitbit" aria-label="Hide">${I('x')}</button></div>` : ''}
-    </div><div class="col-side">
-      <div class="section-head food-head"><h2>${isToday ? 'Today’s food' : 'Food'}</h2>${es.length ? `<span class="caption num">${es.length} item${es.length > 1 ? 's' : ''}</span>` : ''}</div>
-      ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${warnTag(e.allergens)}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>
-        <div class="footnote">${finePointer ? 'Click a food to edit it.' : 'Swipe left to delete · tap to edit'}</div>`
-      : `<div class="card empty"><div class="icon-sq" style="background:var(--fill);color:var(--label2);width:44px;height:44px;border-radius:12px">${I('fork')}</div><b>${isToday ? 'Nothing logged yet' : 'Nothing logged this day'}</b><span>Type a number above and press ${finePointer ? 'Enter' : 'Add'}. That's it.</span></div>`}
-      <div class="section" style="margin-top:22px">${weekCard()}</div>
-    </div></div>`;
+      <div class="t-food">
+      ${!linked && isToday && !LS.get('hideFitbitCard', false) && S.status.health ? `<div class="card connect-card t-connect" style="margin-bottom:12px"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div class="grow"><b>Count your Fitbit steps</b><span>Connect once. Steps fill in on their own.</span></div><button class="btn small" type="button" data-act="fitbit">Connect</button><button class="x-close" type="button" data-act="hidefitbit" aria-label="Hide">${I('x')}</button></div>` : ''}
+        <div class="section-head food-head"><h2>${isToday ? 'Today’s food' : 'Food'}</h2>${es.length ? `<span class="caption num">${es.length} item${es.length > 1 ? 's' : ''} · ${finePointer ? 'click to edit' : 'swipe to delete'}</span>` : ''}</div>
+        ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${warnTag(e.allergens)}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>`
+        : `<div class="card empty"><div class="icon-sq" style="background:var(--fill);color:var(--label2);width:44px;height:44px;border-radius:12px">${I('fork')}</div><b>${isToday ? 'Nothing logged yet' : 'Nothing logged this day'}</b><span>Type a number above and press ${finePointer ? 'Enter' : 'Add'}. That's it.</span></div>`}
+      </div>
+      ${isToday ? fitsCard(d) : ''}
+      <div class="t-week">${weekCard()}</div>
+    </div>`;
   }
 
   // ---------- progress ----------
@@ -430,6 +457,8 @@
   }
 
   // ---------- coach ----------
+  // make web addresses in coach replies tappable (text is escaped first, so only real links become links)
+  const linkify = t => esc(t).replace(/\bhttps?:\/\/[^\s<>"')]+[^\s<>"').,!?]/g, u => `<a href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
   const chat = () => LS.get('coachChat', []);
   const saveChat = m => LS.set('coachChat', m.slice(-40));
   function coachContext() {
@@ -508,7 +537,7 @@
     ${coachSwitch()}
     ${note}
     ${msgs.length ? '' : `<div class="coach-hero"><div class="av">${I('coach')}</div><div style="font-size:20px;font-weight:700">Hi${BW.profile().name ? ', ' + esc(BW.profile().name) : ''}! I'm Bitey.</div><div class="muted" style="margin:4px auto 0;max-width:34ch;font-size:15px">Tell me what you ate and I'll log it. Ask for meal ideas, or ask how your week is going.</div></div>`}
-    <div class="chat" id="chat">${msgs.map((m, i) => m.role === 'user' ? `<div class="msg me">${esc(m.content)}</div>` : `<div class="msg ai">${esc(m.content)}</div>${(m.done || []).length ? `<div class="action-card">${m.done.map(a => `<div class="ln"><span>${esc(a.label)}</span><b class="num">${esc(a.value)}</b></div>`).join('')}<div class="ln" style="margin-top:2px"><span class="ok">${I('check')}${m.undone ? 'Removed' : 'Added to your day'}</span>${m.undone ? '' : `<button class="link-btn" style="font-size:14px" type="button" data-undoact="${i}">Undo</button>`}</div></div>` : ''}`).join('')}
+    <div class="chat" id="chat">${msgs.map((m, i) => m.role === 'user' ? `<div class="msg me">${esc(m.content)}</div>` : `<div class="msg ai">${linkify(m.content)}</div>${(m.done || []).length ? `<div class="action-card">${m.done.map(a => `<div class="ln"><span>${esc(a.label)}</span><b class="num">${esc(a.value)}</b></div>`).join('')}<div class="ln" style="margin-top:2px"><span class="ok">${I('check')}${m.undone ? 'Removed' : 'Added to your day'}</span>${m.undone ? '' : `<button class="link-btn" style="font-size:14px" type="button" data-undoact="${i}">Undo</button>`}</div></div>` : ''}`).join('')}
     ${S.coachBusy ? '<div class="msg ai typing"><i></i><i></i><i></i></div>' : ''}</div>
     <div class="chips wrap" style="margin-top:12px">${(msgs.length ? (msgs[msgs.length - 1].chips || []) : starters).map(c => `<button class="chip" type="button" data-say="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <div style="height:70px"></div>
@@ -783,6 +812,7 @@
     const prevClose = entry.close; entry.close = () => { document.removeEventListener('keydown', keys); prevClose(); };
     if (mode === 'voice' && !text) setTimeout(listen, 350);
     if (mode === 'type') setTimeout(() => $('#ltext')?.focus(), 400);
+    if (mode === 'search') setTimeout(() => { $('#fsq')?.focus(); BW_PARSE.loadUSDA().then(() => st.mode === 'search' && runSearch()); }, 400);
   }
   async function voiceMode() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1247,6 +1277,7 @@
       if (d.shift) { const nd = BW.addDays(S.date, +d.shift); if (nd <= BW.dayKey()) { S.date = nd; S.qmeal = null; render(); haptic(5); } return; }
       if (d.quick) { const en = BW.addEntry({ date: S.date, meal: qMeal(), calories: +d.quick, source: 'quick' }); haptic(12); toast(`Added ${d.quick} cal to ${cap(en.meal)}`, { undo: () => BW.remove(en.id) }); return; }
       if (d.sugg) { const f = S.sugg[+d.sugg]; if (!f) return; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: f.name, calories: f.calories, source: 'text', allergens: f.allergens }); S.qdraft = ''; const qi = $('#qcal'); if (qi) qi.value = ''; S.sugg = []; haptic(12); render(); toast(`${f.name} · ${f.calories} cal`, { undo: () => BW.remove(en.id) }); const bad = clash(f.allergens); if (bad.length) setTimeout(() => toast(`Heads up: contains ${bad.join(', ')}`, { icon: 'info' }), 2600); return; }
+      if (d.fit) { const f = (S.fits || [])[+d.fit]; if (!f) return; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: f.name, calories: f.calories, source: 'quick', allergens: f.allergens }); haptic(12); toast(`${f.name} · ${f.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
       if (d.usual) { const u = BW.frequent()[+d.usual]; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: u.name, calories: u.calories, source: 'quick' }); haptic(12); toast(`${u.name} · ${u.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
       if (d.entry) { if (t.closest('.swipe')?.classList.contains('open')) { closeSwipes(); return; } editEntry(d.entry); return; }
       if (d.del) { delEntry(d.del); return; }
@@ -1264,6 +1295,7 @@
       switch (d.act) {
         case 'log': return openLog({ mode: 'quick' });
         case 'voice': return openLog({ mode: 'voice' });
+        case 'search': return openLog({ mode: 'search' });
         case 'type': return openLog({ mode: 'type', text: S.qdraft || '' });
         case 'rings': case 'health': return healthSheet();
         case 'streak': { const s = BW.streak(); return openSheet({ title: 'Streak', left: 'Done', body: `<div class="celebrate"><div class="med" style="background:var(--orange)">${I('flame')}</div><div style="font-size:44px;font-weight:800" class="num">${s.days} day${s.days === 1 ? '' : 's'}</div><div class="muted" style="margin:6px 10px 14px">${s.loggedToday ? 'You logged today. See you tomorrow!' : 'Log anything today to keep it going.'}</div></div><div class="group"><div class="row"><span class="grow">Best streak</span><span class="value num">${s.best} days</span></div><div class="row"><span class="grow">Streak freezes</span><span class="value num">${s.freezes} / 2</span></div></div><div class="footnote">Every 7 days in a row earns a freeze. It saves your streak if you miss a day.</div>` }); }

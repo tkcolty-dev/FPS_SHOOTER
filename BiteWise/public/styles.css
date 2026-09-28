@@ -662,3 +662,81 @@ body[data-tab="coach"][data-cview="recipes"]:not(.sheet-open) .toast { bottom: c
 .own-note.warn { color: var(--orange); }
 .own-note.warn b { color: var(--orange); }
 .stepbtn:disabled { opacity: .3; }
+
+/* ================= Today v3: grid of cards, no dead space ================= */
+.today-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "cal" "steps" "log" "connect" "food" "fits" "week"; }
+.t-cal { grid-area: cal; padding: 16px; }
+.t-steps { grid-area: steps; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 16px; width: 100%; }
+.t-log { grid-area: log; padding: 14px; }
+.t-connect { grid-area: connect; margin-top: 0 !important; }
+.t-food { grid-area: food; min-width: 0; }
+.t-fits { grid-area: fits; }
+.t-week { grid-area: week; }
+.today-grid > .card + .card { margin-top: 0; }
+.t-food .food-head { margin: 10px 4px 8px; }
+.t-cal-main { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; }
+.t-big { font: 700 44px/1.08 var(--round); letter-spacing: -1px; margin: 2px 0 10px; white-space: nowrap; }
+.t-big small { font: 600 18px var(--round); color: var(--label2); letter-spacing: 0; }
+.t-steps .st-sub + .st-sub { margin-top: 2px; }
+.meal-split { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 14px; padding-top: 12px; border-top: .5px solid var(--sep); }
+.meal-split button { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; border-radius: 10px; min-width: 0; }
+.meal-split button:active { background: var(--fill); }
+.meal-split .ms-ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: var(--mc); background: color-mix(in srgb, var(--mc) 14%, transparent); margin-bottom: 3px; }
+.meal-split .ms-ic svg { width: 14px; height: 14px; }
+.meal-split b { font: 700 16px var(--round); }
+.meal-split span:last-child { font-size: 11px; color: var(--label2); font-weight: 600; }
+.fits { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.fit { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-radius: 12px; background: var(--card2); text-align: left; transition: transform .12s; }
+.fit:active { transform: scale(.98); }
+.fit .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fit b { font-size: 15px; }
+.fit .kcal { font: 600 15px var(--round); }
+.fit-add { width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+.fit-add svg { width: 16px; height: 16px; }
+.t-log .qicon[data-act="search"] { color: var(--label); }
+@media (max-width: 360px) { .t-log .qicon[data-act="voice"] { display: none; } .t-big { font-size: 38px; } }
+
+/* phone: calories + steps side by side would squeeze; keep steps compact under calories */
+@media (max-width: 767px) {
+  .t-steps { flex-direction: row; flex-wrap: wrap; align-items: center; column-gap: 12px; padding: 14px 16px; }
+  .t-steps .st-k { width: 100%; }
+  .t-steps .t-big { font-size: 30px; margin: 0; }
+  .t-steps .bar { flex: 1; min-width: 80px; }
+  .t-steps .st-sub { width: 100%; }
+}
+/* iPad: two columns — calories | steps, log across, food | ideas + week */
+@media (min-width: 768px) {
+  .today-grid { gap: 16px; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); grid-template-areas: "cal steps" "log log" "connect connect" "food fits" "food week"; align-items: start; }
+  .t-cal, .t-steps { height: 100%; }
+  .t-steps { justify-content: flex-start; }
+  .t-food .food-head { margin-top: 0; }
+  .t-big { font-size: 52px; }
+}
+/* big Mac / iPad landscape: three columns */
+@media (min-width: 1200px) {
+  .today-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "cal steps week" "log log week" "connect connect connect" "food food fits"; }
+  .t-week .week-card { height: 100%; }
+}
+.today-grid:not(:has(.t-fits)) { grid-template-areas: "cal" "steps" "log" "connect" "food" "week"; }
+@media (min-width: 768px) { .today-grid:not(:has(.t-fits)) { grid-template-areas: "cal steps" "log log" "connect connect" "food week"; } }
+@media (min-width: 1200px) { .today-grid:not(:has(.t-fits)) { grid-template-areas: "cal steps week" "log log week" "connect connect connect" "food food food"; } }
+/* no separate connect row anymore */
+.today-grid { grid-template-areas: "cal" "steps" "log" "food" "fits" "week"; }
+.today-grid:not(:has(.t-fits)) { grid-template-areas: "cal" "steps" "log" "food" "week"; }
+.spark { display: none; }
+@media (min-width: 768px) {
+  .today-grid { grid-template-areas: "cal steps" "log log" "food fits" "food week"; }
+  .today-grid:not(:has(.t-fits)) { grid-template-areas: "cal steps" "log log" "food week"; }
+  .spark { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; height: 64px; margin-top: auto; padding-top: 12px; }
+  .spark span { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; height: 100%; }
+  .spark i { display: block; width: 100%; max-width: 18px; border-radius: 4px; background: var(--pink); transition: height .6s; }
+  .spark em { font-style: normal; font-size: 10px; color: var(--label2); font-weight: 600; }
+}
+@media (min-width: 1200px) {
+  .today-grid { grid-template-areas: "cal steps week" "log log week" "food food fits"; }
+  .today-grid:not(:has(.t-fits)) { grid-template-areas: "cal steps week" "log log week" "food food food"; }
+  .t-week { align-self: stretch; display: flex; }
+  .t-week .week-card { flex: 1; display: flex; flex-direction: column; }
+  .t-week .wbars { flex: 1; height: auto; min-height: 110px; }
+}
+.msg.ai a { color: var(--accent); text-decoration: underline; word-break: break-all; }
