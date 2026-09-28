@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.9.2';
+  const APP_VERSION = '1.10.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -261,7 +261,7 @@
     applyTheme();
     const active = document.activeElement, focusId = active?.id, selS = active?.selectionStart, selE = active?.selectionEnd;
     const view = $('#view');
-    if (view.style.padding) { view.style.padding = ''; view.oninput = null; view.innerHTML = ''; ob.p = null; } // leaving onboarding (also after signing in on a new device)
+    if (view.style.padding) { view.style.padding = ''; view.oninput = null; view.onfocusout = null; view.innerHTML = ''; ob.p = null; } // leaving onboarding (also after signing in on a new device)
     const html = S.tab === 'today' ? viewToday() : S.tab === 'progress' ? viewProgress() : S.tab === 'coach' ? viewCoach() : viewMe();
     const next = document.createElement('main'); next.innerHTML = html;
     if (view.dataset.tab !== S.tab || !view.firstElementChild) { view.innerHTML = html; view.dataset.tab = S.tab; view.classList.remove('tab-in'); void view.offsetWidth; view.classList.add('tab-in'); }
@@ -396,6 +396,7 @@
       </div>
       <div style="display:flex;gap:6px;align-items:center">${offlinePill()}${st.days ? `<button class="pill streak" type="button" data-act="streak" aria-label="${st.days} day streak">${I('flame')}<span class="num">${st.days}</span></button>` : ''}</div>
     </div>
+    ${BW.isDemo() ? `<div class="demo-banner"><span class="icon-sq" style="background:var(--orange)">${I('info')}</span><div class="grow"><b>This is sample data</b><span>It isn't yours and it won't be saved to an account.</span></div><button class="btn small" type="button" data-act="startfresh">Start fresh</button></div>` : ''}
     <div class="today-grid">
       <div class="card t-cal" id="heroCard">
         <button class="t-cal-main" type="button" data-act="calinfo">
@@ -813,6 +814,8 @@
       ${row('share', 'var(--label3)', 'Export my data', 'CSV', 'data-act="export"')}
       ${row('info', 'var(--accent)', 'Version ' + APP_VERSION, S.updateReady ? 'Update ready' : navigator.onLine ? 'Up to date' : 'Offline', 'data-act="versions"', S.updateReady ? `Version ${S.updateReady} is out. Tap to see what\u2019s new` : 'What\u2019s new and past updates')}
       ${a && !a.auto ? `<button class="row" type="button" data-act="signout" style="color:var(--red)">Sign out</button>` : ''}
+      ${a ? `<button class="row" type="button" data-act="delaccount" style="color:var(--red)">Delete my account</button>` : ''}
+      ${BW.isDemo() ? `<button class="row" type="button" data-act="startfresh" style="color:var(--accent)">Clear sample data and start fresh</button>` : ''}
       <button class="row" type="button" data-act="wipe" style="color:var(--red)">Delete all data</button>
     </div>
     <div class="footnote">BiteWise ${S.status.ai ? `· Coach runs on Cloud Foundry open models (${esc(String(S.status.model).split('/').pop())})` : '· Coach offline'} · Not medical advice.</div></div>
@@ -1446,8 +1449,8 @@
   // what the "Set my own number" box can go down to, said plainly
   function ownNote(g, typed) {
     const low = typed != null && typed > 0 && typed < g.floor;
-    const why = g.teen ? 'because you\u2019re under 18, BiteWise keeps you close to what you burn (' + fmt(g.tdee) + ') so you have fuel to grow' : 'the safety minimum';
-    return low ? `<b>${fmt(typed)} is too low.</b> The lowest you can set is <b>${fmt(g.floor)}</b>, ${why}.` : `Lowest you can set: ${fmt(g.floor)}${g.teen ? ' (under 18)' : ''}`;
+    const why = 'the lowest BiteWise goes';
+    return low ? `<b>${fmt(typed)} is too low.</b> The lowest you can set is <b>${fmt(g.floor)}</b>.` : `Lowest you can set: ${fmt(g.floor)}`;
   }
   function goalsSheet() {
     const p = { ...BW.profile() };
@@ -1624,7 +1627,9 @@
         case 'install': return installSheet();
         case 'voicehelp': return voiceHelpSheet();
         case 'export': return exportData();
-        case 'wipe': return confirmSheet({ title: 'Delete all data?', text: 'This removes every food, weigh-in, badge and setting from this device. Your cloud backup (if you have one) stays until you sign in again.', confirm: 'Delete everything', danger: true, onConfirm: async () => { if (BW.acct()) await BW.signOut(); BW.wipe(); LS.del('coachDraft'); S.tab = 'today'; location.hash = ''; render(); } });
+        case 'wipe': return confirmSheet({ title: 'Delete all data?', text: BW.acct() ? 'This deletes every food, weigh-in and setting on this device <b>and in your cloud backup</b>, so it can\u2019t come back. Your account stays, empty.' : 'This deletes every food, weigh-in, badge and setting on this device.', confirm: 'Delete everything', danger: true, onConfirm: async () => { try { await BW.wipeCloud(); } catch (e) { return toast('Couldn\u2019t reach the cloud to delete your backup. Try again online.', { icon: 'offline' }); } const a = BW.acct(); BW.wipe(); if (a) LS.set('account', a); LS.del('coachDraft'); S.tab = 'today'; location.hash = ''; ob.p = null; ob.step = 0; render(); toast('Everything was deleted'); } });
+        case 'delaccount': return confirmSheet({ title: 'Delete your account?', text: 'This permanently deletes your account, your cloud backup, and removes you from your groups. Everything on this device is deleted too.', confirm: 'Delete my account', danger: true, onConfirm: async () => { try { await BW.deleteAccount(); } catch (e) { return toast(S.online ? e.message : 'Connect to the internet to delete your account', { icon: 'info' }); } LS.del('coachDraft'); LS.del('healthLinked'); LS.del('groupsCache'); LS.del('inGroups'); S.groups = []; S.tab = 'today'; location.hash = ''; ob.p = null; ob.step = 0; render(); toast('Your account was deleted'); } });
+        case 'startfresh': return confirmSheet({ title: 'Start fresh?', text: 'This clears the sample data so you can set up BiteWise for you.', confirm: 'Start fresh', onConfirm: () => { BW.clearDemo(); ob.p = null; ob.step = 0; S.tab = 'today'; location.hash = ''; render(); } });
       }
     };
     // swipe-to-delete on food rows
@@ -1727,13 +1732,20 @@
     const steps = `<div class="steps">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>`;
     let body = '', foot = '';
     if (ob.step === 0) {
-      body = `<div style="margin-top:6vh"><div class="logo-svg">${logoSVG()}</div></div><h1>Eat smart.<br>Log in seconds.</h1><p class="lead">BiteWise is the calorie counter you'll actually keep using. It works even with no internet.</p>
-        <div style="display:flex;flex-direction:column;gap:18px;margin-top:10px">
-          <div class="feature"><span class="icon-sq" style="background:var(--orange)">${I('bolt')}</span><div><b>Quick log</b><span>Just type the number. 450, done.</span></div></div>
-          <div class="feature"><span class="icon-sq" style="background:var(--pink)">${I('mic')}</span><div><b>Say it or type it</b><span>“Two eggs and toast” becomes calories. Works offline.</span></div></div>
-          <div class="feature"><span class="icon-sq" style="background:var(--purple)">${I('coach')}</span><div><b>Bitey, your AI coach</b><span>Meal ideas, check-ins, and it logs for you.</span></div></div>
-          <div class="feature"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div><b>Steps, streaks and rewards</b><span>Fitbit steps, a Health Score, levels, badges and themes.</span></div></div>
-        </div>`;
+      body = `<div class="welcome-hero">
+          <div class="logo-svg">${logoSVG()}</div>
+          <div class="wordmark">BiteWise</div>
+          <h1>Count calories in seconds.<br>Even with no internet.</h1>
+          <p class="lead">Type a number, say what you ate, or search 5,700+ foods. BiteWise does the math and keeps you on track.</p>
+        </div>
+        <div class="feat-grid">
+          ${[['bolt', 'var(--orange)', 'Quick log', 'Just the number. 450, done.'], ['mic', 'var(--pink)', 'Say it or type it', '“Two eggs and toast” works offline.'], ['coach', 'var(--purple)', 'Bitey, AI coach', 'Meal ideas, look-ups, logs for you.'], ['person', 'var(--blue)', 'Friends & family', 'Groups, streaks, cheer each other on.'], ['target', 'var(--green)', 'Your goal, your way', 'Lose, maintain, gain, or your own number.'], ['star', '#FFB800', 'Rewards', 'Levels, badges, streaks and themes.']].map(([ic, c, t, d]) => `<div class="feat"><span class="icon-sq" style="background:${c}">${I(ic)}</span><b>${t}</b><span>${d}</span></div>`).join('')}
+        </div>
+        <div class="how">
+          <div class="footnote" style="margin:0 4px 8px">HOW IT WORKS</div>
+          ${[['1', 'Tell us a little about you', 'Takes 30 seconds. We suggest a daily goal, or set your own.'], ['2', 'Log what you eat', 'A number, your voice, a search, or ask Bitey.'], ['3', 'Watch it add up', 'See your week, weight trend, streaks, and your group.']].map(([n, t, d]) => `<div class="how-step"><span class="step-n">${n}</span><div><b>${t}</b><span>${d}</span></div></div>`).join('')}
+        </div>
+        <div class="trust">${[['offline', 'Works offline'], ['lock', 'Your data is yours'], ['gift', 'Free']].map(([ic, t]) => `<span>${I(ic)}${t}</span>`).join('')}</div>`;
       foot = `<button class="btn" type="button" data-ob="next">Get started</button><button class="btn gray" type="button" data-ob="signin">I already have an account</button><button class="link-btn" type="button" data-ob="demo" style="font-size:15px;padding:6px">Just look around with sample data</button>`;
     } else if (ob.step === 1) {
       body = `${steps}<h1>About you</h1><p class="lead">This sets your daily calorie budget. It stays on your phone.</p>
@@ -1759,14 +1771,23 @@
       body = `${steps}<h1>How active are you?</h1><div style="display:flex;flex-direction:column;gap:8px">${[[1.2, 'Mostly sitting', 'School or desk, little exercise'], [1.375, 'Lightly active', 'Walk around, exercise 1–3 days'], [1.55, 'Active', 'Sports or workouts most days'], [1.725, 'Very active', 'Hard training every day']].map(([v, n, d]) => `<button class="opt" type="button" data-act2="${v}" aria-pressed="${p.activity === v}"><div><b>${n}</b><span>${d}</span></div><span class="ck">${I('check')}</span></button>`).join('')}</div>`;
       foot = `<button class="btn" type="button" data-ob="next">See my plan</button><button class="btn gray" type="button" data-ob="back">Back</button>`;
     } else if (ob.step === 4) {
-      const wk = g.weeklyChange;
-      body = `${steps}<h1>${p.name ? esc(p.name) + ', your' : 'Your'} daily goal</h1><div class="card" style="text-align:center;padding:26px 16px"><div class="big-num num">${fmt(g.budget)}</div><div class="muted" style="font-weight:600">calories a day</div></div>
+      const own = !!p.customBudget, ACT = { 1.2: 'Mostly sitting', 1.375: 'Lightly active', 1.55: 'Active', 1.725: 'Very active' };
+      const goalLine = g.goalType === 'lose' ? `Lose ${g.pace} lb a week` : g.goalType === 'gain' ? `Gain ${g.gain} lb a week` : 'Stay where I am';
+      const adj = g.goalType === 'lose' ? -g.pace * 500 : g.goalType === 'gain' ? g.gain * 500 : 0;
+      body = `${steps}<h1>${p.name ? esc(p.name) + ', your' : 'Your'} daily goal</h1>
+        <div class="card plan-hero"><div class="big-num num" id="ob_big">${fmt(g.budget)}</div><div class="muted" style="font-weight:600">calories a day</div><div class="caption" id="ob_bigsub" style="margin-top:6px">${own ? 'Your own number' : goalLine}</div></div>
+        <div class="footnote" style="margin:4px 16px -6px">HOW WE GOT THIS</div>
+        <div class="group calc">
+          <div class="row"><div class="grow"><div class="title">Your body at rest</div><div class="sub">From your age, height, weight and gender</div></div><span class="value num">${fmt(g.bmr)}</span></div>
+          <div class="row"><div class="grow"><div class="title">× ${ACT[p.activity] || 'Activity'}</div><div class="sub">Everything you do in a day</div></div><span class="value num">${fmt(g.tdee)}</span></div>
+          <div class="row"><div class="grow"><div class="title">${goalLine}</div><div class="sub">About 500 a day for each pound a week</div></div><span class="value num">${adj ? (adj > 0 ? '+' : '−') + fmt(Math.abs(adj)) : '±0'}</span></div>
+          <div class="row"><b class="grow">Suggested goal</b><b class="num">${fmt(Math.max(g.floor, g.planned))}</b></div>
+        </div>
         <div class="group">
-          <div class="row"><span class="grow">You burn about</span><span class="value num">${fmt(g.tdee)}</span></div>
-          <div class="row"><span class="grow">Goal</span><span class="value">${g.goalType === 'lose' ? `Lose ${g.pace} lb a week` : g.goalType === 'gain' ? `Gain ${g.gain} lb a week` : 'Stay steady'}</span></div>
-          ${g.goalType !== 'maintain' && Math.abs(wk) > .05 && ((g.goalType === 'lose' && p.goalLb < p.weightLb) || (g.goalType === 'gain' && p.goalLb > p.weightLb)) ? `<div class="row"><span class="grow">Reach ${p.goalLb} lb around</span><span class="value">${(() => { const d = new Date(); d.setDate(d.getDate() + Math.round(Math.abs(p.weightLb - p.goalLb) / Math.abs(wk) * 7)); return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); })()}</span></div>` : ''}
-          <div class="row"><span class="grow">Walking bonus</span><span class="value">Steps add calories</span></div>
-        </div>${g.clamped ? `<div class="banner">${I('info')}<span>${g.teen ? 'Kept gentle because you’re under 18.' : `Raised to the ${fmt(g.floor)} cal safety minimum.`}</span></div>` : ''}`;
+          <div class="row"><div class="grow"><div class="title">Set my own number</div><div class="sub">Use any goal you like, from 1,200 up</div></div><button class="switch" type="button" role="switch" aria-checked="${own}" data-obown aria-label="Set my own number"></button></div>
+          ${own ? `<div class="row"><button class="stepbtn" type="button" data-obcb="-50" aria-label="50 less">−</button><input class="own-input num" id="ob_cb" inputmode="numeric" value="${p.customBudget}" aria-label="Daily calories"><button class="stepbtn" type="button" data-obcb="50" aria-label="50 more">+</button></div><div class="own-note" id="ob_note">Lowest you can set: ${fmt(g.floor)}</div>` : ''}
+        </div>
+        <div class="footnote" style="margin:0 4px">Walking more adds calories on top. Change any of this later in Me → Daily goal.</div>`;
       foot = `<button class="btn" type="button" data-ob="next">Looks good</button><button class="btn gray" type="button" data-ob="back">Back</button>`;
     } else {
       body = `${steps}<div style="margin-top:2vh"><div class="icon-sq" style="background:var(--blue);width:64px;height:64px;border-radius:17px">${I('cloud', 'style="width:34px;height:34px"')}</div></div><h1>Save your progress</h1><p class="lead">Make an account to keep your log safe and open it on your iPad, Mac or a new phone. You'll stay signed in.</p>
@@ -1776,18 +1797,22 @@
     }
     view.innerHTML = `<div class="onb fade-in"><div class="body">${body}</div><div class="foot">${foot}</div></div>`;
     view.style.padding = '0';
-    view.oninput = e => { const t = e.target, n = parseFloat(t.value); if (t.id === 'o_name') p.name = t.value; if (t.id === 'o_age' && n > 0) p.age = n; if (t.id === 'o_ft' || t.id === 'o_in') p.heightIn = (parseInt($('#o_ft').value) || 0) * 12 + (parseInt($('#o_in').value) || 0); if (t.id === 'o_w' && n > 0) { p.weightLb = n; if (p.goalLb >= n) p.goalLb = Math.round(n * .9); } if (t.id === 'o_goal' && n > 0) p.goalLb = n; };
+    view.oninput = e => { const t = e.target, n = parseFloat(t.value); if (t.id === 'o_name') p.name = t.value; if (t.id === 'o_age' && n > 0) p.age = n; if (t.id === 'o_ft' || t.id === 'o_in') p.heightIn = (parseInt($('#o_ft').value) || 0) * 12 + (parseInt($('#o_in').value) || 0); if (t.id === 'o_w' && n > 0) { p.weightLb = n; if (p.goalLb >= n) p.goalLb = Math.round(n * .9); } if (t.id === 'o_goal' && n > 0) p.goalLb = n;
+      if (t.id === 'ob_cb') { if (n > 0) p.customBudget = Math.round(n); const low = n > 0 && n < 1200; $('#ob_big').textContent = fmt(Math.max(1200, p.customBudget || 0)); $('#ob_note').innerHTML = low ? `<b>${fmt(n)} is too low.</b> The lowest you can set is 1,200.` : 'Lowest you can set: 1,200'; $('#ob_note').classList.toggle('warn', low); } };
+    view.onfocusout = e => { if (e.target.id === 'ob_cb' && p.customBudget && p.customBudget < 1200) { p.customBudget = 1200; renderOnboarding(); } };
     view.onclick = e => {
       const b = e.target.closest('button'); if (!b) return;
       if (b.dataset.sex) { p.sex = b.dataset.sex; renderOnboarding(); return; }
       if (b.dataset.pace) { p.pace = +b.dataset.pace; renderOnboarding(); return; }
+      if ('obown' in b.dataset) { p.customBudget = p.customBudget ? null : BW.goals({ ...p, customBudget: null }).planned; renderOnboarding(); return; }
+      if (b.dataset.obcb) { p.customBudget = Math.max(BW.goals(p).floor, Math.min(6000, (p.customBudget || BW.goals(p).budget) + +b.dataset.obcb)); renderOnboarding(); return; }
       if (b.dataset.gain) { p.gainPace = +b.dataset.gain; renderOnboarding(); return; }
       if (b.dataset.gt) { p.goalType = b.dataset.gt; if (p.goalType === 'lose') { p.pace ||= BW.goals(p).teen ? 0.5 : 1; if (p.goalLb >= p.weightLb) p.goalLb = Math.round(p.weightLb * .92); } if (p.goalType === 'gain' && p.goalLb <= p.weightLb) p.goalLb = Math.round(p.weightLb * 1.05); renderOnboarding(); return; }
       if (b.dataset.act2) { p.activity = +b.dataset.act2; renderOnboarding(); return; }
       const a = b.dataset.ob;
       if (a === 'next') { if (ob.step === 1 && (p.age < 5 || p.age > 110 || p.heightIn < 36 || p.weightLb < 50)) return toast('Check your age, height and weight', { icon: 'info' }); if (ob.step === 1) p.goalType ||= 'lose'; if (ob.step === 2 && p.goalType === 'lose' && p.goalLb >= p.weightLb) p.goalType = 'maintain'; ob.step++; renderOnboarding(); window.scrollTo(0, 0); }
       if (a === 'back') { ob.step--; renderOnboarding(); }
-      if (a === 'demo') { BW.seedDemo(); finishOnboarding(); toast('Sample data loaded — delete it any time in Me', { icon: 'info' }); }
+      if (a === 'demo') { BW.seedDemo(); finishOnboarding();  }
       if (a === 'finish') { BW.saveProfile({ ...p, setup: true }); BW.setWeight(BW.dayKey(), p.weightLb); finishOnboarding(); confetti(80); }
       if (a === 'signin') { signInSheet('login'); }
       if (a === 'create') {

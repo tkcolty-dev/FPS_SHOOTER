@@ -21,6 +21,16 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.10.0 · Fresh starts and your own goal
+_2026-09-28 · git tag `v1.10.0`_
+
+- New: A new welcome screen with more about what BiteWise does, how it works, and what's free.
+- New: During setup, see exactly how your goal was worked out, and set your own number right there.
+- Changed: The lowest goal is 1,200 calories for everyone.
+- New: Sample data shows a banner and a Start fresh button. It's never saved to an account, and making an account clears it.
+- New: Delete my account (Me). It removes your cloud backup and takes you out of your groups.
+- Fixed: Delete all data now also clears your cloud backup, so old data can't come back after you sign in.
+
 ## 1.9.2 · Updates that actually update
 _2026-09-28 · git tag `v1.9.2`_
 

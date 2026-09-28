@@ -108,6 +108,11 @@ async function serverTests() {
     const s2 = await call('sync', { since: 0, changes: [{ id: 'e:1', kind: 'entry', calories: 1, updatedAt: 5 }] }, b.j.token);
     ok(s2.j.accepted === 0 && s2.j.records[0].calories === 5, 'older change loses');
     ok((await call('sync', { since: 0 })).status === 401, 'sync needs sign-in');
+    const del = await call('signup', { username: 'deleteme', password: 'secret9' });
+    await call('sync', { since: 0, changes: [{ id: 'e:x', kind: 'entry', calories: 9, updatedAt: 1 }] }, del.j.token);
+    ok((await call('account/wipe', {}, del.j.token)).status === 200 && (await call('sync', { since: 0 }, del.j.token)).j.records.length === 0, 'wipe clears the cloud log');
+    ok((await call('account/delete', {}, del.j.token)).status === 200, 'delete account');
+    ok((await call('sync', { since: 0 }, del.j.token)).status === 401 && (await call('login', { username: 'deleteme', password: 'secret9' })).status === 401, 'deleted account is gone');
     // groups (only once the feature exists)
     const g = await call('groups', { name: 'Fam' }, a.j.token);
     if (g.status !== 404) {

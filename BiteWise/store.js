@@ -53,6 +53,8 @@ function fileBackend() {
       const out = Object.values(mine).filter(x => x.seq > since).sort((a, b) => a.seq - b.seq);
       return { records: out.map(x => x.data), seq: out.length ? out[out.length - 1].seq : since };
     },
+    async deleteRecords(uid) { delete db.records[uid]; save(); },
+    async deleteUser(uid) { delete db.users[uid]; delete db.records[uid]; delete db.fitbit[uid]; for (const [h, v] of Object.entries(db.sessions)) if (v.uid === uid) delete db.sessions[h]; save(); },
     async kvGet(key) { return db.kv?.[key] ?? null; },
     async kvSet(key, value) { (db.kv ||= {})[key] = value; save(); },
     async kvDel(key) { if (db.kv) delete db.kv[key]; save(); },
@@ -103,6 +105,8 @@ function pgBackend(cfg) {
       const r = await q('SELECT seq, data FROM bw_records WHERE uid = $1 AND seq > $2 ORDER BY seq LIMIT 5000', [uid, since]);
       return { records: r.rows.map(x => x.data), seq: r.rows.length ? Number(r.rows[r.rows.length - 1].seq) : since };
     },
+    async deleteRecords(uid) { await q('DELETE FROM bw_records WHERE uid = $1', [uid]); },
+    async deleteUser(uid) { for (const t of ['bw_records', 'bw_fitbit', 'bw_sessions']) await q(`DELETE FROM ${t} WHERE uid = $1`, [uid]); await q('DELETE FROM bw_users WHERE id = $1', [uid]); },
     async kvGet(key) { const r = await q('SELECT value FROM bw_kv WHERE key = $1', [key]); return r.rows[0]?.value ?? null; },
     async kvSet(key, value) { await q('INSERT INTO bw_kv (key, value, updated_at) VALUES ($1, $2, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()', [key, JSON.stringify(value)]); },
     async kvDel(key) { await q('DELETE FROM bw_kv WHERE key = $1', [key]); },

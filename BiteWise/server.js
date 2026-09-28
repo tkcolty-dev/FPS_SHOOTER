@@ -102,6 +102,21 @@ const health = require('./health')(app, { store, needUser, limit, origin });
 require('./groups')(app, { store, needUser, limit });
 require('./online-foods')(app, { limit });
 
+// Delete everything in the cloud: just the log (keep the account), or the whole account.
+app.post('/api/account/wipe', needUser, limit(10, 60 * 60e3), async (req, res) => { await store.deleteRecords(req.uid); res.json({ ok: true }); });
+app.post('/api/account/delete', needUser, limit(5, 60 * 60e3), async (req, res) => {
+  // leave every group first so nobody sees a ghost member
+  for (const id of (await store.kvGet('ugroups:' + req.uid)) || []) {
+    const g = await store.kvGet('group:' + id); if (!g) continue;
+    g.members = g.members.filter(m => m !== req.uid);
+    if (!g.members.length) { await store.kvDel('group:' + g.id); await store.kvDel('code:' + g.code); }
+    else { if (g.owner === req.uid) g.owner = g.members[0]; await store.kvSet('group:' + g.id, g); }
+  }
+  for (const k of ['ugroups:', 'share:']) await store.kvDel(k + req.uid);
+  await store.deleteUser(req.uid);
+  res.json({ ok: true });
+});
+
 // Turn an automatic device account into a real login (username + password) so it works on other devices.
 app.post('/api/account/claim', needUser, limit(10, 60 * 60e3), async (req, res) => {
   const username = cleanName(req.body.username), password = String(req.body.password || '');
