@@ -21,6 +21,15 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.9.1 · Controls stay in reach
+_2026-09-28 · git tag `v1.9.1`_
+
+- Changed: A bolder BiteWise logo with a clearer bite and a leaf, in your theme's colors.
+- Fixed: On Bitey, the Bitey / Recipes switch and Clear stay at the top while you scroll or type. The big title shrinks out of the way.
+- Fixed: Recipes search, Progress Week / Month, and the log sheet's tabs and search box stay pinned while you scroll.
+- Fixed: Pop-up messages no longer block taps on the tab bar, and they don't squeeze into three lines.
+- New: Save button at the top of the goal screen.
+
 ## 1.9.0 · New look, number pad and saved meals
 _2026-09-28 · git tag `v1.9.0`_
 

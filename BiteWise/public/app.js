@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.9.0';
+  const APP_VERSION = '1.9.1';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -91,12 +91,11 @@
   function logoSVG(t = THEMES.find(x => x.id === BW.profile().theme) || THEMES[0], size = 96, rounded = true) {
     const id = 'lg' + (++logoN), c1 = shade(t.color, .18), c2 = shade(t.color, -.28);
     return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><defs><linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
-      <mask id="${id}m"><rect width="100" height="100" fill="#fff"/><circle cx="80" cy="52" r="8.5" fill="#000"/><circle cx="78.5" cy="67" r="6.5" fill="#000"/></mask></defs>
+      <mask id="${id}m"><rect width="100" height="100" fill="#fff"/><circle cx="82" cy="53" r="10" fill="#000"/><circle cx="80.5" cy="70.5" r="8.5" fill="#000"/></mask></defs>
       <rect width="100" height="100" rx="${rounded ? 23 : 0}" fill="url(#${id}g)"/>
-      <circle cx="33" cy="30" r="40" fill="#fff" opacity=".10"/>
-      <path d="M29 24a7 7 0 0114 0v19.5A23 23 0 1129 66z M52 51a11 11 0 100 22 11 11 0 000-22z" fill="#fff" fill-rule="evenodd" mask="url(#${id}m)"/>
-      <path d="M43 22c3-9 12-12 19-8-3 8-11 11-19 8z" fill="#fff" opacity=".92"/>
-      </svg>`;
+      <circle cx="30" cy="26" r="42" fill="#fff" opacity=".09"/>
+      <path d="M24 24a8.5 8.5 0 0117 0v17.5A27 27 0 1124 64z M52.5 49a13 13 0 100 26 13 13 0 000-26z" fill="#fff" fill-rule="evenodd" mask="url(#${id}m)"/>
+      <path d="M41 21c2-10 12-15 21-11-2 10-12 14-21 11z" fill="#fff"/><path d="M42.5 19.5c5-3 10-5.5 15.5-6.5" stroke="${shade(t.color, -.02)}" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".8"/></svg>`;
   }
   function setFavicon(t) {
     const svg = logoSVG(t, 64).replace(/url\(#(lg\d+)g\)/, 'url(#$1g)');
@@ -492,8 +491,8 @@
     const calLine = !logged.length ? 'Log a few days to see your average.' : avg <= g.budget ? `You're averaging <b>${fmt(g.budget - avg)} under</b> your budget ${word}. Nice.` : `You're averaging <b>${fmt(avg - g.budget)} over</b> your budget ${word}.`;
     const stepLine = !stepDays.length ? 'Connect Fitbit or add steps to see them here.' : avgSteps >= p.stepGoal ? `Averaging <b>${fmt(avgSteps)}</b> a day. Above your goal!` : `Averaging <b>${fmt(avgSteps)}</b> a day, <b>${fmt(p.stepGoal - avgSteps)}</b> short of your goal.`;
     return `
-    <div class="topbar"><div><div class="subtitle">${g.teen ? 'Healthy habits' : 'How you’re doing'}</div><h1 class="large-title">Progress</h1></div>
-      <div class="seg" style="width:150px"><button type="button" data-range="7" aria-pressed="${n === 7}">Week</button><button type="button" data-range="30" aria-pressed="${n === 30}">Month</button></div></div>
+    <div class="sticky-head"><div class="topbar"><div><div class="subtitle">${g.teen ? 'Healthy habits' : 'How you’re doing'}</div><h1 class="large-title">Progress</h1></div>
+      <div class="seg" style="width:150px"><button type="button" data-range="7" aria-pressed="${n === 7}">Week</button><button type="button" data-range="30" aria-pressed="${n === 30}">Month</button></div></div></div>
     <div class="cols"><div class="col-main">
       ${groupsCard()}
       <div class="card">
@@ -552,10 +551,10 @@
   function viewRecipes() {
     const rs = S.recipes || [];
     return `<div class="coach-wrap">
-      <div class="topbar"><div><div class="subtitle">Ideas to cook</div><h1 class="large-title">Recipes</h1></div></div>
+      <div class="sticky-head"><div class="topbar"><div><div class="subtitle">Ideas to cook</div><h1 class="large-title">Recipes</h1></div></div>
       ${coachSwitch()}
       <form class="search-bar" id="rform"><span class="sb-ic">${I('search')}</span><input id="rq" type="search" enterkeyhint="search" placeholder="Search recipes" value="${esc(S.rq || '')}" autocomplete="off" aria-label="Search recipes"></form>
-      <div class="chips" style="margin-top:10px">${REC_CATS.map(c => `<button class="chip ${S.rcat === c ? 'on' : 'fill'}" type="button" data-rcat="${c}">${c}</button>`).join('')}</div>
+      <div class="chips" style="margin-top:10px">${REC_CATS.map(c => `<button class="chip ${S.rcat === c ? 'on' : 'fill'}" type="button" data-rcat="${c}">${c}</button>`).join('')}</div></div>
       ${!S.online ? `<div class="banner" style="margin-top:14px">${I('offline')}<span>Recipes need internet. Everything else in BiteWise works offline.</span></div>` : ''}
       ${S.rloading ? '<div class="muted" style="text-align:center;padding:40px 0">Finding recipes…</div>' : S.rerror ? `<div class="banner" style="margin-top:14px">${I('info')}<span>${esc(S.rerror)}</span></div>`
         : rs.length ? `<div class="rgrid">${rs.map((r, i) => `<button class="rcard" type="button" data-recipe="${i}"><div class="rimg"><img src="${esc(r.thumb)}/medium" alt="" loading="lazy">${r.youtube ? `<span class="rplay">${I('play')}</span>` : ''}</div><div class="rname">${esc(r.name)}</div><div class="caption">${esc([r.area, r.category].filter(Boolean).join(' · '))}${warnTag(r.allergens)}</div></button>`).join('')}</div>`
@@ -631,8 +630,8 @@
     const note = !S.online || !S.status.ai ? `<div class="banner">${I('offline')}<span><b>Offline Bitey.</b> I can still log food, steps, water, weight and goals, and look up calories. Other questions get answered when you're back online.</span></div>` : '';
     return `
     <div class="coach-wrap">
-    <div class="topbar"><div><div class="subtitle">AI coach</div><h1 class="large-title">Bitey</h1></div>${msgs.length ? `<button class="link-btn" type="button" data-act="clearchat">Clear</button>` : ''}</div>
-    ${coachSwitch()}
+    <div class="sticky-head"><div class="topbar"><div><div class="subtitle">AI coach</div><h1 class="large-title">Bitey</h1></div>${msgs.length ? `<button class="link-btn" type="button" data-act="clearchat">Clear</button>` : ''}</div>
+    ${coachSwitch()}</div>
     ${note}
     ${msgs.length ? '' : `<div class="coach-hero"><div class="av">${I('coach')}</div><div style="font-size:20px;font-weight:700">Hi${BW.profile().name ? ', ' + esc(BW.profile().name) : ''}! I'm Bitey.</div><div class="muted" style="margin:4px auto 0;max-width:34ch;font-size:15px">Tell me what you ate and I'll log it. Ask for meal ideas, or ask how your week is going.</div></div>`}
     <div class="chat" id="chat">${msgs.map((m, i) => m.role === 'user' ? `<div class="msg me">${esc(m.content)}</div>` : `<div class="msg ai">${linkify(m.content)}</div>${coachCards(m, i)}${(m.done || []).length ? `<div class="action-card">${m.done.map(a => `<div class="ln"><span>${esc(a.label)}</span><b class="num">${esc(a.value)}</b></div>`).join('')}<div class="ln" style="margin-top:2px"><span class="ok">${I('check')}${m.undone ? 'Undone' : 'Done'}</span>${m.undone ? '' : `<button class="link-btn" style="font-size:14px" type="button" data-undoact="${i}">Undo</button>`}</div></div>` : ''}`).join('')}
@@ -843,7 +842,8 @@
       const quickChips = usual.length ? usual.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
         : recent.map(n => `<button class="chip fill" type="button" data-amt="${n}">${fmt(n)}</button>`).join('');
       return `
-      <div class="seg log-modes">${[['quick', 'hash', 'Number'], ['search', 'search', 'Search'], ['voice', 'mic', 'Voice'], ['type', 'keyboard', 'Type']].map(([m, ic, l]) => `<button type="button" data-mode="${m}" aria-pressed="${st.mode === m}">${I(ic)}${l}</button>`).join('')}</div>
+      <div class="log-sticky"><div class="seg log-modes">${[['quick', 'hash', 'Number'], ['search', 'search', 'Search'], ['voice', 'mic', 'Voice'], ['type', 'keyboard', 'Type']].map(([m, ic, l]) => `<button type="button" data-mode="${m}" aria-pressed="${st.mode === m}">${I(ic)}${l}</button>`).join('')}</div>
+      ${st.mode === 'search' ? `<form class="search-bar" id="fsform"><span class="sb-ic">${I('search')}</span><input id="fsq" type="search" enterkeyhint="search" placeholder="Search ${BW_PARSE.usdaReady ? fmt(BW_PARSE.usdaCount + window.BW_FOODS.length) + '+' : 'thousands of'} foods" value="${esc(st.sq || '')}" autocomplete="off" aria-label="Search foods"></form>` : ''}</div>
       ${mealPills(st.meal)}
       ${st.mode === 'quick' ? `
         <div class="log-quick">
@@ -855,7 +855,6 @@
           <button class="btn" type="button" data-act="addquick" ${+st.amount > 0 ? '' : 'disabled'}>${+st.amount > 0 ? `Add ${fmt(+st.amount)} cal` : 'Type calories'}</button>
         </div>`
       : st.mode === 'search' ? `
-        <form class="search-bar" id="fsform"><span class="sb-ic">${I('search')}</span><input id="fsq" type="search" enterkeyhint="search" placeholder="Search ${BW_PARSE.usdaReady ? fmt(BW_PARSE.usdaCount + window.BW_FOODS.length) + '+' : 'thousands of'} foods" value="${esc(st.sq || '')}" autocomplete="off" aria-label="Search foods"></form>
         <div id="fsres">${searchResultsHTML()}</div>`
       : st.mode === 'voice' ? `
         <button class="mic-orb ${st.listening ? 'on' : ''}" type="button" data-act="listen" aria-label="${st.listening ? 'Stop listening' : 'Start listening'}">${I('mic')}</button>
@@ -1453,8 +1452,9 @@
   function goalsSheet() {
     const p = { ...BW.profile() };
     p.goalType ||= p.pace > 0 ? 'lose' : 'maintain';
+    let saveRef = null;
     openSheet({
-      title: 'Your goal', left: 'Cancel', tall: true, body: '',
+      title: 'Your goal', left: 'Cancel', right: 'Save', onRight: () => saveRef && saveRef(), tall: true, body: '',
       mount: (b, close) => {
         const summary = () => {
           const g = BW.goals(p), wk = g.weeklyChange;
@@ -1503,6 +1503,7 @@
           BW.saveProfile({ ...p }); haptic(12); close();
           toast(raised ? `Set to ${fmt(p.customBudget)}, the lowest allowed for you` : `Goal saved · ${fmt(BW.goals().budget)} cal a day`, { icon: raised ? 'info' : 'check' });
         };
+        saveRef = () => save();
         draw();
         let snapped = false;
         b.addEventListener('focusout', e => { if (e.target.id !== 'g_cb' || !p.customBudget) return; const fl = BW.goals(p).floor; if (p.customBudget < fl) { p.customBudget = fl; e.target.value = fl; snapped = true; const note = $('#g_note', b); if (note) { note.innerHTML = ownNote(BW.goals(p)); note.classList.remove('warn'); } refresh(); haptic(10); } });
@@ -1809,7 +1810,7 @@
     $('#mbText').innerHTML = `<b class="num" style="color:${over ? 'var(--orange)' : 'var(--accent)'}">${fmt(Math.abs(d.remaining))}</b> ${over ? 'over' : 'left'} <span class="muted num">· ${fmt(d.eaten)} / ${fmt(d.budget)}</span>${S.date !== BW.dayKey() ? ` <span class="muted">· ${dayLabel(S.date)}</span>` : ''}`;
     mb.classList.toggle('show', hero.getBoundingClientRect().bottom < 40);
   }
-  addEventListener('scroll', () => requestAnimationFrame(updateMinibar), { passive: true });
+  addEventListener('scroll', () => requestAnimationFrame(() => { updateMinibar(); document.body.classList.toggle('scrolled', scrollY > 24); }), { passive: true });
   $('#mbAdd').onclick = () => { haptic(5); openLog(); };
 
   // ---------- updates + What's new ----------
@@ -1913,6 +1914,7 @@
       document.documentElement.style.setProperty('--kb', kb + 'px');
       document.documentElement.style.setProperty('--vvh', vv.height + 'px');
       document.body.classList.toggle('kb-open', kb > 120);
+      document.documentElement.style.setProperty('--vvoff', (vv.offsetTop || 0) + 'px');
     };
     vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit();
   }

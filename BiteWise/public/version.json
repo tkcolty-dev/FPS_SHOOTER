@@ -1,7 +1,19 @@
 {
-  "version": "1.9.0",
+  "version": "1.9.1",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.9.1",
+      "date": "2026-09-28",
+      "title": "Controls stay in reach",
+      "changes": [
+        "Changed: A bolder BiteWise logo with a clearer bite and a leaf, in your theme's colors.",
+        "Fixed: On Bitey, the Bitey / Recipes switch and Clear stay at the top while you scroll or type. The big title shrinks out of the way.",
+        "Fixed: Recipes search, Progress Week / Month, and the log sheet's tabs and search box stay pinned while you scroll.",
+        "Fixed: Pop-up messages no longer block taps on the tab bar, and they don't squeeze into three lines.",
+        "New: Save button at the top of the goal screen."
+      ]
+    },
     {
       "version": "1.9.0",
       "date": "2026-09-28",

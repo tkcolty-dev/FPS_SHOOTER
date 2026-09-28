@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="100"><stop offset="0" stop-color="#54c582"/><stop offset="1" stop-color="#228449"/></linearGradient>
-<mask id="m"><rect width="100" height="100" fill="#fff"/><circle cx="80" cy="52" r="8.5" fill="#000"/><circle cx="78.5" cy="67" r="6.5" fill="#000"/></mask></defs><rect width="100" height="100" fill="url(#g)"/><circle cx="33" cy="30" r="40" fill="#fff" opacity=".10"/>
-<path d="M29 24a7 7 0 0114 0v19.5A23 23 0 1129 66z M52 51a11 11 0 100 22 11 11 0 000-22z" fill="#fff" fill-rule="evenodd" mask="url(#m)"/>
-      <path d="M43 22c3-9 12-12 19-8-3 8-11 11-19 8z" fill="#fff" opacity=".92"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="100"><stop offset="0" stop-color="#5dd58f"/><stop offset="1" stop-color="#218446"/></linearGradient><mask id="m"><rect width="100" height="100" fill="#fff"/><circle cx="82" cy="53" r="10" fill="#000"/><circle cx="80.5" cy="70.5" r="8.5" fill="#000"/></mask></defs>
+<rect width="100" height="100" fill="url(#g)"/><circle cx="30" cy="26" r="42" fill="#fff" opacity=".09"/>
+<path d="M24 24a8.5 8.5 0 0117 0v17.5A27 27 0 1124 64z M52.5 49a13 13 0 100 26 13 13 0 000-26z" fill="#fff" fill-rule="evenodd" mask="url(#m)"/>
+<path d="M41 21c2-10 12-15 21-11-2 10-12 14-21 11z" fill="#fff"/><path d="M42.5 19.5c5-3 10-5.5 15.5-6.5" stroke="#3fb56e" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".8"/></svg>

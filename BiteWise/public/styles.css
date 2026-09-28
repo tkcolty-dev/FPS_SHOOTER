@@ -887,3 +887,26 @@ body { background: color-mix(in srgb, var(--accent) 3.5%, var(--bg)); }
 .meal-chip .k { color: color-mix(in srgb, var(--accent) 70%, var(--label2)); }
 body.pad-open .toast { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 12px); transform: translate(-50%, -160%); }
 body.pad-open .toast.show { transform: translate(-50%, 0); }
+
+/* ---------- pinned headers: important controls never scroll away ---------- */
+.sticky-head { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--vvoff, 0px)); z-index: 22; margin: -10px -16px 8px; padding: 10px 16px 10px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); transition: box-shadow .2s; }
+body.scrolled .sticky-head { box-shadow: 0 .5px 0 var(--sep); }
+.sticky-head .topbar { margin: 4px 4px 10px; transition: margin .2s; }
+.sticky-head .large-title { transition: font-size .2s; }
+.sticky-head .subtitle { transition: opacity .2s, height .2s; }
+body.scrolled .sticky-head .large-title { font-size: 22px; }
+body.scrolled .sticky-head .subtitle { opacity: 0; height: 0; overflow: hidden; margin: 0; }
+body.scrolled .sticky-head .topbar { margin: 0 4px 8px; }
+.sticky-head .coach-switch { margin: 0; }
+@media (min-width: 768px) { .sticky-head { margin: -18px -32px 10px; padding: 14px 32px 12px; } }
+@media (min-width: 1024px) { .sticky-head { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; } }
+.log-sticky { position: sticky; top: -4px; z-index: 5; background: var(--bg); margin: 0 -16px; padding: 4px 16px 8px; }
+.log-sticky .search-bar { margin-top: 10px; }
+
+/* ---------- toasts v2: never block taps, never squeeze into 3 lines ---------- */
+.toast { left: 0 !important; right: 0; margin: 0 auto; width: max-content; max-width: calc(100% - 32px); transform: translateY(160%) !important; pointer-events: none; }
+.toast.show { transform: none !important; }
+.toast .undo { pointer-events: auto; }
+body.sheet-open .toast, body.pad-open .toast { transform: translateY(-160%) !important; }
+body.sheet-open .toast.show, body.pad-open .toast.show { transform: none !important; }
+@media (min-width: 1024px) { .toast { left: 250px !important; } }
