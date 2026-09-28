@@ -23,9 +23,9 @@ function pgConfig() {
 }
 
 function fileBackend() {
-  const dir = path.join(__dirname, 'data'), file = path.join(dir, 'db.json');
+  const dir = process.env.BW_DATA_DIR || path.join(__dirname, 'data'), file = path.join(dir, 'db.json');
   fs.mkdirSync(dir, { recursive: true });
-  let db = { users: {}, sessions: {}, records: {}, fitbit: {}, seq: 0 };
+  let db = { users: {}, sessions: {}, records: {}, fitbit: {}, kv: {}, seq: 0 };
   try { db = { ...db, ...JSON.parse(fs.readFileSync(file, 'utf8')) }; } catch {}
   let timer = null;
   const save = () => { clearTimeout(timer); timer = setTimeout(() => { fs.writeFileSync(file + '.tmp', JSON.stringify(db)); fs.renameSync(file + '.tmp', file); }, 150); };
@@ -53,6 +53,9 @@ function fileBackend() {
       const out = Object.values(mine).filter(x => x.seq > since).sort((a, b) => a.seq - b.seq);
       return { records: out.map(x => x.data), seq: out.length ? out[out.length - 1].seq : since };
     },
+    async kvGet(key) { return db.kv?.[key] ?? null; },
+    async kvSet(key, value) { (db.kv ||= {})[key] = value; save(); },
+    async kvDel(key) { if (db.kv) delete db.kv[key]; save(); },
     async getFitbit(uid) { return db.fitbit[uid] || null; },
     async setFitbit(uid, tok) { if (tok) db.fitbit[uid] = tok; else delete db.fitbit[uid]; save(); },
   };
@@ -70,6 +73,7 @@ function pgBackend(cfg) {
       await q(`CREATE TABLE IF NOT EXISTS bw_records (uid text NOT NULL, id text NOT NULL, seq bigserial, updated_at bigint NOT NULL, data jsonb NOT NULL, PRIMARY KEY (uid, id))`);
       await q(`CREATE INDEX IF NOT EXISTS bw_records_seq ON bw_records (uid, seq)`);
       await q(`CREATE TABLE IF NOT EXISTS bw_fitbit (uid text PRIMARY KEY, data jsonb NOT NULL)`);
+      await q(`CREATE TABLE IF NOT EXISTS bw_kv (key text PRIMARY KEY, value jsonb NOT NULL, updated_at timestamptz DEFAULT now())`);
     },
     async createUser(u) {
       const r = await q('INSERT INTO bw_users (id, username, data) VALUES ($1, $2, $3) ON CONFLICT (username) DO NOTHING', [u.id, u.username, JSON.stringify(u)]);
@@ -99,6 +103,9 @@ function pgBackend(cfg) {
       const r = await q('SELECT seq, data FROM bw_records WHERE uid = $1 AND seq > $2 ORDER BY seq LIMIT 5000', [uid, since]);
       return { records: r.rows.map(x => x.data), seq: r.rows.length ? Number(r.rows[r.rows.length - 1].seq) : since };
     },
+    async kvGet(key) { const r = await q('SELECT value FROM bw_kv WHERE key = $1', [key]); return r.rows[0]?.value ?? null; },
+    async kvSet(key, value) { await q('INSERT INTO bw_kv (key, value, updated_at) VALUES ($1, $2, now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()', [key, JSON.stringify(value)]); },
+    async kvDel(key) { await q('DELETE FROM bw_kv WHERE key = $1', [key]); },
     async getFitbit(uid) { const r = await q('SELECT data FROM bw_fitbit WHERE uid = $1', [uid]); return r.rows[0]?.data || null; },
     async setFitbit(uid, tok) {
       if (!tok) return void await q('DELETE FROM bw_fitbit WHERE uid = $1', [uid]);

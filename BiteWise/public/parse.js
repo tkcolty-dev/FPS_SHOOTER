@@ -83,7 +83,7 @@
     if (hit) {
       const after20 = after.match(/(?:^|\s)(\d+(?:\.\d+)?)(?=\s|$)/);
       const label = hit.alias.length >= 4 && !/_/.test(hit.alias) ? hit.alias : hit.food.name;
-      if (after20 && +after20[1] >= 20) return { name: cap(label), calories: Math.round(+after20[1]), known: true };
+      if (after20 && +after20[1] >= 20) return { name: cap(label), calories: Math.round(+after20[1]), known: true, allergens: hit.food.allergens || [] };
       let qty = after20 ? +after20[1] : 1;
       const n = before.match(/(\d+(?:\.\d+)?)(?!.*\d)/);
       const words = before.split(' ');
@@ -98,13 +98,18 @@
       const name = qty === 1 ? cap(sizeWord + label)
         : unitWord && unitWord !== label ? `${fmtQty(qty)} ${qty > 1 ? plural(unitWord) : unitWord} ${sizeWord}${label}`
         : `${fmtQty(qty)} ${sizeWord}${qty > 1 && !label.endsWith('s') ? plural(label) : label}`;
-      return { name, calories: kcal, known: true, detail: `${fmtQty(qty)} × ${hit.food.unit}` };
+      return { name, calories: kcal, known: true, detail: `${fmtQty(qty)} × ${hit.food.unit}`, allergens: hit.food.allergens || [] };
     }
     // 3) unknown food with a number: "chipotle 900", "snack 200"
     const num = c.match(/(?:^|\s)(\d+(?:\.\d+)?)(?=\s|$)/);
     const nameWords = c.split(' ').filter(w => w && !/^\d/.test(w) && !FILLER.has(w) && !MEALS.some(m => m[0] === w) && w !== 'a' && w !== 'an');
     if (num && +num[1] >= 20) return { name: nameWords.length ? cap(nameWords.join(' ')) : 'Quick add', calories: Math.round(+num[1]), known: true };
     if (!nameWords.length) return null;
+    const u = USDA && usdaFind(nameWords.join(' '), 1)[0];
+    if (u) {
+      const q = num ? +num[1] : 1;
+      return { name: cap(u.name), calories: Math.round(portionKcal(u) * q / 5) * 5, known: true, detail: `${fmtQty(q)} × ${u.portions[0][0].toLowerCase()} (USDA)`, allergens: u.allergens, usda: true };
+    }
     return { name: cap(nameWords.join(' ')), calories: null, known: false };
   }
 
@@ -119,5 +124,55 @@
     return { items, meal, total: items.reduce((a, i) => a + (i.calories || 0), 0), allKnown: items.length > 0 && items.every(i => i.known) };
   }
 
-  window.BW_PARSE = { parseLog, wordsToNumbers };
+  // ---------- USDA database (5,000+ foods, loaded in the background, cached for offline) ----------
+  let USDA = null, usdaLoading = null;
+  const AL = () => window.BW_ALLERGENS || {};
+  function loadUSDA() {
+    if (USDA || usdaLoading) return usdaLoading || Promise.resolve(USDA);
+    usdaLoading = fetch('/usda-foods.json').then(r => r.json()).then(j => {
+      USDA = j.foods.map(([name, kcal100, portions, al, cat]) => {
+        const l = norm(name);
+        return { name, l, words: l.split(' '), kcal100, portions, allergens: [...(al || '')].map(c => AL()[c]).filter(Boolean), cat };
+      });
+      return USDA;
+    }).catch(() => { usdaLoading = null; return null; });
+    return usdaLoading;
+  }
+  const portionKcal = (f, i = 0) => Math.round(f.kcal100 * f.portions[i][1] / 100 / 5) * 5;
+  // every typed word must start one of the food's words; shorter, simpler names rank first
+  function usdaFind(q, limit = 20) {
+    if (!USDA) return [];
+    const qs = norm(q).split(' ').filter(w => w && !FILLER.has(w) && w.length > 1);
+    if (!qs.length) return [];
+    const hits = [];
+    for (const f of USDA) {
+      let ok = true, score = 0;
+      for (const w of qs) { const i = f.words.findIndex(x => x.startsWith(w) || (w.length > 3 && x.startsWith(w.replace(/e?s$/, '')))); if (i < 0) { ok = false; break; } score += i; }
+      if (ok) hits.push([score * 3 + f.words.length + (f.l.startsWith(qs[0]) ? 0 : 4), f]);
+    }
+    return hits.sort((a, b) => a[0] - b[0]).slice(0, limit).map(h => h[1]);
+  }
+
+  // Search the food list for suggestions while typing: prefix matches first, then word matches.
+  function search(q, limit = 8) {
+    q = norm(q); if (q.length < 2) return [];
+    const seen = new Set(), starts = [], contains = [];
+    for (const e of index()) {
+      if (seen.has(e.food.name)) continue;
+      if (e.alias.startsWith(q)) { starts.push(e); seen.add(e.food.name); }
+      else if (e.alias.includes(' ' + q) || (q.length >= 3 && e.alias.includes(q))) { contains.push(e); seen.add(e.food.name); }
+    }
+    return [...starts.sort((a, b) => a.alias.length - b.alias.length), ...contains].slice(0, limit)
+      .map(e => ({ name: cap(e.alias.length >= 4 && e.alias !== e.food.name ? e.alias : e.food.name), calories: e.food.kcal, unit: e.food.unit, allergens: e.food.allergens || [] }));
+  }
+
+  // Full search for the Search screen: BiteWise's own list first, then the USDA database.
+  function searchAll(q, limit = 30) {
+    const mine = search(q, 8).map(f => ({ ...f, portions: [[f.unit, null]], source: 'bitewise' }));
+    const seen = new Set(mine.map(f => f.name.toLowerCase()));
+    const usda = usdaFind(q, limit).filter(f => !seen.has(f.name.toLowerCase())).map(f => ({ name: f.name, calories: portionKcal(f), kcal100: f.kcal100, portions: f.portions, allergens: f.allergens, cat: f.cat, source: 'usda' }));
+    return [...mine, ...usda].slice(0, limit);
+  }
+
+  window.BW_PARSE = { parseLog, wordsToNumbers, search, searchAll, loadUSDA, get usdaReady() { return !!USDA; }, get usdaCount() { return USDA ? USDA.length : 0; } };
 })();

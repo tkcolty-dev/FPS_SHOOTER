@@ -1,0 +1,68 @@
+# BiteWise change log
+
+Every release is tagged in git (`v1.4.0`, `v1.3.0`, …), so any version can be brought back.
+The app shows this same list under **Me → Version → What's new**. Edit `public/version.json`, not this file.
+
+## Going back to an earlier version
+
+```sh
+git tag                          # list versions
+git checkout v1.3.0              # look at an old version (read-only)
+cf push                          # optional: run that old version live
+git checkout main                # return to the newest code
+```
+
+To undo one release but keep everything after it: `git revert <commit>` (see `git log v1.3.0..v1.4.0` for a release's commits).
+
+## Releasing a new version
+
+1. Bump `version` and add an entry at the top of `history` in `public/version.json`.
+2. Set `APP_VERSION` in `public/app.js` to the same number, and bump `VERSION` in `public/sw.js`.
+3. `npm test`. Everything must pass.
+4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and `cf push`.
+
+## 1.4.0 · Groups, 5,000+ foods and allergies
+_2026-09-27 · git tag `v1.4.0`_
+
+- New: Groups. Make a group, send the 6-letter code, and see each other's goals, streaks and progress. You choose what you share.
+- New: 5,431 foods from the USDA database, with real serving sizes. They work offline.
+- New: Search brand-name foods online (Open Food Facts).
+- New: Recipes with ingredients, steps and YouTube videos.
+- New: Allergies. Set yours in Me and BiteWise warns you when a food has them. Bitey won't suggest them either.
+- New: Food suggestions while you type on the home screen.
+- New: A 'This week' card on the home screen.
+- New: Version number, update check, and this What's new screen.
+- Fixed: The coach message box now clears after you send.
+
+## 1.3.0 · Easy goals and your account everywhere
+_2026-09-27 · git tag `v1.3.0`_
+
+- New: Goal screen with Lose / Maintain / Gain, how fast, or set your own calorie number.
+- New: 'I already have an account' on the first screen, and a 'Save your progress' step.
+- New: Stay signed in until you choose Sign out.
+- Fixed: Signing in on a new device no longer overwrites your cloud goals.
+- Fixed: Page margins after signing in on a second device.
+
+## 1.2.0 · Smoother logging
+_2026-09-27 · git tag `v1.2.0`_
+
+- New: Log sheet with one row of modes, four meal tiles and a thumb-height keypad.
+- New: Type numbers with a Mac or iPad keyboard.
+- New: Bigger edit screen, meal icons, and foods slide in and fold away.
+- Fixed: Pop-up messages no longer cover buttons.
+
+## 1.1.0 · Calmer home screen
+_2026-09-27 · git tag `v1.1.0`_
+
+- New: Home shows just calories eaten and steps, with quick log right there.
+- New: Screens update smoothly instead of redrawing.
+- New: Fitbit sync through Google Health.
+- Changed: 'Sex' is now 'Gender' with an Other option.
+
+## 1.0.0 · First release
+_2026-09-27 · git tag `v1.0.0`_
+
+- Quick log, voice and text logging that work offline.
+- Bitey, the AI coach, on Cloud Foundry open models.
+- Health Score, levels, badges, streaks and themes.
+- Works on iPhone, iPad and Mac, and installs to the home screen.

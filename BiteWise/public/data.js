@@ -34,7 +34,7 @@
   const all = kind => Object.values(recs).filter(r => r.kind === kind && !r.deleted);
 
   // ---------- profile + goals ----------
-  const DEFAULT_PROFILE = { id: 'profile', kind: 'profile', name: '', setup: false, sex: 'female', age: 30, heightIn: 66, weightLb: 170, goalLb: 155, activity: 1.375, pace: 1, customBudget: null, stepGoal: 8000, waterGoal: 8, earnSteps: true, theme: 'fresh', units: 'lb' };
+  const DEFAULT_PROFILE = { id: 'profile', kind: 'profile', name: '', setup: false, sex: 'female', age: 30, heightIn: 66, weightLb: 170, goalLb: 155, activity: 1.375, pace: 1, customBudget: null, stepGoal: 8000, waterGoal: 8, earnSteps: true, theme: 'fresh', units: 'lb', allergies: [] };
   const profile = () => ({ ...DEFAULT_PROFILE, ...(recs.profile || {}) });
   const saveProfile = p => put({ ...profile(), ...p, id: 'profile', kind: 'profile' });
 
@@ -237,9 +237,9 @@
   const recentAmounts = () => { const s = []; all('entry').sort((a, b) => b.time - a.time).forEach(e => { if (!s.includes(e.calories) && e.calories > 0) s.push(e.calories); }); return s.slice(0, 4); };
 
   function mealForNow(d = new Date()) { const h = d.getHours() + d.getMinutes() / 60; return h < 10.5 ? 'breakfast' : h < 15 ? 'lunch' : h < 17 ? 'snack' : h < 21 ? 'dinner' : 'snack'; }
-  function addEntry({ date = dayKey(), meal, name, calories, source = 'quick' }) {
+  function addEntry({ date = dayKey(), meal, name, calories, source = 'quick', allergens }) {
     const t = date === dayKey() ? Date.now() : parseDay(date).getTime() + 12 * 3600e3;
-    return put({ id: 'e:' + uid(), kind: 'entry', date, time: t, meal: meal || mealForNow(), name: (name || 'Quick add').slice(0, 80), calories: Math.max(0, Math.round(+calories || 0)), source });
+    return put({ id: 'e:' + uid(), kind: 'entry', date, time: t, meal: meal || mealForNow(), name: (name || 'Quick add').slice(0, 80), calories: Math.max(0, Math.round(+calories || 0)), source, ...(allergens && allergens.length ? { allergens: allergens.slice(0, 9) } : {}) });
   }
 
   // ---------- account + sync ----------

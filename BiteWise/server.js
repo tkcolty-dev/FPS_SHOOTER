@@ -96,6 +96,8 @@ app.post('/api/estimate', limit(40, 60e3), async (req, res) => {
 
 // ---------- Fitbit via Google Health ----------
 const health = require('./health')(app, { store, needUser, limit, origin });
+require('./groups')(app, { store, needUser, limit });
+require('./online-foods')(app, { limit });
 
 // Turn an automatic device account into a real login (username + password) so it works on other devices.
 app.post('/api/account/claim', needUser, limit(10, 60 * 60e3), async (req, res) => {

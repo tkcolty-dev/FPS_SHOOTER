@@ -570,3 +570,91 @@ body[data-tab="coach"]:not(.sheet-open) .toast { bottom: calc(env(safe-area-inse
 .acct-btns { display: flex; gap: 8px; background: var(--card); padding: 0 16px 16px 58px; border-radius: 0 0 var(--r) var(--r); box-shadow: var(--shadow); }
 .acct-btns .btn.small { flex: 1; height: 38px; }
 .onb .foot .link-btn { align-self: center; }
+.alg { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; padding: 1px 7px 1px 5px; border-radius: 999px; background: color-mix(in srgb, var(--red) 14%, transparent); color: var(--red); font-size: 11.5px; font-weight: 600; white-space: nowrap; vertical-align: 1px; }
+.alg svg { width: 12px; height: 12px; }
+.alg-row { min-height: 0; padding-top: 0; padding-bottom: 8px; }
+.alg-row::after { display: none; }
+
+/* ---------- groups ---------- */
+.acct-btns.flat { background: none; box-shadow: none; padding: 4px 0 0; border-radius: 0; }
+.group-card { width: 100%; text-align: left; display: block; }
+.group-card:active { transform: scale(.99); }
+.faces { display: flex; align-items: center; margin-top: 8px; }
+.face { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; border: 2px solid var(--card); margin-left: -6px; flex: none; }
+.face:first-child { margin-left: 0; }
+.face.more { background: var(--fill2); color: var(--label2); }
+.face.big { width: 40px; height: 40px; font-size: 16px; margin: 0; border: 0; }
+.member { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+.member .face.big { margin-top: 2px; }
+.member .sub { white-space: normal; }
+.code-card { text-align: center; padding: 18px 16px; border-radius: var(--r); background: linear-gradient(135deg, color-mix(in srgb, var(--purple) 16%, var(--card)), var(--card)); box-shadow: var(--shadow); }
+.code-card .code { font: 800 40px/1.1 ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 6px; margin-top: 4px; color: var(--purple); }
+.code-input { display: block; width: 100%; text-align: center; border: 0; border-radius: 14px; background: var(--card); box-shadow: var(--shadow); height: 72px; font: 800 36px ui-monospace, "SF Mono", Menlo, monospace; letter-spacing: 8px; text-transform: uppercase; color: var(--label); }
+.code-input::placeholder { color: var(--label3); }
+.code-input:focus { outline: 2px solid var(--purple); }
+.btn svg { flex: none; }
+
+/* ---------- update bar + What's new ---------- */
+.update-bar { position: fixed; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 8px); z-index: 60; display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-radius: 999px; background: var(--blue); color: #fff; font-size: 14px; font-weight: 500; box-shadow: 0 8px 24px rgba(0,0,0,.18); max-width: calc(100% - 32px); animation: pop .4s cubic-bezier(.2,1.4,.4,1); }
+.update-bar svg { width: 17px; height: 17px; flex: none; }
+.update-bar b { font-weight: 700; }
+@media (min-width: 1024px) { .update-bar { left: calc(50% + 125px); } }
+.wn { margin-bottom: 18px; }
+.wn-head { display: flex; align-items: center; gap: 8px; margin: 0 4px 8px; }
+.wn-head b { font-size: 17px; }
+.wn .pill.cur { background: var(--accent); color: var(--accent-ink); }
+.wn ul { margin: 0; padding: 12px 14px 12px 32px; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.4; }
+.wn-tag { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; margin-right: 6px; vertical-align: 1px; }
+.wn-tag.new { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.wn-tag.fixed { background: color-mix(in srgb, var(--blue) 18%, transparent); color: var(--blue); }
+.wn-tag.changed { background: color-mix(in srgb, var(--orange) 18%, transparent); color: var(--orange); }
+
+/* ---------- food search ---------- */
+.search-bar { display: flex; align-items: center; gap: 8px; background: var(--fill); border-radius: 12px; padding: 0 12px; height: 44px; margin-top: 12px; }
+.search-bar .sb-ic { color: var(--label2); width: 18px; height: 18px; display: grid; }
+.search-bar .sb-ic svg { width: 18px; height: 18px; }
+.search-bar input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: 17px; height: 100%; }
+.search-bar input:focus { outline: none; }
+.search-bar:focus-within { outline: 2px solid var(--accent); }
+.fs-list { margin-top: 12px; }
+.fs-item + .fs-item { border-top: .5px solid var(--sep); }
+.fs-row { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 11px 16px; }
+.fs-row .title { font-size: 16px; white-space: normal; line-height: 1.25; }
+.fs-row .sub { font-size: 13px; color: var(--label2); margin-top: 2px; }
+.fs-row .kcal { font: 600 16px var(--round); }
+.fs-row:active { background: var(--fill); }
+.fs-item.open { background: color-mix(in srgb, var(--accent) 5%, var(--card)); }
+.fs-pick { padding: 0 16px 14px; }
+.fs-qty { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.chip.on { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.chip.on .k { color: inherit; opacity: .85; }
+.log-modes button { font-size: 13px; gap: 4px; }
+
+/* ---------- recipes ---------- */
+.coach-switch { margin: -4px 0 14px; }
+.coach-switch button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; font-size: 14px; }
+.coach-switch svg { width: 15px; height: 15px; }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.rcard { text-align: left; background: var(--card); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); padding-bottom: 10px; transition: transform .15s; }
+.rcard:active { transform: scale(.97); }
+.rimg { position: relative; aspect-ratio: 1; background: var(--fill); }
+.rimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rplay { position: absolute; right: 8px; bottom: 8px; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; display: grid; place-items: center; }
+.rplay svg { width: 14px; height: 14px; fill: currentColor; }
+.rname { font-weight: 600; font-size: 15px; margin: 8px 10px 2px; line-height: 1.25; }
+.rcard .caption { margin: 0 10px; }
+.rhero { width: 100%; max-height: 260px; object-fit: cover; border-radius: var(--r); display: block; }
+.btn.yt { background: #FF0000; color: #fff; text-decoration: none; }
+.btn.yt svg { fill: currentColor; }
+a.btn { text-decoration: none; }
+.steps-list { margin: 0; padding: 14px 16px 14px 36px; background: var(--card); border-radius: var(--r); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.45; }
+.wbars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 10px; height: 110px; }
+.wbar { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.wtrack { position: relative; flex: 1; width: 100%; max-width: 30px; border-radius: 7px; background: var(--fill); overflow: hidden; }
+.wfill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent); border-radius: 7px; transition: height .6s cubic-bezier(.3,.8,.3,1); }
+.wgoal { position: absolute; left: 0; right: 0; height: 2px; background: var(--label3); z-index: 1; }
+.wday { font-size: 11px; font-weight: 600; color: var(--label2); }
+.wbar.sel .wday { color: var(--accent); }
+.wbar.sel .wtrack { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fs-row .grow { flex: 1; min-width: 0; }
+body[data-tab="coach"][data-cview="recipes"]:not(.sheet-open) .toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
