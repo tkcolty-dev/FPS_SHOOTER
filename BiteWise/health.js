@@ -109,6 +109,28 @@ module.exports = function mountHealth(app, { store, needUser, limit, origin }) {
     } catch (e) { console.error('health pull:', e.message); res.status(e.status || 502).json({ error: e.message }); }
   });
 
+  // Test: raw Google Health response for the last 7 days of steps, plus what BiteWise made of it.
+  app.post('/api/health/test', needUser, limit(20, 60e3), async (req, res) => {
+    const start = String(req.body.start || ''), end = String(req.body.end || '');
+    const out = { connected: false, steps: [], raw: null, error: null };
+    try {
+      const t = await store.getFitbit(req.uid);
+      out.connected = !!(t && t.provider === 'google-health');
+      if (!out.connected) return res.json(out);
+      const tok = await access(req.uid);
+      const [sy, sm, sd] = start.split('-').map(Number), [ey, em, ed] = end.split('-').map(Number);
+      const r = await fetch(`${API}/dataTypes/steps/dataPoints:dailyRollUp`, {
+        method: 'POST', headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ range: { start: civil(new Date(Date.UTC(sy, sm - 1, sd))), end: civil(new Date(Date.UTC(ey, em - 1, ed))) }, windowSizeDays: 1 }),
+      });
+      out.status = r.status;
+      out.raw = await r.json().catch(() => null);
+      if (!r.ok) out.error = out.raw?.error?.message || 'Google Health error ' + r.status;
+      else out.steps = (out.raw?.rollupDataPoints || []).map(p => ({ date: dayOf(p.civilStartTime) || (p.startTime || '').slice(0, 10), steps: Math.round(firstNum(p.steps, /count|sum/i) || 0) }));
+    } catch (e) { out.error = e.message; }
+    res.json(out);
+  });
+
   app.post('/api/health/disconnect', needUser, async (req, res) => {
     const t = await store.getFitbit(req.uid);
     if (t?.access) fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(t.refresh || t.access), { method: 'POST' }).catch(() => {});

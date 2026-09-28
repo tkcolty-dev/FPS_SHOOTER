@@ -53,6 +53,8 @@
     palette: '<path d="M12 3a9 9 0 000 18c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a4 4 0 004-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7" r="1"/>',
     snow: '<path d="M12 2v20M4 6l16 12M20 6L4 18"/>',
     person: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+    moon: '<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>',
+    hash: '<path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/>',
   };
   const I = (n, extra = '') => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${P[n] || ''}</svg>`;
   const BADGE_COLORS = { bite: '#FF9500', flame: '#FF3B30', crown: '#FFB800', drop: '#32ADE6', shoe: '#34C759', target: '#AF52DE', scale: '#5AC8FA', trophy: '#FFB800', mic: '#FF2D55', spark: '#5856D6', sun: '#FF9500', heart: '#FF2D55' };
@@ -77,6 +79,8 @@
   // ---------- app state ----------
   const S = { tab: 'today', date: BW.dayKey(), progRange: 7, status: { ai: false, health: null, model: '' }, online: navigator.onLine, coachBusy: false, installEvt: null };
   const MEALS = [['breakfast', 'Breakfast'], ['lunch', 'Lunch'], ['dinner', 'Dinner'], ['snack', 'Snacks']];
+  const MEAL_ICON = { breakfast: ['sun', '#FF9F0A'], lunch: ['fork', '#30B0C7'], dinner: ['moon', '#5E5CE6'], snack: ['bite', '#FF375F'] };
+  const mealPills = (cur, attr = 'data-meal') => `<div class="meal-pills" role="radiogroup" aria-label="Meal">${MEALS.map(([m, l]) => `<button type="button" ${attr}="${m}" role="radio" aria-checked="${cur === m}" aria-pressed="${cur === m}" style="--mc:${MEAL_ICON[m][1]}">${I(MEAL_ICON[m][0])}${l}</button>`).join('')}</div>`;
   const dayLabel = k => { const t = BW.dayKey(); if (k === t) return 'Today'; if (k === BW.addDays(t, -1)) return 'Yesterday'; return BW.parseDay(k).toLocaleDateString(undefined, { weekday: 'long' }); };
   const longDate = k => BW.parseDay(k).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -117,7 +121,7 @@
     sh.querySelector('.sheet-body').innerHTML = body || '';
     document.body.append(scrim, sh);
     const entry = { sh, scrim, onClose };
-    sheets.push(entry);
+    sheets.push(entry); document.body.classList.add('sheet-open');
     const close = () => closeSheet(entry);
     entry.close = close;
     scrim.onclick = close;
@@ -136,7 +140,7 @@
     return entry;
   }
   function closeSheet(entry) {
-    const i = sheets.indexOf(entry); if (i < 0) return; sheets.splice(i, 1);
+    const i = sheets.indexOf(entry); if (i < 0) return; sheets.splice(i, 1); if (!sheets.length) document.body.classList.remove('sheet-open');
     entry.sh.classList.remove('show'); entry.scrim.classList.remove('show');
     entry.onClose && entry.onClose();
     setTimeout(() => { entry.sh.remove(); entry.scrim.remove(); }, 380);
@@ -221,7 +225,7 @@
     if (view.dataset.tab !== S.tab || !view.firstElementChild) { view.innerHTML = html; view.dataset.tab = S.tab; view.classList.remove('tab-in'); void view.offsetWidth; view.classList.add('tab-in'); }
     else morphChildren(view, next);
     animateCounts(view);
-    $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === S.tab));
+    $$('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.tab === S.tab)); document.body.dataset.tab = S.tab;
     $('#tabbar').hidden = false;
     bindView();
     updateMinibar();
@@ -235,15 +239,19 @@
   }
 
   const finePointer = matchMedia('(hover: hover) and (pointer: fine)').matches;
+  // meal for the Today quick log: follows the clock unless the person taps the meal name to change it
+  const qMeal = () => S.qmeal || (S.date === BW.dayKey() ? BW.mealForNow() : 'lunch');
   function qHint(v = S.qdraft || '') {
-    const meal = cap(S.date === BW.dayKey() ? BW.mealForNow() : 'lunch');
+    const m = qMeal(), label = MEALS.find(x => x[0] === m)[1];
+    const mealBtn = `<button type="button" class="meal-link" data-act="cyclemeal" style="--mc:${MEAL_ICON[m][1]}">${I(MEAL_ICON[m][0])}${label}</button>`;
     v = v.trim();
-    if (!v) return `${finePointer ? 'Type a number or what you ate · ' : ''}Adds to <b>${meal}</b>${S.date !== BW.dayKey() ? ' on ' + BW.parseDay(S.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''} · <button type="button" class="link-btn" data-act="log" style="font-size:13px">more options</button>`;
-    if (/^\d+$/.test(v)) return `Add <b>${fmt(+v)} cal</b> to ${meal} · press Enter`;
+    if (!v) return `Adds to ${mealBtn}`;
+    if (/^\d+$/.test(v)) return `Adds <b>${fmt(+v)} cal</b> to ${mealBtn}`;
     const r = BW_PARSE.parseLog(v);
-    if (!r.items.length) return 'Type a number, or what you ate';
-    return r.items.map(i => `${esc(i.name)} <b>${i.calories ?? '?'}</b>`).join(' · ') + (r.allKnown ? ` = <b>${fmt(r.total)} cal</b>` : ' · Enter to finish');
+    if (!r.items.length) return `Adds to ${mealBtn}`;
+    return r.items.map(i => `${esc(i.name)} <b>${i.calories ?? '?'}</b>`).join(' · ') + (r.allKnown ? ` = <b>${fmt(r.total)}</b>` : '');
   }
+
   const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' hr ago' : 'a while ago'; };
   function viewToday() {
     const p = BW.profile(), k = S.date, d = BW.day(k), st = BW.streak(), today = BW.dayKey(), isToday = k === today;
@@ -253,7 +261,7 @@
     const chips = usuals.length ? usuals.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
       : [100, 200, 300, 500].map(n => `<button class="chip fill" type="button" data-quick="${n}">+${n}</button>`).join('');
     const stepLine = S.syncingSteps ? `<span class="sync-dot"></span>Syncing Fitbit…`
-      : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : `Tap to connect Fitbit`;
+      : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : d.steps ? `${fmt(Math.max(0, p.stepGoal - d.steps))} to go` : S.status.health ? `Tap to connect Fitbit` : `Tap to add steps`;
     const es = d.entries.slice().sort((a, b) => b.time - a.time);
     const srcIcon = s => s === 'voice' ? 'mic' : s === 'text' ? 'keyboard' : s === 'coach' ? 'spark' : 'bolt';
     return `
@@ -262,7 +270,7 @@
         <div class="subtitle">${longDate(k)}</div>
         <div class="daynav-row"><button class="dn" type="button" data-shift="-1" aria-label="Previous day">${I('left')}</button><h1 class="large-title">${dayLabel(k)}</h1>${isToday ? '' : `<button class="dn" type="button" data-shift="1" aria-label="Next day">${I('right')}</button>`}</div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center">${offlinePill()}<button class="pill streak" type="button" data-act="streak" aria-label="${st.days} day streak">${I('flame')}<span class="num">${st.days}</span></button></div>
+      <div style="display:flex;gap:6px;align-items:center">${offlinePill()}${st.days ? `<button class="pill streak" type="button" data-act="streak" aria-label="${st.days} day streak">${I('flame')}<span class="num">${st.days}</span></button>` : ''}</div>
     </div>
     <div class="cols"><div class="col-main">
       <div class="card summary" id="heroCard">
@@ -291,7 +299,7 @@
       ${!linked && isToday && !LS.get('hideFitbitCard', false) && S.status.health !== false ? `<div class="card connect-card" style="margin-top:12px"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div class="grow"><b>Count your Fitbit steps</b><span>Connect once. Steps fill in on their own.</span></div><button class="btn small" type="button" data-act="fitbit">Connect</button><button class="x-close" type="button" data-act="hidefitbit" aria-label="Hide">${I('x')}</button></div>` : ''}
     </div><div class="col-side">
       <div class="section-head food-head"><h2>${isToday ? 'Today’s food' : 'Food'}</h2>${es.length ? `<span class="caption num">${es.length} item${es.length > 1 ? 's' : ''}</span>` : ''}</div>
-      ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="src">${I(srcIcon(e.source))}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>
+      ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>
         <div class="footnote">${finePointer ? 'Click a food to edit it.' : 'Swipe left to delete · tap to edit'}</div>`
       : `<div class="card empty"><div class="icon-sq" style="background:var(--fill);color:var(--label2);width:44px;height:44px;border-radius:12px">${I('fork')}</div><b>${isToday ? 'Nothing logged yet' : 'Nothing logged this day'}</b><span>Type a number above and press ${finePointer ? 'Enter' : 'Add'}. That's it.</span></div>`}
     </div></div>`;
@@ -406,7 +414,7 @@
   function viewCoach() {
     const msgs = chat();
     const g = BW.goals(), d = BW.day(BW.dayKey());
-    const starters = [d.remaining > 200 ? `I have ${fmt(d.remaining)} cal left. What should I eat for dinner?` : 'Ideas for a filling snack under 200 cal?', 'I had a Big Mac and medium fries for lunch', 'How am I doing this week?', g.teen ? 'Tips for having more energy at practice?' : 'Why did my weight go up today?'];
+    const starters = [d.remaining > 200 ? `I have ${fmt(d.remaining)} cal left. What should I eat for dinner?` : 'Ideas for a filling snack under 200 cal?', 'I had a Big Mac and medium fries for lunch', 'How am I doing this week?', g.teen ? 'Tips for having more energy at practice?' : BW.trend() ? 'Why did my weight go up today?' : 'A high-protein lunch idea?'];
     const note = !S.online ? `<div class="banner">${I('offline')}<span>You're offline. The coach needs internet, but logging still works.</span></div>`
       : !S.status.ai ? `<div class="banner">${I('info')}<span>The AI coach isn't turned on for this server yet.</span></div>` : '';
     return `
@@ -498,15 +506,15 @@
   }
 
   // ---------- log sheet ----------
-  function openLog({ mode = LS.get('logMode', 'quick'), meal, date = S.date, text = '' } = {}) {
+  function openLog({ mode = LS.get('logMode', 'quick'), meal = S.tab === 'today' ? S.qmeal : null, date = S.date, text = '' } = {}) {
     const st = { mode, meal: meal || (date === BW.dayKey() ? BW.mealForNow() : 'lunch'), amount: '', name: '', text, items: [], transcript: '', listening: false };
     if (text) { const r = BW_PARSE.parseLog(text); st.items = r.items; if (r.meal) st.meal = r.meal; }
     let rec = null;
     const entry = {};
     openSheet({
       title: date === BW.dayKey() ? 'Log food' : 'Log · ' + BW.parseDay(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), tall: true,
-      onClose: () => { try { rec && rec.abort(); } catch {} },
-      mount: (body, close) => { function draw() { body.innerHTML = html(); bind(body); } entry.close = close; entry.redraw = draw; draw(); },
+      onClose: () => { try { rec && rec.abort(); } catch {} document.removeEventListener('keydown', keys); },
+      mount: (body, close) => { body.classList.add('log-body'); function draw() { body.innerHTML = html(); bind(body); } entry.close = close; entry.redraw = draw; draw(); },
     });
     function itemsHTML() {
       if (!st.items.length) return '';
@@ -517,24 +525,28 @@
     }
     function html() {
       const recent = BW.recentAmounts(), usual = BW.frequent().slice(0, 6);
+      const quickChips = usual.length ? usual.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
+        : recent.map(n => `<button class="chip fill" type="button" data-amt="${n}">${fmt(n)}</button>`).join('');
       return `
-      <div class="seg" style="margin-bottom:12px">${[['quick', 'Quick'], ['voice', 'Voice'], ['type', 'Type']].map(([m, l]) => `<button type="button" data-mode="${m}" aria-pressed="${st.mode === m}">${l}</button>`).join('')}</div>
-      <div class="seg" style="margin-bottom:6px">${MEALS.map(([m, l]) => `<button type="button" data-meal="${m}" aria-pressed="${st.meal === m}">${l}</button>`).join('')}</div>
+      <div class="seg log-modes">${[['quick', 'hash', 'Number'], ['voice', 'mic', 'Say it'], ['type', 'keyboard', 'Type it']].map(([m, ic, l]) => `<button type="button" data-mode="${m}" aria-pressed="${st.mode === m}">${I(ic)}${l}</button>`).join('')}</div>
+      ${mealPills(st.meal)}
       ${st.mode === 'quick' ? `
-        <div class="amount"><div class="n ${st.amount ? '' : 'empty'}" id="amt">${st.amount ? fmt(+st.amount) : '0'}</div><div class="u">calories</div></div>
-        <input class="field" id="qname" placeholder="What was it? (optional)" value="${esc(st.name)}" style="text-align:center;background:transparent;height:36px" autocomplete="off">
-        ${recent.length ? `<div class="chips" style="justify-content:center;margin-top:8px">${recent.map(n => `<button class="chip fill" type="button" data-amt="${n}">${fmt(n)}</button>`).join('')}</div>` : ''}
-        <div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" data-key="${n}">${n}</button>`).join('')}<button type="button" data-key="00">00</button><button type="button" data-key="0">0</button><button type="button" data-key="del" aria-label="Delete">${I('delete')}</button></div>
-        <button class="btn" type="button" data-act="addquick" ${+st.amount > 0 ? '' : 'disabled'}>${+st.amount > 0 ? `Add ${fmt(+st.amount)} cal` : 'Enter calories'}</button>
-        ${usual.length ? `<div class="footnote" style="margin:16px 4px 6px">YOUR USUALS</div><div class="chips">${usual.map((u, i) => `<button class="chip" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')}</div>` : ''}`
+        <div class="log-quick">
+          <div class="amount"><div class="n ${st.amount ? '' : 'empty'}" id="amt">${st.amount ? fmt(+st.amount) : '0'}</div><div class="u">calories</div></div>
+          <input class="name-input" id="qname" placeholder="Name it (optional)" value="${esc(st.name)}" autocomplete="off" aria-label="Food name, optional">
+          ${quickChips ? `<div class="chips center">${quickChips}</div>` : ''}
+          <div class="grow-space"></div>
+          <div class="keypad">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<button type="button" data-key="${n}">${n}</button>`).join('')}<button type="button" data-key="00">00</button><button type="button" data-key="0">0</button><button type="button" data-key="del" aria-label="Delete">${I('delete')}</button></div>
+          <button class="btn" type="button" data-act="addquick" ${+st.amount > 0 ? '' : 'disabled'}>${+st.amount > 0 ? `Add ${fmt(+st.amount)} cal` : 'Type calories'}</button>
+        </div>`
       : st.mode === 'voice' ? `
         <button class="mic-orb ${st.listening ? 'on' : ''}" type="button" data-act="listen" aria-label="${st.listening ? 'Stop listening' : 'Start listening'}">${I('mic')}</button>
-        <div class="transcript ${st.transcript ? '' : 'hint'}" aria-live="polite">${st.transcript ? '“' + esc(st.transcript) + '”' : st.listening ? 'Listening…' : 'Tap and say what you ate.<br><span style="font-size:14px">“Two eggs, toast and an orange juice” · “Chipotle bowl 900”</span>'}</div>
+        <div class="transcript ${st.transcript ? '' : 'hint'}" aria-live="polite">${st.transcript ? '“' + esc(st.transcript) + '”' : st.listening ? 'Listening…' : 'Tap and say what you ate<br><span style="font-size:14px">“Two eggs and toast” · “Burrito 750”</span>'}</div>
         ${st.voiceErr ? `<div class="banner">${I('info')}<span>${st.voiceErr}</span></div>` : ''}
         ${itemsHTML()}`
       : `
-        <textarea class="field" id="ltext" placeholder="e.g. 2 eggs, toast and orange juice\nor: burrito 750" aria-label="What did you eat?" style="margin-top:8px">${esc(st.text)}</textarea>
-        <div class="footnote" style="margin:6px 4px 0">Works offline for ${window.BW_FOODS.length}+ common foods. Add a number like “burrito 750” to set calories yourself.</div>
+        <textarea class="field" id="ltext" placeholder="2 eggs, toast and orange juice" aria-label="What did you eat?" style="margin-top:4px">${esc(st.text)}</textarea>
+        <div class="footnote" style="margin:6px 4px 0">Knows ${window.BW_FOODS.length}+ foods, even offline. Add a number like “burrito 750” to set the calories yourself.</div>
         <div id="typedItems">${itemsHTML()}</div>`}
       `;
     }
@@ -542,12 +554,12 @@
       body.onclick = e => {
         const b = e.target.closest('button'); if (!b) return;
         if (b.dataset.mode) { st.mode = b.dataset.mode; LS.set('logMode', st.mode); st.items = []; st.transcript = ''; st.voiceErr = ''; try { rec && rec.abort(); } catch {} st.listening = false; entry.redraw(); if (st.mode === 'type') setTimeout(() => $('#ltext')?.focus(), 50); if (st.mode === 'voice') listen(); return; }
-        if (b.dataset.meal) { st.meal = b.dataset.meal; $$('[data-meal]', body).forEach(x => x.setAttribute('aria-pressed', x === b)); haptic(5); return; }
+        if (b.dataset.meal) { st.meal = b.dataset.meal; $$('[data-meal]', body).forEach(x => { x.setAttribute('aria-pressed', x === b); x.setAttribute('aria-checked', x === b); }); haptic(5); return; }
         if (b.dataset.key) {
           haptic(5);
           if (b.dataset.key === 'del') st.amount = st.amount.slice(0, -1); else if ((st.amount + b.dataset.key).length <= 5) st.amount = (st.amount + b.dataset.key).replace(/^0+/, '');
           $('#amt').textContent = st.amount ? fmt(+st.amount) : '0'; $('#amt').classList.toggle('empty', !st.amount);
-          const add = $('[data-act="addquick"]', body); add.disabled = !(+st.amount > 0); add.textContent = +st.amount > 0 ? `Add ${fmt(+st.amount)} cal` : 'Enter calories';
+          const add = $('[data-act="addquick"]', body); add.disabled = !(+st.amount > 0); add.textContent = +st.amount > 0 ? `Add ${fmt(+st.amount)} cal` : 'Type calories';
           return;
         }
         if (b.dataset.amt) { st.amount = b.dataset.amt; entry.redraw(); return; }
@@ -617,6 +629,15 @@
       } catch (e) { st.listening = false; st.voiceErr = 'Couldn’t start the mic: ' + esc(e.message); entry.redraw(); }
     }
     function stop() { try { rec && rec.stop(); } catch {} }
+    // physical keyboard (Mac / iPad keyboard): type digits straight into the amount, Enter adds
+    const keys = e => {
+      if (st.mode !== 'quick' || e.metaKey || e.ctrlKey || e.target.id === 'qname' || !document.body.contains(entry.body || document.body)) return;
+      const k = e.key, pad = k === 'Backspace' ? 'del' : /^[0-9]$/.test(k) ? k : null;
+      if (pad) { e.preventDefault(); $(`.sheet.show [data-key="${pad}"]`)?.click(); }
+      else if (k === 'Enter' && +st.amount > 0) { e.preventDefault(); $('.sheet.show [data-act="addquick"]')?.click(); }
+    };
+    document.addEventListener('keydown', keys);
+    const prevClose = entry.close; entry.close = () => { document.removeEventListener('keydown', keys); prevClose(); };
     if (mode === 'voice' && !text) setTimeout(listen, 350);
     if (mode === 'type') setTimeout(() => $('#ltext')?.focus(), 400);
   }
@@ -630,20 +651,26 @@
   // ---------- other sheets ----------
   function editEntry(id) {
     const e = BW.get(id); if (!e) return;
-    const st = { ...e };
+    const st = { meal: e.meal };
     openSheet({
-      title: 'Edit food', right: 'Save',
-      body: `<div class="group"><div class="row"><span class="grow">Name</span><input class="inline-input" id="en" value="${esc(e.name)}" style="width:60%"></div><div class="row"><span class="grow">Calories</span><input class="inline-input num" id="ec" inputmode="numeric" value="${e.calories}"></div></div>
-        <div class="footnote" style="margin:18px 16px 6px">MEAL</div><div class="seg">${MEALS.map(([m, l]) => `<button type="button" data-m="${m}" aria-pressed="${e.meal === m}">${l}</button>`).join('')}</div>
-        <button class="btn danger" type="button" id="edel" style="margin-top:22px">${I('trash')} Delete</button>`,
+      title: 'Edit food', left: 'Cancel',
+      body: `<div class="edit-amount"><input id="ec" class="num" inputmode="numeric" value="${e.calories}" aria-label="Calories"><span>calories</span></div>
+        <input class="name-input" id="en" value="${esc(e.name)}" placeholder="Name" aria-label="Food name">
+        ${mealPills(e.meal, 'data-m')}
+        <div class="caption" style="text-align:center;margin-top:10px">Logged ${new Date(e.time).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}</div>
+        <button class="btn" type="button" id="esave" style="margin-top:22px">Save</button>
+        <button class="btn danger" type="button" id="edel" style="margin-top:10px">${I('trash')} Delete</button>`,
       mount: (b, close) => {
-        b.onclick = ev => { const m = ev.target.closest('[data-m]'); if (m) { st.meal = m.dataset.m; $$('[data-m]', b).forEach(x => x.setAttribute('aria-pressed', x === m)); } };
+        b.onclick = ev => { const m = ev.target.closest('[data-m]'); if (m) { st.meal = m.dataset.m; $$('[data-m]', b).forEach(x => { x.setAttribute('aria-pressed', x === m); x.setAttribute('aria-checked', x === m); }); haptic(5); } };
+        const save = () => { BW.put({ ...BW.get(id), name: $('#en').value.trim() || 'Quick add', calories: Math.max(0, parseInt($('#ec').value, 10) || 0), meal: st.meal }); close(); toast('Saved'); };
+        $('#esave', b).onclick = save;
+        $('#ec', b).onkeydown = ev => { if (ev.key === 'Enter') save(); };
+        $('#en', b).onkeydown = ev => { if (ev.key === 'Enter') save(); };
         $('#edel', b).onclick = () => { close(); delEntry(id); };
       },
-      onRight: close => { BW.put({ ...BW.get(id), name: $('#en').value.trim() || 'Quick add', calories: Math.max(0, parseInt($('#ec').value, 10) || 0), meal: st.meal }); close(); toast('Saved'); },
     });
   }
-  function delEntry(id) { const e = BW.get(id); BW.remove(id); haptic(10); toast(`Deleted ${e.name}`, { icon: 'trash', undo: () => BW.put({ ...e, deleted: false }) }); }
+  function delEntry(id) { const e = BW.get(id); if (!e) return; const el = $(`.swipe[data-key="${id}"]`); if (el && !matchMedia('(prefers-reduced-motion: reduce)').matches) { el.style.height = el.offsetHeight + 'px'; el.classList.add('row-out'); requestAnimationFrame(() => { el.style.height = '0px'; }); setTimeout(() => BW.remove(id), 230); } else BW.remove(id); haptic(10); toast(`Deleted ${e.name}`, { icon: 'trash', undo: () => BW.put({ ...e, deleted: false }) }); }
 
   function numberSheet({ title, label, value, unit, step = 1, min = 0, max = 99999, decimals = 0, onSave, footer = '' }) {
     let v = value;
@@ -775,15 +802,34 @@
       body: `<div style="text-align:center;margin:4px 0 18px"><div class="icon-sq" style="background:#00B0B9;width:64px;height:64px;border-radius:17px;margin:0 auto 12px">${I('watch', 'style="width:34px;height:34px"')}</div>
         <div style="font-size:22px;font-weight:700">${linked ? 'Fitbit is connected' : 'Connect Fitbit'}</div>
         <div class="muted" style="font-size:15px;margin:6px 8px 0">${linked ? `Steps sync on their own every time you open BiteWise. Last sync ${ago(LS.get('healthPulled', 0))}.` : 'Your steps show up on the home screen by themselves. Walking more can earn you extra calories.'}</div></div>
-        ${linked ? `<button class="btn" type="button" id="fp">${I('sync')} Sync now</button><button class="btn danger" type="button" id="fd" style="margin-top:10px">Disconnect</button>`
+        ${linked ? `<button class="btn" type="button" id="fp">${I('sync')} Sync now</button><button class="btn gray" type="button" id="ft" style="margin-top:10px">Test Fitbit sync</button><button class="btn danger" type="button" id="fd" style="margin-top:10px">Disconnect</button>`
           : ready ? `<div class="group" style="margin-bottom:16px">${[['1', 'Tap Connect'], ['2', 'Sign in with the Google account your Fitbit uses'], ['3', 'Tap Allow. You’ll come right back here.']].map(([n, t]) => `<div class="row"><span class="step-n">${n}</span><div class="grow"><div class="title" style="white-space:normal;font-size:16px">${t}</div></div></div>`).join('')}</div><button class="btn" type="button" id="fc" style="background:#00B0B9">Connect</button><div class="footnote" style="text-align:center">Fitbit data now comes through Google Health. BiteWise only reads your steps and weight.</div>`
           : `<div class="banner">${I('info')}<span>Fitbit sync needs a one-time setup on the BiteWise server before anyone can connect. Until then, add steps by hand from the Steps card.</span></div>`}`,
       mount: (b, close) => {
         $('#fp', b) && ($('#fp', b).onclick = async () => { close(); await autoHealth(true); });
         $('#fd', b) && ($('#fd', b).onclick = async () => { try { await BW.api('health/disconnect'); } catch {} LS.set('healthLinked', false); close(); render(); toast('Fitbit disconnected'); });
         $('#fc', b) && ($('#fc', b).onclick = () => { close(); connectHealth(); });
+        $('#ft', b) && ($('#ft', b).onclick = () => { close(); healthTest(); });
       },
     });
+  }
+
+  // Test screen: shows exactly what Google Health returns for the last 7 days, so a real Fitbit can be checked.
+  function healthTest() {
+    openSheet({ title: 'Fitbit test', left: 'Done', tall: true, body: '<div class="muted" style="text-align:center;padding:30px 0">Asking Google Health for your last 7 days…</div>', mount: async b => {
+      const today = BW.dayKey();
+      try {
+        const j = await BW.api('health/test', { start: BW.addDays(today, -6), end: BW.addDays(today, 1) });
+        if (!j.connected) { b.innerHTML = `<div class="banner">${I('info')}<span>Fitbit isn't connected yet. Tap Connect Fitbit first.</span></div>`; return; }
+        const ok = !j.error, max = Math.max(1, ...j.steps.map(s => s.steps));
+        b.innerHTML = `<div class="banner ${ok ? 'info' : ''}">${I(ok ? 'check' : 'info')}<span>${ok ? `It works. Google sent <b>${j.steps.length} days</b> of steps.` : 'Google Health answered with an error: <b>' + esc(j.error) + '</b>'}</span></div>
+          ${ok ? `<div class="group">${j.steps.map(s => `<div class="row"><div class="grow"><div class="title">${esc(dayLabel(s.date) === 'Today' || dayLabel(s.date) === 'Yesterday' ? dayLabel(s.date) : BW.parseDay(s.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }))}</div><div class="bar" style="margin-top:6px"><i style="width:${s.steps / max * 100}%;background:var(--pink)"></i></div></div><span class="value num" style="color:var(--label);font-weight:600">${fmt(s.steps)}</span></div>`).join('') || '<div class="row"><span class="muted">No days came back.</span></div>'}</div>
+          <button class="btn" type="button" id="tsave" style="margin-top:14px">Use these steps</button>` : ''}
+          <div class="footnote" style="margin:18px 4px 6px">WHAT GOOGLE SENT (for fixing problems)</div>
+          <pre style="background:var(--card);border-radius:12px;padding:12px;font-size:11px;overflow:auto;max-height:260px;white-space:pre-wrap;word-break:break-all;margin:0">${esc(JSON.stringify(j.raw, null, 1)).slice(0, 6000)}</pre>`;
+        $('#tsave', b) && ($('#tsave', b).onclick = async () => { await autoHealth(true); });
+      } catch (e) { b.innerHTML = `<div class="banner">${I('info')}<span>${esc(e.message)}</span></div>`; }
+    } });
   }
 
   function claimSheet() {
@@ -867,9 +913,9 @@
       const t = e.target.closest('button, [data-entry]'); if (!t) return;
       const d = t.dataset;
       if (d.day) { S.date = d.day; render(); haptic(5); return; }
-      if (d.shift) { const nd = BW.addDays(S.date, +d.shift); if (nd <= BW.dayKey()) { S.date = nd; render(); haptic(5); } return; }
-      if (d.quick) { const en = BW.addEntry({ date: S.date, calories: +d.quick, source: 'quick' }); haptic(12); toast(`Added ${d.quick} cal to ${cap(en.meal)}`, { undo: () => BW.remove(en.id) }); return; }
-      if (d.usual) { const u = BW.frequent()[+d.usual]; const en = BW.addEntry({ date: S.date, name: u.name, calories: u.calories, source: 'quick' }); haptic(12); toast(`${u.name} · ${u.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
+      if (d.shift) { const nd = BW.addDays(S.date, +d.shift); if (nd <= BW.dayKey()) { S.date = nd; S.qmeal = null; render(); haptic(5); } return; }
+      if (d.quick) { const en = BW.addEntry({ date: S.date, meal: qMeal(), calories: +d.quick, source: 'quick' }); haptic(12); toast(`Added ${d.quick} cal to ${cap(en.meal)}`, { undo: () => BW.remove(en.id) }); return; }
+      if (d.usual) { const u = BW.frequent()[+d.usual]; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: u.name, calories: u.calories, source: 'quick' }); haptic(12); toast(`${u.name} · ${u.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
       if (d.entry) { if (t.closest('.swipe')?.classList.contains('open')) { closeSwipes(); return; } editEntry(d.entry); return; }
       if (d.del) { delEntry(d.del); return; }
       if (d.addmeal) return openLog({ meal: d.addmeal });
@@ -887,6 +933,7 @@
         case 'streak': { const s = BW.streak(); return openSheet({ title: 'Streak', left: 'Done', body: `<div class="celebrate"><div class="med" style="background:var(--orange)">${I('flame')}</div><div style="font-size:44px;font-weight:800" class="num">${s.days} day${s.days === 1 ? '' : 's'}</div><div class="muted" style="margin:6px 10px 14px">${s.loggedToday ? 'You logged today. See you tomorrow!' : 'Log anything today to keep it going.'}</div></div><div class="group"><div class="row"><span class="grow">Best streak</span><span class="value num">${s.best} days</span></div><div class="row"><span class="grow">Streak freezes</span><span class="value num">${s.freezes} / 2</span></div></div><div class="footnote">Every 7 days in a row earns a freeze. It saves your streak if you miss a day.</div>` }); }
         case 'steps': return stepsSheet();
         case 'calinfo': return calSheet();
+        case 'cyclemeal': { const order = MEALS.map(x => x[0]); S.qmeal = order[(order.indexOf(qMeal()) + 1) % 4]; $('#qhint').innerHTML = qHint(); haptic(5); return; }
         case 'hidefitbit': LS.set('hideFitbitCard', true); render(); return;
         case 'badges': return badgesSheet();
         case 'claim': return claimSheet();
@@ -928,12 +975,12 @@
         const date = S.date;
         if (/^\d+$/.test(v)) {
           const n = +v; if (n <= 0 || n > 9999) return toast('Enter between 1 and 9,999 calories', { icon: 'info' });
-          const en = BW.addEntry({ date, calories: n, source: 'quick' });
+          const en = BW.addEntry({ date, meal: qMeal(), calories: n, source: 'quick' });
           S.qdraft = ''; haptic(12); toast(`Added ${fmt(n)} cal to ${cap(en.meal)}`, { undo: () => BW.remove(en.id) });
         } else {
           const r = BW_PARSE.parseLog(v);
           if (r.allKnown && r.total > 0) {
-            const made = r.items.map(i => BW.addEntry({ date, meal: r.meal || undefined, name: i.name, calories: i.calories, source: 'text' }));
+            const made = r.items.map(i => BW.addEntry({ date, meal: r.meal || qMeal(), name: i.name, calories: i.calories, source: 'text' }));
             S.qdraft = ''; haptic(12); toast(`${made.length > 1 ? made.length + ' items' : made[0].name} · ${fmt(r.total)} cal`, { undo: () => made.forEach(m => BW.remove(m.id)) });
           } else { S.qdraft = ''; openLog({ mode: 'type', text: v }); }
         }

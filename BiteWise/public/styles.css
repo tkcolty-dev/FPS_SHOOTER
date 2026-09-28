@@ -483,3 +483,59 @@ textarea.field { height: auto; min-height: 96px; padding: 12px; resize: none; li
 .toast.show { transform: translate(-50%, 0); }
 .minibar.show ~ .toast { top: auto; }
 @media (min-width: 1024px) { .toast { bottom: 28px; left: calc(50% + 125px); } }
+
+/* ================= v3 polish ================= */
+/* toasts go to the top while a sheet is open so they never cover sheet buttons */
+body.sheet-open .toast { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 12px); transform: translate(-50%, -160%); }
+body.sheet-open .toast.show { transform: translate(-50%, 0); }
+
+/* meal pills */
+.meal-pills { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 12px 0 4px; }
+.meal-pills button { display: inline-flex; align-items: center; gap: 5px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--fill); color: var(--label2); transition: background .18s, color .18s, transform .12s; }
+.meal-pills button svg { width: 15px; height: 15px; }
+.meal-pills button[aria-pressed="true"] { background: color-mix(in srgb, var(--mc) 16%, var(--card)); color: var(--mc); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--mc) 45%, transparent); }
+.meal-pills button:active { transform: scale(.95); }
+
+/* log sheet: keypad sits low where thumbs are */
+.sheet-body.log-body { display: flex; flex-direction: column; flex: 1; }
+.log-modes button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; font-size: 14px; }
+.log-modes button svg { width: 16px; height: 16px; }
+.log-quick { display: flex; flex-direction: column; flex: 1; }
+.log-quick .amount { padding-top: 14px; }
+.name-input { display: block; width: 100%; border: 0; background: transparent; text-align: center; font-size: 17px; padding: 6px 0; color: var(--label); }
+.name-input::placeholder { color: var(--label3); }
+.name-input:focus { outline: none; }
+.chips.center { justify-content: center; flex-wrap: wrap; overflow: visible; margin-top: 6px; }
+.grow-space { flex: 1; min-height: 8px; }
+.log-quick .keypad { margin: 10px 0 12px; }
+
+/* edit food */
+.edit-amount { display: flex; flex-direction: column; align-items: center; padding: 10px 0 2px; }
+.edit-amount input { width: 100%; text-align: center; border: 0; background: transparent; font: 700 60px/1.05 var(--round); letter-spacing: -1.5px; color: var(--label); padding: 0; }
+.edit-amount input:focus { outline: none; }
+.edit-amount span { color: var(--label2); font-weight: 600; font-size: 15px; }
+.edit-amount:focus-within span { color: var(--accent); }
+
+/* quick-log hint with tappable meal */
+.qhint { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.meal-link { display: inline-flex; align-items: center; gap: 4px; color: var(--mc); font-weight: 600; font-size: 13px; padding: 2px 8px 2px 6px; border-radius: 999px; background: color-mix(in srgb, var(--mc) 12%, transparent); }
+.meal-link svg { width: 13px; height: 13px; }
+.meal-link::after { content: "▾"; font-size: 10px; opacity: .7; }
+
+/* food rows: meal icon, slide in when added, collapse when deleted */
+.meal-ic { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--mc); background: color-mix(in srgb, var(--mc) 14%, transparent); flex: none; }
+.meal-ic svg { width: 16px; height: 16px; }
+.food-list .swipe { animation: rowin .32s cubic-bezier(.2,.9,.25,1); }
+@keyframes rowin { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.swipe.row-out { overflow: hidden; transition: height .22s ease, opacity .18s ease; opacity: 0; }
+.meal-pills { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 12px 0 4px; }
+.meal-pills button { flex-direction: column; justify-content: center; gap: 3px; height: 52px; padding: 0 4px; border-radius: 12px; font-size: 12px; min-width: 0; }
+.meal-pills button svg { width: 18px; height: 18px; }
+@media (min-width: 768px) { .meal-pills button { height: 56px; font-size: 13px; } }
+body[data-tab="coach"]:not(.sheet-open) .toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 136px); }
+@media (min-width: 1024px) { body[data-tab="coach"]:not(.sheet-open) .toast { bottom: 84px; } }
+@media (min-width: 768px) {
+  .log-quick .keypad button { height: 52px; font-size: 24px; }
+  .log-quick .amount { padding-top: 4px; }
+  .log-quick .amount .n { font-size: 56px; min-height: 56px; }
+}
