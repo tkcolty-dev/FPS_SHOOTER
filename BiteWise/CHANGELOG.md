@@ -19,7 +19,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 1. Bump `version` and add an entry at the top of `history` in `public/version.json`.
 2. Set `APP_VERSION` in `public/app.js` to the same number, and bump `VERSION` in `public/sw.js`.
 3. `npm test`. Everything must pass.
-4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and `cf push`.
+4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
+
+## 1.5.3 · No more 503 on reload
+_2026-09-27 · git tag `v1.5.3`_
+
+- Fixed: Reloading during an update or server restart no longer shows a 503 error. The app uses its saved copy instead.
+- Changed: BiteWise now runs two copies on the server and updates without downtime.
 
 ## 1.5.2 · New This week card
 _2026-09-27 · git tag `v1.5.2`_

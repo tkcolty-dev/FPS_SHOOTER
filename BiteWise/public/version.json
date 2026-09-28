@@ -1,7 +1,16 @@
 {
-  "version": "1.5.2",
+  "version": "1.5.3",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.5.3",
+      "date": "2026-09-27",
+      "title": "No more 503 on reload",
+      "changes": [
+        "Fixed: Reloading during an update or server restart no longer shows a 503 error. The app uses its saved copy instead.",
+        "Changed: BiteWise now runs two copies on the server and updates without downtime."
+      ]
+    },
     {
       "version": "1.5.2",
       "date": "2026-09-27",

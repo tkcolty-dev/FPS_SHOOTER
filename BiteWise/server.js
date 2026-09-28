@@ -116,5 +116,9 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: 0, etag: true }
 app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 store.init().then(() => {
-  app.listen(PORT, () => console.log(`BiteWise on http://localhost:${PORT}  (storage: ${store.name}, ai: ${ai.BACKEND}, fitbit via google health: ${health.configured() ? 'on' : 'not set up'})`));
+  const server = app.listen(PORT, () => console.log(`BiteWise on http://localhost:${PORT}  (storage: ${store.name}, ai: ${ai.BACKEND}, fitbit via google health: ${health.configured() ? 'on' : 'not set up'})`));
+  // Cloud Foundry sends SIGTERM when it restarts or moves the app: finish requests in progress, then exit
+  // (the other running copy keeps serving, so nobody sees an error)
+  const stop = () => { console.log('stopping: finishing open requests'); server.close(() => process.exit(0)); setTimeout(() => process.exit(0), 8000).unref(); };
+  process.on('SIGTERM', stop); process.on('SIGINT', stop);
 }).catch(e => { console.error('storage init failed:', e); process.exit(1); });

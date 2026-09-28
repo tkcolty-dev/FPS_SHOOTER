@@ -14,16 +14,15 @@ const SCOPES = [
 const configured = () => !!(CLIENT_ID && CLIENT_SECRET);
 
 module.exports = function mountHealth(app, { store, needUser, limit, origin }) {
-  const pending = new Map(); // state -> { uid, verifier, at }
+  // sign-in state lives in the database so any running copy of the server can finish the sign-in
   const redirectUri = req => origin(req) + '/api/health/callback';
 
   // The app POSTs here (keeps the session token out of URLs), then navigates to the returned Google URL.
-  app.post('/api/health/start', needUser, (req, res) => {
+  app.post('/api/health/start', needUser, async (req, res) => {
     if (!configured()) return res.status(501).json({ error: 'Fitbit sync isn’t set up on this server yet.' });
-    for (const [k, v] of pending) if (Date.now() - v.at > 15 * 60e3) pending.delete(k);
     const verifier = crypto.randomBytes(48).toString('base64url');
     const state = crypto.randomBytes(16).toString('hex');
-    pending.set(state, { uid: req.uid, verifier, at: Date.now() });
+    await store.kvSet('oauth:' + state, { uid: req.uid, verifier, at: Date.now() });
     const u = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     u.search = new URLSearchParams({
       client_id: CLIENT_ID, redirect_uri: redirectUri(req), response_type: 'code', scope: SCOPES.join(' '),
@@ -44,7 +43,10 @@ module.exports = function mountHealth(app, { store, needUser, limit, origin }) {
   }
 
   app.get('/api/health/callback', async (req, res) => {
-    const state = String(req.query.state || ''), p = pending.get(state); pending.delete(state);
+    const state = String(req.query.state || '').replace(/[^a-f0-9]/g, '').slice(0, 64);
+    let p = state ? await store.kvGet('oauth:' + state) : null;
+    if (state) await store.kvDel('oauth:' + state);
+    if (p && Date.now() - p.at > 15 * 60e3) p = null;
     if (req.query.error) return res.redirect('/#me?health=' + (req.query.error === 'access_denied' ? 'denied' : 'error'));
     if (!p || !req.query.code) return res.redirect('/#me?health=error');
     try {
