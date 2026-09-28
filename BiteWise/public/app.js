@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.4.0';
+  const APP_VERSION = '1.4.1';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -1122,6 +1122,12 @@
     });
   }
 
+  // what the "Set my own number" box can go down to, said plainly
+  function ownNote(g, typed) {
+    const low = typed != null && typed > 0 && typed < g.floor;
+    const why = g.teen ? 'because you\u2019re under 18, BiteWise keeps you close to what you burn (' + fmt(g.tdee) + ') so you have fuel to grow' : 'the safety minimum';
+    return low ? `<b>${fmt(typed)} is too low.</b> The lowest you can set is <b>${fmt(g.floor)}</b>, ${why}.` : `Lowest you can set: ${fmt(g.floor)}${g.teen ? ' (under 18)' : ''}`;
+  }
   function goalsSheet() {
     const p = { ...BW.profile() };
     p.goalType ||= p.pace > 0 ? 'lose' : 'maintain';
@@ -1149,7 +1155,8 @@
 
             <div class="group" style="margin-top:16px">
               <div class="row"><div class="grow"><div class="title">Set my own number</div><div class="sub">Type any daily calorie goal instead</div></div><button class="switch" type="button" role="switch" aria-checked="${own}" data-own aria-label="Set my own number"></button></div>
-              ${own ? `<div class="row"><button class="stepbtn" type="button" data-cb="-50" aria-label="50 less">−</button><input class="own-input num" id="g_cb" inputmode="numeric" value="${p.customBudget}" aria-label="Daily calories"><button class="stepbtn" type="button" data-cb="50" aria-label="50 more">+</button></div>` : ''}
+              ${own ? `<div class="row"><button class="stepbtn" type="button" data-cb="-50" aria-label="50 less" ${p.customBudget <= g.floor ? 'disabled' : ''}>−</button><input class="own-input num" id="g_cb" inputmode="numeric" value="${p.customBudget}" aria-label="Daily calories"><button class="stepbtn" type="button" data-cb="50" aria-label="50 more">+</button></div>
+              <div class="own-note" id="g_note">${ownNote(g)}</div>` : ''}
             </div>
 
             <div class="footnote" style="margin:22px 16px 6px">ABOUT YOU · USED FOR THE MATH</div>
@@ -1168,10 +1175,15 @@
         const refresh = () => { const el = $('#gsum', b); if (el) el.innerHTML = summary(); };
         const save = () => {
           if (p.age < 5 || p.age > 110 || p.heightIn < 36 || p.weightLb < 50) return toast('Check your age, height and weight', { icon: 'info' });
-          if (p.customBudget && (p.customBudget < 800 || p.customBudget > 6000)) return toast('Pick a number between 800 and 6,000', { icon: 'info' });
-          BW.saveProfile({ ...p }); haptic(12); close(); toast(`Goal saved · ${fmt(BW.goals().budget)} cal a day`);
+          if (p.customBudget && p.customBudget > 6000) return toast('Pick a number up to 6,000', { icon: 'info' });
+          let raised = snapped && !!p.customBudget;
+          if (p.customBudget) { const fl = BW.goals(p).floor; if (p.customBudget < fl) { p.customBudget = fl; raised = true; } }
+          BW.saveProfile({ ...p }); haptic(12); close();
+          toast(raised ? `Set to ${fmt(p.customBudget)}, the lowest allowed for you` : `Goal saved · ${fmt(BW.goals().budget)} cal a day`, { icon: raised ? 'info' : 'check' });
         };
         draw();
+        let snapped = false;
+        b.addEventListener('focusout', e => { if (e.target.id !== 'g_cb' || !p.customBudget) return; const fl = BW.goals(p).floor; if (p.customBudget < fl) { p.customBudget = fl; e.target.value = fl; snapped = true; const note = $('#g_note', b); if (note) { note.innerHTML = ownNote(BW.goals(p)); note.classList.remove('warn'); } refresh(); haptic(10); } });
         b.oninput = e => {
           const t = e.target, n = parseFloat(t.value);
           if (t.id === 'g_name') p.name = t.value;
@@ -1179,7 +1191,7 @@
           if (t.id === 'g_ft' || t.id === 'g_in') p.heightIn = (parseInt($('#g_ft').value) || 0) * 12 + (parseInt($('#g_in').value) || 0);
           if (t.id === 'g_w' && n > 0) p.weightLb = n;
           if (t.id === 'g_goal' && n > 0) p.goalLb = n;
-          if (t.id === 'g_cb' && n > 0) p.customBudget = Math.round(n);
+          if (t.id === 'g_cb') { if (n > 0) p.customBudget = Math.round(n); const g2 = BW.goals(p), note = $('#g_note', b); if (note) { note.innerHTML = ownNote(g2, n); note.classList.toggle('warn', n > 0 && n < g2.floor); } }
           refresh();
         };
         b.onclick = e => {
@@ -1189,12 +1201,12 @@
           else if (d.pace) p.pace = +d.pace;
           else if (d.gain) p.gainPace = +d.gain;
           else if ('own' in d) p.customBudget = p.customBudget ? null : BW.goals(p).budget;
-          else if (d.cb) p.customBudget = Math.max(800, Math.min(6000, (p.customBudget || BW.goals(p).budget) + +d.cb));
+          else if (d.cb) p.customBudget = Math.max(BW.goals(p).floor, Math.min(6000, (p.customBudget || BW.goals(p).budget) + +d.cb));
           else if (d.sex) p.sex = d.sex;
           else if (d.act2) p.activity = +d.act2;
           else return;
           haptic(5);
-          if (d.cb) { $('#g_cb', b).value = p.customBudget; refresh(); } else draw();
+          if (d.cb) { $('#g_cb', b).value = p.customBudget; const g2 = BW.goals(p); const minus = $('[data-cb="-50"]', b); if (minus) minus.disabled = p.customBudget <= g2.floor; const note = $('#g_note', b); if (note) { note.innerHTML = ownNote(g2); note.classList.remove('warn'); } refresh(); } else draw();
         };
       },
     });

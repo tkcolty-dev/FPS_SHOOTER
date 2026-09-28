@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and `cf push`.
 
+## 1.4.1 · Setting your own number
+_2026-09-27 · git tag `v1.4.1`_
+
+- Fixed: 'Set my own number' no longer quietly ignores numbers below your minimum. It tells you the lowest you can set and why.
+- Fixed: Me and Today always show the goal that's actually being used.
+- Changed: The − button stops at your minimum.
+
 ## 1.4.0 · Groups, 5,000+ foods and allergies
 _2026-09-27 · git tag `v1.4.0`_
 

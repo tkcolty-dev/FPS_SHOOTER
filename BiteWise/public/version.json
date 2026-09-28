@@ -1,7 +1,17 @@
 {
-  "version": "1.4.0",
+  "version": "1.4.1",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.4.1",
+      "date": "2026-09-27",
+      "title": "Setting your own number",
+      "changes": [
+        "Fixed: 'Set my own number' no longer quietly ignores numbers below your minimum. It tells you the lowest you can set and why.",
+        "Fixed: Me and Today always show the goal that's actually being used.",
+        "Changed: The − button stops at your minimum."
+      ]
+    },
     {
       "version": "1.4.0",
       "date": "2026-09-27",

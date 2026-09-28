@@ -658,3 +658,7 @@ a.btn { text-decoration: none; }
 .wbar.sel .wtrack { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fs-row .grow { flex: 1; min-width: 0; }
 body[data-tab="coach"][data-cview="recipes"]:not(.sheet-open) .toast { bottom: calc(env(safe-area-inset-bottom, 0px) + 78px); }
+.own-note { font-size: 13px; color: var(--label2); padding: 0 16px 12px; line-height: 1.4; text-align: center; }
+.own-note.warn { color: var(--orange); }
+.own-note.warn b { color: var(--orange); }
+.stepbtn:disabled { opacity: .3; }
