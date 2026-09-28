@@ -1,7 +1,21 @@
 {
-  "version": "1.8.0",
+  "version": "1.9.0",
   "date": "2026-09-27",
   "history": [
+    {
+      "version": "1.9.0",
+      "date": "2026-09-28",
+      "title": "New look, number pad and saved meals",
+      "changes": [
+        "New: A new BiteWise logo that takes on your theme's colors, including the browser tab icon.",
+        "New: Themes look better, with a live preview, a soft tint of your color in the background, and gradient buttons.",
+        "New: On phones, the calorie box opens BiteWise's own number pad, so the keyboard never covers anything. ABC switches to the regular keyboard.",
+        "New: Voice typing. A mic in Bitey's message box and in Type.",
+        "New: Saved meals. Save foods you eat together and log them in one tap. Plus 'Same as yesterday'.",
+        "Fixed: The message box and pop-ups stay above the phone keyboard.",
+        "Fixed: Bitey says hi back, gives estimates when a place doesn't post calories, and no longer shows 'The string did not match the expected pattern'. There's a Try again button."
+      ]
+    },
     {
       "version": "1.8.0",
       "date": "2026-09-28",

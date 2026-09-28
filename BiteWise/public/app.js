@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.8.0';
+  const APP_VERSION = '1.9.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -85,12 +85,34 @@
     { id: 'grape', name: 'Grape', color: '#8E5CF7', dark: '#A77BFF', level: 5 },
     { id: 'gold', name: 'Gold', color: '#D99A00', dark: '#FFC53D', level: 7 },
   ];
+  // ---------- logo: an apple with a bite, drawn in the current theme's colors ----------
+  const shade = (hex, amt) => { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const f = v => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt))); return '#' + [f(r), f(g), f(b)].map(x => x.toString(16).padStart(2, '0')).join(''); };
+  let logoN = 0;
+  function logoSVG(t = THEMES.find(x => x.id === BW.profile().theme) || THEMES[0], size = 96, rounded = true) {
+    const id = 'lg' + (++logoN), c1 = shade(t.color, .18), c2 = shade(t.color, -.28);
+    return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" aria-hidden="true"><defs><linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c1}"/><stop offset="1" stop-color="${c2}"/></linearGradient>
+      <mask id="${id}m"><rect width="100" height="100" fill="#fff"/><circle cx="80" cy="52" r="8.5" fill="#000"/><circle cx="78.5" cy="67" r="6.5" fill="#000"/></mask></defs>
+      <rect width="100" height="100" rx="${rounded ? 23 : 0}" fill="url(#${id}g)"/>
+      <circle cx="33" cy="30" r="40" fill="#fff" opacity=".10"/>
+      <path d="M29 24a7 7 0 0114 0v19.5A23 23 0 1129 66z M52 51a11 11 0 100 22 11 11 0 000-22z" fill="#fff" fill-rule="evenodd" mask="url(#${id}m)"/>
+      <path d="M43 22c3-9 12-12 19-8-3 8-11 11-19 8z" fill="#fff" opacity=".92"/>
+      </svg>`;
+  }
+  function setFavicon(t) {
+    const svg = logoSVG(t, 64).replace(/url\(#(lg\d+)g\)/, 'url(#$1g)');
+    let link = document.querySelector('link[rel="icon"]'); if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    link.type = 'image/svg+xml'; link.href = 'data:image/svg+xml,' + encodeURIComponent(svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" '));
+    const brand = document.querySelector('.side-brand'); if (brand) { const old = brand.querySelector('img, svg'); if (old) old.outerHTML = logoSVG(t, 32); }
+  }
+
   const darkMode = () => { const a = BW.profile().appearance; return a === 'dark' ? true : a === 'light' ? false : matchMedia('(prefers-color-scheme: dark)').matches; };
   function applyTheme() {
     const p = BW.profile(), t = THEMES.find(x => x.id === p.theme) || THEMES[0];
     const ap = p.appearance === 'dark' || p.appearance === 'light' ? p.appearance : null;
     if (ap) document.documentElement.dataset.theme = ap; else delete document.documentElement.dataset.theme;
     document.documentElement.style.setProperty('--accent', darkMode() ? t.dark : t.color);
+    document.documentElement.style.setProperty('--accent-2', shade(darkMode() ? t.dark : t.color, darkMode() ? -.22 : -.18));
+    if (S.lastLogo !== t.id) { S.lastLogo = t.id; setFavicon(t); }
     $('meta[name="theme-color"]')?.setAttribute('content', darkMode() ? '#000000' : '#F2F2F7');
   }
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
@@ -133,6 +155,7 @@
   // ---------- sheets ----------
   const sheets = [];
   function openSheet({ title = '', left = 'Cancel', right = '', onRight, body, mount, onClose, tall }) {
+    closePad();
     const scrim = document.createElement('div'); scrim.className = 'scrim';
     const sh = document.createElement('div'); sh.className = 'sheet'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-modal', 'true'); sh.setAttribute('aria-label', title || 'Sheet');
     if (tall) sh.style.height = 'calc(100% - env(safe-area-inset-top, 0px) - 18px)';
@@ -304,6 +327,31 @@
     </div>`;
   }
 
+  // ---------- saved meals (synced records) + "same as yesterday" ----------
+  const savedMeals = () => BW.all('meal').sort((a, b) => (b.used || 0) - (a.used || 0));
+  function logItems(items, { meal, source = 'quick', label } = {}) {
+    const made = items.map(it => BW.addEntry({ date: S.date, meal: meal || qMeal(), name: it.name, calories: it.calories, source, allergens: it.allergens }));
+    const total = items.reduce((a, i) => a + (+i.calories || 0), 0);
+    haptic(12); toast(`${label || (items.length > 1 ? items.length + ' items' : items[0].name)} · ${fmt(total)} cal`, { undo: () => made.forEach(m => BW.remove(m.id)) });
+  }
+  function saveMealSheet() {
+    const es = BW.day(S.date).entries; if (!es.length) return toast('Log some food first', { icon: 'info' });
+    const pick = new Set(es.filter(e => e.meal === qMeal()).map(e => e.id)); if (!pick.size) es.slice(-3).forEach(e => pick.add(e.id));
+    openSheet({ title: 'Save a meal', right: 'Save', body: `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">Pick the foods, name it, and log it all with one tap next time.</p>
+      <div class="group"><div class="row"><input class="field" id="smname" placeholder="Name, like “My usual breakfast”" style="background:transparent;padding:0" maxlength="40" value="My ${esc(MEALS.find(x => x[0] === qMeal())[1].replace('Snacks', 'snack').toLowerCase())}"></div></div>
+      <div class="group" style="margin-top:12px">${es.map(e => `<label class="check"><input type="checkbox" data-sm="${e.id}" ${pick.has(e.id) ? 'checked' : ''}><span style="flex:1">${esc(e.name)}</span><span class="pill num">${fmt(e.calories)}</span></label>`).join('')}</div>`,
+      mount: b => { b.onchange = e => { const id = e.target.dataset.sm; if (id) e.target.checked ? pick.add(id) : pick.delete(id); }; },
+      onRight: close => { const items = es.filter(e => pick.has(e.id)).map(e => ({ name: e.name, calories: e.calories, allergens: e.allergens })); if (!items.length) return toast('Pick at least one food', { icon: 'info' });
+        const name = $('#smname').value.trim() || 'My meal'; BW.put({ id: 'meal:' + BW.uid(), kind: 'meal', name, items, used: 0 }); close(); toast(`Saved “${name}” · ${fmt(items.reduce((a, i) => a + i.calories, 0))} cal`); } });
+  }
+  function savedMealsSheet() {
+    openSheet({ title: 'Saved meals', left: 'Done', body: '', mount: b => {
+      const draw = () => { const ms = savedMeals(); b.innerHTML = ms.length ? `<div class="group">${ms.map(m => `<div class="row"><div class="grow"><div class="title">${esc(m.name)}</div><div class="sub" style="white-space:normal">${m.items.map(i => esc(i.name)).join(', ')}</div></div><span class="value num">${fmt(m.items.reduce((a, i) => a + i.calories, 0))}</span><button class="x-close" type="button" data-delmeal="${m.id}" aria-label="Delete">${I('trash')}</button></div>`).join('')}</div><div class="footnote">Tap a saved meal on Today to log it. Make one from Today → Save a meal.</div>`
+        : `<div class="empty card"><b>No saved meals yet</b><span>On Today, tap “Save a meal” to save foods you often eat together.</span></div>`; };
+      draw(); b.onclick = e => { const d = e.target.closest('[data-delmeal]'); if (d) { BW.remove(d.dataset.delmeal); draw(); toast('Deleted'); } };
+    } });
+  }
+
   // "Fits your day": foods you eat often (then everyday staples) that fit in what's left, sized for the next meal
   const STAPLES = ['Greek yogurt', 'Apple', 'Banana', 'String cheese', 'Turkey sandwich', 'Grilled chicken', 'Side salad', 'Oatmeal', '2 eggs', 'Hummus', 'Almonds', 'Burrito bowl', 'Chicken wrap', 'Rice', 'Soup', 'Popcorn', 'Protein bar', 'Carrots', 'Grapes'];
   function fitsList(remaining, meal) {
@@ -331,8 +379,11 @@
     const over = d.remaining < 0, calPct = Math.min(100, d.eaten / d.budget * 100), stepPct = Math.min(100, d.steps / p.stepGoal * 100);
     const linked = !!LS.get('healthLinked', false), pulled = LS.get('healthPulled', 0), src = BW.stepSource(k);
     const usuals = BW.frequent().slice(0, 8);
-    const chips = usuals.length ? usuals.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
-      : [100, 200, 300, 500].map(n => `<button class="chip fill" type="button" data-quick="${n}">+${n}</button>`).join('');
+    const ydMeal = BW.day(BW.addDays(k, -1)).meals[qMeal()] || [];
+    const chips = savedMeals().slice(0, 3).map(m => `<button class="chip meal-chip" type="button" data-savedmeal="${m.id}">${I('fork')}${esc(m.name)} <span class="k num">${fmt(m.items.reduce((a, i) => a + i.calories, 0))}</span></button>`).join('')
+      + (ydMeal.length && !d.meals[qMeal()].length ? `<button class="chip meal-chip" type="button" data-yday="1">${I('sync')}Same as yesterday <span class="k num">${fmt(ydMeal.reduce((a, e) => a + e.calories, 0))}</span></button>` : '')
+      + (usuals.length ? usuals.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
+      : [100, 200, 300, 500].map(n => `<button class="chip fill" type="button" data-quick="${n}">+${n}</button>`).join(''));
     const stepLine = S.syncingSteps ? `<span class="sync-dot"></span>Syncing Fitbit…`
       : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : S.status.health ? 'Tap to connect Fitbit' : 'Tap to add steps';
     const es = d.entries.slice().sort((a, b) => b.time - a.time);
@@ -367,7 +418,7 @@
       </button>
       <div class="card t-log">
         <form class="qlog" id="qlogForm" autocomplete="off" style="margin-top:0">
-          <label class="qfield"><input id="qcal" inputmode="${finePointer ? 'text' : 'numeric'}" enterkeyhint="done" placeholder="Add calories" value="${esc(S.qdraft || '')}" aria-label="Add calories"><span class="u">cal</span></label>
+          <label class="qfield"><input id="qcal" inputmode="${finePointer ? 'text' : S.padLetters ? 'text' : 'none'}" enterkeyhint="done" placeholder="Add calories" value="${esc(S.qdraft || '')}" aria-label="Add calories" autocomplete="off"><span class="u">cal</span></label>
           <button class="qadd" type="submit" ${S.qdraft ? '' : 'disabled'} aria-label="Add">${I('plus')}</button>
           <button class="qicon" type="button" data-act="search" aria-label="Search foods">${I('search')}</button>
           <button class="qicon" type="button" data-act="voice" aria-label="Say what you ate">${I('mic')}</button>
@@ -377,7 +428,7 @@
       </div>
       <div class="t-food">
       ${!linked && isToday && !LS.get('hideFitbitCard', false) && S.status.health ? `<div class="card connect-card t-connect" style="margin-bottom:12px"><span class="icon-sq" style="background:#00B0B9">${I('watch')}</span><div class="grow"><b>Count your Fitbit steps</b><span>Connect once. Steps fill in on their own.</span></div><button class="btn small" type="button" data-act="fitbit">Connect</button><button class="x-close" type="button" data-act="hidefitbit" aria-label="Hide">${I('x')}</button></div>` : ''}
-        <div class="section-head food-head"><h2>${isToday ? 'Today’s food' : 'Food'}</h2>${es.length ? `<span class="caption num">${es.length} item${es.length > 1 ? 's' : ''} · ${finePointer ? 'click to edit' : 'swipe to delete'}</span>` : ''}</div>
+        <div class="section-head food-head"><h2>${isToday ? 'Today’s food' : 'Food'}</h2>${es.length ? `<button class="link-btn" type="button" data-act="savemeal" style="font-size:15px">${I('plus', 'style="width:15px;height:15px;vertical-align:-2px"')} Save a meal</button>` : ''}</div>
         ${es.length ? `<div class="group food-list">${es.map(e => `<div class="swipe" data-key="${e.id}"><div class="del" data-del="${e.id}">Delete</div><div class="row entry tap" data-entry="${e.id}" role="button" tabindex="0"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal)} · ${new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}${e.by ? ` · <span class="by">added by ${esc(e.by)}</span>` : ''}${warnTag(e.allergens)}</div></div><span class="kcal num">${fmt(e.calories)}</span></div></div>`).join('')}</div>`
         : `<div class="card empty"><div class="icon-sq" style="background:var(--fill);color:var(--label2);width:44px;height:44px;border-radius:12px">${I('fork')}</div><b>${isToday ? 'Nothing logged yet' : 'Nothing logged this day'}</b><span>Type a number above and press ${finePointer ? 'Enter' : 'Add'}. That's it.</span></div>`}
       </div>
@@ -589,7 +640,7 @@
     <div class="chips wrap" style="margin-top:12px">${(msgs.length ? (msgs[msgs.length - 1].chips || []) : starters).map(c => `<button class="chip" type="button" data-say="${esc(c)}">${esc(c)}</button>`).join('')}</div>
     <div style="height:70px"></div>
     </div>
-    <div class="composer"><form class="composer-in" id="coachForm"><textarea id="coachInput" rows="1" placeholder="Message Bitey" aria-label="Message Bitey">${esc(LS.get('coachDraft', ''))}</textarea><button class="send" type="submit" aria-label="Send" ${S.coachBusy ? 'disabled' : ''}>${I('up')}</button></form></div>`;
+    <div class="composer"><form class="composer-in" id="coachForm"><textarea id="coachInput" rows="1" placeholder="Message Bitey" aria-label="Message Bitey">${esc(LS.get('coachDraft', ''))}</textarea><button class="dict" type="button" id="coachMic" aria-label="Voice typing">${I('mic')}</button><button class="send" type="submit" aria-label="Send" ${S.coachBusy ? 'disabled' : ''}>${I('up')}</button></form></div>`;
   }
   // ---------- apply what Bitey decided (same code for online AI and offline Bitey, so Undo works for both) ----------
   function applyCoachActions(actions) {
@@ -673,12 +724,13 @@
     try {
       const msgs = chat().filter(m => !m.waiting);
       const r = await fetch('/api/coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: msgs.map(m => ({ role: m.role, content: m.content })), context: coachContext() }) });
-      const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Coach is unavailable');
+      const j = await r.json().catch(() => ({ error: r.status >= 500 ? 'Bitey is busy right now' : 'Something went wrong' }));
+      if (!r.ok || j.error) throw new Error(j.error || 'Bitey is busy right now');
       const { done, ids } = applyCoachActions(j.actions);
       const m2 = chat(); m2.push({ role: 'assistant', content: j.reply || '…', chips: j.chips || [], cards: j.cards || [], sources: j.sources || [], searched: j.searched || null, done, ids }); saveChat(m2);
       if (done.length) haptic(12);
     } catch (e) {
-      const m2 = chat(); m2.push({ role: 'assistant', content: 'I couldn’t reach the coach right now (' + e.message + '). Your logging still works. Try me again in a bit.' }); saveChat(m2);
+      const m2 = chat(); m2.push({ role: 'assistant', content: `${/network|fetch|load failed/i.test(e.message) ? 'I couldn\u2019t connect just now.' : e.message.replace(/\.$/, '') + '.'} Tap Try again, or ask a shorter question.`, chips: ['Try again'], retry: text }); saveChat(m2);
     }
     S.coachBusy = false; render(); scrollChat();
   }
@@ -737,6 +789,7 @@
       ${row('scale', 'var(--teal)', 'Goal weight', g.goalType === 'maintain' ? '—' : p.goalLb + ' lb', 'data-act="goals"')}
       ${row('shoe', 'var(--pink)', 'Step goal', fmt(p.stepGoal), 'data-act="stepgoal"')}
       ${row('drop', 'var(--cyan)', 'Water goal', p.waterGoal + ' glasses', 'data-act="watergoal"')}
+      ${row('fork', 'var(--orange)', 'Saved meals', BW.all('meal').length || 'None', 'data-act="savedmeals"', 'Log foods you eat together in one tap')}
       ${row('today', 'var(--indigo, #5856D6)', 'Daily pace', BW.paceSettings().on ? (BW.profile().pacePoints?.length ? 'Custom' : BW.PACE_PRESETS[BW.paceSettings().preset]?.name || 'Normal') : 'Off', 'data-act="pace"', 'How much you usually eat by certain times')}
       ${row('info', 'var(--red)', 'Allergies', (p.allergies || []).length ? (p.allergies.length > 2 ? p.allergies.length + ' set' : p.allergies.map(cap).join(', ')) : 'None', 'data-act="allergies"', 'Get a heads-up when a food has them')}
     </div></div>
@@ -810,7 +863,7 @@
         ${st.voiceErr ? `<div class="banner">${I('info')}<span>${st.voiceErr}</span></div>` : ''}
         ${itemsHTML()}`
       : `
-        <textarea class="field" id="ltext" placeholder="2 eggs, toast and orange juice" aria-label="What did you eat?" style="margin-top:4px">${esc(st.text)}</textarea>
+        <div class="ta-wrap"><textarea class="field" id="ltext" placeholder="2 eggs, toast and orange juice" aria-label="What did you eat?" style="margin-top:4px">${esc(st.text)}</textarea><button class="dict in-ta" type="button" data-dict="ltext" aria-label="Voice typing">${I('mic')}</button></div>
         <div class="footnote" style="margin:6px 4px 0">Knows ${window.BW_FOODS.length}+ foods, even offline. Add a number like “burrito 750” to set the calories yourself.</div>
         <div class="chips wrap" id="typeSugg" style="margin-top:8px"></div>
         <div id="typedItems">${itemsHTML()}</div>`}
@@ -880,6 +933,7 @@
           commit([{ name: q === 1 ? f.name : `${ql} × ${f.name}`, calories: Math.round(p.kcal * q), allergens: f.allergens }], 'search'); return; }
         if (b.dataset.rm) { st.items.splice(+b.dataset.rm, 1); refreshItems(); return; }
         if (b.dataset.tsugg) { const f = st.sugg[+b.dataset.tsugg], ta = $('#ltext', body); const parts = ta.value.split(/(,| and |\n)/); parts[parts.length - 1] = (parts.length > 1 ? ' ' : '') + f.name.toLowerCase(); ta.value = parts.join('') + ', '; ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus(); return; }
+        if (b.dataset.dict) { dictate($('#' + b.dataset.dict, body), b); return; }
         const act = b.dataset.act;
         if (act === 'addquick') commit([{ name: st.name.trim() || 'Quick add', calories: +st.amount }], 'quick');
         if (act === 'listen') st.listening ? stop() : listen();
@@ -1371,7 +1425,9 @@
       title: 'Look', left: 'Done', body: '', mount: b => {
         const draw = () => {
           const p = BW.profile();
-          b.innerHTML = `<div class="footnote" style="margin:0 16px 6px">APPEARANCE</div>
+          const t = THEMES.find(x => x.id === p.theme) || THEMES[0];
+          b.innerHTML = `<div class="theme-preview"><div class="tp-logo">${logoSVG(t, 54)}</div><div class="tp-body"><div class="st-k">Calories eaten</div><div class="tp-num num">1,240 <small>/ 2,000</small></div><div class="bar big"><i style="width:62%"></i></div><div class="tp-row"><span class="btn small">Add</span><span class="pill" style="color:var(--accent)">${I('flame')} 12</span></div></div></div>
+            <div class="footnote" style="margin:18px 16px 6px">APPEARANCE</div>
             <div class="seg">${[['auto', 'Automatic'], ['light', 'Light'], ['dark', 'Dark']].map(([v, l]) => `<button type="button" data-ap="${v}" aria-pressed="${(p.appearance || 'auto') === v}">${l}</button>`).join('')}</div>
             <div class="footnote" style="margin:20px 16px 8px">COLOR · ${THEMES.filter(t => t.level <= lv).length} OF ${THEMES.length} UNLOCKED</div>
             <div class="swatches">${THEMES.map(t => { const locked = t.level > lv; return `<button type="button" class="swatch ${p.theme === t.id ? 'on' : ''} ${locked ? 'locked' : ''}" data-t="${t.id}" aria-label="${t.name}${locked ? ', unlocks at level ' + t.level : ''}"><span class="dot" style="background:linear-gradient(135deg, ${t.color}, ${t.dark})">${locked ? I('lock') : p.theme === t.id ? I('check') : ''}</span><span class="nm">${t.name}</span>${locked ? `<span class="lv">Level ${t.level}</span>` : ''}</button>`; }).join('')}</div>`;
@@ -1514,6 +1570,8 @@
       if (d.quick) { const en = BW.addEntry({ date: S.date, meal: qMeal(), calories: +d.quick, source: 'quick' }); haptic(12); toast(`Added ${d.quick} cal to ${cap(en.meal)}`, { undo: () => BW.remove(en.id) }); return; }
       if (d.sugg) { const f = S.sugg[+d.sugg]; if (!f) return; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: f.name, calories: f.calories, source: 'text', allergens: f.allergens }); S.qdraft = ''; const qi = $('#qcal'); if (qi) qi.value = ''; S.sugg = []; haptic(12); render(); toast(`${f.name} · ${f.calories} cal`, { undo: () => BW.remove(en.id) }); const bad = clash(f.allergens); if (bad.length) setTimeout(() => toast(`Heads up: contains ${bad.join(', ')}`, { icon: 'info' }), 2600); return; }
       if (d.fit) { const f = (S.fits || [])[+d.fit]; if (!f) return; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: f.name, calories: f.calories, source: 'quick', allergens: f.allergens }); haptic(12); toast(`${f.name} · ${f.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
+      if (d.savedmeal) { const m = BW.get(d.savedmeal); if (!m) return; logItems(m.items, { label: m.name }); BW.put({ ...m, used: (m.used || 0) + 1 }); return; }
+      if (d.yday) { const items = (BW.day(BW.addDays(S.date, -1)).meals[qMeal()] || []).map(e => ({ name: e.name, calories: e.calories, allergens: e.allergens })); if (items.length) logItems(items, { label: 'Same as yesterday' }); return; }
       if (d.usual) { const u = BW.frequent()[+d.usual]; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: u.name, calories: u.calories, source: 'quick' }); haptic(12); toast(`${u.name} · ${u.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
       if (d.entry) { if (t.closest('.swipe')?.classList.contains('open')) { closeSwipes(); return; } editEntry(d.entry); return; }
       if (d.del) { delEntry(d.del); return; }
@@ -1521,7 +1579,7 @@
       if (d.water) { BW.setWater(S.date, BW.day(S.date).water + +d.water); haptic(6); return; }
       if (d.range) { S.progRange = +d.range; render(); return; }
       if (d.badge) return badgeSheet(d.badge);
-      if (d.say) return sendCoach(d.say);
+      if (d.say) { if (d.say === 'Try again') { const ms = chat(), last = [...ms].reverse().find(m => m.retry); if (last) { saveChat(ms.filter(m => m !== last)); return sendCoach(last.retry, { resend: true }); } } return sendCoach(d.say); }
       if (d.undoact) { undoCoach(+d.undoact); return; }
       if (d.group) return groupSheet(d.group);
       if (d.logcard) { const [mi, ci] = d.logcard.split(':').map(Number), c = chat()[mi]?.cards?.[ci]; if (!c) return; const en = BW.addEntry({ name: c.title, calories: c.calories, meal: qMeal(), source: 'coach' }); haptic(12); toast(`${c.title} · ${fmt(c.calories)} cal`, { undo: () => BW.remove(en.id) }); return; }
@@ -1544,6 +1602,8 @@
         case 'claim': return claimSheet();
         case 'allergies': return allergySheet();
         case 'pace': return paceSheet();
+        case 'savemeal': return saveMealSheet();
+        case 'savedmeals': return savedMealsSheet();
         case 'versions': checkVersion(); return whatsNew(true);
         case 'newgroup': return newGroupSheet();
         case 'joingroup': return joinGroupSheet();
@@ -1581,6 +1641,8 @@
     if (qf) {
       const qi = $('#qcal'), add = qf.querySelector('.qadd');
       const baseChips = $('#qchips').innerHTML;
+      qi.onfocus = () => openPad();
+      qi.onblur = () => { if (S.padLetters) setTimeout(() => { if (document.activeElement !== qi) { S.padLetters = false; qi.setAttribute('inputmode', finePointer ? 'text' : 'none'); } }, 200); };
       qi.oninput = () => { S.qdraft = qi.value; add.disabled = !qi.value.trim(); $('#qhint').innerHTML = qHint(); if (!qi.value.trim() || /^\d+$/.test(qi.value.trim())) { S.sugg = []; render(); } else $('#qchips').innerHTML = qChips(baseChips); };
       qf.onsubmit = e => {
         e.preventDefault();
@@ -1600,7 +1662,8 @@
           } else { S.qdraft = ''; openLog({ mode: 'type', text: v }); }
         }
         qi.value = S.qdraft || ''; add.disabled = !qi.value.trim(); $('#qhint').innerHTML = qHint();
-        if (!finePointer) qi.blur();
+        if (!finePointer && !$('#numpad')?.classList.contains('show')) qi.blur();
+        updatePad();
       };
     }
     const rf = $('#rform');
@@ -1612,7 +1675,8 @@
       ta.oninput = () => { LS.set('coachDraft', ta.value); grow(); };
       ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); f.requestSubmit(); } };
       // clear the box right away: the page keeps a focused box's text between redraws, so it must be emptied by hand
-      f.onsubmit = e => { e.preventDefault(); if (!ta.value.trim()) return; const text = ta.value; ta.value = ''; LS.set('coachDraft', ''); grow(); sendCoach(text); };
+      $('#coachMic').onclick = e => dictate(ta, e.currentTarget);
+      f.onsubmit = e => { e.preventDefault(); if (dictRec) { try { dictRec.stop(); } catch {} } if (!ta.value.trim()) return; const text = ta.value; ta.value = ''; LS.set('coachDraft', ''); grow(); sendCoach(text); };
       grow();
     }
   }
@@ -1662,7 +1726,7 @@
     const steps = `<div class="steps">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= ob.step ? 'on' : ''}"></i>`).join('')}</div>`;
     let body = '', foot = '';
     if (ob.step === 0) {
-      body = `<div style="margin-top:6vh"><div class="logo">${I('bite')}</div></div><h1>Eat smart.<br>Log in seconds.</h1><p class="lead">BiteWise is the calorie counter you'll actually keep using. It works even with no internet.</p>
+      body = `<div style="margin-top:6vh"><div class="logo-svg">${logoSVG()}</div></div><h1>Eat smart.<br>Log in seconds.</h1><p class="lead">BiteWise is the calorie counter you'll actually keep using. It works even with no internet.</p>
         <div style="display:flex;flex-direction:column;gap:18px;margin-top:10px">
           <div class="feature"><span class="icon-sq" style="background:var(--orange)">${I('bolt')}</span><div><b>Quick log</b><span>Just type the number. 450, done.</span></div></div>
           <div class="feature"><span class="icon-sq" style="background:var(--pink)">${I('mic')}</span><div><b>Say it or type it</b><span>“Two eggs and toast” becomes calories. Works offline.</span></div></div>
@@ -1788,8 +1852,77 @@
     LS.set('seenVersion', APP_VERSION);
   }
 
+  // ---------- voice typing: speak into any text box ----------
+  let dictRec = null;
+  function dictate(box, btn) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (dictRec) { try { dictRec.stop(); } catch {} return; }
+    if (!SR) return toast('This browser can’t listen. Use the mic on your keyboard.', { icon: 'mic' });
+    const start = box.value ? box.value.replace(/\s*$/, ' ') : '';
+    const rec = new SR(); dictRec = rec; rec.lang = navigator.language || 'en-US'; rec.interimResults = true; rec.continuous = false;
+    let finalText = '';
+    rec.onresult = ev => { let interim = ''; for (let i = ev.resultIndex; i < ev.results.length; i++) { const r = ev.results[i]; if (r.isFinal) finalText += r[0].transcript; else interim += r[0].transcript; } box.value = start + finalText + interim; box.dispatchEvent(new Event('input', { bubbles: true })); };
+    rec.onerror = ev => { if (ev.error === 'not-allowed') toast('Turn on microphone access to use voice typing', { icon: 'mic' }); else if (ev.error === 'network') toast('Voice typing needs internet here. Try your keyboard’s mic.', { icon: 'offline' }); };
+    rec.onend = () => { dictRec = null; btn?.classList.remove('on'); box.focus(); };
+    btn?.classList.add('on'); haptic(8);
+    try { rec.start(); } catch { dictRec = null; btn?.classList.remove('on'); }
+  }
+
+  // ---------- BiteWise number pad (phones): docked at the bottom, never covered by the phone keyboard ----------
+  function numpad() {
+    let pad = $('#numpad');
+    if (!pad) {
+      pad = document.createElement('div'); pad.id = 'numpad'; pad.className = 'numpad'; pad.setAttribute('role', 'group'); pad.setAttribute('aria-label', 'Number pad');
+      pad.innerHTML = `<div class="np-in"><div class="np-top"><div class="np-show"><span id="npval">0</span><span class="u">cal</span><span class="np-meal" id="npmeal"></span></div><button type="button" class="np-done" data-np="done">Done</button></div>
+        <div class="np-keys">${['1', '2', '3', '4', '5', '6', '7', '8', '9', 'abc', '0', 'del'].map(k => `<button type="button" data-np="${k}" class="${k === 'abc' || k === 'del' ? 'fn' : ''}" aria-label="${k === 'del' ? 'Delete' : k === 'abc' ? 'Type letters' : k}">${k === 'del' ? I('delete') : k === 'abc' ? 'ABC' : k}</button>`).join('')}</div>
+        <div class="np-actions"><button type="button" class="np-mic" data-np="mic" aria-label="Say what you ate">${I('mic')}</button><button type="button" class="btn np-add" data-np="add">Add</button></div></div>`;
+      document.body.appendChild(pad);
+      pad.addEventListener('pointerdown', e => e.preventDefault()); // keep focus in the field, no keyboard flash
+      pad.onclick = e => {
+        const k = e.target.closest('[data-np]')?.dataset.np; if (!k) return;
+        const qi = $('#qcal'); haptic(5);
+        if (k === 'done') return closePad();
+        if (k === 'mic') { closePad(); return openLog({ mode: 'voice' }); }
+        if (k === 'abc') { closePad(); S.padLetters = true; if (qi) { qi.setAttribute('inputmode', 'text'); qi.blur(); setTimeout(() => qi.focus(), 30); } return; }
+        if (k === 'add') { if (qi && qi.value.trim()) $('#qlogForm')?.requestSubmit(); return; }
+        let v = S.qdraft || '';
+        if (!/^\d*$/.test(v)) v = '';
+        v = k === 'del' ? v.slice(0, -1) : (v + k).replace(/^0+/, '').slice(0, 4);
+        S.qdraft = v; if (qi) { qi.value = v; qi.dispatchEvent(new Event('input')); }
+        updatePad();
+      };
+    }
+    return pad;
+  }
+  function updatePad() {
+    const pad = $('#numpad'); if (!pad) return;
+    const v = S.qdraft || '';
+    $('#npval').textContent = /^\d+$/.test(v) ? fmt(+v) : '0'; $('#npval').classList.toggle('empty', !v);
+    const m = qMeal(); $('#npmeal').innerHTML = `${I(MEAL_ICON[m][0])} ${MEALS.find(x => x[0] === m)[1]}`; $('#npmeal').style.setProperty('--mc', MEAL_ICON[m][1]);
+    pad.querySelector('.np-add').disabled = !/^\d+$/.test(v) || +v <= 0;
+    pad.querySelector('.np-add').textContent = /^\d+$/.test(v) && +v > 0 ? `Add ${fmt(+v)} cal` : 'Add';
+  }
+  function openPad() { if (finePointer || S.padLetters) return; const pad = numpad(); updatePad(); document.body.classList.add('pad-open'); requestAnimationFrame(() => pad.classList.add('show')); }
+  function closePad() { const pad = $('#numpad'); if (pad) pad.classList.remove('show'); document.body.classList.remove('pad-open'); $('#qcal')?.blur(); }
+
+  // ---------- phone keyboard awareness: keep the typing box and sheets above the keyboard ----------
+  if (window.visualViewport) {
+    const vv = window.visualViewport;
+    const fit = () => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--kb', kb + 'px');
+      document.documentElement.style.setProperty('--vvh', vv.height + 'px');
+      document.body.classList.toggle('kb-open', kb > 120);
+    };
+    vv.addEventListener('resize', fit); vv.addEventListener('scroll', fit); fit();
+  }
+  document.addEventListener('focusin', e => {
+    const t = e.target; if (!t.matches?.('input, textarea') || t.id === 'qcal') return;
+    if (t.closest('.sheet')) setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320);
+  });
+
   // ---------- routing ----------
-  function go(tab) { S.tab = tab; if (location.hash.slice(1).split('?')[0] !== tab) history.replaceState(null, '', '#' + tab); render(); window.scrollTo(0, 0); }
+  function go(tab) { closePad(); S.tab = tab; if (location.hash.slice(1).split('?')[0] !== tab) history.replaceState(null, '', '#' + tab); render(); window.scrollTo(0, 0); }
   $('#tabbar').onclick = e => { const t = e.target.closest('[data-tab]'); if (t) { haptic(5); if (t.dataset.tab === 'log') return openLog(); if (t.dataset.tab === S.tab) { window.scrollTo({ top: 0, behavior: 'smooth' }); if (t.dataset.tab === 'today') { S.date = BW.dayKey(); render(); } return; } go(t.dataset.tab); } };
   function readHash() {
     const [tab, q] = location.hash.slice(1).split('?');

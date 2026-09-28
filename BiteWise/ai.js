@@ -51,7 +51,7 @@ async function chat({ system, messages, maxTokens = 1400 }) {
   if (BACKEND === 'openai') {
     await modelReady();
     const r = await fetch(OPENAI.base + '/v1/chat/completions', {
-      method: 'POST', signal: AbortSignal.timeout(90000),
+      method: 'POST', signal: AbortSignal.timeout(+process.env.AI_TIMEOUT_MS || 25000),
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + OPENAI.key },
       body: JSON.stringify({ model: MODEL, max_tokens: maxTokens, temperature: 0.4, messages: [{ role: 'system', content: system }, ...messages] }),
     });
@@ -91,7 +91,7 @@ const SAFETY = `Safety rules you must always follow:
 const SKILLS = `SKILLS (pick the one that fits, follow it exactly):
 1. MEAL IDEAS ("what should I eat", "snack ideas", "dinner under 600"): give 2 or 3 "meal" cards. Each must fit today.remaining (and the meal time), list every ingredient with an amount and its calories, have calories that add up, a realistic "minutes", and 3 to 5 short steps. Respect user.allergies. The reply is one short sentence introducing them.
 2. RECIPE ("how do I make", "recipe for"): one detailed "meal" card with full ingredients, calories and steps.
-3. CALORIE QUESTION ("how many calories in X"): answer in the reply with a number and the portion (for example "A medium banana is about 105 calories."). If it's a specific brand or restaurant item you aren't sure about, search first.
+3. CALORIE QUESTION ("how many calories in X"): answer in the reply with a number and the portion (for example "A medium banana is about 105 calories."). If it's a specific brand or restaurant item, you may search first. Local shops often don't publish calories: then ALWAYS give a typical estimate for that kind of item and say it's an estimate (for example "Holtman's doesn't post calories, but a glazed donut is usually about 250 to 300."). Never just say you couldn't find it.
 4. PLACES, BRANDS, RESTAURANTS ("what is Holtman's Donuts", "best order at Chick-fil-A"): you MUST set "search" first; never answer these from memory. Then give a "place" card for a real place (name, address, hours if known, one-sentence about) or a "fact" card for a brand or food, plus one smarter-order tip with calories.
 5. CHECK-IN ("how am I doing", "this week"): use last7days and weight. Two sentences: one specific win with numbers, one specific next step. No cards.
 6. SWAPS ("healthier version of X"): 2 or 3 swaps in the reply, one per line, like "Fries (365) → side salad (120)".
@@ -107,6 +107,8 @@ const CARD_SPEC = `Card formats (use only these):
 
 function coachSystem(context, results) {
   return `You are Bitey, the friendly AI coach inside BiteWise, a calorie-counting app. You're upbeat, short and practical, like a supportive friend who knows nutrition. Use plain language a teenager understands.
+
+Greetings, thanks and small talk ("hi", "hello", "thanks", "how are you") are welcome: reply warmly in one short sentence and offer help, like "Hey! Want a snack idea, or should I log something?" Never refuse a greeting.
 
 Stay on topic: food, nutrition, cooking, restaurants, calories, exercise, steps, sleep, water, weight goals, and how to use BiteWise. If the user asks for something else (games like chess, homework, coding, general trivia, other apps), don't help. Reply in one friendly sentence that you're their food and fitness coach, then offer one related thing (for example: "I'm your food and fitness coach, so I'll skip chess, but want a brain-boosting snack idea?"). Only use that line for off-topic requests; otherwise answer directly without introducing yourself. Never write web links yourself. The app shows sources.
 
@@ -178,7 +180,8 @@ async function coach({ messages, context }) {
     if (r.refused) return { reply: "That's not something I can look up. I'm here for food, fitness and feeling good. Want a meal idea instead?", actions: [], chips: [], cards: [], searched: null, sources: [] };
     results = r.results; searched = q;
     const block = results.length ? results.map((x, i) => `${i + 1}. [${x.kind}] ${x.title}: ${x.text}${x.hours ? ' · hours: ' + x.hours : ''}${x.website ? ' · website: ' + x.website : ''}`).join('\n') : '(no results found)';
-    j = await ask(coachSystem(context, block));
+    try { j = await ask(coachSystem(context, block)); }
+    catch (e) { console.error('coach step 2:', e.message); j = { ...first, reply: first.reply || 'I looked it up but ran out of time putting it together. Ask me again?' }; }
     sources = results.filter(x => x.url).slice(0, 3).map(x => ({ title: x.title, url: x.url, kind: x.kind }));
   }
   return {

@@ -86,7 +86,10 @@ app.post('/api/coach', limit(30, 60e3), async (req, res) => {
       .filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
       .map(m => ({ role: m.role, content: m.content.slice(0, 2000) }));
     if (!messages.length) return res.status(400).json({ error: 'Say something to the coach first.' });
-    res.json(await ai.coach({ messages, context: req.body.context || {} }));
+    // hard ceiling so the router never times out and sends an HTML error page instead of JSON
+    const out = await Promise.race([ai.coach({ messages, context: req.body.context || {} }), new Promise(r => setTimeout(() => r(null), 50000))]);
+    if (!out) return res.status(504).json({ error: 'Bitey took too long on that one.' });
+    res.json(out);
   } catch (e) { console.error('coach:', e.message); res.status(503).json({ error: e.message }); }
 });
 app.post('/api/estimate', limit(40, 60e3), async (req, res) => {

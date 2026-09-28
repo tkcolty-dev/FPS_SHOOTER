@@ -21,6 +21,17 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.9.0 · New look, number pad and saved meals
+_2026-09-28 · git tag `v1.9.0`_
+
+- New: A new BiteWise logo that takes on your theme's colors, including the browser tab icon.
+- New: Themes look better, with a live preview, a soft tint of your color in the background, and gradient buttons.
+- New: On phones, the calorie box opens BiteWise's own number pad, so the keyboard never covers anything. ABC switches to the regular keyboard.
+- New: Voice typing. A mic in Bitey's message box and in Type.
+- New: Saved meals. Save foods you eat together and log them in one tap. Plus 'Same as yesterday'.
+- Fixed: The message box and pop-ups stay above the phone keyboard.
+- Fixed: Bitey says hi back, gives estimates when a place doesn't post calories, and no longer shows 'The string did not match the expected pattern'. There's a Try again button.
+
 ## 1.8.0 · Daily pace
 _2026-09-28 · git tag `v1.8.0`_
 
