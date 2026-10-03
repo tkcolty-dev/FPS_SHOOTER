@@ -1,0 +1,16 @@
+{
+  "name": "linkup",
+  "version": "1.0.0",
+  "description": "A hub for every project in ~/claude: links, previews, start/stop, notes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "pg": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LinkUp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff6b3d'/%3E%3Cpath d='M9 10v12h7M15 16h8' stroke='white' stroke-width='3.2' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M9 9v14h8M15 16h8" /></svg></div>
+      <div>
+        <h1>LinkUp</h1>
+        <p class="sub" id="stats">Scanning your projects...</p>
+      </div>
+    </div>
+    <label class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" type="search" placeholder="Search projects, tags, notes" autocomplete="off">
+      <kbd>/</kbd>
+    </label>
+    <div class="top-actions">
+      <a class="btn ghost icon" id="btnCloud" target="_blank" rel="noopener" title="Open the cloud copy" hidden>
+        <svg viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .6-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18z"/></svg>
+      </a>
+      <button class="btn ghost" id="btnPublish" title="Send your projects, edits and previews to the cloud copy" hidden>
+        <svg viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M5 15v4h14v-4"/></svg>
+        <span>Publish</span>
+      </button>
+      <a class="btn ghost cloud-only" href="/logout" title="Sign out"><span>Sign out</span></a>
+      <button class="btn ghost mac-only" id="btnSnap" title="Take screenshots for projects without a preview">
+        <svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg>
+        <span id="snapLabel">Previews</span>
+      </button>
+      <button class="btn ghost icon mac-only" id="btnRescan" title="Rescan folders">
+        <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+      </button>
+      <button class="btn primary" id="btnAdd">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Add project
+      </button>
+    </div>
+  </header>
+
+  <nav class="filters">
+    <div class="chips" id="chips"></div>
+    <div class="controls">
+      <select id="sort" aria-label="Sort">
+        <option value="edited">Recently edited</option>
+        <option value="opened">Recently opened</option>
+        <option value="created">Newest</option>
+        <option value="name">Name A-Z</option>
+        <option value="size">Biggest</option>
+      </select>
+      <div class="seg" id="view">
+        <button data-v="grid" class="on" title="Grid"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button data-v="list" title="List"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main">
+    <section id="pinnedWrap" hidden>
+      <h2 class="section-title">Pinned</h2>
+      <div class="grid" id="pinned"></div>
+    </section>
+    <section>
+      <h2 class="section-title" id="allTitle">All projects</h2>
+      <div class="grid" id="grid"></div>
+      <p class="empty" id="empty" hidden>Nothing matches. Try another filter.</p>
+    </section>
+  </main>
+
+  <!-- project drawer -->
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div class="dh-title">
+        <span class="swatch" id="dSwatch"></span>
+        <input id="dName" class="title-input" spellcheck="false">
+      </div>
+      <div class="dh-actions">
+        <button class="btn ghost icon" id="dPin" title="Pin"><svg viewBox="0 0 24 24"><path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z"/></svg></button>
+        <button class="btn ghost icon" id="dClose" title="Close (Esc)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+    </div>
+
+    <div class="drawer-body">
+      <div class="quick" id="dQuick"></div>
+
+      <div class="viewer">
+        <div class="viewer-tabs" id="dTabs"></div>
+        <div class="viewer-frame" id="dFrame"></div>
+      </div>
+
+      <div class="cols">
+        <div class="col">
+          <h3>Details</h3>
+          <label class="field"><span>Description</span><textarea id="dDesc" rows="3"></textarea></label>
+          <div class="row2">
+            <label class="field"><span>Status</span>
+              <select id="dStatus">
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="done">Finished</option>
+                <option value="idea">Idea</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+            <label class="field"><span>Color</span>
+              <div class="colors" id="dColors"></div>
+            </label>
+          </div>
+          <label class="field"><span>Tags</span>
+            <div class="tag-input" id="dTagsBox"><input id="dTagInput" placeholder="Add a tag, press Enter"></div>
+          </label>
+          <label class="field"><span>Notes</span><textarea id="dNotes" rows="4" placeholder="To-dos, ideas, anything"></textarea></label>
+        </div>
+        <div class="col">
+          <h3>Links</h3>
+          <label class="field"><span>Live site</span><input id="dLive" placeholder="https://..."></label>
+          <label class="field"><span>GitHub</span><input id="dGit" placeholder="https://github.com/..."></label>
+          <div class="row2" id="dLocalRow">
+            <label class="field"><span>Local port</span><input id="dPort" inputmode="numeric" placeholder="4000"></label>
+            <label class="field"><span>Start command</span><input id="dCmd" placeholder="npm start" class="mono"></label>
+          </div>
+          <div class="field"><span>Other links</span>
+            <div id="dLinks" class="links"></div>
+            <button class="btn ghost small" id="dAddLink"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add link</button>
+          </div>
+          <dl class="facts" id="dFacts"></dl>
+        </div>
+      </div>
+
+      <div id="dLogsWrap" hidden>
+        <h3>Server output</h3>
+        <pre class="logs" id="dLogs"></pre>
+      </div>
+
+      <details id="dMemoryWrap" hidden>
+        <summary>What Claude remembers about this project</summary>
+        <pre class="memory" id="dMemory"></pre>
+      </details>
+
+      <div class="danger">
+        <button class="btn ghost small" id="dUpload">Upload preview image</button>
+        <button class="btn ghost small" id="dClearPrev">Remove preview</button>
+        <button class="btn ghost small" id="dHide">Hide from hub</button>
+        <button class="btn ghost small warn" id="dDelete" hidden>Delete project</button>
+        <input type="file" id="dFile" accept="image/png,image/jpeg,image/webp" hidden>
+      </div>
+    </div>
+  </aside>
+
+  <!-- add dialog -->
+  <dialog id="addDlg">
+    <form method="dialog" id="addForm">
+      <h3>Add a project</h3>
+      <p class="hint">Folders in your claude folder show up on their own. Use this for things that live somewhere else, like a Roblox game, a Scratch project, or an artifact.</p>
+      <label class="field"><span>Name</span><input name="name" required></label>
+      <label class="field"><span>Link</span><input name="url" placeholder="https://..."></label>
+      <label class="field"><span>Kind</span>
+        <select name="kind">
+          <option value="link">Website</option>
+          <option value="roblox">Roblox game</option>
+          <option value="scratch">Scratch project</option>
+          <option value="artifact">Claude artifact</option>
+          <option value="files">Something else</option>
+        </select>
+      </label>
+      <label class="field"><span>Description</span><textarea name="description" rows="2"></textarea></label>
+      <div class="dlg-actions">
+        <button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn primary" value="ok">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

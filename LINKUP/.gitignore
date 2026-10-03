@@ -1,0 +1,4 @@
+data/
+previews/
+node_modules/
+.playwright-mcp/

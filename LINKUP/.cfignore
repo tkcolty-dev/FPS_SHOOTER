@@ -1,0 +1,6 @@
+data/
+previews/
+node_modules/
+.playwright-mcp/
+UNITY-ESCAPE-ROOM/
+.git/
