@@ -2749,75 +2749,88 @@ function drawTerrainFeatures(t, M) {
   const T = game.terrain;
   if (!T) return;
   const vx0 = cam.x - 300, vx1 = cam.x + ROOM_W + 300, vy0 = cam.y - 300, vy1 = cam.y + 940;
-  // roads
-  const dark = ['crypt', 'forge', 'volcano', 'throne', 'lake'].includes(M.key);
+  // worn dirt roads — the same soft, low-contrast tones as the ground's tone patches
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (const pts of T.roads) {
     ctx.beginPath();
     pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
-    ctx.strokeStyle = dark ? 'rgba(0, 0, 0, 0.22)' : 'rgba(70, 48, 22, 0.28)'; ctx.lineWidth = 92; ctx.stroke();
-    ctx.strokeStyle = M.key === 'snow' ? 'rgba(255,255,255,0.35)' : M.key === 'candy' ? 'rgba(255, 240, 250, 0.35)' : dark ? 'rgba(255, 220, 180, 0.05)' : 'rgba(196, 160, 104, 0.32)';
-    ctx.lineWidth = 72; ctx.stroke();
-    // wheel ruts / cobbles
-    ctx.setLineDash([6, 22]);
-    ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 4; ctx.stroke();
-    ctx.setLineDash([]);
+    ctx.strokeStyle = M.edge; ctx.globalAlpha = 0.16; ctx.lineWidth = 58; ctx.stroke();
+    ctx.strokeStyle = M.stoneHi; ctx.globalAlpha = 0.16; ctx.lineWidth = 40; ctx.stroke();
+    ctx.globalAlpha = 1;
+    // pebbles along the way, like the loose stones in the grass
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      if (Math.max(a.x, b.x) < vx0 || Math.min(a.x, b.x) > vx1 || Math.max(a.y, b.y) < vy0 || Math.min(a.y, b.y) > vy1) continue;
+      for (let k = 0; k < 4; k++) {
+        const u = hash2(i, k, 71), side = (hash2(i, k, 72) - 0.5) * 34;
+        const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+        const px = a.x + dx * u - dy / L * side, py = a.y + dy * u + dx / L * side;
+        ctx.fillStyle = M.stone; ctx.fillRect(px, py, 4, 3);
+        ctx.fillStyle = M.stoneHi; ctx.fillRect(px, py, 2, 1);
+      }
+    }
   }
-  // flower fields
+  // flower patches
   for (const f of T.fields) {
     if (f.x < vx0 || f.x > vx1 || f.y < vy0 || f.y > vy1) continue;
-    for (let k = 0; k < 26; k++) {
+    for (let k = 0; k < 22; k++) {
       const a = hash2(f.seed, k, 51) * Math.PI * 2, d = Math.sqrt(hash2(f.seed, k, 52)) * f.r;
-      const x = f.x + Math.cos(a) * d, y = f.y + Math.sin(a) * d * 0.7;
-      ctx.fillStyle = k % 3 ? M.flowerA : M.flowerB;
-      ctx.globalAlpha = 0.75;
-      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(x + 4, y + 2, 2, 0, Math.PI * 2); ctx.fill();
+      const x = Math.round(f.x + Math.cos(a) * d), y = Math.round(f.y + Math.sin(a) * d * 0.7);
+      ctx.fillStyle = M.tuftB; ctx.fillRect(x, y + 2, 2, 4);
+      ctx.fillStyle = k % 3 ? M.flowerA : M.flowerB; ctx.fillRect(x - 1, y, 4, 3);
     }
-    ctx.globalAlpha = 1;
   }
-  // ponds / ice / lava / syrup / goo / plazas
+  // ponds that belong to the realm: water, ice, lava, syrup, crypt goo — or a stone plaza indoors
   const style = POOL_STYLE[M.key] || 'water';
   for (const p of T.pools) {
     if (p.x + p.rx < vx0 || p.x - p.rx > vx1 || p.y + p.ry < vy0 || p.y - p.ry > vy1) continue;
     if (style === 'plaza') {
-      ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, p.rx, p.ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = M.stoneHi; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx, p.ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 0.5; ctx.strokeStyle = M.stone; ctx.lineWidth = 3;
-      for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx * k / 3.4, p.ry * 0.8 * k / 3.4, 0, 0, Math.PI * 2); ctx.stroke(); }
-      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(p.x + Math.cos(a) * p.rx * 0.3, p.y + Math.sin(a) * p.ry * 0.24); ctx.lineTo(p.x + Math.cos(a) * p.rx, p.y + Math.sin(a) * p.ry * 0.8); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(0,0,0,0.1)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 5, p.rx, p.ry * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = M.stone; ctx.globalAlpha = 0.5; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx, p.ry * 0.75, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = M.stoneHi; ctx.globalAlpha = 0.35; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx * 0.62, p.ry * 0.46, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.3; ctx.fillStyle = M.edge;
+      for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; ctx.fillRect(p.x + Math.cos(a) * p.rx * 0.82 - 2, p.y + Math.sin(a) * p.ry * 0.62 - 1, 5, 3); }
       ctx.globalAlpha = 1;
       continue;
     }
     const pal = {
-      water: ['#24506e', '#3a7aa0', 'rgba(190, 230, 255, 0.5)'],
-      ice: ['#9cc4dc', '#cfe8f5', 'rgba(255,255,255,0.8)'],
-      lava: ['#7a1f08', '#ff6a1f', 'rgba(255, 220, 120, 0.9)'],
-      syrup: ['#d9548f', '#ff9cc9', 'rgba(255, 255, 255, 0.7)'],
-      goo: ['#2c1f45', '#6b4fa0', 'rgba(200, 160, 255, 0.6)'],
+      water: ['#2f5f7f', '#3f7a99', '#8cc3dd'],
+      ice: ['#a9c9db', '#c8e1ee', '#ffffff'],
+      lava: ['#8a2a10', '#e2541a', '#fde047'],
+      syrup: ['#c75a8f', '#e589b5', '#ffe3f1'],
+      goo: ['#33264d', '#4f3a78', '#a78bfa'],
     }[style];
-    // muddy rim
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    blobPath(p.x, p.y + 5, p.rx + 10, p.ry + 8, p.rot, p.seed, 0.12); ctx.fill();
+    // soft muddy bank in the realm's edge color, then the pool, then a lighter middle
+    ctx.fillStyle = M.edge; ctx.globalAlpha = 0.35;
+    blobPath(p.x, p.y + 4, p.rx + 9, p.ry + 7, p.rot, p.seed, 0.1); ctx.fill();
+    ctx.globalAlpha = 1;
     ctx.fillStyle = pal[0];
-    blobPath(p.x, p.y, p.rx, p.ry, p.rot, p.seed, 0.12); ctx.fill();
+    blobPath(p.x, p.y, p.rx, p.ry, p.rot, p.seed, 0.1); ctx.fill();
     ctx.fillStyle = pal[1];
-    blobPath(p.x - p.rx * 0.08, p.y - p.ry * 0.12, p.rx * 0.78, p.ry * 0.7, p.rot, p.seed, 0.1); ctx.fill();
-    if (style === 'lava') {
-      ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createRadialGradient(p.x, p.y, 4, p.x, p.y, p.rx * 1.4);
-      g.addColorStop(0, `rgba(255, 140, 40, ${0.28 + 0.1 * Math.sin(t * 2 + p.seed)})`); g.addColorStop(1, 'rgba(255, 80, 0, 0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.rx * 1.4, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
+    blobPath(p.x - p.rx * 0.06, p.y - p.ry * 0.1, p.rx * 0.74, p.ry * 0.64, p.rot, p.seed, 0.08); ctx.fill();
+    if (style === 'lava') ctx.drawImage(GLOWS.imp, p.x - p.rx * 1.3, p.y - p.ry * 1.6, p.rx * 2.6, p.ry * 3.2);
+    // shoreline stones and reeds
+    for (let k = 0; k < 9; k++) {
+      const a = hash2(p.seed, k, 63) * Math.PI * 2;
+      const sx = p.x + Math.cos(a) * p.rx * 0.98, sy = p.y + Math.sin(a) * p.ry * 0.98;
+      if (k % 3 === 0 && (style === 'water' || style === 'goo')) {
+        ctx.fillStyle = M.tuftB; ctx.fillRect(sx, sy - 10, 2, 11); ctx.fillRect(sx + 4, sy - 7, 2, 8);
+        ctx.fillStyle = M.tuftA; ctx.fillRect(sx + 2, sy - 13, 2, 9);
+      } else {
+        ctx.fillStyle = M.stone; ctx.fillRect(sx - 3, sy - 2, 7, 5);
+        ctx.fillStyle = M.stoneHi; ctx.fillRect(sx - 3, sy - 2, 4, 2);
+      }
     }
-    // glints / ripples
-    ctx.strokeStyle = pal[2]; ctx.lineWidth = 2;
-    for (let k = 0; k < 4; k++) {
-      const ph = (t * 0.5 + k * 0.25 + p.seed * 0.13) % 1;
-      const gx = p.x + (hash2(p.seed, k, 61) - 0.5) * p.rx, gy = p.y + (hash2(p.seed, k, 62) - 0.5) * p.ry * 0.9;
-      ctx.globalAlpha = (1 - ph) * 0.8;
-      ctx.beginPath(); ctx.ellipse(gx, gy, 6 + ph * 18, 2 + ph * 6, 0, 0, Math.PI * 2); ctx.stroke();
+    // lily pads on calm water
+    if (style === 'water') for (let k = 0; k < 3; k++) {
+      const lx = p.x + (hash2(p.seed, k, 64) - 0.5) * p.rx, ly = p.y + (hash2(p.seed, k, 65) - 0.5) * p.ry * 0.8;
+      ctx.fillStyle = '#4f8a3a'; ctx.beginPath(); ctx.ellipse(lx, ly, 9, 6, 0, 0.3, Math.PI * 2); ctx.lineTo(lx, ly); ctx.fill();
     }
+    // a slow glint
+    const ph = (t * 0.35 + p.seed * 0.17) % 1;
+    ctx.fillStyle = pal[2]; ctx.globalAlpha = 0.55 * Math.sin(ph * Math.PI);
+    ctx.fillRect(p.x - p.rx * 0.3 + ph * p.rx * 0.4, p.y - p.ry * 0.25, 16, 3);
+    ctx.fillRect(p.x + p.rx * 0.1, p.y + p.ry * 0.15 - ph * 6, 10, 2);
     ctx.globalAlpha = 1;
   }
 }
@@ -2986,113 +2999,120 @@ function propBroken(e) {
   }
 }
 function drawProp(e, t) {
-  ctx.save();
-  ctx.translate(e.x, e.y);
-  const fl = e.flash > 0;
+  const M = MAPS[game.mapPick];
+  const x = e.x, y = e.y, fl = e.flash > 0;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  ctx.beginPath(); ctx.ellipse(x, y + 3, e.kind === 'obelisk' ? 26 : 12, e.kind === 'obelisk' ? 9 : 5, 0, 0, Math.PI * 2); ctx.fill();
   if (e.kind === 'lantern') {
-    const flick = 0.85 + 0.15 * Math.sin(t * 9 + e.seed) + 0.05 * Math.sin(t * 23 + e.seed);
-    ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(0, -26, 2, 0, -26, 46);
-    g.addColorStop(0, `rgba(255, 200, 110, ${0.5 * flick})`);
-    g.addColorStop(1, 'rgba(255, 160, 60, 0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -26, 46, 0, Math.PI * 2); ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0, 4, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = fl ? '#fff' : '#3b2a1c'; ctx.fillRect(-2.5, -18, 5, 22);
-    ctx.fillStyle = fl ? '#fff' : '#2a1d13'; ctx.fillRect(-8, 1, 16, 4);
-    ctx.fillStyle = fl ? '#fff' : '#4a3424';
-    ctx.beginPath(); ctx.moveTo(-9, -22); ctx.lineTo(9, -22); ctx.lineTo(6, -38); ctx.lineTo(-6, -38); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = `rgba(255, ${190 + 40 * flick | 0}, 110, 1)`;
-    ctx.fillRect(-5, -35, 10, 11);
-    ctx.fillStyle = fl ? '#fff' : '#2a1d13';
-    ctx.beginPath(); ctx.moveTo(-10, -38); ctx.lineTo(10, -38); ctx.lineTo(0, -46); ctx.closePath(); ctx.fill();
-  } else {
-    const pulse = 0.5 + 0.5 * Math.sin(t * 3 + e.seed);
-    ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(0, -30, 4, 0, -30, 80);
-    g.addColorStop(0, `rgba(192, 132, 252, ${0.35 + 0.2 * pulse})`);
-    g.addColorStop(1, 'rgba(120, 60, 200, 0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -30, 80, 0, Math.PI * 2); ctx.fill();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 30, 9, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = fl ? '#fff' : '#2a2238';
-    ctx.beginPath(); ctx.moveTo(-24, 6); ctx.lineTo(24, 6); ctx.lineTo(14, -62); ctx.lineTo(0, -84); ctx.lineTo(-14, -62); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = fl ? '#fff' : '#3c3150';
-    ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(24, 6); ctx.lineTo(14, -62); ctx.lineTo(0, -84); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = `rgba(216, 180, 254, ${0.6 + 0.4 * pulse})`; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(-4, -60); ctx.lineTo(4, -48); ctx.lineTo(-4, -36); ctx.lineTo(4, -24); ctx.moveTo(-8, -14); ctx.lineTo(8, -14); ctx.stroke();
-    // health bar
-    const k = Math.max(0, e.hp / e.maxHp);
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(-26, -100, 52, 7);
-    ctx.fillStyle = '#c084fc'; ctx.fillRect(-25, -99, 50 * k, 5);
+    // an iron lamp post, drawn like the realm's braziers — smash it for loot
+    const f2 = 0.6 + 0.4 * Math.sin(t * 9 + e.seed);
+    ctx.drawImage(GLOWS.imp, x - 22, y - 58, 44, 44);
+    ctx.fillStyle = fl ? '#ffffff' : '#3a3d42';
+    ctx.fillRect(x - 3, y - 26, 6, 26);
+    ctx.fillRect(x - 8, y - 3, 16, 4);
+    ctx.fillRect(x - 9, y - 30, 18, 4);
+    ctx.fillStyle = fl ? '#ffffff' : '#2a2c30';
+    ctx.fillRect(x - 8, y - 44, 2, 14); ctx.fillRect(x + 6, y - 44, 2, 14);
+    ctx.fillStyle = '#fde68a'; ctx.fillRect(x - 6, y - 43, 12, 12);
+    ctx.fillStyle = '#fb923c';
+    ctx.beginPath(); ctx.moveTo(x - 4, y - 32); ctx.lineTo(x, y - 41 - 3 * f2); ctx.lineTo(x + 4, y - 32); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = fl ? '#ffffff' : '#3a3d42';
+    ctx.beginPath(); ctx.moveTo(x - 11, y - 44); ctx.lineTo(x, y - 52); ctx.lineTo(x + 11, y - 44); ctx.closePath(); ctx.fill();
+    return;
   }
-  ctx.restore();
+  // a cursed standing stone in the realm's own stone, veined with purple runes
+  const pulse = 0.5 + 0.5 * Math.sin(t * 3 + e.seed);
+  ctx.globalAlpha = 0.55 + 0.35 * pulse;
+  ctx.drawImage(GLOWS.gemP || GLOWS.warlock, x - 46, y - 104, 92, 92);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = fl ? '#ffffff' : M.stone;
+  ctx.beginPath(); ctx.moveTo(x - 20, y); ctx.lineTo(x - 14, y - 70); ctx.lineTo(x, y - 86); ctx.lineTo(x + 14, y - 70); ctx.lineTo(x + 20, y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = fl ? '#ffffff' : M.stoneHi;
+  ctx.beginPath(); ctx.moveTo(x - 20, y); ctx.lineTo(x - 14, y - 70); ctx.lineTo(x, y - 86); ctx.lineTo(x - 4, y); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+  for (let by = y - 60; by < y; by += 15) ctx.fillRect(x - 17, by, 34, 2);
+  ctx.fillStyle = `rgba(196, 140, 255, ${0.7 + 0.3 * pulse})`;
+  ctx.fillRect(x - 2, y - 66, 4, 12); ctx.fillRect(x - 6, y - 52, 12, 3); ctx.fillRect(x - 2, y - 46, 4, 14); ctx.fillRect(x - 7, y - 26, 3, 6); ctx.fillRect(x + 4, y - 22, 3, 6);
+  ctx.fillStyle = M.tuftA;
+  ctx.fillRect(x - 22, y - 4, 10, 4); ctx.fillRect(x + 12, y - 3, 9, 3);
+  // health bar
+  const k = Math.max(0, e.hp / e.maxHp);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'; ctx.fillRect(x - 22, y - 100, 44, 6);
+  ctx.fillStyle = '#c084fc'; ctx.fillRect(x - 21, y - 99, 42 * k, 4);
 }
 function drawQuestWorld(t) {
   if (!game.quests) return;
+  const M = MAPS[game.mapPick];
   for (const q of game.quests) {
     if (q.done || q.x === undefined) continue;
     if (q.x < cam.x - 200 || q.x > cam.x + ROOM_W + 200 || q.y < cam.y - 200 || q.y > cam.y + 840) continue;
-    ctx.save();
-    ctx.translate(q.x, q.y);
+    const x = q.x, y = q.y;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.beginPath(); ctx.ellipse(x, y + 4, 32, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.textAlign = 'center';
     if (q.type === 'squire') {
-      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 4, 34, 10, 0, 0, Math.PI * 2); ctx.fill();
-      // little knight inside
-      ctx.fillStyle = '#9aa7b8'; ctx.fillRect(-8, -30, 16, 26);
-      ctx.fillStyle = '#c9d3df'; ctx.beginPath(); ctx.arc(0, -36, 10, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1b2230'; ctx.fillRect(-6, -38, 12, 3);
-      // cage bars
-      ctx.strokeStyle = '#5a3d22'; ctx.lineWidth = 4;
-      ctx.strokeRect(-26, -60, 52, 62);
-      ctx.lineWidth = 3;
-      for (let k = -14; k <= 14; k += 9.3) { ctx.beginPath(); ctx.moveTo(k, -60); ctx.lineTo(k, 2); ctx.stroke(); }
-      const bob = Math.sin(t * 4) * 4;
-      ctx.fillStyle = '#ffd98a'; ctx.font = 'bold 26px Cinzel, serif'; ctx.textAlign = 'center';
-      ctx.fillText('!', 0, -72 + bob);
+      // the trapped squire: a little knight in a wooden cage, like the well's timber
+      ctx.fillStyle = M.stone; ctx.fillRect(x - 28, y - 6, 56, 8);
+      ctx.fillStyle = '#8a95a6'; ctx.fillRect(x - 7, y - 30, 14, 24);
+      ctx.fillStyle = '#b8c2cf'; ctx.fillRect(x - 7, y - 30, 5, 24);
+      ctx.fillStyle = '#c9d1db'; ctx.fillRect(x - 8, y - 44, 16, 14);
+      ctx.fillStyle = '#22293a'; ctx.fillRect(x - 6, y - 39, 12, 3);
+      ctx.fillStyle = '#c0392b'; ctx.fillRect(x - 2, y - 50, 4, 7);
+      ctx.fillStyle = '#6b4a2a';
+      for (let k = -24; k <= 24; k += 8) ctx.fillRect(x + k - 2, y - 58, 4, 54);
+      ctx.fillStyle = '#7d5833'; ctx.fillRect(x - 30, y - 62, 60, 7);
+      ctx.fillStyle = '#5a3d22'; ctx.fillRect(x - 30, y - 8, 60, 4);
+      const bob = Math.round(Math.sin(t * 4) * 3);
+      ctx.drawImage(GLOWS.gilded, x - 16, y - 96 + bob, 32, 32);
+      ctx.fillStyle = '#ffd98a'; ctx.font = 'bold 22px Cinzel, serif';
+      ctx.fillText('!', x, y - 72 + bob);
       if (q.prog > 0) {
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(0, -28, 46, 0, Math.PI * 2); ctx.stroke();
-        ctx.strokeStyle = '#4ade80'; ctx.beginPath(); ctx.arc(0, -28, 46, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, q.prog / 3)); ctx.stroke();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'; ctx.fillRect(x - 26, y + 12, 52, 7);
+        ctx.fillStyle = '#8fd460'; ctx.fillRect(x - 25, y + 13, 50 * Math.min(1, q.prog / 3), 5);
       } else {
-        ctx.fillStyle = 'rgba(255,240,200,0.9)'; ctx.font = '12px Inter, sans-serif';
-        ctx.fillText('Stand here to free him', 0, 26);
+        ctx.fillStyle = 'rgba(255, 240, 210, 0.9)'; ctx.font = '600 11px Inter, sans-serif';
+        ctx.fillText('Stand here to free him', x, y + 22);
       }
     } else if (q.type === 'relic') {
-      ctx.globalCompositeOperation = 'lighter';
-      const beam = ctx.createLinearGradient(0, -260, 0, 0);
-      beam.addColorStop(0, 'rgba(255, 220, 120, 0)'); beam.addColorStop(1, 'rgba(255, 220, 120, 0.45)');
-      ctx.fillStyle = beam; ctx.fillRect(-18, -260, 36, 260);
-      const g = ctx.createRadialGradient(0, -24, 2, 0, -24, 60);
-      g.addColorStop(0, `rgba(255, 230, 150, ${0.6 + 0.2 * Math.sin(t * 4)})`); g.addColorStop(1, 'rgba(255, 200, 80, 0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -24, 60, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#6b6252'; ctx.fillRect(-18, -12, 36, 16);
-      ctx.fillStyle = '#8a816f'; ctx.fillRect(-14, -16, 28, 6);
-      const fy = -34 + Math.sin(t * 2.5) * 5;
-      ctx.fillStyle = '#ffd34d';
-      ctx.beginPath(); ctx.moveTo(0, fy - 16); ctx.lineTo(12, fy); ctx.lineTo(0, fy + 16); ctx.lineTo(-12, fy); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#fff6c8'; ctx.beginPath(); ctx.moveTo(0, fy - 16); ctx.lineTo(12, fy); ctx.lineTo(0, fy); ctx.closePath(); ctx.fill();
+      // a stone pedestal with the realm's lost relic floating above it
+      ctx.fillStyle = M.stone; ctx.fillRect(x - 16, y - 22, 32, 22);
+      ctx.fillStyle = M.stoneHi; ctx.fillRect(x - 20, y - 28, 40, 8); ctx.fillRect(x - 16, y - 22, 8, 22);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(x - 16, y - 12, 32, 2);
+      const fy = Math.round(-48 + Math.sin(t * 2.5) * 4);
+      ctx.globalAlpha = 0.7 + 0.3 * Math.sin(t * 3);
+      ctx.drawImage(GLOWS.gilded, x - 30, y + fy - 30, 60, 60);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#e8b64c';
+      ctx.beginPath(); ctx.moveTo(x, y + fy - 13); ctx.lineTo(x + 9, y + fy); ctx.lineTo(x, y + fy + 13); ctx.lineTo(x - 9, y + fy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff1c2';
+      ctx.beginPath(); ctx.moveTo(x, y + fy - 13); ctx.lineTo(x + 9, y + fy); ctx.lineTo(x, y + fy); ctx.closePath(); ctx.fill();
+      // sparkles drifting up so it can be spotted from afar
+      for (let k = 0; k < 4; k++) {
+        const ph = (t * 0.6 + k * 0.25) % 1;
+        ctx.globalAlpha = 1 - ph; ctx.fillStyle = '#ffd98a';
+        ctx.fillRect(x + (hash2(k, 1, 81) - 0.5) * 30, y + fy - 10 - ph * 50, 2, 2);
+      }
+      ctx.globalAlpha = 1;
     } else if (q.type === 'beacon') {
+      // a stone watchfire; the flame grows as you hold the ring
       const k = q.prog / q.need;
-      ctx.strokeStyle = 'rgba(255, 200, 100, 0.35)'; ctx.setLineDash([10, 8]); ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.ellipse(0, 0, 120, 90, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = '#4a3a2e'; ctx.fillRect(-14, -50, 28, 52);
-      ctx.fillStyle = '#5c4838'; ctx.fillRect(-22, -58, 44, 10);
-      const fh = 14 + 40 * k + Math.sin(t * 12) * 4;
-      ctx.globalCompositeOperation = 'lighter';
-      const g = ctx.createRadialGradient(0, -60 - fh / 2, 2, 0, -60 - fh / 2, fh + 30);
-      g.addColorStop(0, 'rgba(255, 210, 120, 0.9)'); g.addColorStop(1, 'rgba(255, 120, 40, 0)');
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -60 - fh / 2, fh + 30, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = '#ff9a3c';
-      ctx.beginPath(); ctx.moveTo(-14, -58); ctx.quadraticCurveTo(0, -58 - fh * 2, 14, -58); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#ffe08a';
-      ctx.beginPath(); ctx.moveTo(-7, -58); ctx.quadraticCurveTo(0, -58 - fh * 1.2, 7, -58); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = 'rgba(255,240,200,0.92)'; ctx.font = '12px Inter, sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText(q.prog > 0 ? Math.ceil(q.need - q.prog) + 's to hold' : 'Stand in the ring to light it', 0, 24);
+      ctx.strokeStyle = 'rgba(255, 210, 140, 0.32)'; ctx.lineWidth = 2; ctx.setLineDash([8, 8]);
+      ctx.beginPath(); ctx.ellipse(x, y, 120, 88, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = M.stone; ctx.fillRect(x - 13, y - 46, 26, 46);
+      ctx.fillStyle = M.stoneHi; ctx.fillRect(x - 13, y - 46, 7, 46); ctx.fillRect(x - 20, y - 54, 40, 10);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; for (let by = y - 36; by < y; by += 12) ctx.fillRect(x - 13, by, 26, 2);
+      const fh = 12 + 30 * k, f2 = 0.6 + 0.4 * Math.sin(t * 9);
+      ctx.drawImage(GLOWS.imp, x - 30 - fh / 2, y - 84 - fh, 60 + fh, 60 + fh);
+      ctx.fillStyle = '#fb923c';
+      ctx.beginPath(); ctx.moveTo(x - 12, y - 54); ctx.lineTo(x, y - 54 - fh - 8 * f2); ctx.lineTo(x + 12, y - 54); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.moveTo(x - 6, y - 54); ctx.lineTo(x, y - 54 - fh * 0.6 - 5 * f2); ctx.lineTo(x + 6, y - 54); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255, 240, 210, 0.9)'; ctx.font = '600 11px Inter, sans-serif';
+      ctx.fillText(q.prog > 0 ? Math.ceil(q.need - q.prog) + 's to hold' : 'Stand in the ring to light it', x, y + 22);
     }
-    ctx.restore();
   }
 }
+
 function drawQuestLocators() {
   if (!game.quests) return;
   for (const q of game.quests) {
@@ -4281,7 +4301,7 @@ function update(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
     if (e.flash > 0) e.flash -= dt;
-    if (e.prop) { e.spawnAge += dt; continue; }   // lanterns + obelisks stand still and never bite
+    if (e.prop) { e.spawnAge += dt; if (e.hp <= 0) killEnemy(i); continue; }   // lanterns + obelisks stand still and never bite
     if (e.orbCd > 0) e.orbCd -= dt;
     if (e.flailCd > 0) e.flailCd -= dt;
     e.spawnAge += dt;
@@ -11083,13 +11103,14 @@ function netBroadcast() {
     bo: bolts.map(b => [Math.round(b.x), Math.round(b.y)]),
     pe: runPets.map(pe => [pe.def.proj, Math.round(pe.x), Math.round(pe.y), Math.round(pe.seed)]),
     cs: chests.map(c => [Math.round(c.x), Math.round(c.y), c.open ? 1 : 0]),
+    qs: (game.quests || []).map(q => [q.type, Math.round(q.x || 0), Math.round(q.y || 0), q.done ? 1 : 0, Math.round((q.prog || 0) * 10) / 10, q.left || 0, q.need || 0, q.name]),
   });
 }
 function applySnap(m) {
   NET.snap = m;
   if (m.ph !== 'run') { game.netWait = true; return; }
   game.netWait = false;
-  if (game.mapPick !== m.map) { game.mapPick = m.map; genStructures(m.map); }
+  if (game.mapPick !== m.map || !game.terrain) { game.mapPick = m.map; genStructures(m.map); game.terrain = genTerrain(m.map); tidyTerrain(game.terrain); }
   game.time = m.time; game.level = m.level; game.xp = m.xp; game.xpNext = m.xpNext;
   game.forgeT = m.fg || 0;
   game.chooser = m.cho || 0;
@@ -11133,8 +11154,10 @@ function applySnap(m) {
     kind: a[0], x: a[1], y: a[2], r: a[3], hp: a[4], maxHp: a[5], seed: a[6],
     chargeState: a[7] === 2 ? 'dash' : a[7] === 1 ? 'aim' : 'stalk',
     aimX: a[8] || 0, aimY: a[9] || 0, elite: !!a[10], spawnAge: 1, flash: 0, slowT: 0, kx: 0, ky: 0, orbCd: 0,
-    shootCd: 9, stateT: 1, life: 9,
+    shootCd: 9, stateT: 1, life: 9, prop: a[0] === 'lantern' || a[0] === 'obelisk',
   }));
+  // quests ride along so friends see the cage, relic, beacon and the quest list too
+  if (m.qs) game.quests = m.qs.map(a => ({ type: a[0], x: a[1] || undefined, y: a[2] || undefined, done: !!a[3], prog: a[4], left: a[5], total: 3, need: a[6], name: a[7] }));
   gems = (m.gm || []).map(a => ({ x: a[0], y: a[1], v: a[2], vx: 0, vy: 0 }));
   drops = (m.dr || []).map(a => ({ x: a[0], y: a[1], kind: a[2] ? 'coin' : 'heart', v: 2 }));
   waves = (m.wv || []).map(a => ({ x: a[0], y: a[1], ang: a[2], kind: a[3], sub: a[4] || undefined, life: a[5], vx: 0, vy: 0, hit: new Set(), dmg: 0 }));
