@@ -1089,6 +1089,134 @@
   #menu.hasImage #updateCard.padFocus,
   #menu.hasImage button.hsCard.padFocus { box-shadow:inset 0 -3px #e8b64c,0 0 24px rgba(255,205,96,.52) !important; }
   #menu.hasImage #homePadLegend { top: 86.4%; height: 4.8%; }
+  /* ===== v3.0 HOME: frosted frame around the art; one set of real controls ===== */
+  #menu.hasImage #imgAnchor #homeShade { position: absolute; inset: 0; pointer-events: none; }
+  #homeShade > i {
+    position: absolute; display: block;
+    -webkit-backdrop-filter: blur(18px) brightness(0.38) saturate(0.85);
+    backdrop-filter: blur(18px) brightness(0.38) saturate(0.85);
+    background: rgba(10, 7, 14, 0.38);
+    -webkit-mask-composite: source-in; mask-composite: intersect;
+  }
+  #homeShade .hsTop { left: 0; top: 0; width: 100%; height: 12.5%;
+    -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent); mask-image: linear-gradient(180deg, #000 72%, transparent); }
+  #homeShade .hsLeft { left: 0; top: 45.5%; width: 32%; height: 54.5%;
+    -webkit-mask-image: linear-gradient(90deg, #000 86%, transparent), linear-gradient(180deg, transparent, #000 7%);
+    mask-image: linear-gradient(90deg, #000 86%, transparent), linear-gradient(180deg, transparent, #000 7%); }
+  #homeShade .hsRight { left: 72.5%; top: 27.5%; width: 27.5%; height: 72.5%;
+    -webkit-mask-image: linear-gradient(270deg, #000 88%, transparent), linear-gradient(180deg, transparent, #000 6%);
+    mask-image: linear-gradient(270deg, #000 88%, transparent), linear-gradient(180deg, transparent, #000 6%); }
+  #homeShade .hsBottom { left: 0; top: 83%; width: 100%; height: 17%;
+    -webkit-mask-image: linear-gradient(0deg, #000 70%, transparent); mask-image: linear-gradient(0deg, #000 70%, transparent); }
+
+  #menu.hasImage #imgAnchor #menuTop, #menu.hasImage #imgAnchor #statCards, #menu.hasImage #imgAnchor #questCard,
+  #menu.hasImage #imgAnchor #hotspots, #menu.hasImage #imgAnchor #bottomBar, #menu.hasImage #imgAnchor #bushL,
+  #menu.hasImage #imgAnchor #bushR, #menu.hasImage #imgAnchor #btnExit, #menu.hasImage #imgAnchor #hsSettings2 { display: none !important; }
+
+  /* status pills along the top */
+  #menu.hasImage #imgAnchor #homeStats {
+    position: absolute !important; left: 1.6% !important; top: 2.4% !important; right: auto !important; bottom: auto !important;
+    width: auto !important; height: 6.4% !important; transform: none !important;
+    display: flex !important; gap: 0.7vw; align-items: stretch; background: none !important; border: 0 !important; box-shadow: none !important;
+  }
+  #menu.hasImage #imgAnchor #homeStats .hsCard {
+    position: relative !important; inset: auto !important; width: auto !important; height: auto !important; min-width: 0 !important;
+    display: flex !important; align-items: center; gap: 0.7vw; padding: 0 1.2vw !important; margin: 0 !important;
+    background: linear-gradient(180deg, rgba(38, 29, 18, 0.82), rgba(18, 13, 9, 0.82)) !important;
+    border: 1px solid rgba(226, 184, 110, 0.32) !important; border-radius: 1.1vh !important;
+    box-shadow: 0 0.6vh 1.8vh rgba(0, 0, 0, 0.35) !important; color: #f3e6c8 !important; transform: none;
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+  }
+  #menu.hasImage #imgAnchor #homeStats .hsCard * { visibility: visible !important; opacity: 1 !important; }
+  #menu.hasImage #imgAnchor #homeStats .hsIcon { font-size: 2.3vh !important; color: #ffd98a !important; width: auto !important; height: auto !important; background: none !important; border: 0 !important; }
+  #menu.hasImage #imgAnchor #homeStats .hsCopy { display: flex; flex-direction: column; justify-content: center; line-height: 1.15; text-align: left; }
+  #menu.hasImage #imgAnchor #homeStats .hsCopy small { font: 700 1.15vh Inter, sans-serif !important; letter-spacing: .16em; color: rgba(232, 200, 140, 0.72) !important; }
+  #menu.hasImage #imgAnchor #homeStats .hsCopy b { font: 800 1.85vh Cinzel, serif !important; color: #fff3d6 !important; letter-spacing: .04em; white-space: nowrap; }
+  #menu.hasImage #imgAnchor #homeStats .hsBar { display: block; width: 9vw; height: .5vh; margin: .35vh 0 .2vh; background: rgba(255, 255, 255, 0.14); border-radius: 1vh; overflow: hidden; }
+  #menu.hasImage #imgAnchor #homeStats .hsBar i { display: block; height: 100%; background: linear-gradient(90deg, #e9b65a, #ffe39a); }
+  #menu.hasImage #imgAnchor #homeStats .hsAction:hover, #menu.hasImage #imgAnchor #homeStats .hsCard.padFocus {
+    border-color: #ffd98a !important; transform: translateY(-0.3vh) scale(1.04) !important;
+    box-shadow: 0 0 0 0.25vh rgba(255, 217, 138, 0.55), 0 0.8vh 2.4vh rgba(0, 0, 0, 0.45) !important;
+  }
+
+  /* round icon buttons, top right */
+  #menu.hasImage #imgAnchor #iconRow {
+    display: flex !important; position: absolute !important; left: auto !important; right: 1.6% !important; top: 2.4% !important;
+    width: auto !important; height: 6.4% !important; gap: 0.6vw !important; background: none !important; border: 0 !important; box-shadow: none !important; transform: none !important;
+  }
+  #menu.hasImage #imgAnchor #iconRow .iconBtn {
+    position: relative !important; inset: auto !important; height: 100% !important; width: auto !important; aspect-ratio: 1; margin: 0 !important;
+    display: grid !important; place-items: center; border-radius: 50% !important; padding: 0 !important;
+    background: linear-gradient(180deg, rgba(38, 29, 18, 0.85), rgba(18, 13, 9, 0.85)) !important;
+    border: 1px solid rgba(226, 184, 110, 0.35) !important; color: #ffd98a !important; opacity: 1 !important;
+    box-shadow: 0 0.6vh 1.8vh rgba(0, 0, 0, 0.35) !important;
+  }
+  #menu.hasImage #imgAnchor #iconRow .iconBtn svg { width: 45% !important; height: 45% !important; visibility: visible !important; opacity: 1 !important; }
+  #menu.hasImage #imgAnchor #iconRow .iconBtn:hover, #menu.hasImage #imgAnchor #iconRow .iconBtn.padFocus {
+    border-color: #ffd98a !important; transform: scale(1.1) !important; box-shadow: 0 0 0 0.25vh rgba(255, 217, 138, 0.55), 0 0 2.4vh rgba(255, 200, 100, 0.35) !important;
+  }
+
+  /* the main menu */
+  #menu.hasImage #imgAnchor #btnStack {
+    position: absolute !important; inset: auto !important; left: 2.2% !important; top: 47.5% !important; width: 26.5% !important; height: auto !important;
+    display: flex !important; flex-direction: column; gap: 1.6vh; pointer-events: auto !important; transform: none !important;
+  }
+  #menu.hasImage #imgAnchor #btnStack .menuBtn {
+    position: relative !important; inset: auto !important; left: auto !important; top: auto !important; width: 100% !important; height: 10.5vh !important;
+    display: flex !important; align-items: center; gap: 1.2vw; padding: 0 1.4vw !important; margin: 0 !important; opacity: 1 !important;
+    background: linear-gradient(90deg, rgba(44, 33, 20, 0.92), rgba(22, 16, 11, 0.78)) !important;
+    border: 1px solid rgba(226, 184, 110, 0.3) !important; border-radius: 1.4vh !important;
+    box-shadow: 0 1vh 2.6vh rgba(0, 0, 0, 0.4), inset 0 1px rgba(255, 236, 196, 0.07) !important;
+    filter: none !important; animation: none !important; transform: none;
+    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
+  }
+  #menu.hasImage #imgAnchor #btnStack .menuBtn * { visibility: visible !important; opacity: 1 !important; }
+  #menu.hasImage #imgAnchor #btnStack .menuBtn::before, #menu.hasImage #imgAnchor #btnStack .menuBtn::after { display: none !important; }
+  #menu.hasImage #imgAnchor #btnStack .bIcon {
+    flex: none; width: 6vh !important; height: 6vh !important; border-radius: 50% !important; display: grid !important; place-items: center;
+    font-size: 2.8vh !important; color: #ffd98a !important; background: radial-gradient(circle at 35% 30%, rgba(255, 217, 138, 0.22), rgba(0, 0, 0, 0.35)) !important;
+    border: 1px solid rgba(226, 184, 110, 0.4) !important; position: static !important;
+  }
+  #menu.hasImage #imgAnchor #btnStack .bText { display: flex !important; flex-direction: column; align-items: flex-start; flex: 1; position: static !important; }
+  #menu.hasImage #imgAnchor #btnStack .bTitle { font: 800 3.1vh Cinzel, serif !important; color: #fff3d6 !important; letter-spacing: .06em; text-transform: uppercase; }
+  #menu.hasImage #imgAnchor #btnStack .bSub { font: 600 1.55vh Inter, sans-serif !important; color: rgba(232, 210, 170, 0.7) !important; margin-top: .3vh; }
+  #menu.hasImage #imgAnchor #btnStack .bChev { font-size: 3.4vh !important; color: rgba(255, 217, 138, 0.5) !important; position: static !important; }
+  #menu.hasImage #imgAnchor #btnStack .menuBtn:hover, #menu.hasImage #imgAnchor #btnStack .menuBtn.padFocus {
+    background: linear-gradient(90deg, rgba(120, 82, 30, 0.95), rgba(46, 32, 16, 0.85)) !important;
+    border-color: #ffd98a !important; transform: translateX(0.8vw) scale(1.02) !important;
+    box-shadow: 0 0 0 0.3vh rgba(255, 217, 138, 0.6), 0 0 3.5vh rgba(255, 190, 90, 0.35), 0 1.2vh 3vh rgba(0, 0, 0, 0.5) !important;
+  }
+  #menu.hasImage #imgAnchor #btnStack .menuBtn:hover .bChev, #menu.hasImage #imgAnchor #btnStack .menuBtn.padFocus .bChev { color: #ffd98a !important; }
+
+  /* what's new card */
+  #menu.hasImage #imgAnchor #updateCard {
+    display: flex !important; flex-direction: column; gap: 1.1vh; position: absolute !important; inset: auto !important;
+    left: 75% !important; top: 30.5% !important; width: 23% !important; height: auto !important; padding: 1.8vh 1.2vw !important;
+    background: linear-gradient(180deg, rgba(36, 27, 17, 0.9), rgba(16, 12, 9, 0.9)) !important;
+    border: 1px solid rgba(226, 184, 110, 0.32) !important; border-radius: 1.6vh !important;
+    box-shadow: 0 1.4vh 3.6vh rgba(0, 0, 0, 0.5) !important; transform: none !important; opacity: 1 !important; filter: none !important;
+  }
+  #menu.hasImage #imgAnchor #updateCard > * { visibility: visible !important; opacity: 1 !important; }
+  #menu.hasImage #imgAnchor #updateCard .ucHead { display: flex; justify-content: space-between; align-items: center; font: 800 1.35vh Inter, sans-serif !important; letter-spacing: .16em; color: #e8c27a !important; }
+  #menu.hasImage #imgAnchor #updateCard .ucNew { background: #e9b65a !important; color: #2a1a08 !important; padding: .3vh .6vw; border-radius: .6vh; font-size: 1.2vh; }
+  #menu.hasImage #imgAnchor #updateCard .ucThumb { width: 100% !important; height: 15vh !important; object-fit: cover; border-radius: 1vh; display: block !important; }
+  #menu.hasImage #imgAnchor #updateCard .ucTitle { font: 800 2.4vh Cinzel, serif !important; color: #ffd98a !important; line-height: 1.15; }
+  #menu.hasImage #imgAnchor #updateCard .ucBody { font: 500 1.55vh/1.45 Inter, sans-serif !important; color: rgba(243, 230, 200, 0.85) !important; }
+  #menu.hasImage #imgAnchor #updateCard .ucBtn {
+    align-self: stretch; padding: 1.1vh 0 !important; border-radius: 1vh !important; font: 800 1.45vh Inter, sans-serif !important; letter-spacing: .12em;
+    background: rgba(255, 217, 138, 0.1) !important; border: 1px solid rgba(226, 184, 110, 0.45) !important; color: #ffe6b0 !important; position: static !important;
+  }
+  #menu.hasImage #imgAnchor #updateCard.padFocus { border-color: #ffd98a !important; box-shadow: 0 0 0 0.3vh rgba(255, 217, 138, 0.6), 0 1.4vh 3.6vh rgba(0, 0, 0, 0.5) !important; transform: scale(1.02) !important; }
+  #menu.hasImage #imgAnchor #updateCard .ucDots { display: flex !important; justify-content: center; gap: .5vw; }
+  #menu.hasImage #imgAnchor #updateCard .ucDots i { width: .8vh; height: .8vh; border-radius: 50%; background: rgba(255, 255, 255, 0.25); }
+  #menu.hasImage #imgAnchor #updateCard .ucDots i.on { background: #ffd98a; }
+
+  #menu.hasImage #imgAnchor #btnStack #btnExit, #menu.hasImage #imgAnchor #homeStats #hsSettings2, #menu.hasImage #imgAnchor #updateCard .ucThumb { display: none !important; }
+  #menu.hasImage #imgAnchor #iconRow .iconBtn svg { width: 2.9vh !important; height: 2.9vh !important; }
+  #menu.hasImage #imgAnchor #updateCard .ucTitle { font-size: 2.7vh !important; margin-top: .4vh; }
+  #menu.hasImage #imgAnchor #updateCard .ucBody { font-size: 1.7vh !important; }
+  /* controller legend */
+  #menu.hasImage #imgAnchor #homePadLegend { display: flex !important; left: 2.2% !important; top: auto !important; bottom: 3% !important; height: 4.6% !important; width: auto !important; padding: 0 1.2vw !important; }
 </style>
 </head>
 <body>
@@ -1156,10 +1284,10 @@
   </div>
 
   <div id="updateCard">
-    <div class="ucHead"><span id="ucHeadLabel">&#10022; LATEST UPDATE</span><span class="ucNew">NEW</span></div>
+    <div class="ucHead"><span id="ucHeadLabel">&#10022; NEW UPDATE</span><span class="ucNew">NEW</span></div>
     <img src="patch-thumb.png" alt="" class="ucThumb">
-    <div class="ucTitle" id="ucTitle">v2.2 THE LAUNCH EDITION</div>
-    <div class="ucBody" id="ucBody">A calm start that builds to a glorious swarm, a new Difficulty setting, a clean weapon+gift build, sky lightning, a full &ldquo;Kingdom Saved&rdquo; finale, and a release-day bug sweep.</div>
+    <div class="ucTitle" id="ucTitle">v3.0 ROYAL QUESTS</div>
+    <div class="ucBody" id="ucBody">Every battle now has quests: rescue a caged squire, shatter 3 curse obelisks, defend a beacon, and find one lost relic in every realm. Smash lanterns for loot. Realms got roads, ponds, ice and lava. Xbox controls fixed all over.</div>
     <button class="ucBtn" id="btnPatch">VIEW PATCH NOTES &#8599;</button>
     <div class="ucDots" id="ucDots"><i class="on"></i><i></i><i></i><i></i></div>
   </div>
@@ -1245,7 +1373,14 @@
       <button class="panelX" data-close>&times;</button>
       <h2>The Royal Chronicle</h2>
       <div class="patchList">
-        <p class="verHead">v2.2 &mdash; THE LAUNCH EDITION <span class="verTag">LATEST</span></p>
+        <p class="verHead">v3.0 &mdash; ROYAL QUESTS <span class="verTag">LATEST</span></p>
+        <p>&#10022; Royal Quests in every battle, with gold arrows to guide you: free the caged squire (stand by him), shatter 3 curse obelisks (they summon monsters; breaking all three makes the curse weaker, +20% damage), defend the royal beacon, and finish all quests for a big gold bonus.</p>
+        <p>&#9733; 12 lost relics &mdash; one hidden in every realm. Find one and it is yours forever: +120 gold and every knight deals 3% more damage, for good.</p>
+        <p>&#10022; Breakable lanterns all over the map hold hearts, gold, gems, and the odd royal magnet.</p>
+        <p>&#10022; Realms are real places now: winding roads, ponds, frozen ice, glowing lava, candy syrup, crypt goo, stone plazas and flower fields. Bushes and props never sit in ponds or on roads.</p>
+        <p>&#127918; Xbox controls: every press counts once (no more swallowed or doubled presses between screens), a fast A can no longer pick a gift before you see it, a single gift card can always be picked, a keyboard Player 1 no longer steals Player 2's pad, couch friends can leave the lobby with B, triggers page like the bumpers, and the online name/code boxes work with the pad.</p>
+        <p>&#10022; A cleaner home screen: one menu, status at the top, and real news.</p>
+        <p class="verHead">v2.2 &mdash; THE LAUNCH EDITION</p>
         <p>&#10022; Difficulty setting &mdash; Easy, Normal, Hard, Extreme (Settings &rsaquo; Battle) &mdash; scaling the horde's pace, toughness (bosses too), speed, damage, and the gold payout for braving it.</p>
         <p>&#10022; Reworked pacing: a calm opening that ramps hard into a late-game swarm, with enemy types unlocking across each realm so you level up into them; the Reaper is a real threat now, and bosses keep marching in.</p>
         <p>&#9876; Clean build system: 3 weapon slots (the one you start with, plus 2 you win) and 3 gift slots &mdash; every pick registers in the circles up top, and once full you level what you own.</p>
@@ -1489,7 +1624,7 @@
 // Single source of truth for the version shown on the home EDITION chip. The
 // "v1.0 REMASTER" text on the painted update card is baked into title-bg.png and
 // can't change — this DOM chip is the one that tracks the latest patch. Bump here.
-const GAME_VERSION = 'v2.2';
+const GAME_VERSION = 'v3.0';
 { const vs = document.querySelector('#chipRemaster span'); if (vs) vs.textContent = GAME_VERSION; }
 const TILE = 64;
 const COLS = 15, ROWS = 10;
@@ -2546,6 +2681,460 @@ function initRun() {
   game.forgeT = 0;
   game.phoenix = (game.phoenix || 0) + powerRank('ember');
   game.freeGift = powerRank('fortune') > 0;
+  initQuests();
+}
+
+// ---- realm landmarks: winding roads, ponds/lava/ice, flower fields, stone plazas ----
+const POOL_STYLE = {
+  meadow: 'water', courtyard: 'plaza', hall: 'plaza', forest: 'water', crypt: 'goo', snow: 'ice',
+  forge: 'lava', throne: 'plaza', candy: 'syrup', garden: 'water', lake: 'water', volcano: 'lava',
+};
+function genTerrain(mi) {
+  const rnd = (a, b) => hash2(mi * 97 + a, b, 41);
+  const T = { roads: [], pools: [], fields: [] };
+  for (let r = 0; r < 3; r++) {
+    const pts = [];
+    const horiz = r !== 1;
+    let x = horiz ? -100 : WORLD_W * (0.2 + rnd(r, 1) * 0.6), y = horiz ? WORLD_H * (0.2 + rnd(r, 2) * 0.6) : -100;
+    for (let k = 0; k < 40; k++) {
+      pts.push({ x, y });
+      if (horiz) { x += 160; y += (rnd(r * 50 + k, 3) - 0.5) * 170; y = Math.max(150, Math.min(WORLD_H - 150, y)); if (x > WORLD_W + 100) break; }
+      else { y += 160; x += (rnd(r * 50 + k, 4) - 0.5) * 170; x = Math.max(150, Math.min(WORLD_W - 150, x)); if (y > WORLD_H + 100) break; }
+    }
+    T.roads.push(pts);
+  }
+  const nPools = Math.round(10 * (WORLD_W * WORLD_H) / (4200 * 3150));
+  for (let i = 0; i < nPools; i++) {
+    const x = 300 + rnd(i, 5) * (WORLD_W - 600), y = 300 + rnd(i, 6) * (WORLD_H - 600);
+    if (Math.hypot(x - WORLD_W / 2, y - WORLD_H / 2) < 420) continue;
+    T.pools.push({ x, y, rx: 90 + rnd(i, 7) * 120, ry: 60 + rnd(i, 8) * 70, rot: rnd(i, 9) * Math.PI, seed: i });
+  }
+  const nFields = Math.round(16 * (WORLD_W * WORLD_H) / (4200 * 3150));
+  for (let i = 0; i < nFields; i++) {
+    T.fields.push({ x: 200 + rnd(i, 10) * (WORLD_W - 400), y: 200 + rnd(i, 11) * (WORLD_H - 400), r: 70 + rnd(i, 12) * 90, seed: i });
+  }
+  return T;
+}
+// keep the map readable: no hedges/props standing in ponds or on roads, no pond on a shrine
+function segDist(x, y, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y, L = dx * dx + dy * dy || 1;
+  const k = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L));
+  return Math.hypot(x - (a.x + dx * k), y - (a.y + dy * k));
+}
+function inPool(x, y, m) {
+  const T = game.terrain; if (!T) return false;
+  return T.pools.some(p => ((x - p.x) / (p.rx + m)) ** 2 + ((y - p.y) / (p.ry + m)) ** 2 < 1);
+}
+function onRoad(x, y, m) {
+  const T = game.terrain; if (!T) return false;
+  return T.roads.some(pts => pts.some((a, i) => i > 0 && segDist(x, y, pts[i - 1], a) < 44 + m));
+}
+function tidyTerrain(T) {
+  const keep = s => s.type === 'shrine' || s.type === 'forge';
+  T.pools = T.pools.filter(p => !structures.some(s => keep(s) && Math.hypot(s.x - p.x, s.y - p.y) < p.rx + 160));
+  structures = structures.filter(s => keep(s) || !(inPool(s.x, s.y, s.w / 2 + 20) || onRoad(s.x, s.y, s.w / 2)));
+}
+function blobPath(cx, cy, rx, ry, rot, seed, wob) {
+  ctx.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const a = (k / 24) * Math.PI * 2;
+    const w = 1 + wob * (Math.sin(a * 3 + seed) * 0.6 + Math.sin(a * 5 + seed * 2) * 0.4);
+    const px = Math.cos(a) * rx * w, py = Math.sin(a) * ry * w;
+    const x = cx + px * Math.cos(rot) - py * Math.sin(rot), y = cy + px * Math.sin(rot) + py * Math.cos(rot);
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+}
+function drawTerrainFeatures(t, M) {
+  const T = game.terrain;
+  if (!T) return;
+  const vx0 = cam.x - 300, vx1 = cam.x + ROOM_W + 300, vy0 = cam.y - 300, vy1 = cam.y + 940;
+  // roads
+  const dark = ['crypt', 'forge', 'volcano', 'throne', 'lake'].includes(M.key);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const pts of T.roads) {
+    ctx.beginPath();
+    pts.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+    ctx.strokeStyle = dark ? 'rgba(0, 0, 0, 0.22)' : 'rgba(70, 48, 22, 0.28)'; ctx.lineWidth = 92; ctx.stroke();
+    ctx.strokeStyle = M.key === 'snow' ? 'rgba(255,255,255,0.35)' : M.key === 'candy' ? 'rgba(255, 240, 250, 0.35)' : dark ? 'rgba(255, 220, 180, 0.05)' : 'rgba(196, 160, 104, 0.32)';
+    ctx.lineWidth = 72; ctx.stroke();
+    // wheel ruts / cobbles
+    ctx.setLineDash([6, 22]);
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  // flower fields
+  for (const f of T.fields) {
+    if (f.x < vx0 || f.x > vx1 || f.y < vy0 || f.y > vy1) continue;
+    for (let k = 0; k < 26; k++) {
+      const a = hash2(f.seed, k, 51) * Math.PI * 2, d = Math.sqrt(hash2(f.seed, k, 52)) * f.r;
+      const x = f.x + Math.cos(a) * d, y = f.y + Math.sin(a) * d * 0.7;
+      ctx.fillStyle = k % 3 ? M.flowerA : M.flowerB;
+      ctx.globalAlpha = 0.75;
+      ctx.beginPath(); ctx.arc(x, y, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(x + 4, y + 2, 2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // ponds / ice / lava / syrup / goo / plazas
+  const style = POOL_STYLE[M.key] || 'water';
+  for (const p of T.pools) {
+    if (p.x + p.rx < vx0 || p.x - p.rx > vx1 || p.y + p.ry < vy0 || p.y - p.ry > vy1) continue;
+    if (style === 'plaza') {
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 6, p.rx, p.ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = M.stoneHi; ctx.globalAlpha = 0.55; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx, p.ry * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.5; ctx.strokeStyle = M.stone; ctx.lineWidth = 3;
+      for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.ellipse(p.x, p.y, p.rx * k / 3.4, p.ry * 0.8 * k / 3.4, 0, 0, Math.PI * 2); ctx.stroke(); }
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; ctx.beginPath(); ctx.moveTo(p.x + Math.cos(a) * p.rx * 0.3, p.y + Math.sin(a) * p.ry * 0.24); ctx.lineTo(p.x + Math.cos(a) * p.rx, p.y + Math.sin(a) * p.ry * 0.8); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+      continue;
+    }
+    const pal = {
+      water: ['#24506e', '#3a7aa0', 'rgba(190, 230, 255, 0.5)'],
+      ice: ['#9cc4dc', '#cfe8f5', 'rgba(255,255,255,0.8)'],
+      lava: ['#7a1f08', '#ff6a1f', 'rgba(255, 220, 120, 0.9)'],
+      syrup: ['#d9548f', '#ff9cc9', 'rgba(255, 255, 255, 0.7)'],
+      goo: ['#2c1f45', '#6b4fa0', 'rgba(200, 160, 255, 0.6)'],
+    }[style];
+    // muddy rim
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    blobPath(p.x, p.y + 5, p.rx + 10, p.ry + 8, p.rot, p.seed, 0.12); ctx.fill();
+    ctx.fillStyle = pal[0];
+    blobPath(p.x, p.y, p.rx, p.ry, p.rot, p.seed, 0.12); ctx.fill();
+    ctx.fillStyle = pal[1];
+    blobPath(p.x - p.rx * 0.08, p.y - p.ry * 0.12, p.rx * 0.78, p.ry * 0.7, p.rot, p.seed, 0.1); ctx.fill();
+    if (style === 'lava') {
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(p.x, p.y, 4, p.x, p.y, p.rx * 1.4);
+      g.addColorStop(0, `rgba(255, 140, 40, ${0.28 + 0.1 * Math.sin(t * 2 + p.seed)})`); g.addColorStop(1, 'rgba(255, 80, 0, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, p.rx * 1.4, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // glints / ripples
+    ctx.strokeStyle = pal[2]; ctx.lineWidth = 2;
+    for (let k = 0; k < 4; k++) {
+      const ph = (t * 0.5 + k * 0.25 + p.seed * 0.13) % 1;
+      const gx = p.x + (hash2(p.seed, k, 61) - 0.5) * p.rx, gy = p.y + (hash2(p.seed, k, 62) - 0.5) * p.ry * 0.9;
+      ctx.globalAlpha = (1 - ph) * 0.8;
+      ctx.beginPath(); ctx.ellipse(gx, gy, 6 + ph * 18, 2 + ph * 6, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ===================== ROYAL QUESTS & MAP WONDERS (v3.0) =====================
+// Every battle now has things to DO besides surviving, like Vampire Survivors:
+// breakable lanterns full of loot, a trapped squire to rescue, three curse
+// obelisks to shatter, a beacon to defend, and one lost relic per realm that
+// stays found forever (each relic makes every knight 3% stronger).
+const RELIC_NAMES = {
+  meadow: "Shepherd's Bell", courtyard: "Gatekeeper's Key", hall: 'Golden Goblet', forest: 'Wisp Lantern',
+  crypt: 'Moon Locket', snow: 'Frost Crown', forge: 'Ember Hammer', throne: "Concur's Quill",
+  candy: 'Gumdrop Gem', garden: 'Eternal Rose', lake: 'Pearl of Tides', volcano: 'Heart of the Peak',
+};
+function relicCount() { const r = kdMeta.relics || {}; return Object.keys(r).filter(k => r[k]).length; }
+function questSpot(minD, maxD, avoid) {
+  for (let tries = 0; tries < 240; tries++) {
+    const a = Math.random() * Math.PI * 2, d = minD + Math.random() * (maxD - minD);
+    const x = Math.max(220, Math.min(WORLD_W - 220, WORLD_W / 2 + Math.cos(a) * d));
+    const y = Math.max(240, Math.min(WORLD_H - 220, WORLD_H / 2 + Math.sin(a) * d * 0.8));
+    if (avoid.some(q => Math.hypot(q.x - x, q.y - y) < 520)) continue;
+    const p = pushOut(x, y, 44);
+    if (inPool(p.x, p.y, 70)) continue;
+    return p;
+  }
+  return pushOut(WORLD_W / 2 + minD, WORLD_H / 2, 44);
+}
+function spawnProp(kind, x, y) {
+  const ob = kind === 'obelisk';
+  const hp = ob ? Math.round((28 + game.mapPick * 7) * (diffMul().hp || 1)) : 1;
+  game.propN = (game.propN || 0) + 1;
+  enemies.push({ x, y, kind, prop: true, r: ob ? 26 : 13, hp, maxHp: hp, xp: ob ? 14 : 0, speed: 0,
+    kx: 0, ky: 0, flash: 0, orbCd: 0, spawnAge: 1, seed: Math.random() * 100, summonT: 2 + Math.random() * 3 });
+}
+function initQuests() {
+  game.quests = []; game.questBonus = false; game.curseWeak = false; game.propN = 0;
+  game.terrain = genTerrain(game.mapPick);
+  tidyTerrain(game.terrain);
+  game.relicMul = 1 + 0.03 * relicCount();
+  const far = Math.min(WORLD_W, WORLD_H) * 0.42;
+  const spots = [{ x: WORLD_W / 2, y: WORLD_H / 2 }];
+  const nL = Math.round(22 * (WORLD_W * WORLD_H) / (4200 * 3150));
+  for (let i = 0; i < nL; i++) {
+    const x = 160 + Math.random() * (WORLD_W - 320), y = 180 + Math.random() * (WORLD_H - 340);
+    if (Math.hypot(x - WORLD_W / 2, y - WORLD_H / 2) < 240) continue;
+    const p = pushOut(x, y, 16);
+    if (inPool(p.x, p.y, 24)) continue;
+    spawnProp('lantern', p.x, p.y);
+  }
+  const sq = questSpot(560, 950, spots); spots.push(sq);
+  game.quests.push({ type: 'squire', name: 'Rescue the trapped squire', x: sq.x, y: sq.y, prog: 0, done: false });
+  for (let k = 0; k < 3; k++) { const o = questSpot(520, far * 1.1, spots); spots.push(o); spawnProp('obelisk', o.x, o.y); }
+  game.quests.push({ type: 'obelisks', name: 'Shatter the curse obelisks', left: 3, total: 3, done: false });
+  const key = MAPS[game.mapPick].key;
+  if (!(kdMeta.relics && kdMeta.relics[key])) {
+    const rp = questSpot(far * 0.95, far * 1.3, spots); spots.push(rp);
+    game.quests.push({ type: 'relic', name: 'Find the ' + RELIC_NAMES[key], x: rp.x, y: rp.y, done: false });
+  } else {
+    const bp = questSpot(620, far, spots); spots.push(bp);
+    game.quests.push({ type: 'beacon', name: 'Defend the royal beacon', x: bp.x, y: bp.y, prog: 0, need: 25, waveT: 0, done: false });
+  }
+}
+function questReward(x, y, coins) {
+  const cp = pushOut(x, y + 34, 26);
+  chests.push({ x: cp.x, y: cp.y, open: false, seed: Math.random() * 10 });
+  for (let k = 0; k < coins; k++) {
+    const p = pushOut(x + (Math.random() - 0.5) * 80, y + (Math.random() - 0.5) * 60, 16);
+    drops.push({ x: p.x, y: p.y, kind: 'coin', v: 3 + Math.floor(Math.random() * 4) });
+  }
+  particles.push({ x, y, vx: 0, vy: 0, ring: true, life: 0.5, color: '#ffd98a', size: 70 });
+  for (let k = 0; k < 22; k++) {
+    const a = Math.random() * Math.PI * 2, s = 80 + Math.random() * 180;
+    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40, life: 0.6 + Math.random() * 0.4, color: Math.random() < 0.5 ? '#ffd98a' : '#ffffff', size: 2 + Math.random() * 3 });
+  }
+  SFX.chest(); allRumble && allRumble(0.4, 0.4, 200);
+}
+function finishQuest(q, x, y, msg, coins) {
+  q.done = true;
+  kdStats.quests = (kdStats.quests || 0) + 1;
+  gameToast(msg, 3.5);
+  questReward(x, y, coins);
+  if (!game.questBonus && game.quests.every(z => z.done)) {
+    game.questBonus = true;
+    const bonus = Math.round(150 * (diffMul().gold || 1));
+    kdMeta.gold += bonus; game.runGold += bonus; saveMeta();
+    kdStats.questSweeps = (kdStats.questSweeps || 0) + 1;
+    setTimeout(() => gameToast('👑 EVERY ROYAL QUEST COMPLETE! +' + bonus + ' gold', 4), 1200);
+  }
+  saveStats();
+}
+function updateQuests(dt) {
+  if (!game.quests) return;
+  const alive = players.filter(p => p.joined && p.alive);
+  const near = (x, y, r) => alive.some(p => Math.hypot(p.x - x, p.y - y) < r);
+  for (const q of game.quests) {
+    if (q.done) continue;
+    if (q.type === 'squire') {
+      q.prog = near(q.x, q.y, 85) ? q.prog + dt : Math.max(0, q.prog - dt * 0.6);
+      if (q.prog >= 3) finishQuest(q, q.x, q.y, '🛡 Squire rescued! He leaves you a royal chest!', 6);
+    } else if (q.type === 'relic') {
+      if (near(q.x, q.y, 46)) {
+        const key = MAPS[game.mapPick].key;
+        if (!kdMeta.relics) kdMeta.relics = {};
+        kdMeta.relics[key] = true;
+        game.relicMul = 1 + 0.03 * relicCount();
+        kdMeta.gold += 120; game.runGold += 120; saveMeta();
+        finishQuest(q, q.x, q.y, '🏺 RELIC FOUND: ' + RELIC_NAMES[key] + ' (' + relicCount() + '/12) — knights +3% damage forever!', 4);
+      }
+    } else if (q.type === 'beacon') {
+      if (near(q.x, q.y, 120)) {
+        q.prog += dt;
+        q.waveT -= dt;
+        if (q.waveT <= 0) {
+          q.waveT = 1.6;
+          for (let k = 0; k < 3; k++) { const a = Math.random() * Math.PI * 2; spawnEnemy(q.x + Math.cos(a) * 330, q.y + Math.sin(a) * 260); }
+        }
+        if (q.prog >= q.need) finishQuest(q, q.x, q.y, '🔥 The beacon blazes! The realm sends you treasure!', 10);
+      }
+    }
+  }
+  for (const e of enemies) {
+    if (e.kind !== 'obelisk') continue;
+    if (near(e.x, e.y, 560)) {
+      e.summonT -= dt;
+      if (e.summonT <= 0) {
+        e.summonT = 4.5;
+        for (let k = 0; k < 2; k++) { const a = Math.random() * Math.PI * 2; spawnEnemy(e.x + Math.cos(a) * 70, e.y + Math.sin(a) * 60); }
+        particles.push({ x: e.x, y: e.y - 30, vx: 0, vy: 0, ring: true, life: 0.35, color: '#c084fc', size: 40 });
+      }
+    }
+  }
+}
+// a breakable prop was destroyed by a weapon
+function propBroken(e) {
+  particles.push({ x: e.x, y: e.y, vx: 0, vy: 0, ring: true, life: 0.3, color: e.kind === 'obelisk' ? '#c084fc' : '#ffcf6b', size: e.r * 1.6 });
+  for (let k = 0; k < (e.kind === 'obelisk' ? 26 : 10); k++) {
+    const a = Math.random() * Math.PI * 2, s = 60 + Math.random() * 170;
+    particles.push({ x: e.x, y: e.y - 10, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 50, life: 0.45 + Math.random() * 0.3,
+      color: e.kind === 'obelisk' ? (Math.random() < 0.5 ? '#c084fc' : '#4b3a63') : (Math.random() < 0.5 ? '#ffcf6b' : '#7a5a3a'), size: 2 + Math.random() * 3 });
+  }
+  const dp = pushOut(e.x, e.y + 6, 16);
+  if (e.kind === 'lantern') {
+    SFX.coin();
+    const r = Math.random();
+    if (r < 0.28) drops.push({ x: dp.x, y: dp.y, kind: 'heart' });
+    else if (r < 0.74) drops.push({ x: dp.x, y: dp.y, kind: 'coin', v: 2 + Math.floor(Math.random() * 4) });
+    else if (r < 0.92) {
+      for (let k = 0; k < 4; k++) gems.push({ x: dp.x + (Math.random() - 0.5) * 30, y: dp.y + (Math.random() - 0.5) * 20, v: Math.ceil(1 + game.time / 90), vx: 0, vy: 0 });
+    } else {
+      game.vacuumT = 1.4;
+      gameToast('🧲 A royal magnet! Everything flies to you!', 1.6);
+    }
+    return;
+  }
+  // obelisk
+  SFX.nova();
+  game.shake = Math.max(game.shake, 0.25);
+  for (let k = 0; k < 6; k++) gems.push({ x: e.x + (Math.random() - 0.5) * 60, y: e.y + (Math.random() - 0.5) * 40, v: Math.ceil(2 + game.time / 60), vx: 0, vy: 0 });
+  const q = (game.quests || []).find(z => z.type === 'obelisks');
+  if (q && !q.done) {
+    q.left--;
+    if (q.left <= 0) {
+      game.curseWeak = true;
+      finishQuest(q, e.x, e.y, '⚡ All obelisks shattered! The curse weakens: +20% damage!', 8);
+    } else gameToast('💥 Obelisk shattered! ' + q.left + ' left', 2);
+  }
+}
+function drawProp(e, t) {
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  const fl = e.flash > 0;
+  if (e.kind === 'lantern') {
+    const flick = 0.85 + 0.15 * Math.sin(t * 9 + e.seed) + 0.05 * Math.sin(t * 23 + e.seed);
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(0, -26, 2, 0, -26, 46);
+    g.addColorStop(0, `rgba(255, 200, 110, ${0.5 * flick})`);
+    g.addColorStop(1, 'rgba(255, 160, 60, 0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -26, 46, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0, 4, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = fl ? '#fff' : '#3b2a1c'; ctx.fillRect(-2.5, -18, 5, 22);
+    ctx.fillStyle = fl ? '#fff' : '#2a1d13'; ctx.fillRect(-8, 1, 16, 4);
+    ctx.fillStyle = fl ? '#fff' : '#4a3424';
+    ctx.beginPath(); ctx.moveTo(-9, -22); ctx.lineTo(9, -22); ctx.lineTo(6, -38); ctx.lineTo(-6, -38); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = `rgba(255, ${190 + 40 * flick | 0}, 110, 1)`;
+    ctx.fillRect(-5, -35, 10, 11);
+    ctx.fillStyle = fl ? '#fff' : '#2a1d13';
+    ctx.beginPath(); ctx.moveTo(-10, -38); ctx.lineTo(10, -38); ctx.lineTo(0, -46); ctx.closePath(); ctx.fill();
+  } else {
+    const pulse = 0.5 + 0.5 * Math.sin(t * 3 + e.seed);
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(0, -30, 4, 0, -30, 80);
+    g.addColorStop(0, `rgba(192, 132, 252, ${0.35 + 0.2 * pulse})`);
+    g.addColorStop(1, 'rgba(120, 60, 200, 0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -30, 80, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 6, 30, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = fl ? '#fff' : '#2a2238';
+    ctx.beginPath(); ctx.moveTo(-24, 6); ctx.lineTo(24, 6); ctx.lineTo(14, -62); ctx.lineTo(0, -84); ctx.lineTo(-14, -62); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = fl ? '#fff' : '#3c3150';
+    ctx.beginPath(); ctx.moveTo(0, 6); ctx.lineTo(24, 6); ctx.lineTo(14, -62); ctx.lineTo(0, -84); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = `rgba(216, 180, 254, ${0.6 + 0.4 * pulse})`; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-4, -60); ctx.lineTo(4, -48); ctx.lineTo(-4, -36); ctx.lineTo(4, -24); ctx.moveTo(-8, -14); ctx.lineTo(8, -14); ctx.stroke();
+    // health bar
+    const k = Math.max(0, e.hp / e.maxHp);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(-26, -100, 52, 7);
+    ctx.fillStyle = '#c084fc'; ctx.fillRect(-25, -99, 50 * k, 5);
+  }
+  ctx.restore();
+}
+function drawQuestWorld(t) {
+  if (!game.quests) return;
+  for (const q of game.quests) {
+    if (q.done || q.x === undefined) continue;
+    if (q.x < cam.x - 200 || q.x > cam.x + ROOM_W + 200 || q.y < cam.y - 200 || q.y > cam.y + 840) continue;
+    ctx.save();
+    ctx.translate(q.x, q.y);
+    if (q.type === 'squire') {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(0, 4, 34, 10, 0, 0, Math.PI * 2); ctx.fill();
+      // little knight inside
+      ctx.fillStyle = '#9aa7b8'; ctx.fillRect(-8, -30, 16, 26);
+      ctx.fillStyle = '#c9d3df'; ctx.beginPath(); ctx.arc(0, -36, 10, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1b2230'; ctx.fillRect(-6, -38, 12, 3);
+      // cage bars
+      ctx.strokeStyle = '#5a3d22'; ctx.lineWidth = 4;
+      ctx.strokeRect(-26, -60, 52, 62);
+      ctx.lineWidth = 3;
+      for (let k = -14; k <= 14; k += 9.3) { ctx.beginPath(); ctx.moveTo(k, -60); ctx.lineTo(k, 2); ctx.stroke(); }
+      const bob = Math.sin(t * 4) * 4;
+      ctx.fillStyle = '#ffd98a'; ctx.font = 'bold 26px Cinzel, serif'; ctx.textAlign = 'center';
+      ctx.fillText('!', 0, -72 + bob);
+      if (q.prog > 0) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(0, -28, 46, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = '#4ade80'; ctx.beginPath(); ctx.arc(0, -28, 46, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, q.prog / 3)); ctx.stroke();
+      } else {
+        ctx.fillStyle = 'rgba(255,240,200,0.9)'; ctx.font = '12px Inter, sans-serif';
+        ctx.fillText('Stand here to free him', 0, 26);
+      }
+    } else if (q.type === 'relic') {
+      ctx.globalCompositeOperation = 'lighter';
+      const beam = ctx.createLinearGradient(0, -260, 0, 0);
+      beam.addColorStop(0, 'rgba(255, 220, 120, 0)'); beam.addColorStop(1, 'rgba(255, 220, 120, 0.45)');
+      ctx.fillStyle = beam; ctx.fillRect(-18, -260, 36, 260);
+      const g = ctx.createRadialGradient(0, -24, 2, 0, -24, 60);
+      g.addColorStop(0, `rgba(255, 230, 150, ${0.6 + 0.2 * Math.sin(t * 4)})`); g.addColorStop(1, 'rgba(255, 200, 80, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -24, 60, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#6b6252'; ctx.fillRect(-18, -12, 36, 16);
+      ctx.fillStyle = '#8a816f'; ctx.fillRect(-14, -16, 28, 6);
+      const fy = -34 + Math.sin(t * 2.5) * 5;
+      ctx.fillStyle = '#ffd34d';
+      ctx.beginPath(); ctx.moveTo(0, fy - 16); ctx.lineTo(12, fy); ctx.lineTo(0, fy + 16); ctx.lineTo(-12, fy); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff6c8'; ctx.beginPath(); ctx.moveTo(0, fy - 16); ctx.lineTo(12, fy); ctx.lineTo(0, fy); ctx.closePath(); ctx.fill();
+    } else if (q.type === 'beacon') {
+      const k = q.prog / q.need;
+      ctx.strokeStyle = 'rgba(255, 200, 100, 0.35)'; ctx.setLineDash([10, 8]); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, 0, 120, 90, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = '#4a3a2e'; ctx.fillRect(-14, -50, 28, 52);
+      ctx.fillStyle = '#5c4838'; ctx.fillRect(-22, -58, 44, 10);
+      const fh = 14 + 40 * k + Math.sin(t * 12) * 4;
+      ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(0, -60 - fh / 2, 2, 0, -60 - fh / 2, fh + 30);
+      g.addColorStop(0, 'rgba(255, 210, 120, 0.9)'); g.addColorStop(1, 'rgba(255, 120, 40, 0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, -60 - fh / 2, fh + 30, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#ff9a3c';
+      ctx.beginPath(); ctx.moveTo(-14, -58); ctx.quadraticCurveTo(0, -58 - fh * 2, 14, -58); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffe08a';
+      ctx.beginPath(); ctx.moveTo(-7, -58); ctx.quadraticCurveTo(0, -58 - fh * 1.2, 7, -58); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,240,200,0.92)'; ctx.font = '12px Inter, sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(q.prog > 0 ? Math.ceil(q.need - q.prog) + 's to hold' : 'Stand in the ring to light it', 0, 24);
+    }
+    ctx.restore();
+  }
+}
+function drawQuestLocators() {
+  if (!game.quests) return;
+  for (const q of game.quests) {
+    if (q.done) continue;
+    if (q.type === 'squire') drawLocator(q.x, q.y, 'rgba(120, 230, 150, 0.95)', '!');
+    else if (q.type === 'relic') drawLocator(q.x, q.y, 'rgba(255, 220, 110, 0.95)', '★');
+    else if (q.type === 'beacon') drawLocator(q.x, q.y, 'rgba(255, 160, 80, 0.95)', '⚑');
+    else if (q.type === 'obelisks') {
+      let best = null, bd = 1e9;
+      for (const e of enemies) if (e.kind === 'obelisk') { const d = Math.hypot(e.x - (cam.x + CX), e.y - (cam.y + 320)); if (d < bd) { bd = d; best = e; } }
+      if (best) drawLocator(best.x, best.y, 'rgba(192, 132, 252, 0.95)', '◆');
+    }
+  }
+}
+function drawQuestTracker(t) {
+  if (!game.quests || !game.quests.length) return;
+  const x = ROOM_W - 256, y = 92, w = 244;
+  const rows = game.quests.length;
+  ctx.save();
+  ctx.fillStyle = 'rgba(14, 11, 8, 0.78)';
+  ctx.strokeStyle = 'rgba(214, 170, 92, 0.55)'; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.roundRect(x, y, w, 30 + rows * 24, 8); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#e8c27a'; ctx.font = 'bold 11px Cinzel, serif'; ctx.textAlign = 'left';
+  ctx.fillText('ROYAL QUESTS', x + 12, y + 19);
+  ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(232, 194, 122, 0.7)'; ctx.font = '11px Inter, sans-serif';
+  ctx.fillText(game.quests.filter(q => q.done).length + '/' + rows, x + w - 12, y + 19);
+  ctx.textAlign = 'left';
+  game.quests.forEach((q, i) => {
+    const ry = y + 40 + i * 24;
+    const icon = { squire: '!', obelisks: '◆', relic: '★', beacon: '⚑' }[q.type];
+    const col = q.done ? '#7ee39a' : { squire: '#86efac', obelisks: '#d8b4fe', relic: '#ffd98a', beacon: '#fdba74' }[q.type];
+    ctx.fillStyle = col; ctx.font = 'bold 13px Inter, sans-serif';
+    ctx.fillText(q.done ? '✓' : icon, x + 12, ry);
+    let label = q.name;
+    if (q.type === 'obelisks' && !q.done) label += '  ' + (q.total - q.left) + '/' + q.total;
+    if (q.type === 'beacon' && !q.done && q.prog > 0) label += '  ' + Math.floor(q.prog) + '/' + q.need + 's';
+    ctx.fillStyle = q.done ? 'rgba(200, 230, 200, 0.6)' : '#f3ead8';
+    ctx.font = '12.5px Inter, sans-serif';
+    ctx.fillText(label, x + 30, ry);
+    if (q.done) { const tw = ctx.measureText(label).width; ctx.fillStyle = 'rgba(200,230,200,0.5)'; ctx.fillRect(x + 30, ry - 4, tw, 1.3); }
+  });
+  ctx.restore();
 }
 
 function gameToast(text, ttl = 3) {
@@ -2977,6 +3566,7 @@ function nearestAlivePlayer(x, y) {
 
 function hurtEnemy(e, dmg, ang, kb) {
   if ((game.forgeT || 0) > 0) dmg *= 1.4;               // forge-blessed blades
+  dmg *= (game.relicMul || 1) * (game.curseWeak ? 1.2 : 1);   // relics found + obelisks shattered
   if (upLvl('slayer') > 0 && e.r >= 17) dmg *= 1 + 0.3 * upLvl('slayer');
   if (upLvl('fury') > 0 && players.some(p => p.joined && p.alive && p.hp <= p.maxHp / 2)) dmg += upLvl('fury');
   if (upLvl('crit') > 0 && Math.random() < 0.12 * upLvl('crit')) dmg *= 2;
@@ -3061,6 +3651,7 @@ function hitPlayer(t, e) {
 
 function killEnemy(i) {
   const e = enemies[i];
+  if (e.prop) { game.propN--; propBroken(e); enemies.splice(i, 1); return; }
   game.kills++;
   if (e.elite) kdStats.elites = (kdStats.elites || 0) + 1;
   SFX.kill();
@@ -3690,6 +4281,7 @@ function update(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     const e = enemies[i];
     if (e.flash > 0) e.flash -= dt;
+    if (e.prop) { e.spawnAge += dt; continue; }   // lanterns + obelisks stand still and never bite
     if (e.orbCd > 0) e.orbCd -= dt;
     if (e.flailCd > 0) e.flailCd -= dt;
     e.spawnAge += dt;
@@ -4041,6 +4633,7 @@ function update(dt) {
     }
   }
 
+  updateQuests(dt);
   // the curse's champion marches in at the halfway mark — and keeps coming in endless
   if (game.time >= game.nextBossT) {
     game.nextBossT += 240;
@@ -4053,7 +4646,7 @@ function update(dt) {
   // interval keeps dropping to a low floor by ~9 min while extra spawns pile on, so
   // deep runs become a glorious wall of monsters. Realm pace + difficulty scale it.
   const interval = Math.max(0.12, (2.0 - game.time * 0.0034) * (1 - game.mapPick * 0.02)) / (MB[0] * diffMul().spawn);
-  if (game.spawnTimer <= 0 && enemies.length < MB[1]) {
+  if (game.spawnTimer <= 0 && enemies.length - (game.propN || 0) < MB[1]) {
     game.spawnTimer = interval;
     spawnEnemy();
     const ex = diffMul().spawn;
@@ -4085,7 +4678,7 @@ function update(dt) {
     gameToast('⚠ A cursed horde approaches!');
     const fx = players[0].x, fy = players[0].y;
     const n = Math.round((7 + Math.floor(game.time / 30)) * diffMul().spawn);
-    for (let k = 0; k < Math.min(40, n) && enemies.length < MB[1]; k++) {   // respect the realm cap
+    for (let k = 0; k < Math.min(40, n) && enemies.length - (game.propN || 0) < MB[1]; k++) {   // respect the realm cap
       const a = (k / n) * Math.PI * 2;
       spawnEnemy(fx + Math.cos(a) * 620, fy + Math.sin(a) * 620);
     }
@@ -4487,6 +5080,7 @@ function drawEnemyOverlays(e, t, bob) {
   }
 }
 function drawEnemy(e, t) {
+  if (e.prop) { drawProp(e, t); return; }
   const pop = Math.min(1, e.spawnAge * 3.5);
   const bob = Math.sin(t * 5 + e.seed) * 3;
   const squash = 1 + 0.07 * Math.sin(t * 6 + e.seed);
@@ -7605,6 +8199,7 @@ function render(t) {
       }
     }
   }
+  drawTerrainFeatures(t, M);
   const c0x = Math.floor(cam.x / 64), c0y = Math.floor(cam.y / 64);
   for (let cy = c0y; cy <= c0y + 10; cy++) {
     for (let cx = c0x; cx <= c0x + Math.ceil(ROOM_W / 64) + 1; cx++) {
@@ -8200,6 +8795,7 @@ function render(t) {
     ctx.fillText(dm.val, dm.x, dm.y);
   }
 
+  drawQuestWorld(t);
   ctx.restore(); // end camera
 
   // ---- atmosphere: vignette, map ambience, hurt flash ----
@@ -8221,6 +8817,8 @@ function render(t) {
     ctx.fillRect(0, 0, ROOM_W, 640);
   }
 
+  drawQuestLocators();
+  drawQuestTracker(t);
   // ---- off-screen locators: strayed knights (their color) + nearest chest (gold) ----
   for (let pi = 1; pi < players.length; pi++) {
     const p = players[pi];
@@ -9167,8 +9765,9 @@ function updateHomeStats() {
   homeStats.innerHTML =
     '<button class="hsCard" id="hsGold" title="Royal Armory — spend your gold"><span class="hsIcon">◆</span><span class="hsCopy"><small>TREASURY</small><b>' + (meta.gold || 0) + ' GOLD</b></span></button>' +
     '<div class="hsCard"><span class="hsIcon">♞</span><span class="hsCopy"><small>ROSTER</small><b>' + (meta.unlocked || []).length + ' / ' + ROSTER.length + ' KNIGHTS</b></span></div>' +
+    '<div class="hsCard"><span class="hsIcon">🏺</span><span class="hsCopy"><small>RELICS</small><b>' + Object.keys(meta.relics || {}).length + ' / 12</b></span></div>' +
     qCard +
-    '<button class="hsCard hsAction" id="hsOnline"><span class="hsIcon">X</span><span class="hsCopy"><small>KINGDOM</small><b>ONLINE</b></span></button>' +
+    '<button class="hsCard hsAction" id="hsOnline"><span class="hsIcon">🌐</span><span class="hsCopy"><small>KINGDOM</small><b>ONLINE</b></span></button>' +
     '<button class="hsCard hsAction" id="hsSettings2"><span class="hsIcon">Y</span><span class="hsCopy"><small>SYSTEM</small><b>SETTINGS</b></span></button>';
   homeStats.querySelector('#hsSettings2').addEventListener('click', () => openPanel('settings'));
   homeStats.querySelector('#hsOnline').addEventListener('click', () => openPanel('online'));
@@ -9184,6 +9783,12 @@ function updateHomeStats() {
 }
 function activateImageUI() {
   menuEl.classList.add('hasImage');
+  if (!document.getElementById('homeShade')) {
+    const shade = document.createElement('div');
+    shade.id = 'homeShade';
+    shade.innerHTML = '<i class="hsTop"></i><i class="hsLeft"></i><i class="hsRight"></i><i class="hsBottom"></i>';
+    imgAnchor.prepend(shade);
+  }
   imgAnchor.appendChild(bushL);
   imgAnchor.appendChild(bushR);
   imgAnchor.appendChild(bottomBar);
@@ -10052,8 +10657,8 @@ window.addEventListener('keydown', e => {
 
 // ---- update-card carousel ----
 const UC_SLIDES = [
-  { head: '✦ LATEST UPDATE', title: 'v2.2 THE LAUNCH EDITION',
-    body: 'A calm start that builds to a glorious late-game swarm, a new Difficulty setting (Easy → Extreme), a clean 3-weapon + 3-gift build with every pick shown up top, sky-splitting Storm Crown lightning, white hit/kill flashes, meatier kill and gem sounds, a full "Kingdom Saved" finale — and a top-to-bottom bug sweep for release.',
+  { head: '✦ NEW UPDATE', title: 'v3.0 ROYAL QUESTS',
+    body: 'Every battle now has quests: rescue a caged squire, shatter 3 curse obelisks, defend a beacon, and find one lost relic in every realm (each relic makes your knights stronger forever). Smash lanterns for loot. Realms got roads, ponds, ice, lava and flower fields. Xbox controls fixed all over.',
     btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
   { head: '✦ THE STORY', title: 'THE LAST KNIGHT',
     body: 'The sorcerer Concur turned every knight to stone in a single night. Only the youngest squire was beneath his notice. His mistake.',
@@ -10061,9 +10666,9 @@ const UC_SLIDES = [
   { head: '✦ THE HEROES', title: 'THE FOUNDING FIVE',
     body: 'Kenna, Bramble, Ember, Whisper and Gale — plus 19 more knights waiting to be recruited with gold, up to Queen Kenna herself.',
     btn: 'MEET THE KNIGHTS ↗', panel: 'heroes' },
-  { head: '✦ COMING SOON', title: 'THE ROAD AHEAD',
-    body: 'Bosses guarding each realm, gamepad knights, battle music, online play — and a very special finale.',
-    btn: 'VIEW ROADMAP ↗', panel: 'roadmap' },
+  { head: '✦ YOUR GOAL', title: 'FIND ALL 12 RELICS',
+    body: 'One relic hides in every realm. Follow the gold ★ arrow during battle, grab it, and it is yours forever. Can you find all twelve?',
+    btn: 'VIEW PATCH NOTES ↗', panel: 'patch' },
 ];
 let ucIndex = 0, ucTimer = null;
 const ucDotEls = Array.from(document.querySelectorAll('#ucDots i'));
@@ -10622,7 +11227,7 @@ document.getElementById('netJoinBtn').addEventListener('click', () => {
                 extra pads press A to join as P2–P4 · Start = pause
    LEVEL-UP     d-pad = highlight card · A = take it
    VICTORY/DEFEAT  d-pad = highlight button · A = press it · B = menu    */
-const PADS = { prev: [{}, {}, {}, {}], rep: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
+const PADS = { prev: [{}, {}, {}, {}], snap: [{}, {}, {}, {}], used: [{}, {}, {}, {}], rep: [{}, {}, {}, {}], p0: null, p1: null, p2: null, p3: null };
 
 /* ── controller SLOTS ──────────────────────────────────────────────────────
    Physical controllers arrive at whatever index the browser feels like, and
@@ -10708,6 +11313,8 @@ function resetPadEdges() {
     PADS.rep[i] = {};
     const s = readPad(i);
     PADS.prev[i] = s ? Object.assign({}, s) : {};
+    PADS.snap[i] = s ? Object.assign({}, s) : {};
+    PADS.used[i] = {};
   }
 }
 function readPad(i) {
@@ -10732,12 +11339,24 @@ function readPad(i) {
     left: b(14) || dz(rx) < -0.5, right: b(15) || dz(rx) > 0.5,
     up: b(12) || dz(ry) < -0.5, down: b(13) || dz(ry) > 0.5,
     a: b(0), bBtn: b(1), x: b(2), y: b(3), lb: b(4), rb: b(5), start: b(9),
+    lt: b(6) || (gp.buttons[6] && gp.buttons[6].value > 0.5), rt: b(7) || (gp.buttons[7] && gp.buttons[7].value > 0.5), view: b(8),
   };
 }
+// Edges come from LAST FRAME's snapshot (committed once per frame by pollPads), and
+// each button edge can be used only once per frame. Before, the remembered state only
+// updated when a branch happened to read that button, so a press could be swallowed
+// on one screen or fire again on the next one after a screen change.
 function padTap(i, name, val) {
-  const was = PADS.prev[i][name];
-  PADS.prev[i][name] = val;
-  return val && !was;
+  const used = PADS.used[i] || (PADS.used[i] = {});
+  if (!val || (PADS.snap[i] || {})[name] || used[name]) return false;
+  used[name] = true;
+  return true;
+}
+// whose controller counts as Player 1's: their bound pad, or pad 0 only if pad 0
+// isn't already driving another knight (a keyboard P1 used to hand P2's pad P1's menus)
+function p1PadOf() {
+  if (players[0].padResolved >= 0) return players[0].padResolved;
+  return players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === 0) ? -9 : 0;
 }
 // directions repeat while held (0.38s delay, then every 0.14s) — grids feel right
 function dirTap(i, name, val) {
@@ -10757,7 +11376,7 @@ function synthKey(code) {
 // ---- d-pad navigation of the home page + panels ----
 const HOME_NAV_SEL = '#btnPlay, #btnSettings, #btnCredits, #btnExit, #chipKnights, ' +
   '.iconBtn, #updateCard, button.hsCard';
-const PANEL_NAV_SEL = 'button, input[type=range], input[type=checkbox]';
+const PANEL_NAV_SEL = 'button, input[type=range], input[type=checkbox], input[type=text], input:not([type])';
 let padFocusEl = null;
 function setPadFocus(el) {
   if (padFocusEl && padFocusEl !== el) padFocusEl.classList.remove('padFocus');
@@ -10854,6 +11473,16 @@ function assignPads() {
   }
 }
 function pollPads() {
+  for (let i = 0; i < 4; i++) PADS.used[i] = {};
+  pollPadsInner();
+  // commit this frame's state as the baseline for next frame's edges
+  for (let i = 0; i < 4; i++) {
+    const s = PADS['p' + i];
+    PADS.snap[i] = s ? Object.assign({}, s) : {};
+    PADS.prev[i] = PADS.snap[i];
+  }
+}
+function pollPadsInner() {
   refreshPadSlots();
   assignPads();
   for (let i = 0; i < 4; i++) {
@@ -10878,7 +11507,7 @@ function pollPads() {
         if (dir('left')) { if (isRange) nudgeRange(padFocusEl, -10); else panelFocusMove(-1); }
         if (dir('right')) { if (isRange) nudgeRange(padFocusEl, 10); else panelFocusMove(1); }
         if (tap('a')) {
-          if (padFocusEl && panel.contains(padFocusEl)) padFocusEl.click();
+          if (padFocusEl && panel.contains(padFocusEl)) { if (padFocusEl.tagName === 'INPUT' && padFocusEl.type !== 'range' && padFocusEl.type !== 'checkbox') padFocusEl.focus(); else padFocusEl.click(); }
           else panelFocusMove(1);
         }
         else if (tap('bBtn')) { closePanels(); setPadFocus(null); }
@@ -10897,10 +11526,15 @@ function pollPads() {
     if (game.phase === 'lobby') {
       // P1's controller is whichever pad assignPads resolved for them THIS frame —
       // not literally index 0 (indices get holes when pads sleep/unplug).
-      const p1Pad = players[0].padResolved >= 0 ? players[0].padResolved : 0;
+      const p1Pad = p1PadOf();
       // START begins the battle — A only ever joins or re-picks, so no accidental launches
       if (tap('start')) { startBattle(); continue; }
       if (i === p1Pad && tap('bBtn')) { game.phase = 'map'; game.cursor = game.mapPick; continue; }
+      if (i !== p1Pad && tap('bBtn')) {
+        const mine = players.findIndex((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i);
+        if (mine > 0) { players[mine].joined = false; players[mine].alive = false; players[mine].pad = -1; gameToast('P' + (mine + 1) + ' left the party'); SFX.pick(); }
+        continue;
+      }
       if (i === p1Pad && tap('y')) { game.phase = 'armory'; game.armoryFrom = 'lobby'; game.cursor = 0; continue; }
       if (tap('a') && !game.joinAnim) {
         // Which knight does THIS pad already control? P1's pad re-picks P1; any
@@ -10976,9 +11610,12 @@ function pollPads() {
       // pad 1, or P2 pad 2. Comparing i to the slot froze the wrong controller in.
       const chP = players[game.chooser || 0];
       const chPad = chP && chP.padResolved >= 0 ? chP.padResolved
-        : ((game.chooser || 0) === 0 ? 0 : -9);   // keyboard P1 falls back to pad 0; keyboard P2+ = no pad
+        : ((game.chooser || 0) === 0 ? p1PadOf() : -9);   // keyboard P1 falls back to a free pad 0; keyboard P2+ = no pad
       if (game.netGuest ? (i !== 0 || game.chooserGid !== NET.id) : (i !== chPad)) continue;
-      if (game.padPick === undefined || game.padPick === null) game.padPick = 1;
+      const nCh = (game.choices || []).length;
+      if (game.padPick === undefined || game.padPick === null) game.padPick = Math.min(1, nCh - 1);
+      game.padPick = Math.max(0, Math.min(nCh - 1, game.padPick));
+      if (performance.now() - (game.choicesAt || 0) < 450) { tap('a'); tap('x'); continue; }
       if (dir('left')) game.padPick = Math.max(0, game.padPick - 1);
       if (dir('right')) game.padPick = Math.min((game.choices || []).length - 1, game.padPick + 1);
       if (tap('a')) pickUpgrade(game.padPick);
@@ -11014,7 +11651,7 @@ function pollPads() {
       // things. P1's pad AND any unbound pad still work, so an Xbox controller
       // that slept and woke at a NEW index is never locked out of the shop.
       if (game.phase === 'select' || game.phase === 'map' || game.phase === 'armory') {
-        const p1Pad = players[0].padResolved >= 0 ? players[0].padResolved : 0;
+        const p1Pad = p1PadOf();
         if (i !== p1Pad && players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i)) continue;
       }
       // canvas menus: d-pad/stick navigates (held = repeat), A confirms, B backs, LB/RB pages
@@ -11023,8 +11660,8 @@ function pollPads() {
       if (dir('up')) synthKey('ArrowUp');
       if (dir('down')) synthKey('ArrowDown');
       if (tap('a')) synthKey('Space');
-      if (tap('lb')) synthKey('KeyQ');
-      if (tap('rb')) synthKey('KeyE');
+      if (tap('lb') || tap('lt')) synthKey('KeyQ');
+      if (tap('rb') || tap('rt')) synthKey('KeyE');
       // sample each edge ONCE — padTap() consumes the press, so calling tap('y')
       // twice made the second read always-false (Y did nothing on character select)
       const yTap = tap('y'), xTap = tap('x');
@@ -11037,7 +11674,7 @@ function pollPads() {
         else synthKey('Escape');                          // select -> home menu
       }
     } else if (tap('a') && !game.joinAnim
-               && i !== (players[0].padResolved >= 0 ? players[0].padResolved : 0)
+               && i !== p1PadOf()
                && !players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i)) {
       // any extra controller presses A mid-battle to join the NEXT FREE slot —
       // pad number ≠ slot number, so match by binding, and carry pad:i so the

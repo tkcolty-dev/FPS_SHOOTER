@@ -1,0 +1,23 @@
+# Only ship what the game loads.
+/*
+!index.html
+!decoy.html
+!fortnite.html
+!server.js
+!package.json
+!package-lock.json
+!manifest.json
+!icon-192.png
+!icon-512.png
+!patch-thumb.png
+!title-bg.png
+!blessing-atlas.png
+!enemy-atlas.png
+!realm-preview-atlas.png
+!realm-terrain-atlas.png
+!upgrade-icon-atlas.png
+!weapon-atlas.png
+!sprites/
+!icons/
+!monsters/
+!sounds/

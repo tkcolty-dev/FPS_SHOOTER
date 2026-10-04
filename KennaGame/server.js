@@ -6,7 +6,7 @@ const path = require('path');
 const os = require('os');
 const WebSocket = require('ws');
 
-const PORT = 8912;
+const PORT = process.env.PORT || 8912;
 const ROOT = __dirname;
 const MIME = {
   '.html': 'text/html', '.png': 'image/png', '.js': 'text/javascript',
