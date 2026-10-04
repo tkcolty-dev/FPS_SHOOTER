@@ -11266,31 +11266,46 @@ function liveGamepads() {
   for (let i = 0; i < gps.length; i++) if (gps[i] && gps[i].connected) out.push(gps[i]);
   return out;
 }
+// slots a knight is holding on to (its controller may be asleep right now)
+function boundPadSlots() {
+  const b = new Set();
+  for (const p of players) if (p && p.joined && !p.remote && p.pad >= 0) b.add(p.pad);
+  return b;
+}
+// EVERY Xbox controller reports the same id ("Xbox Wireless Controller"), so a slot
+// may ONLY keep the controller at its exact index. The old "same make of pad" fallback
+// handed a knight to whoever's identical controller was nearby — the couch co-op
+// jumble where the last controller to join drove Player 1.
 function refreshPadSlots() {
   const live = liveGamepads();
   const claimed = new Set();
-  // a slot keeps its controller: same index if it stayed put, otherwise the same
-  // make of pad that just reappeared somewhere else
+  const bound = boundPadSlots();
   for (let sl = 0; sl < 4; sl++) {
     const slot = PAD_SLOTS[sl];
     if (!slot) continue;
-    const gp = live.find(g => !claimed.has(g.index) && g.index === slot.index && g.id === slot.id)
-            || live.find(g => !claimed.has(g.index) && g.id === slot.id);
-    if (gp) { slot.index = gp.index; claimed.add(gp.index); }
+    const gp = slot.index >= 0 ? live.find(g => g.index === slot.index && !claimed.has(g.index)) : null;
+    if (gp) { claimed.add(gp.index); slot.lost = false; }
+    else if (bound.has(sl)) { slot.lost = true; slot.index = -1; }   // its knight waits for it to wake
     else PAD_SLOTS[sl] = null;
   }
-  // anything new takes the lowest free slot
   for (const gp of live) {
     if (claimed.has(gp.index)) continue;
-    const sl = PAD_SLOTS.findIndex(x => !x);
-    if (sl === -1) break;                       // four knights, four slots
-    PAD_SLOTS[sl] = { id: gp.id, index: gp.index };
+    const lost = [0, 1, 2, 3].filter(sl => PAD_SLOTS[sl] && PAD_SLOTS[sl].lost);
+    let sl;
+    if (lost.length === 1) sl = lost[0];                       // the one sleeping pad woke up (Xbox re-indexes it)
+    else if (lost.length > 1) {                                // several asleep: whoever presses A first takes the lowest
+      if (!(gp.buttons[0] && gp.buttons[0].pressed)) continue;
+      sl = lost[0];
+      gameToast('🎮 Controller back as P' + (players.findIndex(p => p.joined && p.pad === sl) + 1));
+    } else sl = PAD_SLOTS.findIndex(x => !x);
+    if (sl === -1 || sl === undefined) continue;
+    PAD_SLOTS[sl] = { id: gp.id, index: gp.index, lost: false };
     claimed.add(gp.index);
   }
 }
 function padAt(slot) {
   const sl = PAD_SLOTS[slot];
-  if (!sl) return null;
+  if (!sl || sl.lost || sl.index < 0) return null;
   const gps = navigator.getGamepads ? navigator.getGamepads() : [];
   const gp = gps[sl.index];
   return gp && gp.connected ? gp : null;
@@ -11363,6 +11378,7 @@ function readPad(i) {
     up: b(12) || dz(ry) < -0.5, down: b(13) || dz(ry) > 0.5,
     a: b(0), bBtn: b(1), x: b(2), y: b(3), lb: b(4), rb: b(5), start: b(9),
     lt: b(6) || (gp.buttons[6] && gp.buttons[6].value > 0.5), rt: b(7) || (gp.buttons[7] && gp.buttons[7].value > 0.5), view: b(8),
+    dleft: b(14), dright: b(15), dup: b(12), ddown: b(13),
   };
 }
 // Edges come from LAST FRAME's snapshot (committed once per frame by pollPads), and
@@ -11487,13 +11503,23 @@ function assignPads() {
     if (want >= 0 && connected.includes(want) && !used.has(want)) { p.padResolved = want; used.add(want); }
     else p.padResolved = -2;   // its controller is gone or taken — reassign below
   }
-  // pass 2 — hand any knight that lost its controller a free connected one
+  // pass 2 — only a knight that was NEVER bound (a fresh Player 1) may take a free
+  // controller. A knight whose own pad went to sleep just waits for it — handing it
+  // someone else's controller is what scrambled couch co-op on the Xbox.
   for (const p of players) {
     if (!p || !p.joined || p.remote || p.padResolved !== -2) continue;
-    const free = connected.find(idx => !used.has(idx));
-    if (free !== undefined) { p.padResolved = free; used.add(free); if (p.pad !== -1) p.pad = free; }
-    else p.padResolved = -1;   // no controller free — keyboard (if any) still works
+    if (p.pad === undefined || p.pad === null) {
+      const free = connected.find(idx => !used.has(idx));
+      if (free !== undefined) { p.padResolved = free; used.add(free); p.pad = free; continue; }
+    }
+    p.padResolved = -1;
   }
+}
+// whoever drives the home/select/map menus IS Player 1 — bind Kenna's knight to that
+// controller (unless it already belongs to another joined knight)
+function claimP1(i) {
+  if (players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i)) return;
+  if (players[0].pad !== i) { players[0].pad = i; players[0].padResolved = i; }
 }
 function pollPads() {
   for (let i = 0; i < 4; i++) PADS.used[i] = {};
@@ -11540,8 +11566,8 @@ function pollPadsInner() {
       if (dir('right')) movePadFocus(1, 0);
       if (dir('up')) movePadFocus(0, -1);
       if (dir('down')) movePadFocus(0, 1);
-      if (tap('a')) (padFocusEl && padFocusEl.offsetParent ? padFocusEl : btnPlay).click();
-      else if (tap('start')) btnPlay.click();              // Start always launches
+      if (tap('a')) { claimP1(i); (padFocusEl && padFocusEl.offsetParent ? padFocusEl : btnPlay).click(); }
+      else if (tap('start')) { claimP1(i); btnPlay.click(); }              // Start always launches
       else if (tap('y')) openPanel('settings');
       else if (tap('bBtn')) setPadFocus(null);
       continue;
@@ -11673,15 +11699,20 @@ function pollPadsInner() {
       // drive — their stick drift and taps were yanking the cursor and buying
       // things. P1's pad AND any unbound pad still work, so an Xbox controller
       // that slept and woke at a NEW index is never locked out of the shop.
+      let padOnly = false;
       if (game.phase === 'select' || game.phase === 'map' || game.phase === 'armory') {
-        const p1Pad = p1PadOf();
-        if (i !== p1Pad && players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i)) continue;
+        const otherKnights = players.some((q, qi) => qi > 0 && q.joined && !q.remote && q.pad === i);
+        if (!otherKnights && i !== p1PadOf() && (s.a || s.start)) claimP1(i);
+        // another knight's controller can still shop/browse with the d-pad and buttons,
+        // but its resting stick can't yank the shared cursor around
+        padOnly = otherKnights && i !== p1PadOf();
       }
+      const dk = n => padOnly ? dirTap(i, n, s['d' + n]) : dir(n);
       // canvas menus: d-pad/stick navigates (held = repeat), A confirms, B backs, LB/RB pages
-      if (dir('left')) synthKey('ArrowLeft');
-      if (dir('right')) synthKey('ArrowRight');
-      if (dir('up')) synthKey('ArrowUp');
-      if (dir('down')) synthKey('ArrowDown');
+      if (dk('left')) synthKey('ArrowLeft');
+      if (dk('right')) synthKey('ArrowRight');
+      if (dk('up')) synthKey('ArrowUp');
+      if (dk('down')) synthKey('ArrowDown');
       if (tap('a')) synthKey('Space');
       if (tap('lb') || tap('lt')) synthKey('KeyQ');
       if (tap('rb') || tap('rt')) synthKey('KeyE');
@@ -11719,9 +11750,16 @@ window.addEventListener('gamepadconnected', e => {
 window.addEventListener('gamepaddisconnected', e => {
   const i = slotOfIndex(e.gamepad.index);
   if (i < 0) { refreshPadSlots(); return; }
-  gameToast('🎮 Controller ' + (i + 1) + ' disconnected');
   PADS['p' + i] = null;
-  PAD_SLOTS[i] = null;
+  // a knight's controller that dozes off keeps the knight's place: it reclaims it on wake
+  if (boundPadSlots().has(i) && game.phase !== 'lobby') {
+    PAD_SLOTS[i].lost = true; PAD_SLOTS[i].index = -1;
+    const k = players.findIndex(q => q.joined && !q.remote && q.pad === i);
+    gameToast('🎮 P' + (k + 1) + "'s controller went to sleep — press any button on it to come back");
+  } else {
+    PAD_SLOTS[i] = null;
+    gameToast('🎮 Controller ' + (i + 1) + ' disconnected');
+  }
   // in the lobby, an unplugged controller gives up its seat — find the knight
   // BOUND to this pad (q.pad), not players[i]; pad number ≠ slot number
   if (game.phase === 'lobby') {
