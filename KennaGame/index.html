@@ -1380,6 +1380,11 @@
         <p>&#10022; Realms are real places now: winding roads, ponds, frozen ice, glowing lava, candy syrup, crypt goo, stone plazas and flower fields. Bushes and props never sit in ponds or on roads.</p>
         <p>&#127918; Xbox controls: every press counts once (no more swallowed or doubled presses between screens), a fast A can no longer pick a gift before you see it, a single gift card can always be picked, a keyboard Player 1 no longer steals Player 2's pad, couch friends can leave the lobby with B, triggers page like the bumpers, and the online name/code boxes work with the pad.</p>
         <p>&#10022; A cleaner home screen: one menu, status at the top, and real news.</p>
+        <p>&#127918; Couch co-op fixed for real Xbox controllers: Player 1 is whoever drives the menus, every knight keeps ITS controller (no more jumbled knights when a friend joins or a pad wakes up), and any controller can shop in the Armory.</p>
+        <p>&#128274; Hidden prisoners: a knight from the roster is locked inside a ring of hedges far out in every realm, guarded by jailers. No arrow until you find it. Free a knight you don't own yet and they join your roster for good.</p>
+        <p>&#10022; Realms are about twice as big to explore.</p>
+        <p>&#10024; Every gift now shows itself: gold CRIT! numbers, frosty hits, thorn bursts, ECHO! rings, the Hourglass Ward clock ring, Wounded Fury's red aura, Tailwind streaks, lucky &times;2 gems, Giant Slayer sparks, and Steel Plate's flash.</p>
+        <p>&#10022; Keep-the-party-together now works for EVERY knight, Player 1 too: wander off screen for 2 seconds and you're brought back beside a friend.</p>
         <p class="verHead">v2.2 &mdash; THE LAUNCH EDITION</p>
         <p>&#10022; Difficulty setting &mdash; Easy, Normal, Hard, Extreme (Settings &rsaquo; Battle) &mdash; scaling the horde's pace, toughness (bosses too), speed, damage, and the gold payout for braving it.</p>
         <p>&#10022; Reworked pacing: a calm opening that ramps hard into a late-game swarm, with enemy types unlocking across each realm so you level up into them; the Reaper is a real threat now, and bosses keep marching in.</p>
@@ -1796,7 +1801,7 @@ const heroSprites = {
 // ============================================================
 // THE LAST KNIGHT — co-op survivors mode
 // ============================================================
-const WORLD_W = 6400, WORLD_H = 4800;   // a MUCH bigger kingdom to roam
+const WORLD_W = 8800, WORLD_H = 6600;   // a MUCH bigger kingdom to roam (v3.0: ~1.9x more to explore)
 
 // royal UI palette (matches the home page)
 const UI = {
@@ -2835,6 +2840,45 @@ function drawTerrainFeatures(t, M) {
   }
 }
 
+// ---- gifts you can SEE: every passive Royal Gift shows itself on the battlefield ----
+function upgradeBurst(x, y, color, n, spd, size) {
+  for (let k = 0; k < n; k++) {
+    const a = Math.random() * Math.PI * 2, s2 = spd * (0.5 + Math.random() * 0.7);
+    particles.push({ x, y, vx: Math.cos(a) * s2, vy: Math.sin(a) * s2 - 20, life: 0.35 + Math.random() * 0.25, color, size: size * (0.7 + Math.random() * 0.6) });
+  }
+}
+function drawUpgradeAuras(t) {
+  for (const p of players) {
+    if (!p.joined || !p.alive) continue;
+    const x = p.x, y = p.y;
+    // Hourglass Ward: the slowing zone is a faint turning clock face
+    if (upLvl('ward') > 0) {
+      ctx.save();
+      ctx.translate(x, y - 6);
+      ctx.strokeStyle = `rgba(186, 160, 255, ${0.14 + 0.05 * upLvl('ward')})`;
+      ctx.lineWidth = 2; ctx.setLineDash([10, 12]); ctx.lineDashOffset = -t * 20;
+      ctx.beginPath(); ctx.ellipse(0, 0, 170, 128, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(186, 160, 255, 0.4)';
+      for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6 + t * 0.3; ctx.fillRect(Math.cos(a) * 170 - 2, Math.sin(a) * 128 - 2, 4, 4); }
+      ctx.restore();
+    }
+    // Wounded Fury: while it's active, a red battle aura burns under every knight
+    if (upLvl('fury') > 0 && players.some(q => q.joined && q.alive && q.hp <= q.maxHp / 2)) {
+      ctx.save();
+      ctx.globalAlpha = 0.45 + 0.2 * Math.sin(t * 10 + x);
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath(); ctx.ellipse(x, y + 2, 22, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      if (Math.random() < 0.4) particles.push({ x: x + (Math.random() - 0.5) * 26, y: y - Math.random() * 10, vx: 0, vy: -70, life: 0.35, color: Math.random() < 0.5 ? '#ef4444' : '#fb923c', size: 2.5 });
+      ctx.restore();
+    }
+    // Tailwind: untouched for 5s, the wind carries you — streaks trail behind
+    if (upLvl('tailwind') > 0 && game.time - (p.lastHurtT || -99) > 5 && p.moving) {
+      if (Math.random() < 0.6) particles.push({ x: x + (Math.random() - 0.5) * 20, y: y - 6 - Math.random() * 22, vx: (p.faceLeft ? 1 : -1) * 160, vy: 0, life: 0.25, color: 'rgba(230, 245, 255, 0.85)', size: 2 });
+    }
+  }
+}
+
 // ===================== ROYAL QUESTS & MAP WONDERS (v3.0) =====================
 // Every battle now has things to DO besides surviving, like Vampire Survivors:
 // breakable lanterns full of loot, a trapped squire to rescue, three curse
@@ -2880,8 +2924,21 @@ function initQuests() {
     if (inPool(p.x, p.y, 24)) continue;
     spawnProp('lantern', p.x, p.y);
   }
-  const sq = questSpot(560, 950, spots); spots.push(sq);
-  game.quests.push({ type: 'squire', name: 'Rescue the trapped squire', x: sq.x, y: sq.y, prog: 0, done: false });
+  // a knight from the roster is locked away somewhere far off, inside a ring of standing
+  // stones with ONE narrow gap, guarded by jailers. No arrow until you find it (or 5 min).
+  const locked = ROSTER.filter(rk => rk.price > 0 && !(kdMeta.unlocked || []).includes(rk.key));
+  const pool = locked.length ? locked : ROSTER.slice(1);
+  const prisoner = pool[Math.floor(Math.random() * pool.length)];
+  const sq = questSpot(far * 1.05, far * 1.5, spots); spots.push(sq);
+  structures = structures.filter(st => st.type === 'shrine' || st.type === 'forge' || Math.hypot(st.x - sq.x, st.y - sq.y) > 230);
+  const gapA = Math.random() * Math.PI * 2, RING = 150, nP = 26;
+  for (let k = 0; k < nP; k++) {
+    const a = (k / nP) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a - gapA), Math.cos(a - gapA))) < 0.26) continue;   // the one way in
+    structures.push({ x: sq.x + Math.cos(a) * RING, y: sq.y + Math.sin(a) * RING * 0.75, w: 34, h: 30, type: 'pillar', seed: 900 + k });
+  }
+  game.quests.push({ type: 'squire', name: 'Find the hidden prisoner', knight: prisoner.key, kname: prisoner.name, locked: locked.length > 0,
+    x: sq.x, y: sq.y, prog: 0, found: false, guards: false, done: false });
   for (let k = 0; k < 3; k++) { const o = questSpot(520, far * 1.1, spots); spots.push(o); spawnProp('obelisk', o.x, o.y); }
   game.quests.push({ type: 'obelisks', name: 'Shatter the curse obelisks', left: 3, total: 3, done: false });
   const key = MAPS[game.mapPick].key;
@@ -2928,8 +2985,24 @@ function updateQuests(dt) {
   for (const q of game.quests) {
     if (q.done) continue;
     if (q.type === 'squire') {
-      q.prog = near(q.x, q.y, 85) ? q.prog + dt : Math.max(0, q.prog - dt * 0.6);
-      if (q.prog >= 3) finishQuest(q, q.x, q.y, '🛡 Squire rescued! He leaves you a royal chest!', 6);
+      if (!q.found && near(q.x, q.y, 900)) { q.found = true; q.name = 'Free ' + q.kname; gameToast('🔒 ' + q.kname + ' is locked in the stone ring! Find the way in!', 3.5); }
+      if (!q.guards && near(q.x, q.y, 620)) {
+        q.guards = true;
+        gameToast('⚔ The jailers attack!', 2.5);
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2;
+          spawnEnemy(q.x + Math.cos(a) * 240, q.y + Math.sin(a) * 190);
+          const g = enemies[enemies.length - 1];
+          if (g && !g.prop && !g.elite) { g.elite = true; g.hp = g.maxHp = g.maxHp * 3; g.r *= 1.18; g.xp *= 3; }
+        }
+      }
+      q.prog = near(q.x, q.y, 70) ? q.prog + dt : Math.max(0, q.prog - dt * 0.6);
+      if (q.prog >= 4) {
+        let msg;
+        if (q.locked && !kdMeta.unlocked.includes(q.knight)) { kdMeta.unlocked.push(q.knight); saveMeta(); msg = '🛡 ' + q.kname + ' is FREE — and joins your roster!'; }
+        else { kdMeta.gold += 150; game.runGold += 150; saveMeta(); msg = '🛡 ' + q.kname + ' is free! +150 gold'; }
+        finishQuest(q, q.x, q.y, msg, 6);
+      }
     } else if (q.type === 'relic') {
       if (near(q.x, q.y, 46)) {
         const key = MAPS[game.mapPick].key;
@@ -3051,27 +3124,24 @@ function drawQuestWorld(t) {
     ctx.beginPath(); ctx.ellipse(x, y + 4, 32, 9, 0, 0, Math.PI * 2); ctx.fill();
     ctx.textAlign = 'center';
     if (q.type === 'squire') {
-      // the trapped squire: a little knight in a wooden cage, like the well's timber
-      ctx.fillStyle = M.stone; ctx.fillRect(x - 28, y - 6, 56, 8);
-      ctx.fillStyle = '#8a95a6'; ctx.fillRect(x - 7, y - 30, 14, 24);
-      ctx.fillStyle = '#b8c2cf'; ctx.fillRect(x - 7, y - 30, 5, 24);
-      ctx.fillStyle = '#c9d1db'; ctx.fillRect(x - 8, y - 44, 16, 14);
-      ctx.fillStyle = '#22293a'; ctx.fillRect(x - 6, y - 39, 12, 3);
-      ctx.fillStyle = '#c0392b'; ctx.fillRect(x - 2, y - 50, 4, 7);
-      ctx.fillStyle = '#6b4a2a';
-      for (let k = -24; k <= 24; k += 8) ctx.fillRect(x + k - 2, y - 58, 4, 54);
-      ctx.fillStyle = '#7d5833'; ctx.fillRect(x - 30, y - 62, 60, 7);
-      ctx.fillStyle = '#5a3d22'; ctx.fillRect(x - 30, y - 8, 60, 4);
-      const bob = Math.round(Math.sin(t * 4) * 3);
-      ctx.drawImage(GLOWS.gilded, x - 16, y - 96 + bob, 32, 32);
-      ctx.fillStyle = '#ffd98a'; ctx.font = 'bold 22px Cinzel, serif';
-      ctx.fillText('!', x, y - 72 + bob);
+      // a real roster knight behind iron bars on a stone dais, chains and all
+      ctx.fillStyle = M.stone; ctx.fillRect(x - 34, y - 6, 68, 10);
+      ctx.fillStyle = M.stoneHi; ctx.fillRect(x - 34, y - 6, 68, 3);
+      if (!drawHeroImg(q.knight, x, y - 4, 54, false) && heroSprites[q.knight]) ctx.drawImage(heroSprites[q.knight].down[1], x - 27, y - 58, 54, 54);
+      ctx.fillStyle = '#2a2c30';
+      for (let k = -26; k <= 26; k += 9) ctx.fillRect(x + k - 1.5, y - 66, 3, 62);
+      ctx.fillStyle = '#3a3d42'; ctx.fillRect(x - 32, y - 70, 64, 6); ctx.fillRect(x - 32, y - 30, 64, 3);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; for (let k = -26; k <= 26; k += 9) ctx.fillRect(x + k - 1.5, y - 66, 1, 62);
+      // padlock
+      ctx.fillStyle = '#c9a227'; ctx.fillRect(x - 6, y - 38, 12, 10);
+      ctx.strokeStyle = '#c9a227'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y - 38, 4, Math.PI, 0); ctx.stroke();
+      ctx.textAlign = 'center';
       if (q.prog > 0) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'; ctx.fillRect(x - 26, y + 12, 52, 7);
-        ctx.fillStyle = '#8fd460'; ctx.fillRect(x - 25, y + 13, 50 * Math.min(1, q.prog / 3), 5);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)'; ctx.fillRect(x - 30, y + 12, 60, 7);
+        ctx.fillStyle = '#8fd460'; ctx.fillRect(x - 29, y + 13, 58 * Math.min(1, q.prog / 4), 5);
       } else {
-        ctx.fillStyle = 'rgba(255, 240, 210, 0.9)'; ctx.font = '600 11px Inter, sans-serif';
-        ctx.fillText('Stand here to free him', x, y + 22);
+        ctx.fillStyle = 'rgba(255, 240, 210, 0.92)'; ctx.font = '600 11px Inter, sans-serif';
+        ctx.fillText(q.kname + ' — stand by the bars to free them', x, y + 22);
       }
     } else if (q.type === 'relic') {
       // a stone pedestal with the realm's lost relic floating above it
@@ -3117,7 +3187,7 @@ function drawQuestLocators() {
   if (!game.quests) return;
   for (const q of game.quests) {
     if (q.done) continue;
-    if (q.type === 'squire') drawLocator(q.x, q.y, 'rgba(120, 230, 150, 0.95)', '!');
+    if (q.type === 'squire') { if (q.found || game.time > 300) drawLocator(q.x, q.y, 'rgba(120, 230, 150, 0.95)', '!'); }
     else if (q.type === 'relic') drawLocator(q.x, q.y, 'rgba(255, 220, 110, 0.95)', '★');
     else if (q.type === 'beacon') drawLocator(q.x, q.y, 'rgba(255, 160, 80, 0.95)', '⚑');
     else if (q.type === 'obelisks') {
@@ -3589,7 +3659,9 @@ function hurtEnemy(e, dmg, ang, kb) {
   dmg *= (game.relicMul || 1) * (game.curseWeak ? 1.2 : 1);   // relics found + obelisks shattered
   if (upLvl('slayer') > 0 && e.r >= 17) dmg *= 1 + 0.3 * upLvl('slayer');
   if (upLvl('fury') > 0 && players.some(p => p.joined && p.alive && p.hp <= p.maxHp / 2)) dmg += upLvl('fury');
-  if (upLvl('crit') > 0 && Math.random() < 0.12 * upLvl('crit')) dmg *= 2;
+  let crit = false;
+  if (upLvl('crit') > 0 && Math.random() < 0.12 * upLvl('crit')) { dmg *= 2; crit = true; }
+  if (upLvl('slayer') > 0 && e.r >= 17) upgradeBurst(e.x, e.y - e.r * 0.5, '#fb923c', 3, 120, 2.5);
   if (e.kind === 'shellback') dmg = Math.min(dmg, 1);   // armored — chip damage only
   if (e.kind === 'reaper') dmg = Math.min(dmg, 6);      // death itself does not fall to one blow
   if (BOSS_DEFS[e.kind]) {
@@ -3600,12 +3672,14 @@ function hurtEnemy(e, dmg, ang, kb) {
   e.flash = 0.12;
   SFX.hit();
   if (upLvl('frost') > 0) {
+    upgradeBurst(e.x, e.y - e.r * 0.5, Math.random() < 0.5 ? '#bfe9ff' : '#ffffff', 3, 70, 2.2);
     e.slowT = 2;
     e.slowF = Math.pow(0.74, upLvl('frost'));
   }
   e.kx += Math.cos(ang) * kb;
   e.ky += Math.sin(ang) * kb;
-  dmgTexts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y - e.r - 6, val: Math.max(1, Math.round(dmg)), age: 0 });
+  dmgTexts.push({ x: e.x + (Math.random() - 0.5) * 14, y: e.y - e.r - 6, val: Math.max(1, Math.round(dmg)) + (crit ? '!' : ''), age: 0, crit });
+  if (crit) particles.push({ x: e.x, y: e.y - e.r * 0.4, vx: 0, vy: 0, ring: true, life: 0.22, color: '#ffd34d', size: e.r * 1.3 });
 }
 
 function hitPlayer(t, e) {
@@ -3621,6 +3695,7 @@ function hitPlayer(t, e) {
   t.hp -= diffMul().dmg || 1;   // on Extreme every blow costs 2 hearts
   t.lastHurtT = game.time;
   t.invuln = 1.2 + 0.25 * upLvl('plate');
+  if (upLvl('plate') > 0) particles.push({ x: t.x, y: t.y - 16, vx: 0, vy: 0, ring: true, life: 0.35, color: '#d6dee8', size: 30 });
   game.shake = 0.25;
   game.hurtFlash = 0.4;
   SFX.hurt();
@@ -3628,6 +3703,7 @@ function hitPlayer(t, e) {
   if (e) {
     if (upLvl('thorn') > 0) {
       hurtEnemy(e, 3 * upLvl('thorn'), Math.atan2(e.y - t.y, e.x - t.x), 280);
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; particles.push({ x: t.x + Math.cos(a) * 14, y: t.y - 16 + Math.sin(a) * 14, vx: Math.cos(a) * 220, vy: Math.sin(a) * 220, life: 0.22, color: '#84cc16', size: 3 }); }
     }
     const rang = Math.atan2(t.y - e.y, t.x - e.x);
     e.kx -= Math.cos(rang) * 150;
@@ -3774,7 +3850,7 @@ function killEnemy(i) {
   const xpScale = 1 + game.time / 240;
   for (let k = 0; k < n; k++) {
     let gv = Math.max(1, Math.ceil(e.xp * xpScale / n));
-    if (Math.random() < 0.2 * upLvl('clover')) gv *= 2;
+    if (Math.random() < 0.2 * upLvl('clover')) { gv *= 2; dmgTexts.push({ x: e.x, y: e.y - e.r - 20, val: '×2', age: 0, gold: true }); upgradeBurst(e.x, e.y, '#4ade80', 4, 90, 2.4); }
     const gp = pushOut(e.x + (Math.random() - 0.5) * 18, e.y + (Math.random() - 0.5) * 18, 14);
     gems.push({ x: gp.x, y: gp.y, v: gv, vx: 0, vy: 0 });
   }
@@ -4116,8 +4192,12 @@ function update(dt) {
     p.attackTimer -= dt;
     if (p.attackTimer <= 0 && fireWeapon(p)) {
       // Echo Strike: sometimes the next blow follows almost instantly
-      p.attackTimer = (upLvl('echo') > 0 && Math.random() < 0.2 * upLvl('echo'))
-        ? p.attackEvery * 0.25 : p.attackEvery;
+      const echoNow = upLvl('echo') > 0 && Math.random() < 0.2 * upLvl('echo');
+      p.attackTimer = echoNow ? p.attackEvery * 0.25 : p.attackEvery;
+      if (echoNow) {
+        particles.push({ x: p.x, y: p.y - 16, vx: 0, vy: 0, ring: true, life: 0.3, color: '#c4b5fd', size: 34 });
+        dmgTexts.push({ x: p.x, y: p.y - 46, val: 'ECHO!', age: 0, gold: true });
+      }
     }
     // the arsenal: extra weapons won at level-up, each on its own clock
     for (const wt of (p.arsenal || [])) {
@@ -4731,20 +4811,23 @@ function update(dt) {
   cam.y += ((fy - 340) - cam.y) * Math.min(1, dt * 5);
   cam.x = Math.max(0, Math.min(WORLD_W - ROOM_W, cam.x));
   cam.y = Math.max(0, Math.min(WORLD_H - 640, cam.y));
-  // Keep the party together: an extra knight who's been off-screen too long fades
-  // out and is teleported back beside P1 (toggle in Settings).
+  // Keep the party together: ANY couch knight (Player 1 included) who stays off the
+  // shared screen for ~2 seconds is whisked back beside a teammate who IS on screen
+  // (or to the middle of the view if everyone scattered). Toggle in Settings.
   if (settings.keepParty !== false) {
-    for (let pi = 1; pi < players.length; pi++) {
-      const p = players[pi];
-      if (!p.joined || !p.alive || p.remote) { if (p) p.offT = 0; continue; }
-      const sx = p.x - cam.x, sy = p.y - cam.y;
-      const off = sx < -30 || sx > ROOM_W + 30 || sy < -30 || sy > 640 + 30;
-      p.offT = off ? (p.offT || 0) + dt : 0;
-      if (p.offT > 2.6) {
+    const local = players.filter(p => p.joined && p.alive && !p.remote);
+    const onScreen = q => { const sx = q.x - cam.x, sy = q.y - cam.y; return sx >= -20 && sx <= ROOM_W + 20 && sy >= -20 && sy <= 660; };
+    for (const p of players) if (!local.includes(p)) p.offT = 0;
+    if (local.length > 1) for (const p of local) {
+      p.offT = onScreen(p) ? 0 : (p.offT || 0) + dt;
+      if (p.offT > 2.2) {
+        const pi = players.indexOf(p);
         for (let k = 0; k < 12; k++) { const a = Math.random() * Math.PI * 2; particles.push({ x: p.x, y: p.y - 16, vx: Math.cos(a) * 90, vy: Math.sin(a) * 90 - 40, life: 0.4, color: PLAYER_COLORS[pi % 4], size: 3 }); }
-        const home = (players[0].joined && players[0].alive && p !== players[0]) ? players[0] : { x: fx, y: fy };
-        p.x = home.x + (Math.random() - 0.5) * 70;
-        p.y = home.y + 40 + (Math.random() - 0.5) * 30;
+        const mates = local.filter(q => q !== p && onScreen(q));
+        const home = mates.length ? mates.reduce((best, q) => Math.hypot(q.x - p.x, q.y - p.y) < Math.hypot(best.x - p.x, best.y - p.y) ? q : best)
+                                  : { x: cam.x + CX, y: cam.y + 340 };
+        const spot = pushOut(home.x + (Math.random() - 0.5) * 70, home.y + 40 + (Math.random() - 0.5) * 30, 18);
+        p.x = spot.x; p.y = spot.y;
         p.offT = 0;
         particles.push({ x: p.x, y: p.y - 16, vx: 0, vy: 0, ring: true, life: 0.3, color: PLAYER_COLORS[pi % 4], size: 26 });
       }
@@ -8809,13 +8892,15 @@ function render(t) {
     ctx.strokeStyle = `rgba(12, 8, 16, ${Math.max(0, 0.85 * (1 - dm.age / 0.7))})`;
     ctx.lineWidth = 4;
     ctx.strokeText(dm.val, dm.x, dm.y);
-    ctx.fillStyle = dm.gold
+    if (dm.crit) { ctx.font = '700 30px "VT323", monospace'; ctx.strokeText(dm.val, dm.x, dm.y); }
+    ctx.fillStyle = dm.crit ? `rgba(255, 211, 77, ${1 - dm.age / 0.7})` : dm.gold
       ? `rgba(255, 208, 80, ${1 - dm.age / 0.7})`
       : `rgba(255, 233, 184, ${1 - dm.age / 0.7})`;
     ctx.fillText(dm.val, dm.x, dm.y);
   }
 
   drawQuestWorld(t);
+  drawUpgradeAuras(t);
   ctx.restore(); // end camera
 
   // ---- atmosphere: vignette, map ambience, hurt flash ----
