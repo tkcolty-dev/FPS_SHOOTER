@@ -1384,6 +1384,7 @@
         <p>&#128274; Hidden prisoners: a knight from the roster is locked inside a ring of hedges far out in every realm, guarded by jailers. No arrow until you find it. Free a knight you don't own yet and they join your roster for good.</p>
         <p>&#10022; Realms are about twice as big to explore.</p>
         <p>&#10024; Every gift now shows itself: gold CRIT! numbers, frosty hits, thorn bursts, ECHO! rings, the Hourglass Ward clock ring, Wounded Fury's red aura, Tailwind streaks, lucky &times;2 gems, Giant Slayer sparks, and Steel Plate's flash.</p>
+        <p>&#127769; Living realms: fireflies, falling snow, rising embers, drifting ash, crypt wisps, candy sparkles, rose petals and lake mist; cloud shadows sweep the open fields; night realms are truly dark, lit only by lanterns, lava, magic and your knights; footsteps kick up dust, snow and ash; and some battles bring a rainstorm or a blizzard.</p>
         <p>&#10022; Keep-the-party-together now works for EVERY knight, Player 1 too: wander off screen for 2 seconds and you're brought back beside a friend.</p>
         <p class="verHead">v2.2 &mdash; THE LAUNCH EDITION</p>
         <p>&#10022; Difficulty setting &mdash; Easy, Normal, Hard, Extreme (Settings &rsaquo; Battle) &mdash; scaling the horde's pace, toughness (bosses too), speed, damage, and the gold payout for braving it.</p>
@@ -2687,6 +2688,7 @@ function initRun() {
   game.phoenix = (game.phoenix || 0) + powerRank('ember');
   game.freeGift = powerRank('fortune') > 0;
   initQuests();
+  initAtmosphere();
 }
 
 // ---- realm landmarks: winding roads, ponds/lava/ice, flower fields, stone plazas ----
@@ -2879,6 +2881,180 @@ function drawUpgradeAuras(t) {
   }
 }
 
+// ===================== ATMOSPHERE (v3.0) =====================
+// Each realm breathes: drifting fireflies / snow / embers / petals, cloud shadows
+// over the open fields, night realms lit only by lanterns, lava, magic and your
+// knights, footstep puffs, and the odd rainstorm or blizzard.
+const AMBIENT = {
+  meadow:    { kind: 'firefly', n: 24, dark: 0,    clouds: true,  step: '#9a8a62', weather: ['rain', 0.3] },
+  courtyard: { kind: 'dust',    n: 30, dark: 0,    clouds: true,  step: '#c2b394' },
+  hall:      { kind: 'dust',    n: 34, dark: 0.28, clouds: false, step: '#9a8a6c' },
+  forest:    { kind: 'firefly', n: 42, dark: 0.4,  clouds: false, step: '#4a3b26', weather: ['rain', 0.3] },
+  crypt:     { kind: 'wisp',    n: 26, dark: 0.58, clouds: false, step: '#5a5468' },
+  snow:      { kind: 'snow',    n: 90, dark: 0,    clouds: true,  step: '#ffffff', weather: ['blizzard', 0.35] },
+  forge:     { kind: 'ember',   n: 50, dark: 0.34, clouds: false, step: '#4a3a32' },
+  throne:    { kind: 'dust',    n: 30, dark: 0.42, clouds: false, step: '#5a4870' },
+  candy:     { kind: 'sparkle', n: 40, dark: 0,    clouds: true,  step: '#ffd6e8' },
+  garden:    { kind: 'petal',   n: 34, dark: 0,    clouds: true,  step: '#9a8a62', weather: ['rain', 0.3] },
+  lake:      { kind: 'firefly', n: 36, dark: 0.48, clouds: false, step: '#32526f', mist: true },
+  volcano:   { kind: 'ash',     n: 70, dark: 0.3,  clouds: false, step: '#5c382c' },
+};
+let darkCv = null, darkCtx = null;
+function initAtmosphere() {
+  const A = AMBIENT[MAPS[game.mapPick].key] || AMBIENT.meadow;
+  game.weather = A.weather && Math.random() < A.weather[1] ? A.weather[0] : null;
+  game.amb = [];
+  const n = A.n + (game.weather === 'blizzard' ? 110 : 0);
+  for (let i = 0; i < n; i++) game.amb.push(newMote(A, true));
+  game.ambT = null; game.stepT = 0;
+  if (game.weather) setTimeout(() => gameToast(game.weather === 'rain' ? '🌧 A storm rolls over the realm…' : '❄ A blizzard howls through the pass!', 2.5), 1800);
+}
+function newMote(A, anywhere) {
+  const x = cam.x + Math.random() * ROOM_W, y = anywhere ? cam.y + Math.random() * 640 : (A.kind === 'ember' || A.kind === 'wisp' ? cam.y + 660 : cam.y - 20);
+  return { x, y, ph: Math.random() * 10, s: 0.6 + Math.random() * 0.8, vx: 0, vy: 0 };
+}
+function drawCloudShadows(t, M) {
+  const A = AMBIENT[M.key];
+  if (!A || !A.clouds) return;
+  for (let i = 0; i < 9; i++) {
+    const span = WORLD_W + 1200;
+    const x = ((hash2(i, 3, 91) * span + t * (14 + 6 * hash2(i, 4, 91))) % span) - 600;
+    const y = hash2(i, 5, 91) * WORLD_H;
+    if (x < cam.x - 700 || x > cam.x + ROOM_W + 700 || y < cam.y - 500 || y > cam.y + 1140) continue;
+    const rx = 380 + 260 * hash2(i, 6, 91), ry = rx * 0.55;
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(1, ry / rx);
+    const g = ctx.createRadialGradient(0, 0, rx * 0.2, 0, 0, rx);
+    g.addColorStop(0, 'rgba(10, 18, 30, 0.13)'); g.addColorStop(1, 'rgba(10, 18, 30, 0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+}
+function drawAmbientWorld(t, M) {
+  const A = AMBIENT[M.key] || AMBIENT.meadow;
+  if (!game.amb) initAtmosphere();
+  const dt = Math.min(0.05, game.ambT == null ? 0 : t - game.ambT);
+  game.ambT = t;
+  const live = game.phase === 'run' && !game.paused && !game.choices;
+  const wind = game.weather === 'blizzard' ? 260 : 30;
+  for (const m of game.amb) {
+    if (live) {
+      if (A.kind === 'snow') { m.x += (wind * 0.6 + Math.sin(t + m.ph) * 20) * dt; m.y += (55 + 40 * m.s) * dt * (game.weather === 'blizzard' ? 2.2 : 1); }
+      else if (A.kind === 'ash') { m.x += (18 + Math.sin(t * 0.7 + m.ph) * 16) * dt; m.y += 26 * m.s * dt; }
+      else if (A.kind === 'ember') { m.x += Math.sin(t * 2 + m.ph) * 24 * dt; m.y -= (40 + 50 * m.s) * dt; }
+      else if (A.kind === 'wisp') { m.x += Math.sin(t * 0.8 + m.ph) * 20 * dt; m.y -= 18 * m.s * dt; }
+      else if (A.kind === 'petal') { m.x += (26 + Math.sin(t * 1.6 + m.ph) * 30) * dt; m.y += 30 * m.s * dt; }
+      else { m.x += Math.sin(t * 0.9 + m.ph) * 16 * dt; m.y += Math.cos(t * 0.7 + m.ph * 1.3) * 12 * dt; }
+    }
+    // keep motes around the view, wrapping softly
+    if (m.x < cam.x - 40) m.x += ROOM_W + 80; else if (m.x > cam.x + ROOM_W + 40) m.x -= ROOM_W + 80;
+    if (m.y < cam.y - 40) m.y += 720; else if (m.y > cam.y + 680) m.y -= 720;
+    const tw = 0.5 + 0.5 * Math.sin(t * 3 + m.ph * 5);
+    switch (A.kind) {
+      case 'firefly': {
+        const a = 0.25 + 0.75 * tw;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(200, 255, 120, ${0.18 * a})`; ctx.beginPath(); ctx.arc(m.x, m.y, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(235, 255, 170, ${0.95 * a})`; ctx.fillRect(m.x - 1.5, m.y - 1.5, 3, 3);
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+      }
+      case 'snow': ctx.fillStyle = `rgba(255, 255, 255, ${0.55 + 0.35 * m.s})`; ctx.fillRect(m.x, m.y, 1.5 + m.s * 1.8, 1.5 + m.s * 1.8); break;
+      case 'ash': ctx.fillStyle = `rgba(120, 110, 105, ${0.5 * m.s})`; ctx.fillRect(m.x, m.y, 2.5, 2); break;
+      case 'ember': {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(255, ${140 + 80 * tw | 0}, 60, ${0.5 + 0.5 * tw})`; ctx.fillRect(m.x, m.y, 2.2, 2.2);
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+      }
+      case 'wisp': {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = `rgba(170, 150, 255, ${0.12 * (0.5 + tw)})`; ctx.beginPath(); ctx.arc(m.x, m.y, 9 * m.s + 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = `rgba(220, 210, 255, ${0.6 * tw})`; ctx.fillRect(m.x - 1, m.y - 1, 2, 2);
+        ctx.globalCompositeOperation = 'source-over';
+        break;
+      }
+      case 'sparkle': ctx.fillStyle = `rgba(255, 255, 255, ${tw})`; ctx.fillRect(m.x - 2, m.y, 5, 1); ctx.fillRect(m.x, m.y - 2, 1, 5); break;
+      case 'petal': ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(t * 2 + m.ph); ctx.fillStyle = 'rgba(249, 168, 212, 0.85)'; ctx.beginPath(); ctx.ellipse(0, 0, 3.5, 1.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); break;
+      default: ctx.fillStyle = `rgba(255, 240, 210, ${0.18 + 0.2 * tw})`; ctx.fillRect(m.x, m.y, 2, 2);
+    }
+  }
+  // lake mist rolling low over the ground
+  if (A.mist) for (let i = 0; i < 6; i++) {
+    const x = cam.x + ((i * 260 + t * 12) % (ROOM_W + 400)) - 200, y = cam.y + 120 + i * 90 + Math.sin(t * 0.3 + i) * 20;
+    const g = ctx.createRadialGradient(x, y, 10, x, y, 220);
+    g.addColorStop(0, 'rgba(200, 225, 255, 0.07)'); g.addColorStop(1, 'rgba(200, 225, 255, 0)');
+    ctx.fillStyle = g; ctx.fillRect(x - 220, y - 220, 440, 440);
+  }
+}
+// footstep puffs: dust, snow or ash kicked up under moving knights
+function updateFootsteps(dt) {
+  const A = AMBIENT[MAPS[game.mapPick].key] || AMBIENT.meadow;
+  game.stepT = (game.stepT || 0) - dt;
+  if (game.stepT > 0) return;
+  game.stepT = 0.14;
+  for (const p of players) {
+    if (!p.joined || !p.alive || !p.moving) continue;
+    for (let k = 0; k < 2; k++) particles.push({ x: p.x + (Math.random() - 0.5) * 12, y: p.y + 2, vx: (Math.random() - 0.5) * 40, vy: -12 - Math.random() * 20, life: 0.32, color: A.step, size: 2 + Math.random() * 2 });
+  }
+}
+// darkness for night realms, with real light around everything that glows
+function drawDarkness(t, M) {
+  const A = AMBIENT[M.key] || AMBIENT.meadow;
+  const dark = Math.min(0.75, (A.dark || 0) + (game.weather === 'rain' ? 0.14 : 0));
+  if (dark <= 0) return;
+  if (!darkCv) { darkCv = document.createElement('canvas'); darkCv.width = ROOM_W; darkCv.height = 640; darkCtx = darkCv.getContext('2d'); }
+  const d = darkCtx;
+  d.globalCompositeOperation = 'source-over';
+  d.clearRect(0, 0, ROOM_W, 640);
+  d.fillStyle = M.key === 'forge' || M.key === 'volcano' ? `rgba(30, 8, 4, ${dark})` : `rgba(8, 8, 26, ${dark})`;
+  d.fillRect(0, 0, ROOM_W, 640);
+  d.globalCompositeOperation = 'destination-out';
+  const light = (wx, wy, r, k = 1) => {
+    const x = wx - cam.x, y = wy - cam.y;
+    if (x < -r || x > ROOM_W + r || y < -r || y > 640 + r) return;
+    const g = d.createRadialGradient(x, y, r * 0.15, x, y, r);
+    g.addColorStop(0, `rgba(0,0,0,${k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+    d.fillStyle = g; d.fillRect(x - r, y - r, r * 2, r * 2);
+  };
+  for (const p of players) if (p.joined && p.alive) light(p.x, p.y - 16, 250 + 10 * Math.sin(t * 2), 0.95);
+  for (const e of enemies) {
+    if (e.kind === 'lantern') light(e.x, e.y - 34, 150 + 8 * Math.sin(t * 9 + e.seed), 0.9);
+    else if (e.kind === 'obelisk') light(e.x, e.y - 40, 130, 0.6);
+    else if (e.elite || e.boss) light(e.x, e.y, e.r * 3, 0.35);
+  }
+  for (const s of structures) {
+    if (s.type === 'brazier') light(s.x, s.y - 50, 170, 0.9);
+    else if (s.type === 'shrine') light(s.x, s.y - 60, 160, 0.7);
+    else if (s.type === 'forge') light(s.x, s.y - 40, 190, 0.85);
+  }
+  if (game.terrain && POOL_STYLE[M.key] === 'lava') for (const pl of game.terrain.pools) light(pl.x, pl.y, pl.rx * 1.5, 0.8);
+  for (const q of game.quests || []) if (!q.done && q.x !== undefined) light(q.x, q.y - 40, q.type === 'beacon' ? 200 : 140, 0.8);
+  for (const n of novas) light(n.x, n.y, (n.r || 120) * 1.2, 0.7);
+  for (const c of chests) if (!c.open) light(c.x, c.y, 90, 0.5);
+  for (const g of gems) light(g.x, g.y, 26, 0.35);
+  ctx.drawImage(darkCv, 0, 0);
+}
+// screen-space weather on top of everything in the world
+function drawWeather(t) {
+  if (game.weather === 'rain') {
+    ctx.strokeStyle = 'rgba(190, 210, 255, 0.35)'; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < 90; i++) {
+      const x = (hash2(i, 1, 95) * (ROOM_W + 200) + t * 260 - cam.x * 0.15) % (ROOM_W + 200) - 100;
+      const y = (hash2(i, 2, 95) * 700 + t * 900) % 700 - 30;
+      ctx.moveTo(x, y); ctx.lineTo(x - 7, y + 18);
+    }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(190, 210, 255, 0.4)';
+    for (let i = 0; i < 14; i++) { const ph = (t * 2 + hash2(i, 3, 95)) % 1; ctx.globalAlpha = 1 - ph; ctx.fillRect(hash2(i, Math.floor(t * 2 + hash2(i, 3, 95)), 96) * ROOM_W, hash2(i, Math.floor(t * 2 + hash2(i, 3, 95)), 97) * 640, 6 * ph + 2, 1.5); }
+    ctx.globalAlpha = 1;
+  } else if (game.weather === 'blizzard') {
+    ctx.fillStyle = `rgba(230, 240, 255, ${0.1 + 0.04 * Math.sin(t * 1.3)})`;
+    ctx.fillRect(0, 0, ROOM_W, 640);
+  }
+}
+
 // ===================== ROYAL QUESTS & MAP WONDERS (v3.0) =====================
 // Every battle now has things to DO besides surviving, like Vampire Survivors:
 // breakable lanterns full of loot, a trapped squire to rescue, three curse
@@ -2913,6 +3089,7 @@ function initQuests() {
   game.quests = []; game.questBonus = false; game.curseWeak = false; game.propN = 0;
   game.terrain = genTerrain(game.mapPick);
   tidyTerrain(game.terrain);
+  game.amb = null;
   game.relicMul = 1 + 0.03 * relicCount();
   const far = Math.min(WORLD_W, WORLD_H) * 0.42;
   const spots = [{ x: WORLD_W / 2, y: WORLD_H / 2 }];
@@ -4734,6 +4911,7 @@ function update(dt) {
   }
 
   updateQuests(dt);
+  updateFootsteps(dt);
   // the curse's champion marches in at the halfway mark — and keeps coming in endless
   if (game.time >= game.nextBossT) {
     game.nextBossT += 240;
@@ -8303,6 +8481,7 @@ function render(t) {
     }
   }
   drawTerrainFeatures(t, M);
+  drawCloudShadows(t, M);
   const c0x = Math.floor(cam.x / 64), c0y = Math.floor(cam.y / 64);
   for (let cy = c0y; cy <= c0y + 10; cy++) {
     for (let cx = c0x; cx <= c0x + Math.ceil(ROOM_W / 64) + 1; cx++) {
@@ -8901,7 +9080,10 @@ function render(t) {
 
   drawQuestWorld(t);
   drawUpgradeAuras(t);
+  drawAmbientWorld(t, M);
   ctx.restore(); // end camera
+  drawDarkness(t, M);
+  drawWeather(t);
 
   // ---- atmosphere: vignette, map ambience, hurt flash ----
   const vg2 = ctx.createRadialGradient(CX, 320, 300, CX, 320, 620);
