@@ -21,3 +21,6 @@
 !icons/
 !monsters/
 !sounds/
+
+# never ship local modules — the server installs its own
+node_modules/
