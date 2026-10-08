@@ -388,5 +388,5 @@
     return { factory, variables, source: out };
   }
 
-  window.SparkCompiler = { compile, parseXML };
+  window.SparkCompiler = { compile, parseXML, STMT, EXPR, HATS, helpers: { n, s, bool, f, q, list } };
 })();

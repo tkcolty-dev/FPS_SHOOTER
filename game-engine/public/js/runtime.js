@@ -6,7 +6,7 @@
   const uid = () => Math.random().toString(36).slice(2, 10);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const toNum = v => { if (typeof v === 'number') return isNaN(v) ? 0 : v; if (typeof v === 'boolean') return v ? 1 : 0; const n = Number(v); return (v === '' || v === null || v === undefined || isNaN(n)) ? 0 : n; };
-  const toStr = v => { if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(Math.round(v * 1e6) / 1e6); if (v === null || v === undefined) return ''; return String(v); };
+  const toStr = v => { if (typeof v === 'number') return String(v); if (v === null || v === undefined) return ''; return String(v); };
   const toBool = v => { if (typeof v === 'boolean') return v; if (typeof v === 'string') { const s = v.toLowerCase(); return !(s === '' || s === '0' || s === 'false'); } return !!v; };
   const isNumeric = v => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v)));
   const KEYMAP = { ' ': 'space', ArrowUp: 'up arrow', ArrowDown: 'down arrow', ArrowLeft: 'left arrow', ArrowRight: 'right arrow', Enter: 'enter' };
@@ -212,7 +212,8 @@
       this.wakeFn = null; this.warp = 0; this.ignorePause = false; this.children = [];
     }
     start() {
-      this.promise = this.script.fn(this.target, this).catch(e => { if (e !== STOP) console.error('Script error in ' + this.target.name + ':', e); }).finally(() => { this.done = true; });
+      // scripts start on the next microtask so every hat started in the same tick is live before any of them runs (lets "stop all" stop them all)
+      this.promise = Promise.resolve().then(() => { if (this.stopped) throw STOP; return this.script.fn(this.target, this); }).catch(e => { if (e !== STOP) console.error('Script error in ' + this.target.name + ':', e); }).finally(() => { this.done = true; });
       return this;
     }
     yield() {
@@ -308,7 +309,15 @@
     goTo(x, y) {
       if (!isFinite(x) || !isFinite(y)) return;
       const ox = this.x, oy = this.y; this.x = x; this.y = y;
-      if (this.pen.down && !this.isStage) this.R.pen.line(this, ox, oy, x, y);
+      // Scratch keeps a sliver of every sprite on stage; only do that when the game isn't using a scrolling world/camera
+      if (!this.isStage && this.R.fenceLikeScratch()) this.keepInFence();
+      if (this.pen.down && !this.isStage) this.R.pen.line(this, ox, oy, this.x, this.y);
+    }
+    keepInFence() {
+      const b = this.bounds(); const inset = 15; const w = b.right - b.left, h = b.top - b.bottom; if (!(w > 0 && h > 0)) return;
+      const sx = Math.min(inset, w), sy = Math.min(inset, h);
+      if (b.right < -W / 2 + sx) this.x += (-W / 2 + sx) - b.right; else if (b.left > W / 2 - sx) this.x -= b.left - (W / 2 - sx);
+      if (b.top < -H / 2 + sy) this.y += (-H / 2 + sy) - b.top; else if (b.bottom > H / 2 - sy) this.y -= b.bottom - (H / 2 - sy);
     }
     setX(x) { this.goTo(x, this.y); } setY(y) { this.goTo(this.x, y); }
     move(steps) { const r = this.direction * Math.PI / 180; this.goTo(this.x + steps * Math.sin(r), this.y + steps * Math.cos(r)); }
@@ -367,12 +376,12 @@
     async sayFor(T, text, secs, think) { const id = this.say(text, think); await T.wait(secs); if (this.bubble && this.bubble.id === id) this.bubble = null; }
     setCostume(v) {
       if (!this.costumes.length) return;
-      if (typeof v === 'string' && !isNumeric(v)) {
+      if (typeof v === 'string') {
         const i = this.costumes.findIndex(c => c.name === v);
-        if (i >= 0) this.currentCostume = i;
-        else if (v === 'next costume') this.nextCostume();
-        else if (v === 'previous costume') this.currentCostume = (this.currentCostume - 1 + this.costumes.length) % this.costumes.length;
-        return;
+        if (i >= 0) { this.currentCostume = i; return; }
+        if (v === 'next costume') { this.nextCostume(); return; }
+        if (v === 'previous costume') { this.currentCostume = (this.currentCostume - 1 + this.costumes.length) % this.costumes.length; return; }
+        if (!isNumeric(v)) return;
       }
       const n = Math.round(toNum(v)) - 1; const L = this.costumes.length;
       this.currentCostume = ((n % L) + L) % L;
@@ -529,6 +538,7 @@
       this.drag = null; this.snapshot = null; this.loudnessVal = -1;
       this.scratchCanvas = document.createElement('canvas'); this.scratchCanvas2 = document.createElement('canvas');
       this.bindInput();
+      for (const p of SparkRuntime.plugins) if (p.init) p.init(this);
       this.lastTs = performance.now();
       requestAnimationFrame(ts => this.tick(ts));
     }
@@ -601,6 +611,7 @@
       this.game.reset(); this.cam.x = 0; this.cam.y = 0; this.cam.zoom = 1; this.cam.follow = null; this.cam.bounds = null; this.cam.shakeAmt = 0;
       this.timeScale = 1; this.paused = false; this.particles.list.length = 0; this.flash = null; this.fadeOverlay = null; this.toastMsg = null; this.gameOver = null; this.edgeState.clear(); this.dialog = null; this.labels = {};
       for (const t of this.allTargets()) { t.textCostume = null; t.tint = null; t.trail = null; t.squashAmt = 0; }
+      for (const p of SparkRuntime.plugins) if (p.reset) p.reset(this);
     }
     stopAll(silent) {
       for (const th of this.threads) th.stop();
@@ -609,6 +620,7 @@
       for (const t of this.allTargets()) { t.bubble = null; t.phys.vx = 0; t.phys.vy = 0; }
       this.audio.stopAll(); if (window.speechSynthesis) speechSynthesis.cancel();
       if (this.askUI) this.closeAsk();
+      for (const p of SparkRuntime.plugins) if (p.stop) p.stop(this);
       if (!silent) { this.onEvent('runStateChanged', false); this.onEvent('targetsChanged'); }
     }
     stopOthers(S, T) { for (const th of this.threads) if (th.target === S && th !== T) th.stop(); }
@@ -712,6 +724,7 @@
       if (name === '_random_') { const v = this.viewRect(S && S.sticky); return { x: v.left + Math.random() * (v.right - v.left), y: v.bottom + Math.random() * (v.top - v.bottom) }; }
       const t = this.findTarget(S, name); return t && !t.isStage ? { x: t.x, y: t.y } : null;
     }
+    fenceLikeScratch() { const c = this.cam; return !this.world.active && !c.follow && c.zoom === 1 && c.x === 0 && c.y === 0 && !c.bounds; }
     viewRect(sticky) {
       if (sticky) return { left: -W / 2, right: W / 2, top: H / 2, bottom: -H / 2 };
       const z = this.cam.zoom; return { left: this.cam.x - W / 2 / z, right: this.cam.x + W / 2 / z, top: this.cam.y + H / 2 / z, bottom: this.cam.y - H / 2 / z };
@@ -818,17 +831,19 @@
       return a;
     }
     /* ---------- cloud variables ---------- */
-    cloudSetup(stage) {
+    cloudEnsure() { if (!this.cloudId) { this.cloudId = uid() + uid(); this.onEvent('dirty'); } if (!this.cloudStream) this.cloudSetup(null, true); }
+    cloudSetup(stage, force) {
       stage = stage || this.stage; if (!stage) return;
       const cv = Object.keys(stage.cloudVars || {});
-      if (!cv.length) { this.cloudClose(); return; }
-      if (!this.cloudId) this.cloudId = uid() + uid();
+      if (!cv.length && !force) { if (!this.cloudKeep) this.cloudClose(); return; }
+      if (force) this.cloudKeep = true;
+      if (!this.cloudId) { this.cloudId = uid() + uid(); this.onEvent('dirty'); }
       if (this.cloudStream) return;
       const base = window.SPARK_CLOUD_URL || '';
       fetch(`${base}/api/cloud/${this.cloudId}`).then(r => r.json()).then(vals => { for (const k in vals) if (k in stage.vars) stage.vars[k] = vals[k]; }).catch(() => {});
       try {
         const es = new EventSource(`${base}/api/cloud/${this.cloudId}/stream`); this.cloudStream = es;
-        es.onmessage = e => { try { const { name, value } = JSON.parse(e.data); if (name in stage.vars) stage.vars[name] = value; } catch (err) {} };
+        es.onmessage = e => { try { const m = JSON.parse(e.data); if (m.broadcast !== undefined) { if (this.running) this.broadcast(m.broadcast); } else if (m.leaderboard) this.leaderboard = m.leaderboard; else if (m.name in this.stage.vars) this.stage.vars[m.name] = m.value; } catch (err) {} };
         es.onerror = () => { this.cloudStatus = 'offline'; }; es.onopen = () => { this.cloudStatus = 'online'; };
       } catch (e) { this.cloudStatus = 'offline'; }
     }
@@ -980,7 +995,8 @@
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
         const k = keyName(e);
         if (this.running && (k === 'space' || k.endsWith('arrow'))) e.preventDefault();
-        if (!e.repeat) { this.keys.add(k); this.startHats(s => s.hat === 'key' && (s.key === k || s.key === 'any'), false); }
+        // like Scratch, a held key keeps firing "when key pressed" (the hat only restarts once its script finished)
+        this.keys.add(k); this.startHats(s => s.hat === 'key' && (s.key === k || s.key === 'any'), false);
       });
       window.addEventListener('keyup', e => { this.keys.delete(keyName(e)); });
       window.addEventListener('blur', () => this.keys.clear());
@@ -1084,7 +1100,7 @@
           for (const th of this.threads) if (!th.done && th.wakeFn && (!this.paused || th.ignorePause)) { const w = th.wakeFn; th.wakeFn = null; w(); }
           await null; await null;
           this.threads = this.threads.filter(t => !t.done);
-          if (!this.paused) this.physicsStep();
+          if (!this.paused) { this.physicsStep(); for (const p of SparkRuntime.plugins) if (p.tick) p.tick(this, dt); }
         }
         if (!this.paused || !this.running) {
           this.updateParticles(dt || dtReal * (this.running ? 0 : 1));
@@ -1146,8 +1162,13 @@
       ctx.clearRect(0, 0, W, H);
       // backdrop
       ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
-      // the backdrop stays fixed to the screen (like a sky) while sprites scroll with the camera
-      const bd = this.stage && this.stage.img(); if (bd && bd.ready) ctx.drawImage(bd, 0, 0, W, H);
+      // the backdrop stays fixed to the screen (like a sky) while sprites scroll with the camera; optional parallax scroll
+      const bd = this.stage && this.stage.img();
+      if (bd && bd.ready) {
+        const par = this.parallax || 0;
+        if (!par) ctx.drawImage(bd, 0, 0, W, H);
+        else { const ox = -((this.cam.x + this.cam.ox) * par) % W, oy = ((this.cam.y + this.cam.oy) * par) % H; for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) ctx.drawImage(bd, ox + dx * W, oy + dy * H, W, H); }
+      }
       // pen
       const map = this.worldToScreen(false);
       this.world.draw(ctx, map, this.cam.zoom);
@@ -1156,6 +1177,7 @@
       const stickyMap = this.worldToScreen(true);
       for (const t of this.targets) if (t.visible && !t.sticky) this.drawSprite(ctx, t, map, this.cam.zoom, false);
       this.drawParticles(ctx, map);
+      for (const p of SparkRuntime.plugins) if (p.drawWorld) p.drawWorld(this, ctx, map);
       for (const t of this.targets) if (t.visible && t.sticky) this.drawSprite(ctx, t, stickyMap, 1, false);
       for (const t of this.targets) if (t.bubble && t.visible) this.drawBubble(ctx, t, t.sticky ? stickyMap : map, t.sticky ? 1 : this.cam.zoom);
       if (this.stage && this.stage.bubble) this.drawBubble(ctx, this.stage, () => [W / 2, H - 40], 1, true);
@@ -1163,6 +1185,7 @@
       if (this.flash) { const k = (this.flash.until - this.time) / this.flash.dur; ctx.globalAlpha = clamp(k, 0, 1) * 0.85; ctx.fillStyle = this.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
       if (this.fadeOverlay) { ctx.globalAlpha = clamp(this.fadeOverlay.alpha, 0, 1); ctx.fillStyle = this.fadeOverlay.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
       this.drawLabels(ctx);
+      for (const p of SparkRuntime.plugins) if (p.drawScreen) p.drawScreen(this, ctx);
       if (this.toastMsg) this.drawToast(ctx);
       if (this.dialog) this.drawDialog(ctx);
       if (this.gameOver) this.drawGameOver(ctx);
@@ -1299,6 +1322,8 @@
     }
   }
 
-  SparkRuntime.W = W; SparkRuntime.H = H; SparkRuntime.PARTICLE_PRESETS = PARTICLE_PRESETS; SparkRuntime.TILE_NAMES = TILE_NAMES; SparkRuntime.tileSVG = tileSVG;
+  SparkRuntime.W = W; SparkRuntime.H = H; SparkRuntime.PARTICLE_PRESETS = PARTICLE_PRESETS; SparkRuntime.TILE_NAMES = TILE_NAMES; SparkRuntime.TILE_INDEX = TILE_INDEX; SparkRuntime.tileSVG = tileSVG;
+  SparkRuntime.Target = Target; SparkRuntime.Thread = Thread; SparkRuntime.World = World; SparkRuntime.util = { toNum, toStr, toBool, clamp, uid, isNumeric, rng, STOP };
+  SparkRuntime.plugins = []; // features.js registers { init(R), tick(R, dt), reset(R), stop(R), drawWorld(R, ctx, map), drawScreen(R, ctx) }
   window.SparkRuntime = SparkRuntime;
 })();

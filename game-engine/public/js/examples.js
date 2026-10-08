@@ -5,13 +5,13 @@
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   // value specs: number -> number shadow, string -> text shadow, menu(...) -> menu shadow, block -> reporter (with number shadow), bool(block) -> no shadow
-  const menu = (type, field, value) => ({ menu: type, field, value });
+  const menu = (type, field, value, attrs) => ({ menu: type, field, value, attrs });
   const bool = b => ({ bool: b });
   function valueXML(name, spec) {
     if (spec === undefined || spec === null) return '';
     if (typeof spec === 'number') return `<value name="${name}"><shadow type="math_number"><field name="NUM">${spec}</field></shadow></value>`;
     if (typeof spec === 'string') return `<value name="${name}"><shadow type="text"><field name="TEXT">${esc(spec)}</field></shadow></value>`;
-    if (spec.menu) return `<value name="${name}"><shadow type="${spec.menu}"><field name="${spec.field}">${esc(spec.value)}</field></shadow></value>`;
+    if (spec.menu) return `<value name="${name}"><shadow type="${spec.menu}"><field name="${spec.field}"${spec.attrs ? ` id="${esc(spec.attrs.id)}" variabletype="${esc(spec.attrs.type || '')}"` : ''}>${esc(spec.value)}</field></shadow></value>`;
     if (spec.bool) return `<value name="${name}">${spec.bool}</value>`;
     if (spec.xml) return `<value name="${name}"><shadow type="math_number"><field name="NUM">0</field></shadow>${spec.xml}</value>`;
     return '';

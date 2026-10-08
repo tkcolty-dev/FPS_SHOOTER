@@ -187,7 +187,11 @@
   def('pen_setPenTransparency', 'pen', 'set pen transparency to %1', [num('VALUE', 0)]);
 
   const xmlFor = type => { const d = defs.find(x => x.type === type); return `<block type="${type}" id="${type}">${d.args.map(a => a.shadow).join('')}</block>`; };
-  const catXML = (key, inner) => { const c = CATS[key]; return `<category name="${c.name}" id="${key}" colour="${c.primary}" secondaryColour="${c.tertiary}">${inner}</category>`; };
+  // features.js appends blocks to categories: EXTRA[cat] = [type | {type, spriteOnly} | 'sep']
+  const EXTRA = {};
+  let stageMode = false;
+  const extra = key => (EXTRA[key] || []).map(e => e === 'sep' ? '<sep gap="36"></sep>' : typeof e === 'string' ? xmlFor(e) : (e.spriteOnly && stageMode) ? '' : xmlFor(e.type)).join('');
+  const catXML = (key, inner) => { const c = CATS[key]; return `<category name="${c.name}" id="${key}" colour="${c.primary}" secondaryColour="${c.tertiary}">${inner}${extra(key)}</category>`; };
   const blocksXML = (...types) => types.map(xmlFor).join('');
   const sep = '<sep gap="36"></sep>';
 
@@ -197,6 +201,7 @@
   const B = (type, inner = '') => `<block type="${type}" id="${type}">${inner}</block>`;
 
   function makeToolbox(isStage) {
+    stageMode = isStage;
     const motion = isStage ? '<label text="Stage selected: no motion blocks"></label>' :
       B('motion_movesteps', N('STEPS', 10)) + B('motion_turnright', N('DEGREES', 15)) + B('motion_turnleft', N('DEGREES', 15)) + sep +
       B('motion_goto', M('TO', 'motion_goto_menu')) + B('motion_gotoxy', N('X', 0) + N('Y', 0)) + B('motion_glideto', N('SECS', 1) + M('TO', 'motion_glideto_menu')) + B('motion_glidesecstoxy', N('SECS', 1) + N('X', 0) + N('Y', 0)) + sep +
@@ -245,7 +250,7 @@
       B('operator_and') + B('operator_or') + B('operator_not') + sep +
       B('operator_join', Tx('STRING1', 'apple ') + Tx('STRING2', 'banana')) + B('operator_letter_of', N('LETTER', 1) + Tx('STRING', 'apple')) + B('operator_length', Tx('STRING', 'apple')) + B('operator_contains', Tx('STRING1', 'apple') + Tx('STRING2', 'a')) + sep +
       op2('operator_mod', '', '') + B('operator_round', N('NUM', '')) + B('operator_mathop', N('NUM', ''));
-    const cat = (name, id, c1, c2, inner) => `<category name="${name}" id="${id}" colour="${c1}" secondaryColour="${c2}">${inner}</category>`;
+    const cat = (name, id, c1, c2, inner) => `<category name="${name}" id="${id}" colour="${c1}" secondaryColour="${c2}">${inner}${extra(id)}</category>`;
     const spark = isStage ? '' : catXML('physics', blocksXML('spark_phys_mode', 'spark_phys_control', 'spark_phys_jump', 'spark_phys_onground') + sep + blocksXML('spark_phys_solid', 'spark_phys_touchingsolid') + sep + blocksXML('spark_phys_setgravity', 'spark_phys_setvel', 'spark_phys_changevel', 'spark_phys_velx', 'spark_phys_vely') + sep + blocksXML('spark_phys_setbounce', 'spark_phys_setfriction', 'spark_phys_setmaxspeed'));
     return `<xml id="toolbox-categories" style="display: none">` +
       cat('Motion', 'motion', '#4C97FF', '#3373CC', motion) +
@@ -268,5 +273,5 @@
       `</xml>`;
   }
 
-  window.SparkBlocks = { makeToolbox, CATS };
+  window.SparkBlocks = { makeToolbox, CATS, EXTRA, def, args: { num, txt, col, note, menu, dd }, xmlFor };
 })();

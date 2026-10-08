@@ -128,6 +128,29 @@ function handleCloud(req, res, parts) {
     req.on('close', () => { clearInterval(ping); streams[id].delete(res); });
     return;
   }
+  if (action === 'players') { res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ players: (streams[id] || new Set()).size })); }
+  if (action === 'broadcast' && req.method === 'POST') {
+    let body = ''; req.on('data', d => { body += d; if (body.length > 1e4) req.destroy(); });
+    req.on('end', () => { try { const { name, from } = JSON.parse(body || '{}'); for (const s of streams[id] || []) s.write(`data: ${JSON.stringify({ broadcast: String(name).slice(0, 100), from: String(from || '').slice(0, 40) })}\n\n`); res.writeHead(200, cors); res.end('{"ok":true}'); } catch (e) { res.writeHead(400, cors); res.end(); } });
+    return;
+  }
+  if (action === 'leaderboard') {
+    const store = cloud[id] = cloud[id] || {}; const board = store.__board = store.__board || [];
+    if (req.method === 'POST') {
+      let body = ''; req.on('data', d => { body += d; if (body.length > 1e4) req.destroy(); });
+      req.on('end', () => {
+        try {
+          const { name, score } = JSON.parse(body || '{}'); const n = String(name || 'player').slice(0, 20), sc = Number(score) || 0;
+          const ex = board.find(e => e.name === n); if (ex) ex.score = Math.max(ex.score, sc); else board.push({ name: n, score: sc });
+          board.sort((a, b) => b.score - a.score); board.splice(20); saveCloud();
+          for (const s of streams[id] || []) s.write(`data: ${JSON.stringify({ leaderboard: board.slice(0, 10) })}\n\n`);
+          res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); res.end(JSON.stringify(board.slice(0, 10)));
+        } catch (e) { res.writeHead(400, cors); res.end(); }
+      });
+      return;
+    }
+    res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); return res.end(JSON.stringify(board.slice(0, 10)));
+  }
   if (action === 'set' && req.method === 'POST') {
     let body = ''; req.on('data', d => { body += d; if (body.length > 1e5) req.destroy(); });
     req.on('end', () => {
@@ -141,7 +164,8 @@ function handleCloud(req, res, parts) {
     });
     return;
   }
-  res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); res.end(JSON.stringify(cloud[id] || {}));
+  const vars = { ...(cloud[id] || {}) }; delete vars.__board;
+  res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); res.end(JSON.stringify(vars));
 }
 
 http.createServer((req, res) => {
