@@ -1,0 +1,10 @@
+{
+  "name": "spark-engine",
+  "version": "0.1.0",
+  "description": "Spark — a Scratch 3.0-style game engine for the web with lots more built in: physics, camera, particles, score/lives HUD, controllers, speech, paint and sound tools.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}

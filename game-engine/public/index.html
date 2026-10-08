@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spark — make games</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 2 3 14h7l-1 8 10-12h-7z' fill='%23ffbf00'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="menu-bar">
+  <div class="logo">⚡ Spark</div>
+  <div class="menu" id="menu-file"><button class="menu-btn">File</button>
+    <div class="dropdown">
+      <button data-act="new">New</button>
+      <button data-act="load">Load from your computer</button>
+      <button data-act="save">Save to your computer</button>
+      <div class="sep"></div>
+      <button data-act="export">Export game as a web page (.html)</button>
+      <div class="sep"></div>
+      <div class="dd-label">Examples</div>
+      <button data-act="ex-platformer">🏃 Platformer</button>
+      <button data-act="ex-shooter">🚀 Space Shooter</button>
+      <button data-act="ex-coins">🪙 Coin Chaser</button>
+    </div>
+  </div>
+  <div class="menu" id="menu-edit"><button class="menu-btn">Edit</button>
+    <div class="dropdown">
+      <button data-act="restore">Restore deleted sprite</button>
+      <button data-act="cleanup">Clean up blocks</button>
+      <button data-act="turbo">Turn on turbo mode</button>
+    </div>
+  </div>
+  <input id="project-title" class="title-input" value="Untitled game" spellcheck="false">
+  <span id="save-status" class="save-status">Saved</span>
+  <div class="spacer"></div>
+  <button class="menu-btn" id="btn-help" title="Help">? Help</button>
+  <button class="menu-btn" id="btn-player" title="Play fullscreen">⛶ Play</button>
+</header>
+
+<main class="editor">
+  <section class="left">
+    <div class="tabs">
+      <button class="tab active" data-tab="code"><span class="ic">⌗</span> Code</button>
+      <button class="tab" data-tab="costumes"><span class="ic">🎨</span> <span id="tab-costumes-label">Costumes</span></button>
+      <button class="tab" data-tab="sounds"><span class="ic">🔊</span> Sounds</button>
+    </div>
+    <div class="panel active" id="panel-code">
+      <div id="blocks"></div>
+      <div class="sprite-tag"><img id="tag-img" alt=""><span id="tag-name">Sprite1</span></div>
+    </div>
+    <div class="panel" id="panel-costumes">
+      <div class="asset-list" id="costume-list"></div>
+      <div class="asset-add">
+        <button class="add-btn" id="add-costume" title="Choose a costume">🎨</button>
+        <div class="add-menu">
+          <button data-add="library">Choose a costume</button>
+          <button data-add="paint">Paint</button>
+          <button data-add="emoji">Emoji</button>
+          <button data-add="upload">Upload</button>
+          <button data-add="surprise">Surprise</button>
+        </div>
+      </div>
+      <div class="paint">
+        <div class="paint-top">
+          <label>Costume <input id="costume-name" spellcheck="false"></label>
+          <div class="paint-tools">
+            <button data-tool="brush" class="active" title="Brush">🖌️</button>
+            <button data-tool="line" title="Line">╱</button>
+            <button data-tool="rect" title="Rectangle">▭</button>
+            <button data-tool="ellipse" title="Circle">◯</button>
+            <button data-tool="fill" title="Fill">🪣</button>
+            <button data-tool="text" title="Text">T</button>
+            <button data-tool="eraser" title="Eraser">⌫</button>
+            <span class="gap"></span>
+            <button id="paint-undo" title="Undo">↶</button>
+            <button id="paint-clear" title="Clear">🗑</button>
+            <button id="paint-flip" title="Flip">⇋</button>
+          </div>
+        </div>
+        <div class="paint-row">
+          <div class="swatches" id="swatches"></div>
+          <input type="color" id="paint-color" value="#4C97FF">
+          <label class="size">Size <input type="range" id="paint-size" min="1" max="60" value="8"></label>
+          <label class="fillmode"><input type="checkbox" id="paint-filled" checked> filled</label>
+        </div>
+        <div class="paint-canvas-wrap"><canvas id="paint-canvas" width="480" height="360"></canvas></div>
+      </div>
+    </div>
+    <div class="panel" id="panel-sounds">
+      <div class="asset-list" id="sound-list"></div>
+      <div class="asset-add">
+        <button class="add-btn" id="add-sound" title="Choose a sound">🔊</button>
+        <div class="add-menu">
+          <button data-add="library">Choose a sound</button>
+          <button data-add="record">Record</button>
+          <button data-add="upload">Upload</button>
+        </div>
+      </div>
+      <div class="sound-detail" id="sound-detail">
+        <label>Sound <input id="sound-name" spellcheck="false"></label>
+        <button id="sound-play">▶ Play</button>
+        <canvas id="sound-wave" width="600" height="140"></canvas>
+        <p class="hint">Pick a built-in sound, record your voice, or upload an mp3/wav. Use the <b>Sound</b> blocks to play it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="right">
+    <div class="stage-header">
+      <button id="btn-flag" class="flag" title="Go"><img src="vendor/scratch-blocks/media/green-flag.svg" alt="Go"></button>
+      <button id="btn-stop" class="stop" title="Stop"><span></span></button>
+      <span class="stage-fps" id="fps"></span>
+      <div class="spacer"></div>
+      <button class="size-btn active" data-size="large" title="Large stage">▣</button>
+      <button class="size-btn" data-size="small" title="Small stage">▫</button>
+      <button class="size-btn" id="btn-fullscreen" title="Fullscreen">⛶</button>
+    </div>
+    <div class="stage-wrap" id="stage-wrap">
+      <canvas id="stage"></canvas>
+      <div id="stage-overlay"></div>
+      <button id="exit-player" title="Back to editor">✕</button>
+    </div>
+    <div class="sprite-info" id="sprite-info">
+      <label>Sprite <input id="info-name" spellcheck="false"></label>
+      <label>x <input id="info-x" type="number"></label>
+      <label>y <input id="info-y" type="number"></label>
+      <div class="row2">
+        <span>Show</span>
+        <button id="info-show" class="toggle active" title="Show">👁</button>
+        <button id="info-hide" class="toggle" title="Hide">🚫</button>
+        <label>Size <input id="info-size" type="number"></label>
+        <label>Direction <input id="info-dir" type="number"></label>
+      </div>
+    </div>
+    <div class="sprite-area">
+      <div class="sprite-list-wrap">
+        <div class="sprite-list" id="sprite-list"></div>
+        <div class="asset-add sprite-add">
+          <button class="add-btn big" id="add-sprite" title="Choose a sprite">🐱</button>
+          <div class="add-menu up">
+            <button data-add="library">Choose a sprite</button>
+            <button data-add="paint">Paint</button>
+            <button data-add="emoji">Emoji</button>
+            <button data-add="text">Text label</button>
+            <button data-add="upload">Upload</button>
+            <button data-add="surprise">Surprise</button>
+          </div>
+        </div>
+      </div>
+      <div class="stage-pane" id="stage-pane">
+        <div class="stage-label">Stage</div>
+        <div class="stage-tile" id="stage-tile"><img id="stage-thumb" alt=""></div>
+        <div class="stage-sub">Backdrops <b id="backdrop-count">1</b></div>
+        <div class="asset-add">
+          <button class="add-btn small" id="add-backdrop" title="Choose a backdrop">🖼</button>
+          <div class="add-menu up">
+            <button data-add="library">Choose a backdrop</button>
+            <button data-add="paint">Paint</button>
+            <button data-add="upload">Upload</button>
+            <button data-add="surprise">Surprise</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="modal-backdrop" id="modal" hidden>
+  <div class="modal">
+    <div class="modal-head"><span id="modal-title">Title</span><button id="modal-close">✕</button></div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+<input type="file" id="file-input" hidden>
+
+<script src="vendor/scratch-blocks/scratch-blocks.js"></script>
+<script src="js/library.js"></script>
+<script src="js/compiler.js"></script>
+<script src="js/runtime.js"></script>
+<script src="js/blocks.js"></script>
+<script src="js/examples.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
