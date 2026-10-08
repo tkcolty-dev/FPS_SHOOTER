@@ -5,3 +5,5 @@ applications:
   buildpacks:
   - nodejs_buildpack
   command: node server.js
+  services:
+  - spark-ai

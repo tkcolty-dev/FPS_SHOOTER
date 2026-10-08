@@ -31,6 +31,7 @@
       <button data-act="turbo">Turn on turbo mode</button>
     </div>
   </div>
+  <button class="menu-btn" id="btn-kits" title="Add ready-made game pieces">🧰 Kits</button>
   <input id="project-title" class="title-input" value="Untitled game" spellcheck="false">
   <span id="save-status" class="save-status">Saved</span>
   <div class="spacer"></div>
@@ -55,6 +56,7 @@
         <button class="add-btn" id="add-costume" title="Choose a costume">🎨</button>
         <div class="add-menu">
           <button data-add="library">Choose a costume</button>
+          <button data-add="ai">✨ AI pixel art</button>
           <button data-add="paint">Paint</button>
           <button data-add="emoji">Emoji</button>
           <button data-add="upload">Upload</button>
@@ -64,27 +66,37 @@
       <div class="paint">
         <div class="paint-top">
           <label>Costume <input id="costume-name" spellcheck="false"></label>
-          <div class="paint-tools">
-            <button data-tool="brush" class="active" title="Brush">🖌️</button>
-            <button data-tool="line" title="Line">╱</button>
-            <button data-tool="rect" title="Rectangle">▭</button>
-            <button data-tool="ellipse" title="Circle">◯</button>
-            <button data-tool="fill" title="Fill">🪣</button>
-            <button data-tool="text" title="Text">T</button>
-            <button data-tool="eraser" title="Eraser">⌫</button>
-            <span class="gap"></span>
+          <div class="paint-history">
             <button id="paint-undo" title="Undo">↶</button>
-            <button id="paint-clear" title="Clear">🗑</button>
-            <button id="paint-flip" title="Flip">⇋</button>
+            <button id="paint-redo" title="Redo">↷</button>
+          </div>
+          <div class="paint-actions">
+            <button id="paint-flip" title="Flip horizontal">⇋ Flip</button>
+            <button id="paint-flipv" title="Flip vertical">⇅ Flip</button>
+            <button id="paint-center" title="Move drawing to the middle">⊕ Center</button>
+            <button id="paint-clear" title="Clear">🗑 Clear</button>
           </div>
         </div>
         <div class="paint-row">
+          <label class="color-field">Fill <span class="swatch-btn" id="fill-swatch"><input type="color" id="paint-color" value="#4C97FF"></span></label>
+          <label class="color-field">Outline <span class="swatch-btn" id="outline-swatch"><input type="color" id="paint-outline" value="#000000"></span>
+            <input type="number" id="paint-outline-width" min="0" max="20" value="0" title="Outline width"></label>
+          <label class="size">Brush size <input type="range" id="paint-size" min="1" max="60" value="8"></label>
           <div class="swatches" id="swatches"></div>
-          <input type="color" id="paint-color" value="#4C97FF">
-          <label class="size">Size <input type="range" id="paint-size" min="1" max="60" value="8"></label>
-          <label class="fillmode"><input type="checkbox" id="paint-filled" checked> filled</label>
         </div>
-        <div class="paint-canvas-wrap"><canvas id="paint-canvas" width="480" height="360"></canvas></div>
+        <div class="paint-main">
+          <div class="paint-tools">
+            <button data-tool="brush" class="active" title="Brush"><span>🖌️</span></button>
+            <button data-tool="eraser" title="Eraser"><span>🧽</span></button>
+            <button data-tool="fill" title="Fill"><span>🪣</span></button>
+            <button data-tool="text" title="Text"><span>T</span></button>
+            <button data-tool="line" title="Line"><span>╱</span></button>
+            <button data-tool="ellipse" title="Circle"><span>◯</span></button>
+            <button data-tool="rect" title="Rectangle"><span>▭</span></button>
+            <button data-tool="select" title="Move (drag the drawing)"><span>✥</span></button>
+          </div>
+          <div class="paint-canvas-wrap"><canvas id="paint-canvas" width="480" height="360"></canvas></div>
+        </div>
       </div>
     </div>
     <div class="panel" id="panel-sounds">
@@ -98,9 +110,20 @@
         </div>
       </div>
       <div class="sound-detail" id="sound-detail">
-        <label>Sound <input id="sound-name" spellcheck="false"></label>
-        <button id="sound-play">▶ Play</button>
-        <canvas id="sound-wave" width="600" height="140"></canvas>
+        <div class="sound-top"><label>Sound <input id="sound-name" spellcheck="false"></label><div class="paint-history"><button id="sound-undo" title="Undo">↶</button></div></div>
+        <div class="sound-wave-wrap"><canvas id="sound-wave" width="800" height="200"></canvas><button id="sound-play" title="Play">▶</button></div>
+        <div class="sound-fx">
+          <button data-fx="faster">⏩<span>Faster</span></button>
+          <button data-fx="slower">⏪<span>Slower</span></button>
+          <button data-fx="louder">🔊<span>Louder</span></button>
+          <button data-fx="softer">🔉<span>Softer</span></button>
+          <button data-fx="mute">🔇<span>Mute</span></button>
+          <button data-fx="fadein">📈<span>Fade in</span></button>
+          <button data-fx="fadeout">📉<span>Fade out</span></button>
+          <button data-fx="reverse">↩️<span>Reverse</span></button>
+          <button data-fx="robot">🤖<span>Robot</span></button>
+          <button data-fx="echo">🔁<span>Echo</span></button>
+        </div>
         <p class="hint">Pick a built-in sound, record your voice, or upload an mp3/wav. Use the <b>Sound</b> blocks to play it.</p>
       </div>
     </div>
@@ -140,6 +163,7 @@
           <button class="add-btn big" id="add-sprite" title="Choose a sprite">🐱</button>
           <div class="add-menu up">
             <button data-add="library">Choose a sprite</button>
+            <button data-add="ai">✨ AI pixel art</button>
             <button data-add="paint">Paint</button>
             <button data-add="emoji">Emoji</button>
             <button data-add="text">Text label</button>
@@ -156,6 +180,7 @@
           <button class="add-btn small" id="add-backdrop" title="Choose a backdrop">🖼</button>
           <div class="add-menu up">
             <button data-add="library">Choose a backdrop</button>
+            <button data-add="ai">✨ AI backdrop</button>
             <button data-add="paint">Paint</button>
             <button data-add="upload">Upload</button>
             <button data-add="surprise">Surprise</button>
@@ -180,6 +205,7 @@
 <script src="js/runtime.js"></script>
 <script src="js/blocks.js"></script>
 <script src="js/examples.js"></script>
+<script src="js/kits.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -38,7 +38,8 @@
     game: { name: 'Game', primary: '#84CC16', secondary: '#6FAD11', tertiary: '#5F950F' },
     text: { name: 'Text &amp; Speech', primary: '#64748B', secondary: '#52606F', tertiary: '#45515D' },
     pad: { name: 'Controller', primary: '#475569', secondary: '#3B4759', tertiary: '#2F3A49' },
-    pen: { name: 'Pen', primary: '#0FBD8C', secondary: '#0DA57A', tertiary: '#0B8E69' }
+    pen: { name: 'Pen', primary: '#0FBD8C', secondary: '#0DA57A', tertiary: '#0B8E69' },
+    world: { name: 'World', primary: '#8D6E63', secondary: '#795548', tertiary: '#5D4037' }
   };
   const defs = [];
   const def = (type, cat, message, args, shape, extra) => {
@@ -141,6 +142,19 @@
   def('spark_text_font', 'text', 'set font to %1', [dd('FONT', Object.keys(window.SparkLib.FONTS))]);
   def('spark_text_speak', 'text', 'speak %1', [txt('TEXT', 'hello')]);
   def('spark_text_voice', 'text', 'set voice to %1', [dd('VOICE', ['normal', 'squeaky', 'deep', 'fast', 'slow', 'robot'])]);
+  def('spark_text_dialogue', 'text', 'dialogue box %1 says %2 and wait', [txt('NAME', 'Villager'), txt('TEXT', 'Hello there, traveller!')]);
+  def('spark_text_type', 'text', 'type %1 letter by letter', [txt('TEXT', 'Once upon a time...')]);
+  def('spark_text_style', 'text', 'set text size %1 color %2', [num('SIZE', 24), col('COLOR', '#333333')]);
+  def('spark_text_label', 'text', 'show label %1 at %2', [txt('TEXT', 'Level 1'), dd('POS', ['top left', 'top center', 'top right', 'bottom left', 'bottom center', 'bottom right'])]);
+  def('spark_text_hidelabel', 'text', 'hide label at %1', [dd('POS', ['top left', 'top center', 'top right', 'bottom left', 'bottom center', 'bottom right'])]);
+  def('spark_text_dialogopen', 'text', 'dialogue box open?', [], 'boolean');
+  def('spark_text_case', 'text', '%1 %2', [dd('OP', ['uppercase', 'lowercase', 'reversed', 'trimmed']), txt('TEXT', 'hello')], 'string');
+  def('spark_text_replace', 'text', 'replace %1 with %2 in %3', [txt('FROM', 'a'), txt('TO', 'o'), txt('TEXT', 'banana')], 'string');
+  def('spark_text_split', 'text', 'item %1 of %2 split by %3', [num('INDEX', 1), txt('TEXT', 'red,green,blue'), txt('SEP', ',')], 'string');
+  def('spark_text_count', 'text', 'count %1 in %2', [txt('PART', 'a'), txt('TEXT', 'banana')], 'number');
+  def('spark_text_repeat', 'text', 'repeat %1 %2 times', [txt('TEXT', 'ha'), num('TIMES', 3)], 'string');
+  def('spark_text_commas', 'text', '%1 with commas', [num('NUM', 1234567)], 'string');
+  def('spark_cloud_status', 'sensing', 'cloud status', [], 'string');
   // Controller
   const BTN = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'up', 'down', 'left', 'right', 'start', 'select', 'any'];
   def('spark_pad_whenbutton', 'pad', 'when controller %1 button %2 pressed', [dd('PLAYER', ['1', '2', '3', '4', 'any']), dd('BUTTON', BTN)], 'hat');
@@ -148,6 +162,20 @@
   def('spark_pad_stick', 'pad', 'controller %1 %2 stick %3', [num('PLAYER', 1), dd('STICK', ['left', 'right']), dd('AXIS', ['x', 'y'])], 'number');
   def('spark_pad_connected', 'pad', 'controller %1 connected?', [num('PLAYER', 1)], 'boolean');
   def('spark_pad_rumble', 'pad', 'rumble controller %1 for %2 seconds', [num('PLAYER', 1), num('SECS', 0.3)]);
+  // World (tile maps + generation)
+  const TILES = window.SparkRuntime.TILE_NAMES.filter(n => n !== 'empty');
+  def('spark_world_generate', 'world', 'generate %1 world width %2 height %3 seed %4', [dd('TYPE', ['forest', 'dungeon', 'town', 'cave', 'platformer level', 'empty']), num('W', 40), num('H', 30), num('SEED', 0)]);
+  def('spark_world_clear', 'world', 'clear world', []);
+  def('spark_world_gotostart', 'world', 'go to world start', []);
+  def('spark_world_gotofree', 'world', 'go to a random free tile', []);
+  def('spark_world_camera', 'world', 'keep camera inside world', []);
+  def('spark_world_touching', 'world', 'touching %1 tile?', [dd('TILE', ['any solid', 'any hazard', 'any tile', ...TILES])], 'boolean');
+  def('spark_world_tileat', 'world', 'tile at x: %1 y: %2', [num('X', 0), num('Y', 0)], 'string');
+  def('spark_world_settile', 'world', 'set tile at x: %1 y: %2 to %3', [num('X', 0), num('Y', 0), dd('TILE', ['empty', ...TILES])]);
+  def('spark_world_fill', 'world', 'fill tiles from x: %1 y: %2 to x: %3 y: %4 with %5', [num('X1', -240), num('Y1', -180), num('X2', 240), num('Y2', -140), dd('TILE', ['grass', ...TILES.filter(t => t !== 'grass'), 'empty'])]);
+  def('spark_world_tilesize', 'world', 'set tile size to %1', [num('SIZE', 48)]);
+  def('spark_world_info', 'world', 'world %1', [dd('WHICH', ['width', 'height', 'left', 'right', 'top', 'bottom', 'start x', 'start y', 'tile size'])], 'number');
+  def('spark_world_active', 'world', 'world exists?', [], 'boolean');
   // Pen
   def('pen_clear', 'pen', 'erase all', []);
   def('pen_stamp', 'pen', 'stamp', []);
@@ -208,7 +236,7 @@
       B('sensing_keypressed', M('KEY_OPTION', 'sensing_keyoptions')) + B('sensing_mousedown') + xmlFor('spark_sense_mouseclicked') + B('sensing_mousex') + B('sensing_mousey') + sep +
       (isStage ? '' : B('sensing_setdragmode') + sep) +
       B('sensing_loudness') + sep + B('sensing_timer') + B('sensing_resettimer') + sep +
-      B('sensing_of', M('OBJECT', 'sensing_of_object_menu')) + sep + B('sensing_current') + B('sensing_dayssince2000') + sep + B('sensing_username');
+      B('sensing_of', M('OBJECT', 'sensing_of_object_menu')) + sep + B('sensing_current') + B('sensing_dayssince2000') + sep + B('sensing_username') + xmlFor('spark_cloud_status');
     const op2 = (t, a, b) => B(t, N('NUM1', a) + N('NUM2', b));
     const cmp = (t) => B(t, Tx('OPERAND1', '') + Tx('OPERAND2', '50'));
     const operators =
@@ -233,7 +261,8 @@
       catXML('camera', blocksXML('spark_cam_follow', 'spark_cam_stop') + sep + blocksXML('spark_cam_goto', 'spark_cam_change', 'spark_cam_zoom', 'spark_cam_shake') + sep + blocksXML('spark_cam_bounds', 'spark_cam_nobounds') + sep + (isStage ? '' : xmlFor('spark_cam_sticky') + sep) + blocksXML('spark_cam_x', 'spark_cam_y')) +
       catXML('fx', (isStage ? '' : blocksXML('spark_fx_burst')) + blocksXML('spark_fx_burstat') + (isStage ? '' : blocksXML('spark_fx_trail', 'spark_fx_tint', 'spark_fx_squash', 'spark_fx_shadow', 'spark_fx_glow')) + sep + blocksXML('spark_fx_flash', 'spark_fx_fade', 'spark_fx_timescale')) +
       catXML('game', blocksXML('spark_game_set', 'spark_game_change', 'spark_game_get', 'spark_game_hud') + sep + blocksXML('spark_game_whenstat', 'spark_game_over', 'spark_game_win', 'spark_game_whenover', 'spark_game_restart', 'spark_game_pause') + sep + blocksXML('spark_game_countdown', 'spark_game_countdownval', 'spark_game_whencountdown') + sep + blocksXML('spark_game_toast', 'spark_game_spawn', 'spark_game_clonecount') + sep + blocksXML('spark_game_save', 'spark_game_load', 'spark_game_highscore')) +
-      catXML('text', (isStage ? '' : blocksXML('spark_text_show', 'spark_text_clear', 'spark_text_font') + sep) + blocksXML('spark_text_speak', 'spark_text_voice')) +
+      catXML('world', blocksXML('spark_world_generate', 'spark_world_clear', 'spark_world_camera') + sep + (isStage ? '' : blocksXML('spark_world_gotostart', 'spark_world_gotofree', 'spark_world_touching') + sep) + blocksXML('spark_world_tileat', 'spark_world_settile', 'spark_world_fill', 'spark_world_tilesize') + sep + blocksXML('spark_world_info', 'spark_world_active')) +
+      catXML('text', (isStage ? '' : blocksXML('spark_text_show', 'spark_text_type', 'spark_text_style', 'spark_text_font', 'spark_text_clear') + sep) + blocksXML('spark_text_dialogue', 'spark_text_dialogopen') + sep + blocksXML('spark_text_label', 'spark_text_hidelabel') + sep + blocksXML('spark_text_speak', 'spark_text_voice') + sep + blocksXML('spark_text_case', 'spark_text_replace', 'spark_text_split', 'spark_text_count', 'spark_text_repeat', 'spark_text_commas')) +
       catXML('pad', blocksXML('spark_pad_whenbutton', 'spark_pad_button', 'spark_pad_stick', 'spark_pad_connected', 'spark_pad_rumble')) +
       catXML('pen', blocksXML('pen_clear') + (isStage ? '' : blocksXML('pen_stamp', 'pen_penDown', 'pen_penUp') + sep + blocksXML('pen_setPenColorToColor', 'pen_changePenSizeBy', 'pen_setPenSizeTo', 'pen_setPenTransparency'))) +
       `</xml>`;

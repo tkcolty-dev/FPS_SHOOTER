@@ -11,7 +11,7 @@
     for (const el of Array.from(root.children)) {
       if (el.tagName === 'variables') {
         for (const v of Array.from(el.children)) {
-          variables.push({ id: v.getAttribute('id'), name: v.textContent, type: v.getAttribute('type') || '', isLocal: v.getAttribute('islocal') === 'true' });
+          variables.push({ id: v.getAttribute('id'), name: v.textContent, type: v.getAttribute('type') || '', isLocal: v.getAttribute('islocal') === 'true', isCloud: v.getAttribute('iscloud') === 'true' });
         }
       } else if (el.tagName === 'block') scripts.push(parseBlock(el));
     }
@@ -247,6 +247,20 @@
     spark_text_speak: (b, c) => `await R.speak(T, ${s(c, b, 'TEXT')});`,
     spark_text_voice: (b, c) => `R.voice = ${f(c, b, 'VOICE')};`,
     spark_text_font: (b, c) => `S.font = ${f(c, b, 'FONT')};`,
+    spark_text_dialogue: (b, c) => `await R.dialogue(T, ${s(c, b, 'NAME')}, ${s(c, b, 'TEXT')});`,
+    spark_text_type: (b, c) => `await S.typeText(T, ${s(c, b, 'TEXT')});`,
+    spark_text_style: (b, c) => `S.textStyle = { size: ${n(c, b, 'SIZE', '24')}, color: ${s(c, b, 'COLOR')} }; if (S.textCostume) S.showText(S.textCostume.text);`,
+    spark_text_label: (b, c) => `R.label(${f(c, b, 'POS')}, ${s(c, b, 'TEXT')});`,
+    spark_text_hidelabel: (b, c) => `R.label(${f(c, b, 'POS')}, null);`,
+    // world
+    spark_world_generate: (b, c) => `R.generateWorld(${f(c, b, 'TYPE')}, ${n(c, b, 'W', '40')}, ${n(c, b, 'H', '30')}, ${n(c, b, 'SEED', '0')});`,
+    spark_world_clear: () => `R.world.clear(); R.cam.bounds = null;`,
+    spark_world_tilesize: (b, c) => `R.world.size = Math.max(8, ${n(c, b, 'SIZE', '48')});`,
+    spark_world_settile: (b, c) => `R.world.set(R.world.colOf(${n(c, b, 'X')}), R.world.rowOf(${n(c, b, 'Y')}), R.world.kindOf(${f(c, b, 'TILE')}));`,
+    spark_world_fill: (b, c) => `R.world.fill(R.world.colOf(${n(c, b, 'X1')}), R.world.rowOf(${n(c, b, 'Y1')}), R.world.colOf(${n(c, b, 'X2')}), R.world.rowOf(${n(c, b, 'Y2')}), R.world.kindOf(${f(c, b, 'TILE')}));`,
+    spark_world_gotostart: () => `S.goToWorldStart();`,
+    spark_world_gotofree: () => `S.goToFreeTile();`,
+    spark_world_camera: () => `R.cameraInsideWorld();`,
     // controller
     spark_pad_rumble: (b, c) => `R.pad.rumble(${n(c, b, 'PLAYER', '1')}, ${n(c, b, 'SECS')});`
   };
@@ -314,7 +328,19 @@
     spark_pad_button: (b, c) => `R.pad.button(${n(c, b, 'PLAYER', '1')}, ${f(c, b, 'BUTTON')})`,
     spark_pad_stick: (b, c) => `R.pad.stick(${n(c, b, 'PLAYER', '1')}, ${f(c, b, 'STICK')}, ${f(c, b, 'AXIS')})`,
     spark_pad_connected: (b, c) => `R.pad.connected(${n(c, b, 'PLAYER', '1')})`,
-    spark_text_width: () => `S.bounds().w`
+    spark_text_width: () => `S.bounds().w`,
+    spark_text_case: (b, c) => `R.textOp(${f(c, b, 'OP')}, ${s(c, b, 'TEXT')})`,
+    spark_text_replace: (b, c) => `R.textOp("replace", ${s(c, b, 'TEXT')}, ${s(c, b, 'FROM')}, ${s(c, b, 'TO')})`,
+    spark_text_split: (b, c) => `R.textOp("split", ${s(c, b, 'TEXT')}, ${s(c, b, 'SEP')}, ${n(c, b, 'INDEX', '1')})`,
+    spark_text_count: (b, c) => `R.textOp("count", ${s(c, b, 'TEXT')}, ${s(c, b, 'PART')})`,
+    spark_text_repeat: (b, c) => `R.textOp("repeat", ${s(c, b, 'TEXT')}, ${n(c, b, 'TIMES', '2')})`,
+    spark_text_commas: (b, c) => `R.textOp("commas", ${n(c, b, 'NUM')})`,
+    spark_text_dialogopen: () => `(!!R.dialog)`,
+    spark_cloud_status: () => `R.cloudStatus`,
+    spark_world_tileat: (b, c) => `R.world.nameAt(${n(c, b, 'X')}, ${n(c, b, 'Y')})`,
+    spark_world_touching: (b, c) => `S.touchingTile(${f(c, b, 'TILE')})`,
+    spark_world_info: (b, c) => `R.worldInfo(${f(c, b, 'WHICH')})`,
+    spark_world_active: () => `R.world.active`
   };
 
   /* ---------- hats ---------- */

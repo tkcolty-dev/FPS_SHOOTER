@@ -143,5 +143,5 @@
     return { name: 'Coin Chaser', stage: { name: 'Stage', costumes: [backdrop('Checker')], currentCostume: 0, sounds: [], xml: xml(), variables: [] }, sprites: [coin, slime, cat], monitors: [] };
   }
 
-  window.SparkExamples = { platformer, shooter, coins, _builder: { blk, chain, script, xml, menu, bool } };
+  window.SparkExamples = { platformer, shooter, coins, _builder: { blk, chain, script, xml, menu, bool, flag, clone, forever, repeat, iff, wait, goto, show, hide, touching, lt, gt, eq, not, or, rep, xpos, ypos, add, rand, stat, change, hud, burst, play, spawn, cloneMe, delClone, shake, toast, svgC, costume, backdrop, sprite } };
 })();

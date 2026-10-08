@@ -59,10 +59,12 @@
     const el = dom.querySelector('variables'); if (!el) return;
     const globals = [], locals = [];
     for (const v of Array.from(el.children)) {
-      const rec = { id: v.getAttribute('id'), name: v.textContent, type: v.getAttribute('type') || '' };
+      const rec = { id: v.getAttribute('id'), name: v.textContent, type: v.getAttribute('type') || '', isCloud: v.getAttribute('iscloud') === 'true' };
       (v.getAttribute('islocal') === 'true' && !current.isStage ? locals : globals).push(rec);
     }
     applyVars(R.stage, globals);
+    R.stage.cloudVars = {}; for (const v of R.stage.variables) if (v.isCloud) R.stage.cloudVars[v.name] = true;
+    R.cloudSetup();
     if (!current.isStage) applyVars(current, locals);
     // strip globals out of the sprite's own xml (they're rebuilt from the stage on load)
     if (!current.isStage) for (const v of Array.from(el.children)) if (v.getAttribute('islocal') !== 'true') el.removeChild(v);
@@ -72,7 +74,7 @@
     for (const v of list) {
       keep.add(v.name + '|' + v.type);
       const ex = t.variables.find(x => x.name === v.name && x.type === v.type);
-      if (ex) ex.id = v.id; else t.variables.push({ ...v });
+      if (ex) { ex.id = v.id; ex.isCloud = !!v.isCloud; } else t.variables.push({ ...v });
       if (!(v.name in t.varTypes)) { t.varTypes[v.name] = v.type; if (v.type === 'list') t.lists[v.name] = t.lists[v.name] || []; else if (v.type === '') t.vars[v.name] = t.vars[v.name] ?? 0; }
     }
     // a rename shows up as delete+create: drop variables no longer present
@@ -85,7 +87,7 @@
     let vars = root.querySelector('variables');
     if (vars) root.removeChild(vars);
     vars = doc.createElement('variables');
-    const add = (v, local) => { const e = doc.createElement('variable'); e.setAttribute('type', v.type || ''); e.setAttribute('id', v.id || (v.id = uid())); e.setAttribute('islocal', local ? 'true' : 'false'); e.setAttribute('iscloud', 'false'); e.textContent = v.name; vars.appendChild(e); };
+    const add = (v, local) => { const e = doc.createElement('variable'); e.setAttribute('type', v.type || ''); e.setAttribute('id', v.id || (v.id = uid())); e.setAttribute('islocal', local ? 'true' : 'false'); e.setAttribute('iscloud', v.isCloud ? 'true' : 'false'); e.textContent = v.name; vars.appendChild(e); };
     for (const v of R.stage.variables) add(v, false);
     if (!t.isStage) for (const v of t.variables) add(v, true);
     root.insertBefore(vars, root.firstChild);
@@ -141,14 +143,17 @@
   function variablePrompt(message, defaultValue, callback, title, varType) {
     const isList = varType === 'list', isMsg = varType === 'broadcast_msg';
     const showScope = !current.isStage && !isMsg;
+    const showCloud = !isMsg && !isList && !String(defaultValue || '').startsWith('☁');
     openModal(title || message, `
       <div class="form">
         <label>${message}<br><input type="text" id="var-name" value="${defaultValue || ''}" autocomplete="off"></label>
         ${showScope ? `<div class="radios"><label><input type="radio" name="scope" value="global" checked> For all sprites</label><label><input type="radio" name="scope" value="local"> For this sprite only</label></div>` : ''}
+        ${showCloud ? `<label><input type="checkbox" id="var-cloud"> ☁ Cloud variable (stored online — everyone playing your game shares it)</label>` : ''}
         <div class="actions"><button class="btn" id="var-cancel">Cancel</button><button class="btn primary" id="var-ok">OK</button></div>
       </div>`);
     const inp = $('#var-name'); inp.focus(); inp.select();
-    const done = () => { const name = inp.value.trim(); const scope = showScope && $('input[name=scope]:checked') ? $('input[name=scope]:checked').value : 'global'; closeModal(); if (!name) return; callback(name, [], { scope }); };
+    if (showCloud && showScope) $('#var-cloud').onchange = e => { if (e.target.checked) $('input[name=scope][value=global]').checked = true; };
+    const done = () => { let name = inp.value.trim(); const cloud = showCloud && $('#var-cloud').checked; const scope = cloud ? 'global' : showScope && $('input[name=scope]:checked') ? $('input[name=scope]:checked').value : 'global'; closeModal(); if (!name) return; callback(name, [], { scope, isCloud: cloud }); };
     $('#var-ok').onclick = done; $('#var-cancel').onclick = closeModal;
     inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') done(); if (e.key === 'Escape') closeModal(); };
   }
@@ -267,6 +272,8 @@
     renderSprites(); renderInfo(); renderTag(); markDirty();
   }
   R.on('targetMoved', (t, done) => { if (t === current) renderInfo(); if (done) markDirty(); });
+  // keep the x / y / size / direction boxes live while scripts move the sprite (like Scratch)
+  setInterval(() => { if (!current || current.isStage || document.activeElement.closest('#sprite-info')) return; if (+$('#info-x').value !== Math.round(current.x) || +$('#info-y').value !== Math.round(current.y) || +$('#info-dir').value !== Math.round(current.direction) || +$('#info-size').value !== Math.round(current.size)) renderInfo(); }, 250);
   R.on('targetsChanged', () => { renderSprites(); });
   $('#stage').addEventListener('pointerup', () => { if (!R.running && !R.editorDragged) { const hit = R.spriteAt(R.mouse.x, R.mouse.y); if (hit && !hit.isClone && hit !== current) selectTarget(hit); } });
   $('#stage-tile').onclick = () => selectTarget(R.stage);
@@ -315,6 +322,72 @@
     $('#lib-search').oninput = e => render(e.target.value.toLowerCase()); $('#lib-search').onkeydown = e => e.stopPropagation();
     render();
   }
+  /* ---- AI pixel art ---- */
+  function renderPixels(data, scale) {
+    const c = document.createElement('canvas'); c.width = data.w * scale; c.height = data.h * scale; const g = c.getContext('2d');
+    data.rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) { const col = data.palette[row[x]]; if (!col || row[x] === '.') continue; g.fillStyle = col; g.fillRect(x * scale, y * scale, scale, scale); } });
+    return c.toDataURL();
+  }
+  function aiArtPicker(kind, onPick) {
+    const isBackdrop = kind === 'backdrop';
+    openModal(isBackdrop ? '✨ AI backdrop' : '✨ AI pixel art', `
+      <div class="form">
+        <label>What should it be?<input type="text" id="ai-prompt" placeholder="${isBackdrop ? 'a spooky forest at night' : 'a red dragon with small wings'}" autocomplete="off"></label>
+        ${isBackdrop ? '' : `<label>Size <select id="ai-size"><option value="16">16 × 16 (tiny)</option><option value="24" selected>24 × 24</option><option value="32">32 × 32 (detailed)</option></select></label>`}
+        <div id="ai-preview" style="min-height:120px;display:flex;align-items:center;justify-content:center;background:repeating-conic-gradient(#f2f2f2 0 25%, #fff 0 50%) 0 0 / 20px 20px;border-radius:8px;border:1px solid var(--border)"><span style="opacity:.6">Describe it and press Generate — takes about 10 seconds</span></div>
+        <div class="actions"><button class="btn" id="ai-cancel">Cancel</button><button class="btn" id="ai-gen">✨ Generate</button><button class="btn primary" id="ai-use" disabled>Use it</button></div>
+      </div>`);
+    let result = null, src = null;
+    const inp = $('#ai-prompt'); inp.focus(); inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') $('#ai-gen').click(); };
+    $('#ai-cancel').onclick = closeModal;
+    $('#ai-gen').onclick = async () => {
+      const prompt = inp.value.trim(); if (!prompt) return inp.focus();
+      const w = isBackdrop ? 48 : +$('#ai-size').value, h = isBackdrop ? 36 : w;
+      $('#ai-gen').disabled = true; $('#ai-gen').textContent = 'Drawing…'; $('#ai-preview').innerHTML = '<span style="opacity:.6">🎨 drawing pixels…</span>';
+      try {
+        const r = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, w, h, kind }) });
+        const j = await r.json(); if (!r.ok) throw new Error(j.error || 'failed');
+        result = j; src = renderPixels(j, isBackdrop ? 10 : Math.round(96 / w));
+        $('#ai-preview').innerHTML = `<img src="${src}" style="image-rendering:pixelated;max-width:100%;max-height:260px">`; $('#ai-use').disabled = false;
+      } catch (e) { $('#ai-preview').innerHTML = `<span style="color:#c00">Could not generate: ${esc(e.message)}</span>`; }
+      $('#ai-gen').disabled = false; $('#ai-gen').textContent = '✨ Try again';
+    };
+    $('#ai-use').onclick = () => { if (!src) return; const name = inp.value.trim().slice(0, 24); closeModal(); onPick({ name, src }, name); };
+  }
+  /* ---- Kits ---- */
+  function appendScripts(t, xmls) {
+    const doc = new DOMParser().parseFromString(t.xml || '<xml></xml>', 'text/xml'); const root = doc.documentElement;
+    for (const x of xmls) { const d = new DOMParser().parseFromString(`<xml>${x}</xml>`, 'text/xml'); for (const b of Array.from(d.documentElement.children)) root.appendChild(doc.importNode(b, true)); }
+    t.xml = new XMLSerializer().serializeToString(root);
+    const w = new SB.Workspace(); try { SB.Xml.domToWorkspace(workspaceXMLFor(t), w); w.cleanUp(); t.xml = SB.Xml.domToText(SB.Xml.workspaceToDom(w)); } catch (e) {} w.dispose();
+    t.compile();
+  }
+  function kitsPicker() {
+    const kits = window.SparkKits.KITS;
+    openModal('🧰 Kits — tick what you want in your game', `<div class="form"><p class="hint" style="margin:0">Each kit drops ready-made sprites and blocks into your game. Pick a player first, then add coins, enemies, a timer… You can change every block afterwards.</p>
+      <div class="kit-list">${kits.map(k => `<label class="kit"><input type="checkbox" data-kit="${k.id}"><span class="kit-icon">${k.icon}</span><span class="kit-body"><b>${k.name}</b><small>${esc(k.desc)}</small>${k.options ? Object.entries(k.options).map(([key, vals]) => `<select data-opt="${key}" onclick="event.stopPropagation()">${vals.map(v => `<option>${v}</option>`).join('')}</select>`).join('') : ''}</span></label>`).join('')}</div>
+      <div class="actions"><button class="btn" id="kit-cancel">Cancel</button><button class="btn primary" id="kit-add">Add to my game</button></div></div>`);
+    $('#kit-cancel').onclick = closeModal;
+    $('#kit-add').onclick = () => {
+      const chosen = $$('.kit input[type=checkbox]:checked').map(cb => { const k = kits.find(x => x.id === cb.dataset.kit); const opts = {}; cb.closest('.kit').querySelectorAll('select').forEach(s => opts[s.dataset.opt] = s.value); return { k, opts }; });
+      closeModal(); if (!chosen.length) return;
+      let first = null; const pending = {};
+      for (const { k, opts } of chosen) {
+        const out = k.build(opts);
+        for (const s of out.sprites || []) { s.name = uniqueName(s.name); s.x = 0; s.y = 0; const t = R.addSprite(s); appendScripts(t, []); first = first || t; }
+        for (const [name, xmls] of Object.entries(out.scripts || {})) (pending[name] = pending[name] || []).push(...xmls);
+        if (out.stage) (pending.Stage = pending.Stage || []).push(...out.stage);
+      }
+      const missing = [];
+      for (const [name, xmls] of Object.entries(pending)) { const t = name === 'Stage' ? R.stage : R.findTarget(null, name); if (t) appendScripts(t, xmls); else missing.push(name); }
+      if (missing.length) alert(`These kits add blocks to a sprite called "${missing.join('", "')}" — add a player kit first (or rename your player sprite to ${missing[0]}).`);
+      if (current && (first || pending[current.name] || (current.isStage && pending.Stage))) { const t = first || current; current = null; selectTarget(t); } else refreshToolbox();
+      renderSprites(); markDirty();
+      R.toast && R.toast('Kit added — press the green flag!', 3);
+    };
+  }
+  $('#btn-kits').onclick = kitsPicker;
+
   function pickFile(accept, cb) { const fi = $('#file-input'); fi.accept = accept; fi.value = ''; fi.onchange = () => { const f = fi.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => cb(r.result, f); r.readAsDataURL(f); }; fi.click(); }
   function blankCostume(name) { const c = document.createElement('canvas'); c.width = 2; c.height = 2; return { name, src: c.toDataURL() }; }
 
@@ -328,6 +401,9 @@
       case 'sprite:emoji': emojiPicker(e => addSprite([costumeFromSVG('costume1', Lib.emojiSVG(e))], 'Sprite1')); break;
       case 'sprite:text': addSprite([costumeFromSVG('costume1', Lib.textSVG('Hello', 28, '#333'))], 'Text'); break;
       case 'sprite:upload': pickFile('image/*', (src, f) => addSprite([{ name: f.name.replace(/\.\w+$/, ''), src }], f.name.replace(/\.\w+$/, '').slice(0, 20))); break;
+      case 'sprite:ai': aiArtPicker('sprite', (c, n) => addSprite([{ ...c, name: 'costume1' }], n || 'Sprite1')); break;
+      case 'costume:ai': if (current.isStage) return handleAdd('backdrop', 'ai'); aiArtPicker('sprite', c => addCostume({ ...c, name: uniqueCostume(target, c.name || 'costume1') })); break;
+      case 'backdrop:ai': aiArtPicker('backdrop', c => addCostume({ ...c, name: uniqueCostume(target, c.name || 'backdrop1') })); break;
       case 'sprite:surprise': { const n = Lib.costumeNames[Math.floor(Math.random() * Lib.costumeNames.length)]; const c = Lib.COLORS[Math.floor(Math.random() * Lib.COLORS.length)]; addSprite([costumeFromSVG(n, Lib.costumeSVG(n, c))], n); break; }
       case 'costume:library': if (current.isStage) return handleAdd('backdrop', 'library'); libraryPicker('costume', c => addCostume({ ...c, name: uniqueCostume(target, c.name) })); break;
       case 'costume:paint': case 'backdrop:paint': addCostume(blankCostume(uniqueCostume(target, target.isStage ? 'backdrop1' : 'costume1'))); showTab('costumes'); break;
@@ -374,18 +450,24 @@
   $('#costume-name').onchange = e => { if (current.costume) { current.costume.name = e.target.value.trim() || current.costume.name; renderCostumes(); refreshToolbox(); markDirty(); } };
   $('#costume-name').onkeydown = e => e.stopPropagation();
 
-  const P = { tool: 'brush', color: '#4C97FF', size: 8, filled: true, undo: [], drawing: false, start: null, snapshot: null, loadedSrc: null };
+  const P = { tool: 'brush', color: '#4C97FF', outline: '#000000', outlineWidth: 0, size: 8, undo: [], redo: [], drawing: false, start: null, snapshot: null, loadedSrc: null };
   const pc = $('#paint-canvas'), pctx = pc.getContext('2d');
   $('#swatches').innerHTML = [...Lib.COLORS, '#f44336', '#ffeb3b', '#000000', 'transparent'].map(c => `<button data-c="${c}" style="background:${c === 'transparent' ? 'repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 0 0 / 8px 8px' : c}" title="${c}"></button>`).join('');
-  $$('#swatches button').forEach(b => b.onclick = () => { P.color = b.dataset.c; if (P.color !== 'transparent') $('#paint-color').value = P.color; $$('#swatches button').forEach(x => x.classList.toggle('active', x === b)); });
-  $('#paint-color').oninput = e => { P.color = e.target.value; $$('#swatches button').forEach(x => x.classList.remove('active')); };
+  $$('#swatches button').forEach(b => b.onclick = () => { P.color = b.dataset.c; if (P.color !== 'transparent') $('#paint-color').value = P.color; $('#fill-swatch').style.background = P.color === 'transparent' ? 'repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 0 0 / 8px 8px' : ''; $$('#swatches button').forEach(x => x.classList.toggle('active', x === b)); });
+  $('#paint-color').oninput = e => { P.color = e.target.value; $('#fill-swatch').style.background = ''; $$('#swatches button').forEach(x => x.classList.remove('active')); };
+  $('#paint-outline').oninput = e => P.outline = e.target.value;
+  $('#paint-outline-width').oninput = e => P.outlineWidth = Math.max(0, +e.target.value || 0);
   $('#paint-size').oninput = e => P.size = +e.target.value;
-  $('#paint-filled').onchange = e => P.filled = e.target.checked;
-  $$('.paint-tools [data-tool]').forEach(b => b.onclick = () => { P.tool = b.dataset.tool; $$('.paint-tools [data-tool]').forEach(x => x.classList.toggle('active', x === b)); });
-  $('#paint-undo').onclick = () => { const s = P.undo.pop(); if (s) { pctx.putImageData(s, 0, 0); commitPaint(); } };
+  $$('.paint-tools [data-tool]').forEach(b => b.onclick = () => { P.tool = b.dataset.tool; $$('.paint-tools [data-tool]').forEach(x => x.classList.toggle('active', x === b)); pc.style.cursor = P.tool === 'select' ? 'move' : 'crosshair'; });
+  $('#paint-undo').onclick = () => { const s = P.undo.pop(); if (s) { P.redo.push(pctx.getImageData(0, 0, pc.width, pc.height)); pctx.putImageData(s, 0, 0); commitPaint(); } };
+  $('#paint-redo').onclick = () => { const s = P.redo.pop(); if (s) { P.undo.push(pctx.getImageData(0, 0, pc.width, pc.height)); pctx.putImageData(s, 0, 0); commitPaint(); } };
   $('#paint-clear').onclick = () => { pushUndo(); pctx.clearRect(0, 0, pc.width, pc.height); commitPaint(); };
-  $('#paint-flip').onclick = () => { pushUndo(); const im = pctx.getImageData(0, 0, pc.width, pc.height); const tmp = document.createElement('canvas'); tmp.width = pc.width; tmp.height = pc.height; tmp.getContext('2d').putImageData(im, 0, 0); pctx.clearRect(0, 0, pc.width, pc.height); pctx.save(); pctx.translate(pc.width, 0); pctx.scale(-1, 1); pctx.drawImage(tmp, 0, 0); pctx.restore(); commitPaint(); };
-  function pushUndo() { P.undo.push(pctx.getImageData(0, 0, pc.width, pc.height)); if (P.undo.length > 30) P.undo.shift(); }
+  const transformCanvas = fn => { pushUndo(); const tmp = document.createElement('canvas'); tmp.width = pc.width; tmp.height = pc.height; tmp.getContext('2d').drawImage(pc, 0, 0); pctx.clearRect(0, 0, pc.width, pc.height); pctx.save(); fn(tmp); pctx.restore(); commitPaint(); };
+  $('#paint-flip').onclick = () => transformCanvas(tmp => { pctx.translate(pc.width, 0); pctx.scale(-1, 1); pctx.drawImage(tmp, 0, 0); });
+  $('#paint-flipv').onclick = () => transformCanvas(tmp => { pctx.translate(0, pc.height); pctx.scale(1, -1); pctx.drawImage(tmp, 0, 0); });
+  $('#paint-center').onclick = () => { const b = contentBounds(); if (!b) return; transformCanvas(tmp => pctx.drawImage(tmp, Math.round(pc.width / 2 - (b.x0 + b.x1 + 1) / 2), Math.round(pc.height / 2 - (b.y0 + b.y1 + 1) / 2))); };
+  function contentBounds() { const d = pctx.getImageData(0, 0, pc.width, pc.height).data; let x0 = pc.width, y0 = pc.height, x1 = -1, y1 = -1; for (let y = 0; y < pc.height; y++) for (let x = 0; x < pc.width; x++) if (d[(y * pc.width + x) * 4 + 3] > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; } return x1 < 0 ? null : { x0, y0, x1, y1 }; }
+  function pushUndo() { P.undo.push(pctx.getImageData(0, 0, pc.width, pc.height)); if (P.undo.length > 30) P.undo.shift(); P.redo = []; }
   function loadPaint() {
     if (!current || !current.costume) return;
     const c = current.costume; if (P.loadedSrc === c.src) return;
@@ -406,11 +488,10 @@
     if (current.isStage) src = pc.toDataURL();
     else {
       // crop to content, keep the drawing centred on the sprite's position
-      const d = pctx.getImageData(0, 0, pc.width, pc.height).data; let x0 = pc.width, y0 = pc.height, x1 = -1, y1 = -1;
-      for (let y = 0; y < pc.height; y++) for (let x = 0; x < pc.width; x++) if (d[(y * pc.width + x) * 4 + 3] > 0) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-      if (x1 < 0) { src = blankCostume('').src; c.w = c.h = 2; c.cx = c.cy = 1; }
+      const b = contentBounds();
+      if (!b) { src = blankCostume('').src; c.w = c.h = 2; c.cx = c.cy = 1; }
       else {
-        const w = x1 - x0 + 1, h = y1 - y0 + 1; const out = document.createElement('canvas'); out.width = w; out.height = h; out.getContext('2d').drawImage(pc, x0, y0, w, h, 0, 0, w, h);
+        const { x0, y0, x1, y1 } = b; const w = x1 - x0 + 1, h = y1 - y0 + 1; const out = document.createElement('canvas'); out.width = w; out.height = h; out.getContext('2d').drawImage(pc, x0, y0, w, h, 0, 0, w, h);
         src = out.toDataURL(); c.w = w; c.h = h; c.cx = pc.width / 2 - x0; c.cy = pc.height / 2 - y0;
       }
     }
@@ -421,12 +502,14 @@
     pc.setPointerCapture(e.pointerId); const p = ppos(e); pushUndo(); P.drawing = true; P.start = p; P.snapshot = pctx.getImageData(0, 0, pc.width, pc.height);
     pctx.lineCap = pctx.lineJoin = 'round'; pctx.lineWidth = P.size;
     if (P.tool === 'fill') { floodFill(Math.floor(p.x), Math.floor(p.y)); P.drawing = false; commitPaint(); return; }
-    if (P.tool === 'text') { const t = prompt('Text:'); P.drawing = false; if (t) { pctx.fillStyle = P.color; pctx.font = `bold ${P.size * 4 + 8}px Helvetica, Arial, sans-serif`; pctx.textBaseline = 'middle'; pctx.fillText(t, p.x, p.y); commitPaint(); } return; }
+    if (P.tool === 'text') { const t = prompt('Text:'); P.drawing = false; if (t) { pctx.font = `bold ${P.size * 4 + 8}px Helvetica, Arial, sans-serif`; pctx.textBaseline = 'middle'; if (P.outlineWidth > 0) { pctx.strokeStyle = P.outline; pctx.lineWidth = P.outlineWidth * 2; pctx.lineJoin = 'round'; pctx.strokeText(t, p.x, p.y); } if (P.color !== 'transparent') { pctx.fillStyle = P.color; pctx.fillText(t, p.x, p.y); } commitPaint(); } return; }
+    if (P.tool === 'select') { P.snapCanvas = document.createElement('canvas'); P.snapCanvas.width = pc.width; P.snapCanvas.height = pc.height; P.snapCanvas.getContext('2d').drawImage(pc, 0, 0); return; }
     if (P.tool === 'brush' || P.tool === 'eraser') { strokeTo(p, p); }
   });
   pc.addEventListener('pointermove', e => {
     if (!P.drawing) return; const p = ppos(e);
     if (P.tool === 'brush' || P.tool === 'eraser') { strokeTo(P.start, p); P.start = p; return; }
+    if (P.tool === 'select') { pctx.clearRect(0, 0, pc.width, pc.height); pctx.drawImage(P.snapCanvas, Math.round(p.x - P.start.x), Math.round(p.y - P.start.y)); return; }
     pctx.putImageData(P.snapshot, 0, 0); drawShape(P.start, p);
   });
   const endStroke = () => { if (P.drawing) { P.drawing = false; pctx.globalCompositeOperation = 'source-over'; commitPaint(); } };
@@ -436,11 +519,14 @@
     pctx.strokeStyle = P.color === 'transparent' ? '#000' : P.color; pctx.lineWidth = P.size; pctx.beginPath(); pctx.moveTo(a.x, a.y); pctx.lineTo(b.x + 0.01, b.y + 0.01); pctx.stroke();
   }
   function drawShape(a, b) {
-    pctx.globalCompositeOperation = P.color === 'transparent' ? 'destination-out' : 'source-over';
-    pctx.strokeStyle = pctx.fillStyle = P.color === 'transparent' ? '#000' : P.color; pctx.lineWidth = Math.max(2, P.size / 2);
-    if (P.tool === 'line') { pctx.beginPath(); pctx.moveTo(a.x, a.y); pctx.lineTo(b.x, b.y); pctx.lineWidth = P.size; pctx.stroke(); }
-    else if (P.tool === 'rect') { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y); P.filled ? pctx.fillRect(x, y, w, h) : pctx.strokeRect(x, y, w, h); }
-    else if (P.tool === 'ellipse') { pctx.beginPath(); pctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2); P.filled ? pctx.fill() : pctx.stroke(); }
+    pctx.globalCompositeOperation = 'source-over'; pctx.lineJoin = 'round';
+    if (P.tool === 'line') { pctx.globalCompositeOperation = P.color === 'transparent' ? 'destination-out' : 'source-over'; pctx.strokeStyle = P.color === 'transparent' ? '#000' : P.color; pctx.beginPath(); pctx.moveTo(a.x, a.y); pctx.lineTo(b.x, b.y); pctx.lineWidth = P.size; pctx.stroke(); return; }
+    pctx.beginPath();
+    if (P.tool === 'rect') { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y), w = Math.abs(b.x - a.x), h = Math.abs(b.y - a.y); pctx.rect(x, y, w, h); }
+    else if (P.tool === 'ellipse') pctx.ellipse((a.x + b.x) / 2, (a.y + b.y) / 2, Math.abs(b.x - a.x) / 2, Math.abs(b.y - a.y) / 2, 0, 0, Math.PI * 2);
+    if (P.color === 'transparent') { pctx.globalCompositeOperation = 'destination-out'; pctx.fillStyle = '#000'; pctx.fill(); pctx.globalCompositeOperation = 'source-over'; }
+    else { pctx.fillStyle = P.color; pctx.fill(); }
+    if (P.outlineWidth > 0) { pctx.strokeStyle = P.outline; pctx.lineWidth = P.outlineWidth; pctx.stroke(); }
   }
   function floodFill(sx, sy) {
     const W = pc.width, H = pc.height, img = pctx.getImageData(0, 0, W, H), d = img.data;
@@ -469,13 +555,48 @@
   $('#sound-name').onkeydown = e => e.stopPropagation();
   $('#sound-play').onclick = () => { const s = current.sounds[selectedSound]; if (s) playSound(s); };
   function addSound(s) { current.sounds.push(s); selectedSound = current.sounds.length - 1; R.audio.buffer(s); renderSounds(); refreshToolbox(); markDirty(); }
+  /* ---- sound effects (like Scratch's sound editor) ---- */
+  function bufferToWav(buf) {
+    const n = buf.length, ch = 1, sr = buf.sampleRate, data = buf.getChannelData(0); const ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true); v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) { const s = Math.max(-1, Math.min(1, data[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true); }
+    let bin = ''; const bytes = new Uint8Array(ab); for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    return 'data:audio/wav;base64,' + btoa(bin);
+  }
+  let soundUndo = null;
+  async function applySoundFx(fx) {
+    const s = current && current.sounds[selectedSound]; if (!s) return;
+    const src = await R.audio.buffer(s); if (!src) return;
+    const ctx = R.audio.ctx(); const sr = src.sampleRate; const d = src.getChannelData(0); let out;
+    const make = (len, fn) => { const b = ctx.createBuffer(1, Math.max(1, Math.floor(len)), sr); const o = b.getChannelData(0); for (let i = 0; i < o.length; i++) o[i] = fn(i); return b; };
+    switch (fx) {
+      case 'faster': out = make(d.length / 1.25, i => d[Math.floor(i * 1.25)] || 0); break;
+      case 'slower': out = make(d.length * 1.25, i => d[Math.floor(i / 1.25)] || 0); break;
+      case 'louder': out = make(d.length, i => d[i] * 1.5); break;
+      case 'softer': out = make(d.length, i => d[i] * 0.6); break;
+      case 'mute': out = make(d.length, () => 0); break;
+      case 'fadein': out = make(d.length, i => d[i] * Math.min(1, i / (sr * 0.5))); break;
+      case 'fadeout': out = make(d.length, i => d[i] * Math.min(1, (d.length - i) / (sr * 0.5))); break;
+      case 'reverse': out = make(d.length, i => d[d.length - 1 - i]); break;
+      case 'robot': out = make(d.length, i => d[i] * (Math.sin(i / sr * 2 * Math.PI * 60) > 0 ? 1 : -0.6)); break;
+      case 'echo': out = make(d.length + sr * 0.6, i => (d[i] || 0) + 0.45 * (d[i - Math.floor(sr * 0.2)] || 0) + 0.25 * (d[i - Math.floor(sr * 0.4)] || 0)); break;
+      default: return;
+    }
+    soundUndo = { index: selectedSound, src: s.src, preset: s.preset };
+    s.src = bufferToWav(out); delete s.preset; R.audio.buffers.delete(s.src);
+    renderSounds(); playSound(s); markDirty();
+  }
+  $$('.sound-fx button').forEach(b => b.onclick = () => applySoundFx(b.dataset.fx));
+  $('#sound-undo').onclick = () => { if (!soundUndo || !current) return; const s = current.sounds[soundUndo.index]; if (!s) return; s.src = soundUndo.src; if (soundUndo.preset) s.preset = soundUndo.preset; else delete s.preset; soundUndo = null; renderSounds(); markDirty(); };
   function playSound(s) { R.audio.play(current, s); }
   function previewPreset(n) { R.audio.play(R.stage, { name: n, preset: n }); }
   function stopPreview() { if (previewSrc) { try { previewSrc.stop(); } catch (e) {} previewSrc = null; } }
   async function drawWave(s) {
     const cv = $('#sound-wave'), c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
     const buf = await R.audio.buffer(s); if (!buf) return; const d = buf.getChannelData(0), step = Math.ceil(d.length / cv.width);
-    c.fillStyle = '#CF63CF'; for (let x = 0; x < cv.width; x++) { let m = 0; for (let j = 0; j < step; j++) m = Math.max(m, Math.abs(d[x * step + j] || 0)); const h = Math.max(1, m * cv.height); c.fillRect(x, cv.height / 2 - h / 2, 1, h); }
+    c.fillStyle = '#CF63CF'; for (let x = 0; x < cv.width; x++) { let m = 0; for (let j = 0; j < step; j++) m = Math.max(m, Math.abs(d[x * step + j] || 0)); const h = Math.max(2, m * cv.height * 0.9); c.fillRect(x, cv.height / 2 - h / 2, 1, h); }
+    c.fillStyle = '#575e75'; c.font = '12px Helvetica, Arial, sans-serif'; c.fillText((buf.duration).toFixed(2) + ' s', 8, 16);
   }
   async function recordSound() {
     if (!navigator.mediaDevices) return alert('Recording needs microphone access (https or localhost).');
@@ -541,7 +662,7 @@
 <style>html,body{margin:0;height:100%;background:#111;overflow:hidden;font-family:Helvetica,Arial,sans-serif}#wrap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(100vw,133.33vh);height:min(75vw,100vh);background:#fff}canvas{width:100%;height:100%;display:block;touch-action:none}#ov{position:absolute;inset:0;pointer-events:none}#ov>*{pointer-events:auto}.spark-ask{position:absolute;left:8px;right:8px;bottom:8px;display:flex;gap:6px;background:#fff;border:2px solid #4C97FF;border-radius:10px;padding:6px}.spark-ask input{flex:1;border:1px solid #ccc;border-radius:8px;padding:6px 10px;font-size:14px}.spark-ask button{border:0;background:#4C97FF;color:#fff;border-radius:50%;width:32px;height:32px;font-weight:700}#start{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);cursor:pointer}#start div{width:120px;height:120px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(0,0,0,.4)}#start svg{width:70px}#title{position:absolute;bottom:14px;left:0;right:0;text-align:center;color:#fff;font-weight:700;font-size:20px;text-shadow:0 2px 6px #000}</style></head>
 <body><div id="wrap"><canvas id="stage"></canvas><div id="ov"></div><div id="start"><div><svg viewBox="0 0 24 24"><path d="M5 3v18" stroke="#45993d" stroke-width="2" fill="none"/><path d="M6 4h11l-3 4 3 4H6z" fill="#4cbf56"/></svg></div><div id="title">${esc(p.name)}</div></div></div>
 <script>${files.join('\n;\n')}<\/script>
-<script>const project=${JSON.stringify(p).replace(/<\//g, '<\\/')};
+<script>window.SPARK_CLOUD_URL=${JSON.stringify(location.origin)};const project=${JSON.stringify(p).replace(/<\//g, '<\\/')};
 const R=window.R=new SparkRuntime(document.getElementById('stage'),{overlay:document.getElementById('ov')});R.loadProject(project);
 document.getElementById('start').onclick=function(){this.remove();R.greenFlag();};<\/script></body></html>`;
     return html;

@@ -27,6 +27,184 @@
     snow: { count: 20, colors: ['#ffffff', '#e3f2fd'], speed: 1, life: 2, gravity: 0.03, size: 4, shape: 'circle' }
   };
 
+  /* ============================ World (tile map) ============================ */
+  // [name, solid in top-down, solid in side view, hazard]
+  const TILE_DEFS = [
+    ['empty', 0, 0, 0], ['grass', 0, 1, 0], ['dirt', 0, 1, 0], ['stone', 1, 1, 0], ['wall', 1, 1, 0], ['water', 1, 0, 0], ['tree', 1, 1, 0], ['flower', 0, 0, 0],
+    ['path', 0, 1, 0], ['floor', 0, 1, 0], ['sand', 0, 1, 0], ['lava', 0, 0, 1], ['brick', 1, 1, 0], ['wood', 1, 1, 0], ['ice', 1, 1, 0], ['bush', 1, 1, 0], ['rock', 1, 1, 0],
+    ['spike', 0, 0, 1], ['chest', 0, 0, 0], ['door', 0, 0, 0], ['cloud', 0, 1, 0], ['snow', 0, 1, 0]
+  ];
+  const TILE_INDEX = Object.fromEntries(TILE_DEFS.map((d, i) => [d[0], i]));
+  const TILE_NAMES = TILE_DEFS.map(d => d[0]);
+  const tileSVG = name => {
+    const S = 48, w = inner => `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 48 48">${inner}</svg>`;
+    const grass = `<rect width="48" height="48" fill="#5cb83a"/><path d="M6 40 l2 -7 l2 7 M20 18 l2 -7 l2 7 M34 30 l2 -7 l2 7 M12 12 l2 -6 l2 6 M40 10 l2 -6 l2 6" stroke="#4aa52d" stroke-width="2" fill="none"/>`;
+    const dirt = `<rect width="48" height="48" fill="#8b5a2b"/><circle cx="12" cy="14" r="3" fill="#6b421a"/><circle cx="34" cy="30" r="4" fill="#6b421a"/><circle cx="22" cy="40" r="2.5" fill="#6b421a"/>`;
+    const floor = `<rect width="48" height="48" fill="#cfd3dc"/><path d="M0 24 H48 M24 0 V48" stroke="#b5bac6" stroke-width="2"/>`;
+    switch (name) {
+      case 'grass': return w(grass);
+      case 'dirt': return w(dirt);
+      case 'stone': return w(`<rect width="48" height="48" fill="#8f949c"/><path d="M0 16 H48 M0 32 H48 M24 0 V16 M12 16 V32 M36 16 V32 M24 32 V48" stroke="#6d727a" stroke-width="3"/>`);
+      case 'wall': return w(`<rect width="48" height="48" fill="#4a4e5a"/><path d="M0 24 H48 M24 0 V24 M12 24 V48 M36 24 V48" stroke="#2f323b" stroke-width="3"/><rect x="2" y="2" width="20" height="20" fill="#565a68"/>`);
+      case 'water': return w(`<rect width="48" height="48" fill="#3f9be8"/><path d="M4 16 q6 -6 12 0 t12 0 t12 0 M4 34 q6 -6 12 0 t12 0 t12 0" stroke="#8fd0ff" stroke-width="3" fill="none"/>`);
+      case 'tree': return w(grass + `<rect x="21" y="30" width="6" height="16" fill="#7a4a1e"/><circle cx="24" cy="20" r="16" fill="#2e8b3a"/><circle cx="16" cy="26" r="9" fill="#2e8b3a"/><circle cx="32" cy="26" r="9" fill="#2e8b3a"/><circle cx="20" cy="15" r="5" fill="#45a84f"/>`);
+      case 'flower': return w(grass + `<circle cx="14" cy="16" r="5" fill="#ff4f8b"/><circle cx="14" cy="16" r="2" fill="#ffe36b"/><circle cx="34" cy="30" r="5" fill="#ffd93b"/><circle cx="34" cy="30" r="2" fill="#ff7a00"/><circle cx="30" cy="12" r="4" fill="#fff"/><circle cx="30" cy="12" r="1.5" fill="#ffd93b"/>`);
+      case 'path': return w(`<rect width="48" height="48" fill="#d9b876"/><circle cx="10" cy="12" r="3" fill="#c7a461"/><circle cx="30" cy="34" r="4" fill="#c7a461"/><circle cx="38" cy="10" r="2.5" fill="#c7a461"/>`);
+      case 'floor': return w(floor);
+      case 'sand': return w(`<rect width="48" height="48" fill="#f0dc9c"/><circle cx="12" cy="30" r="2" fill="#e2c97f"/><circle cx="30" cy="14" r="2" fill="#e2c97f"/><circle cx="36" cy="38" r="2" fill="#e2c97f"/>`);
+      case 'lava': return w(`<rect width="48" height="48" fill="#ff5a1f"/><path d="M4 20 q8 -8 16 0 t16 0 t16 0" stroke="#ffd33b" stroke-width="4" fill="none"/><circle cx="14" cy="36" r="4" fill="#ffd33b"/><circle cx="36" cy="30" r="3" fill="#ffb21f"/>`);
+      case 'brick': return w(`<rect width="48" height="48" fill="#c0564a"/><path d="M0 16 H48 M0 32 H48 M24 0 V16 M12 16 V32 M36 16 V32 M24 32 V48" stroke="#8e3a30" stroke-width="3"/>`);
+      case 'wood': return w(`<rect width="48" height="48" fill="#c89550"/><path d="M0 12 H48 M0 24 H48 M0 36 H48" stroke="#a5743a" stroke-width="2"/><circle cx="12" cy="18" r="2" fill="#a5743a"/><circle cx="36" cy="30" r="2" fill="#a5743a"/>`);
+      case 'ice': return w(`<rect width="48" height="48" fill="#bfe9ff"/><path d="M8 40 L20 8 M28 44 L40 14" stroke="#ffffff" stroke-width="3"/><rect width="48" height="48" fill="none" stroke="#9ad4f5" stroke-width="2"/>`);
+      case 'bush': return w(grass + `<ellipse cx="24" cy="30" rx="18" ry="13" fill="#2e8b3a"/><ellipse cx="16" cy="24" rx="9" ry="8" fill="#3aa347"/><ellipse cx="30" cy="22" rx="10" ry="9" fill="#3aa347"/><circle cx="22" cy="30" r="2.5" fill="#e53935"/><circle cx="32" cy="32" r="2.5" fill="#e53935"/>`);
+      case 'rock': return w(grass + `<path d="M6 40 L12 20 L26 12 L40 20 L42 40 Z" fill="#8f949c"/><path d="M12 20 L26 12 L30 26 Z" fill="#b4b9c2"/>`);
+      case 'spike': return w(`<path d="M0 48 L12 10 L24 48 L36 10 L48 48 Z" fill="#9aa0a6"/><path d="M12 10 L18 30 L6 30 Z" fill="#c9cdd2"/>`);
+      case 'chest': return w(floor + `<rect x="8" y="16" width="32" height="24" rx="4" fill="#a5743a"/><rect x="8" y="24" width="32" height="4" fill="#6b421a"/><rect x="21" y="22" width="6" height="8" fill="#ffd93b"/>`);
+      case 'door': return w(`<rect width="48" height="48" fill="#4a4e5a"/><rect x="10" y="4" width="28" height="44" rx="14" fill="#8b5a2b"/><rect x="14" y="8" width="20" height="40" rx="10" fill="#a5743a"/><circle cx="30" cy="30" r="3" fill="#ffd93b"/>`);
+      case 'cloud': return w(`<ellipse cx="24" cy="30" rx="22" ry="12" fill="#ffffff"/><circle cx="16" cy="22" r="10" fill="#ffffff"/><circle cx="30" cy="20" r="12" fill="#ffffff"/>`);
+      case 'snow': return w(`<rect width="48" height="48" fill="#eef6ff"/><circle cx="12" cy="14" r="2" fill="#ffffff"/><circle cx="34" cy="30" r="3" fill="#ffffff"/><rect y="40" width="48" height="8" fill="#d9e8f7"/>`);
+      default: return null;
+    }
+  };
+  function rng(seed) { let a = (seed >>> 0) || 1; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+  class World {
+    constructor(R) { this.R = R; this.images = {}; this.clear(); }
+    clear() { this.w = 0; this.h = 0; this.size = 48; this.tiles = null; this.sideView = false; this.start = { x: 0, y: 0 }; this.type = ''; }
+    get active() { return !!this.tiles; }
+    img(kind) {
+      const name = TILE_NAMES[kind]; if (!name || name === 'empty') return null;
+      let im = this.images[name]; if (!im) { im = new Image(); im.ready = false; im.onload = () => im.ready = true; im.src = Lib.svgToDataURL(tileSVG(name)); this.images[name] = im; }
+      return im.ready ? im : null;
+    }
+    // world coords: map is centred on the origin; column 0 is the left, row 0 is the TOP
+    left() { return -this.w * this.size / 2; } top() { return this.h * this.size / 2; }
+    right() { return this.w * this.size / 2; } bottom() { return -this.h * this.size / 2; }
+    colOf(x) { return Math.floor((x - this.left()) / this.size); } rowOf(y) { return Math.floor((this.top() - y) / this.size); }
+    centerOf(c, r) { return { x: this.left() + (c + 0.5) * this.size, y: this.top() - (r + 0.5) * this.size }; }
+    get(c, r) { return (this.tiles && c >= 0 && r >= 0 && c < this.w && r < this.h) ? this.tiles[r * this.w + c] : 0; }
+    set(c, r, kind) { if (this.tiles && c >= 0 && r >= 0 && c < this.w && r < this.h) this.tiles[r * this.w + c] = kind; }
+    kindOf(name) { return TILE_INDEX[toStr(name).toLowerCase()] ?? 0; }
+    nameAt(x, y) { return TILE_NAMES[this.get(this.colOf(x), this.rowOf(y))]; }
+    isSolid(kind) { const d = TILE_DEFS[kind]; return !!(d && (this.sideView ? d[2] : d[1])); }
+    isHazard(kind) { const d = TILE_DEFS[kind]; return !!(d && d[3]); }
+    isFree(c, r) { const k = this.get(c, r); return !this.isSolid(k) && !this.isHazard(k); }
+    rectOf(c, r) { const l = this.left() + c * this.size, t = this.top() - r * this.size; return { left: l, right: l + this.size, top: t, bottom: t - this.size }; }
+    // solid tile rects overlapping a bounds box
+    solidRects(b) {
+      if (!this.tiles) return [];
+      const out = []; const c0 = Math.max(0, this.colOf(b.left)), c1 = Math.min(this.w - 1, this.colOf(b.right - 0.001)), r0 = Math.max(0, this.rowOf(b.top - 0.001)), r1 = Math.min(this.h - 1, this.rowOf(b.bottom));
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (this.isSolid(this.get(c, r))) out.push(this.rectOf(c, r));
+      return out;
+    }
+    touching(b, test) {
+      if (!this.tiles) return false;
+      const c0 = Math.max(0, this.colOf(b.left)), c1 = Math.min(this.w - 1, this.colOf(b.right - 0.001)), r0 = Math.max(0, this.rowOf(b.top - 0.001)), r1 = Math.min(this.h - 1, this.rowOf(b.bottom));
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (test(this.get(c, r))) return true;
+      return false;
+    }
+    randomFree(rand = Math.random) {
+      if (!this.tiles) return { x: Math.random() * 400 - 200, y: Math.random() * 300 - 150 };
+      for (let i = 0; i < 500; i++) { const c = Math.floor(rand() * this.w), r = Math.floor(rand() * this.h); if (this.isFree(c, r) && (!this.sideView || this.isSolid(this.get(c, r + 1)))) return this.centerOf(c, r); }
+      return this.start;
+    }
+    fill(c0, r0, c1, r1, kind) { for (let r = Math.min(r0, r1); r <= Math.max(r0, r1); r++) for (let c = Math.min(c0, c1); c <= Math.max(c0, c1); c++) this.set(c, r, kind); }
+    generate(type, w, h, seed) {
+      w = clamp(Math.round(w) || 40, 8, 200); h = clamp(Math.round(h) || 30, 6, 150); seed = Math.round(seed) || Math.floor(Math.random() * 1e9);
+      const rand = rng(seed); const K = TILE_INDEX;
+      this.w = w; this.h = h; this.tiles = new Uint8Array(w * h); this.type = type; this.sideView = type === 'platformer level';
+      const ri = (a, b) => a + Math.floor(rand() * (b - a + 1));
+      const blob = (cx, cy, rad, kind, chance = 1) => { for (let r = Math.max(0, cy - rad); r <= Math.min(h - 1, cy + rad); r++) for (let c = Math.max(0, cx - rad); c <= Math.min(w - 1, cx + rad); c++) if ((c - cx) ** 2 + (r - cy) ** 2 <= rad * rad && rand() < chance) this.set(c, r, kind); };
+      const walk = (c, r, steps, kind, horizBias) => { for (let i = 0; i < steps; i++) { this.set(c, r, kind); const d = rand(); if (d < 0.25 + horizBias) c++; else if (d < 0.5) c--; else if (d < 0.75) r++; else r--; c = clamp(c, 1, w - 2); r = clamp(r, 1, h - 2); } };
+      const border = kind => { for (let c = 0; c < w; c++) { this.set(c, 0, kind); this.set(c, h - 1, kind); } for (let r = 0; r < h; r++) { this.set(0, r, kind); this.set(w - 1, r, kind); } };
+      const clearStart = (c, r, rad) => blob(c, r, rad, this.sideView ? K.empty : (type === 'dungeon' || type === 'cave' ? K.floor : K.grass));
+      switch (type) {
+        case 'empty': { this.tiles.fill(K.empty); this.start = this.centerOf(Math.floor(w / 2), Math.floor(h / 2)); break; }
+        case 'forest': {
+          this.tiles.fill(K.grass);
+          for (let i = 0; i < (w * h) / 60; i++) blob(ri(0, w - 1), ri(0, h - 1), ri(1, 3), K.tree, 0.7);
+          for (let i = 0; i < (w * h) / 250; i++) blob(ri(0, w - 1), ri(0, h - 1), ri(1, 3), K.bush, 0.5);
+          for (let i = 0; i < (w * h) / 300; i++) blob(ri(0, w - 1), ri(0, h - 1), ri(0, 1), K.rock, 0.6);
+          for (let i = 0; i < (w * h) / 25; i++) if (this.get(ri(0, w - 1), ri(0, h - 1)) === K.grass) this.set(ri(0, w - 1), ri(0, h - 1), K.flower);
+          for (let i = 0; i < Math.max(1, (w * h) / 600); i++) blob(ri(3, w - 4), ri(3, h - 4), ri(2, 4), K.water);
+          walk(ri(1, w - 2), 1, w * 2, K.path, 0.1);
+          border(K.tree);
+          this.start = this.centerOf(Math.floor(w / 2), Math.floor(h / 2)); clearStart(Math.floor(w / 2), Math.floor(h / 2), 2);
+          break;
+        }
+        case 'town': {
+          this.tiles.fill(K.grass);
+          for (let r = 2; r < h - 2; r += Math.max(5, Math.floor(h / 4))) this.fill(1, r, w - 2, r, K.path);
+          for (let c = 2; c < w - 2; c += Math.max(6, Math.floor(w / 4))) this.fill(c, 1, c, h - 2, K.path);
+          for (let i = 0; i < (w * h) / 60; i++) {
+            const hw = ri(3, 5), hh = ri(3, 4), c = ri(1, w - hw - 2), r = ri(1, h - hh - 2);
+            let ok = true; for (let rr = r - 1; rr <= r + hh; rr++) for (let cc = c - 1; cc <= c + hw; cc++) if (this.get(cc, rr) !== K.grass) ok = false;
+            if (!ok) continue;
+            this.fill(c, r, c + hw - 1, r + hh - 1, K.brick); this.fill(c + 1, r + 1, c + hw - 2, r + hh - 2, K.floor); this.set(c + Math.floor(hw / 2), r + hh - 1, K.door);
+          }
+          for (let i = 0; i < (w * h) / 40; i++) { const c = ri(0, w - 1), r = ri(0, h - 1); if (this.get(c, r) === K.grass) this.set(c, r, rand() < 0.5 ? K.tree : K.flower); }
+          border(K.tree);
+          this.start = this.centerOf(2, 2); clearStart(2, 2, 1);
+          break;
+        }
+        case 'dungeon': {
+          this.tiles.fill(K.wall);
+          const rooms = []; const n = Math.max(3, Math.floor((w * h) / 90));
+          for (let i = 0; i < n * 4 && rooms.length < n; i++) {
+            const rw = ri(4, 9), rh = ri(3, 7), c = ri(1, w - rw - 2), r = ri(1, h - rh - 2);
+            if (rooms.some(o => c < o.c + o.w + 1 && c + rw + 1 > o.c && r < o.r + o.h + 1 && r + rh + 1 > o.r)) continue;
+            rooms.push({ c, r, w: rw, h: rh }); this.fill(c, r, c + rw - 1, r + rh - 1, K.floor);
+          }
+          for (let i = 1; i < rooms.length; i++) {
+            const a = rooms[i - 1], b = rooms[i]; const ac = a.c + Math.floor(a.w / 2), ar = a.r + Math.floor(a.h / 2), bc = b.c + Math.floor(b.w / 2), br = b.r + Math.floor(b.h / 2);
+            this.fill(ac, ar, bc, ar, K.floor); this.fill(bc, ar, bc, br, K.floor);
+          }
+          for (const rm of rooms.slice(1)) { if (rand() < 0.5) this.set(rm.c + ri(0, rm.w - 1), rm.r + ri(0, rm.h - 1), K.chest); if (rand() < 0.35) this.set(rm.c + ri(0, rm.w - 1), rm.r + ri(0, rm.h - 1), K.lava); }
+          const last = rooms[rooms.length - 1]; this.set(last.c + Math.floor(last.w / 2), last.r, K.door);
+          const f = rooms[0]; this.start = this.centerOf(f.c + Math.floor(f.w / 2), f.r + Math.floor(f.h / 2));
+          break;
+        }
+        case 'cave': {
+          let a = new Uint8Array(w * h); for (let i = 0; i < a.length; i++) a[i] = rand() < 0.46 ? 1 : 0;
+          for (let it = 0; it < 4; it++) { const b = new Uint8Array(w * h); for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) { let n = 0; for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = c + dc; if (rr < 0 || cc < 0 || rr >= h || cc >= w || a[rr * w + cc]) n++; } b[r * w + c] = n >= 5 ? 1 : 0; } a = b; }
+          for (let i = 0; i < a.length; i++) this.tiles[i] = a[i] ? K.stone : K.dirt;
+          border(K.stone);
+          for (let i = 0; i < (w * h) / 150; i++) { const c = ri(1, w - 2), r = ri(1, h - 2); if (this.get(c, r) === K.dirt) this.set(c, r, rand() < 0.6 ? K.lava : K.chest); }
+          const sc = Math.floor(w / 2), sr = Math.floor(h / 2); this.start = this.centerOf(sc, sr); blob(sc, sr, 2, K.dirt);
+          break;
+        }
+        default: { // platformer level (side view)
+          this.tiles.fill(K.empty);
+          let ground = Math.max(2, Math.floor(h * 0.3)); // height of ground in tiles from the bottom
+          let c = 0;
+          while (c < w) {
+            const run = ri(3, 8); const gap = c > 6 && rand() < 0.35 ? ri(2, 3) : 0;
+            for (let i = 0; i < run && c < w; i++, c++) { for (let r = 0; r < ground; r++) this.set(c, h - 1 - r, r === ground - 1 ? K.grass : K.dirt); if (rand() < 0.08 && c > 5) this.set(c, h - 1 - ground, K.spike); }
+            c += gap;
+            ground = clamp(ground + ri(-1, 1), 2, Math.floor(h * 0.6));
+          }
+          for (let i = 0; i < w / 4; i++) { const pc = ri(4, w - 4), pr = ri(2, h - 5), len = ri(2, 4); let ok = true; for (let k = -1; k <= len; k++) for (let d = -2; d <= 1; d++) if (this.get(pc + k, pr + d) !== K.empty) ok = false; if (ok) this.fill(pc, pr, pc + len - 1, pr, K.wood); }
+          for (let i = 0; i < w / 6; i++) { const cc = ri(1, w - 3), rr = ri(0, Math.floor(h / 3)); this.set(cc, rr, K.cloud); this.set(cc + 1, rr, K.cloud); }
+          for (let r = 0; r < 3; r++) this.set(0, h - 1 - r, K.dirt), this.set(0, h - 4, K.grass);
+          this.set(w - 1, this.firstSolidRow(w - 1) - 1, K.door);
+          const sr = this.firstSolidRow(1); this.start = this.centerOf(1, sr - 1);
+        }
+      }
+    }
+    firstSolidRow(c) { for (let r = 0; r < this.h; r++) if (this.isSolid(this.get(c, r))) return r; return this.h - 1; }
+    draw(ctx, map, zoom) {
+      if (!this.tiles) return;
+      const v = this.R.viewRect(false); const s = this.size * zoom;
+      const c0 = Math.max(0, this.colOf(v.left)), c1 = Math.min(this.w - 1, this.colOf(v.right)), r0 = Math.max(0, this.rowOf(v.top)), r1 = Math.min(this.h - 1, this.rowOf(v.bottom));
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+        const k = this.tiles[r * this.w + c]; if (!k) continue;
+        const im = this.img(k); if (!im) continue;
+        const [sx, sy] = map(this.left() + c * this.size, this.top() - r * this.size);
+        ctx.drawImage(im, sx, sy, s + 0.5, s + 0.5);
+      }
+    }
+  }
+
   /* ============================ Thread ============================ */
   class Thread {
     constructor(R, target, script) {
@@ -64,6 +242,7 @@
       this.vars = {}; this.lists = {}; this.varTypes = {};
       for (const v of data.variables || []) { if (v.type === 'list') this.lists[v.name] = Array.isArray(v.value) ? v.value.slice() : []; else if (v.type === '') this.vars[v.name] = v.value ?? 0; this.varTypes[v.name] = v.type || ''; }
       this.variables = (data.variables || []).map(v => ({ ...v }));
+      if (this.isStage) { this.cloudVars = {}; for (const v of this.variables) if (v.isCloud) this.cloudVars[v.name] = true; }
       this.effects = { COLOR: 0, FISHEYE: 0, WHIRL: 0, PIXELATE: 0, MOSAIC: 0, BRIGHTNESS: 0, GHOST: 0 };
       this.soundEffects = { PITCH: 0, PAN: 0 };
       this.bubble = null; this.flipX = false; this.flipY = false; this.sticky = false; this.trail = null; this.shadow = false; this.glow = null; this.tint = null; this.squashAmt = 0;
@@ -78,7 +257,7 @@
         id: this.id, name: this.name, x: this.x, y: this.y, direction: this.direction, size: this.size, visible: this.visible,
         rotationStyle: this.rotationStyle, draggable: this.draggable, costumes: this.costumes.map(c => ({ name: c.name, src: c.src, cx: c.cx, cy: c.cy })),
         currentCostume: this.currentCostume, sounds: this.sounds.map(s => ({ name: s.name, preset: s.preset, src: s.src })), volume: this.volume, xml: this.xml,
-        variables: this.variables.map(v => ({ id: v.id, name: v.name, type: v.type, value: v.type === 'list' ? (this.lists[v.name] || []) : v.type === '' ? (this.vars[v.name] ?? 0) : undefined }))
+        variables: this.variables.map(v => ({ id: v.id, name: v.name, type: v.type, isCloud: v.isCloud || undefined, value: v.type === 'list' ? (this.lists[v.name] || []) : v.type === '' ? (this.vars[v.name] ?? 0) : undefined }))
       };
     }
     compile() {
@@ -98,6 +277,7 @@
       }
       this.variables = this.variables.filter(v => keep[v.name]);
       for (const name of Object.keys(this.varTypes)) if (!keep[name]) { delete this.varTypes[name]; delete this.vars[name]; delete this.lists[name]; }
+      if (this.isStage) { for (const v of variables) if (v.isCloud) { this.cloudVars[v.name] = true; const ex = this.variables.find(x => x.name === v.name); if (ex) ex.isCloud = true; } this.R.cloudSetup(this); }
       this.R.onEvent('variablesChanged', this);
     }
     get costume() { return this.costumes[this.currentCostume] || this.costumes[0]; }
@@ -206,12 +386,19 @@
     flip(dir) { if (dir === 'vertically') this.flipY = !this.flipY; else this.flipX = !this.flipX; }
     squash(amount) { this.squashAmt = clamp(amount, -90, 90) / 100; }
     tintFor(color, secs) { this.tint = { color, until: this.R.time + Math.max(0.05, secs) }; }
+    async typeText(T, text, size, color) {
+      const s = toStr(text); const speed = 30; // letters per second
+      for (let i = 1; i <= s.length; i++) { this.showText(s.slice(0, i), size, color); await T.wait(1 / speed); }
+      if (!s.length) this.showText('', size, color);
+    }
     showText(text, size, color) {
       if (text === null || text === undefined) { this.textCostume = null; return; }
+      this.textStyle = { size: size || (this.textStyle && this.textStyle.size) || 24, color: color || (this.textStyle && this.textStyle.color) || '#333333' };
+      size = this.textStyle.size; color = this.textStyle.color;
       const svg = Lib.textSVG(text, clamp(size || 24, 6, 200), color || '#333333', this.font);
       const src = Lib.svgToDataURL(svg);
       const m = svg.match(/width="(\d+)" height="(\d+)"/);
-      this.textCostume = { name: '_text_', src, w: +m[1], h: +m[2], cx: +m[1] / 2, cy: +m[2] / 2 };
+      this.textCostume = { name: '_text_', text: String(text), src, w: +m[1], h: +m[2], cx: +m[1] / 2, cy: +m[2] / 2 };
       this.R.img(this.textCostume);
     }
     /* ---- sound ---- */
@@ -235,7 +422,16 @@
     touchingColor(c) { return this.R.touchingColor(this, c, null); }
     colorTouchingColor(c1, c2) { return this.R.touchingColor(this, c2, c1); }
     distanceTo(name) { const p = this.R.pointFor(this, name); return p ? Math.hypot(p.x - this.x, p.y - this.y) : 10000; }
-    touchingSolid() { const b = this.bounds(); return this.R.sprites().some(o => o !== this && o.phys.solid && o.visible && this.R.aabb(b, o.bounds())); }
+    touchingSolid() { const b = this.bounds(); return this.R.world.solidRects(b).length > 0 || this.R.sprites().some(o => o !== this && o.phys.solid && o.visible && this.R.aabb(b, o.bounds())); }
+    touchingTile(name) {
+      const W = this.R.world; const b = this.bounds();
+      if (name === 'any solid') return W.touching(b, k => W.isSolid(k));
+      if (name === 'any hazard') return W.touching(b, k => W.isHazard(k));
+      if (name === 'any tile') return W.touching(b, k => k !== 0);
+      const kind = W.kindOf(name); return W.touching(b, k => k === kind);
+    }
+    goToWorldStart() { const s = this.R.world.start; this.goTo(s.x, s.y); this.phys.vx = 0; this.phys.vy = 0; }
+    goToFreeTile() { const p = this.R.world.randomFree(); this.goTo(p.x, p.y); }
     /* ---- physics ---- */
     setPhysics(mode) { this.phys.mode = mode; this.phys.vx = 0; this.phys.vy = 0; if (mode === 'top-down' && this.phys.friction > 0.95) this.phys.friction = 0.8; }
     jump(power) { if (this.phys.mode === 'off') this.setPhysics('platformer'); if (this.phys.onGround) { this.phys.vy = power; this.phys.onGround = false; } }
@@ -325,8 +521,8 @@
       this.answer = ''; this.counter = 0; this.tempo = 60; this.voice = 'normal';
       this.cam = { x: 0, y: 0, zoom: 1, follow: null, bounds: null, shakeAmt: 0, shakeUntil: 0, ox: 0, oy: 0, shakeFor: (amt, secs) => { this.cam.shakeAmt = amt; this.cam.shakeUntil = this.time + secs; } };
       this.particles = { list: [], burst: (preset, x, y, scale) => this.burstParticles(preset, x, y, scale) };
-      this.audio = new AudioEngine(this); this.pen = new PenLayer(this);
-      this.monitors = []; this.flash = null; this.fadeOverlay = null; this.toastMsg = null; this.gameOver = null;
+      this.audio = new AudioEngine(this); this.pen = new PenLayer(this); this.world = new World(this);
+      this.monitors = []; this.flash = null; this.fadeOverlay = null; this.toastMsg = null; this.gameOver = null; this.dialog = null; this.labels = {}; this.cloudStatus = '';
       this.edgeState = new Map(); this.hatsFired = new Set();
       this.game = this.makeGame(); this.pad = this.makePad();
       this.listeners = {}; this.viewScale = 1; this.dpr = window.devicePixelRatio || 1;
@@ -342,16 +538,16 @@
     /* ---------- project ---------- */
     loadProject(p) {
       this.stopAll(true);
-      this.projectName = p.name || 'Untitled';
+      this.projectName = p.name || 'Untitled'; this.cloudId = p.cloudId || null; this.cloudClose();
       this.stage = new Target(this, p.stage || { name: 'Stage', costumes: [{ name: 'backdrop1', src: Lib.svgToDataURL(Lib.backdropSVG('Blank')) }] }, true);
       this.targets = (p.sprites || []).map(s => new Target(this, s, false));
       this.monitors = (p.monitors || []).map(m => ({ ...m }));
-      this.pen.clear(); this.resetGameState();
+      this.pen.clear(); this.world.clear(); this.resetGameState();
       for (const t of this.allTargets()) { for (const c of t.costumes) this.img(c); this.audio.preload(t); }
       this.onEvent('projectLoaded');
     }
     serialize() {
-      return { name: this.projectName, version: 1, stage: this.stage.toJSON(), sprites: this.sprites().filter(s => !s.isClone).map(s => s.toJSON()), monitors: this.monitors.map(m => ({ ...m })) };
+      return { name: this.projectName, version: 1, cloudId: this.cloudId || undefined, stage: this.stage.toJSON(), sprites: this.sprites().filter(s => !s.isClone).map(s => s.toJSON()), monitors: this.monitors.map(m => ({ ...m })) };
     }
     allTargets() { return this.stage ? [this.stage, ...this.targets] : []; }
     sprites() { return this.targets; }
@@ -403,7 +599,7 @@
     }
     resetGameState() {
       this.game.reset(); this.cam.x = 0; this.cam.y = 0; this.cam.zoom = 1; this.cam.follow = null; this.cam.bounds = null; this.cam.shakeAmt = 0;
-      this.timeScale = 1; this.paused = false; this.particles.list.length = 0; this.flash = null; this.fadeOverlay = null; this.toastMsg = null; this.gameOver = null; this.edgeState.clear();
+      this.timeScale = 1; this.paused = false; this.particles.list.length = 0; this.flash = null; this.fadeOverlay = null; this.toastMsg = null; this.gameOver = null; this.edgeState.clear(); this.dialog = null; this.labels = {};
       for (const t of this.allTargets()) { t.textCostume = null; t.tint = null; t.trail = null; t.squashAmt = 0; }
     }
     stopAll(silent) {
@@ -446,7 +642,7 @@
 
     /* ---------- variables & lists ---------- */
     v(S, name) { if (S && name in S.vars) return S.vars[name]; return name in this.stage.vars ? this.stage.vars[name] : 0; }
-    setV(S, name, val) { if (S && name in S.vars) S.vars[name] = val; else this.stage.vars[name] = val; }
+    setV(S, name, val) { if (S && name in S.vars) S.vars[name] = val; else { this.stage.vars[name] = val; if (this.stage.cloudVars && this.stage.cloudVars[name]) this.cloudPush(name, val); } }
     changeV(S, name, d) { this.setV(S, name, toNum(this.v(S, name)) + d); }
     l(S, name) { if (S && name in S.lists) return S.lists[name]; if (!(name in this.stage.lists)) this.stage.lists[name] = []; return this.stage.lists[name]; }
     listIndex(list, idx, forInsert) {
@@ -587,6 +783,77 @@
       }
       return false;
     }
+    /* ---------- text engine ---------- */
+    async dialogue(T, name, text) {
+      const pages = this.paginate(toStr(text), 3, 54);
+      for (const page of pages) {
+        this.dialog = { name: toStr(name), text: page, shown: 0, done: false, start: this.time };
+        this.dialogAdvance = false;
+        while (!this.dialog.done) { await T.yield(); if (this.dialogAdvance) { this.dialog.shown = page.length; this.dialog.done = true; } }
+        this.dialogAdvance = false;
+        while (!this.dialogAdvance) await T.yield();
+        this.dialogAdvance = false;
+      }
+      this.dialog = null;
+    }
+    paginate(text, lines, cols) {
+      const words = text.split(/\s+/), rows = []; let cur = '';
+      for (const w of words) { const t = cur ? cur + ' ' + w : w; if (t.length > cols && cur) { rows.push(cur); cur = w; } else cur = t; }
+      if (cur) rows.push(cur);
+      const pages = []; for (let i = 0; i < rows.length; i += lines) pages.push(rows.slice(i, i + lines).join('\n'));
+      return pages.length ? pages : [''];
+    }
+    wantAdvance() { return this.keys.has('space') || this.keys.has('enter') || this.mouse.down || this.pad.button(1, 'A'); }
+    label(pos, text) { if (text === null || toStr(text) === '') delete this.labels[pos]; else this.labels[pos] = toStr(text); }
+    textOp(op, a, b, c) {
+      a = toStr(a); b = toStr(b); c = toStr(c);
+      switch (op) {
+        case 'uppercase': return a.toUpperCase(); case 'lowercase': return a.toLowerCase(); case 'reversed': return [...a].reverse().join(''); case 'trimmed': return a.trim();
+        case 'replace': return a.split(b).join(c);
+        case 'split': { const parts = a.split(b === '' ? /\s+/ : b); const i = Math.round(toNum(c)) - 1; return parts[i] ?? ''; }
+        case 'count': return b === '' ? 0 : a.split(b).length - 1;
+        case 'repeat': return a.repeat(clamp(Math.round(toNum(b)), 0, 1000));
+        case 'commas': { const n = toNum(a); return n.toLocaleString(); }
+      }
+      return a;
+    }
+    /* ---------- cloud variables ---------- */
+    cloudSetup(stage) {
+      stage = stage || this.stage; if (!stage) return;
+      const cv = Object.keys(stage.cloudVars || {});
+      if (!cv.length) { this.cloudClose(); return; }
+      if (!this.cloudId) this.cloudId = uid() + uid();
+      if (this.cloudStream) return;
+      const base = window.SPARK_CLOUD_URL || '';
+      fetch(`${base}/api/cloud/${this.cloudId}`).then(r => r.json()).then(vals => { for (const k in vals) if (k in stage.vars) stage.vars[k] = vals[k]; }).catch(() => {});
+      try {
+        const es = new EventSource(`${base}/api/cloud/${this.cloudId}/stream`); this.cloudStream = es;
+        es.onmessage = e => { try { const { name, value } = JSON.parse(e.data); if (name in stage.vars) stage.vars[name] = value; } catch (err) {} };
+        es.onerror = () => { this.cloudStatus = 'offline'; }; es.onopen = () => { this.cloudStatus = 'online'; };
+      } catch (e) { this.cloudStatus = 'offline'; }
+    }
+    cloudClose() { if (this.cloudStream) { this.cloudStream.close(); this.cloudStream = null; } }
+    cloudPush(name, value) {
+      if (!this.cloudId) return; const base = window.SPARK_CLOUD_URL || '';
+      this.cloudQueue = this.cloudQueue || {}; this.cloudQueue[name] = value;
+      if (this.cloudTimer) return;
+      this.cloudTimer = setTimeout(() => {
+        this.cloudTimer = null; const q = this.cloudQueue; this.cloudQueue = {};
+        fetch(`${base}/api/cloud/${this.cloudId}/set`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vars: q }) }).catch(() => { this.cloudStatus = 'offline'; });
+      }, 120);
+    }
+    /* ---------- world ---------- */
+    generateWorld(type, w, h, seed) {
+      this.world.generate(type, w, h, seed);
+      this.cameraInsideWorld();
+      // a side-view world turns on platformer physics for sprites that already use physics
+      if (this.world.sideView) for (const t of this.targets) if (t.phys.mode === 'top-down') t.phys.mode = 'platformer';
+    }
+    cameraInsideWorld() { const W = this.world; if (!W.active) { this.cam.bounds = null; return; } this.cam.bounds = { x1: W.left(), x2: W.right(), y1: W.bottom(), y2: W.top() }; }
+    worldInfo(which) {
+      const W = this.world;
+      switch (which) { case 'width': return W.w * W.size; case 'height': return W.h * W.size; case 'left': return W.left(); case 'right': return W.right(); case 'top': return W.top(); case 'bottom': return W.bottom(); case 'start x': return W.start.x; case 'start y': return W.start.y; case 'tile size': return W.size; default: return 0; }
+    }
     statCheck(stat, op, v) { const s = this.game.get(stat); return op === '>' ? s > v : op === '<' ? s < v : s === v; }
 
     /* ---------- backdrops ---------- */
@@ -717,17 +984,35 @@
       });
       window.addEventListener('keyup', e => { this.keys.delete(keyName(e)); });
       window.addEventListener('blur', () => this.keys.clear());
-      const pos = e => { const r = cv.getBoundingClientRect(); const sx = (e.clientX - r.left) / r.width * W, sy = (e.clientY - r.top) / r.height * H; return this.screenToWorld(sx, sy); };
+      const spos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; };
+      const pos = e => { const s = spos(e); return this.screenToWorld(s.x, s.y); };
       cv.addEventListener('pointerdown', e => {
         this.audio.ctx(); cv.setPointerCapture(e.pointerId);
         const p = pos(e); this.mouse.x = p.x; this.mouse.y = p.y; this.mouse.down = true; this.mouse.clicked = true;
         if (this.gameOver && this.gameOver.ready) { this.gameOver = null; this.restart(); return; }
+        // stage monitors: slider, drag (editor), double-click to change mode
+        const sp = spos(e); const mon = this.monitorAt(sp.x, sp.y);
+        if (mon) {
+          const now = performance.now();
+          if (mon._slider && sp.y >= mon._slider.y) { this.monDrag = { m: mon, slider: true }; this.setMonitorValue(mon, clamp((sp.x - mon._slider.x) / mon._slider.w, 0, 1)); return; }
+          if (this.editorMode) {
+            if (mon._lastClick && now - mon._lastClick < 350) { mon._lastClick = 0; this.cycleMonitorMode(mon); return; }
+            mon._lastClick = now; this.monDrag = { m: mon, dx: sp.x - mon._rect.x, dy: sp.y - mon._rect.y, moved: false };
+          }
+          return;
+        }
         const hit = this.spriteAt(p.x, p.y);
         this.drag = { target: hit, sx: p.x, sy: p.y, ox: hit ? hit.x : 0, oy: hit ? hit.y : 0, moved: false, time: performance.now() };
         if (hit && (this.editorMode || hit.draggable)) { /* dragging handled on move */ }
       });
       cv.addEventListener('pointermove', e => {
         const p = pos(e); this.mouse.x = p.x; this.mouse.y = p.y;
+        if (this.monDrag) {
+          const sp = spos(e), d = this.monDrag;
+          if (d.slider) this.setMonitorValue(d.m, clamp((sp.x - d.m._slider.x) / d.m._slider.w, 0, 1));
+          else { d.moved = true; d.m.x = clamp(Math.round(sp.x - d.dx), 0, W - d.m._rect.w); d.m.y = clamp(Math.round(sp.y - d.dy), 0, H - d.m._rect.h); }
+          return;
+        }
         if (this.drag && this.drag.target && (this.editorMode || this.drag.target.draggable)) {
           const dx = p.x - this.drag.sx, dy = p.y - this.drag.sy;
           if (Math.hypot(dx, dy) > 3) this.drag.moved = true;
@@ -736,6 +1021,7 @@
       });
       const up = e => {
         this.mouse.down = false;
+        if (this.monDrag) { if (this.monDrag.moved) this.onEvent('monitorsChanged'); this.monDrag = null; return; }
         if (this.drag) {
           const d = this.drag; this.drag = null;
           if (!d.moved) {
@@ -766,12 +1052,13 @@
         if (p.mode === 'platformer') p.vy -= p.gravity; else { p.vx *= p.friction; p.vy *= p.friction; if (Math.abs(p.vx) < 0.05) p.vx = 0; if (Math.abs(p.vy) < 0.05) p.vy = 0; }
         const sp = Math.hypot(p.vx, p.vy); if (sp > p.maxSpeed) { p.vx *= p.maxSpeed / sp; p.vy *= p.maxSpeed / sp; }
         const mine = solids.filter(s => s !== t && s.original !== t && t.original !== s);
+        const rectsFor = b => mine.map(s => s.bounds()).concat(this.world.solidRects(b));
         // X axis
-        if (p.vx) { t.goTo(t.x + p.vx, t.y); let b = t.bounds(); for (const s of mine) { const o = s.bounds(); if (this.aabb(b, o)) { if (p.vx > 0) t.x -= (b.right - o.left) + 0.01; else t.x += (o.right - b.left) + 0.01; p.vx = -p.vx * p.bounce; if (Math.abs(p.vx) < 0.5) p.vx = 0; b = t.bounds(); } } }
+        if (p.vx) { t.goTo(t.x + p.vx, t.y); let b = t.bounds(); for (const o of rectsFor(b)) { if (this.aabb(b, o)) { if (p.vx > 0) t.x -= (b.right - o.left) + 0.01; else t.x += (o.right - b.left) + 0.01; p.vx = -p.vx * p.bounce; if (Math.abs(p.vx) < 0.5) p.vx = 0; b = t.bounds(); } } }
         // Y axis
         let landed = false;
         t.goTo(t.x, t.y + p.vy); let b = t.bounds();
-        for (const s of mine) { const o = s.bounds(); if (this.aabb(b, o)) { if (p.vy <= 0) { t.y += (o.top - b.bottom) + 0.01; landed = true; } else t.y -= (b.top - o.bottom) + 0.01; p.vy = -p.vy * p.bounce; if (Math.abs(p.vy) < 1) p.vy = 0; b = t.bounds(); } }
+        for (const o of rectsFor(b)) { if (this.aabb(b, o)) { if (p.vy <= 0) { t.y += (o.top - b.bottom) + 0.01; landed = true; } else t.y -= (b.top - o.bottom) + 0.01; p.vy = -p.vy * p.bounce; if (Math.abs(p.vy) < 1) p.vy = 0; b = t.bounds(); } }
         if (p.mode === 'platformer') { p.onGround = landed; if (landed) { p.vx *= p.friction; if (Math.abs(p.vx) < 0.05) p.vx = 0; } }
         else p.onGround = true;
       }
@@ -863,6 +1150,7 @@
       const bd = this.stage && this.stage.img(); if (bd && bd.ready) ctx.drawImage(bd, 0, 0, W, H);
       // pen
       const map = this.worldToScreen(false);
+      this.world.draw(ctx, map, this.cam.zoom);
       if (this.pen.used) { const [x0, y0] = map(-this.pen.w / 2, this.pen.h / 2); ctx.drawImage(this.pen.canvas, x0, y0, this.pen.w * this.cam.zoom, this.pen.h * this.cam.zoom); }
       // sprites
       const stickyMap = this.worldToScreen(true);
@@ -874,8 +1162,29 @@
       this.drawMonitors(ctx); this.drawHUD(ctx);
       if (this.flash) { const k = (this.flash.until - this.time) / this.flash.dur; ctx.globalAlpha = clamp(k, 0, 1) * 0.85; ctx.fillStyle = this.flash.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
       if (this.fadeOverlay) { ctx.globalAlpha = clamp(this.fadeOverlay.alpha, 0, 1); ctx.fillStyle = this.fadeOverlay.color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+      this.drawLabels(ctx);
       if (this.toastMsg) this.drawToast(ctx);
+      if (this.dialog) this.drawDialog(ctx);
       if (this.gameOver) this.drawGameOver(ctx);
+    }
+    drawLabels(ctx) {
+      ctx.font = 'bold 15px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'top';
+      for (const pos in this.labels) {
+        const text = this.labels[pos]; const w = ctx.measureText(text).width + 16;
+        const x = pos.endsWith('left') ? 8 : pos.endsWith('right') ? W - 8 - w : W / 2 - w / 2, y = pos.startsWith('top') ? (this.game.hudAny() ? 40 : 8) : H - 34;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; this.roundRect(ctx, x, y, w, 24, 12); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(text, x + 8, y + 5);
+      }
+    }
+    drawDialog(ctx) {
+      const d = this.dialog; const cps = 40;
+      if (!d.done) { d.shown = Math.min(d.text.length, Math.floor((this.time - d.start) * cps)); if (d.shown >= d.text.length) d.done = true; }
+      if (this.wantAdvance()) { if (!d.advArmed) { d.advArmed = true; this.dialogAdvance = true; } } else d.advArmed = false;
+      const x = 12, y = H - 96, w = W - 24, h = 84;
+      ctx.fillStyle = 'rgba(20,24,40,0.92)'; this.roundRect(ctx, x, y, w, h, 10); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; this.roundRect(ctx, x + 3, y + 3, w - 6, h - 6, 8); ctx.stroke();
+      if (d.name) { ctx.font = 'bold 13px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'middle'; const nw = ctx.measureText(d.name).width + 16; ctx.fillStyle = '#4C97FF'; this.roundRect(ctx, x + 10, y - 11, nw, 22, 11); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(d.name, x + 18, y); }
+      ctx.font = '15px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'top'; ctx.fillStyle = '#fff'; ctx.textAlign = 'left';
+      d.text.slice(0, d.shown).split('\n').forEach((line, i) => ctx.fillText(line, x + 16, y + 16 + i * 20));
+      if (d.done && Math.floor(this.time * 2) % 2 === 0) { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x + w - 24, y + h - 20); ctx.lineTo(x + w - 12, y + h - 20); ctx.lineTo(x + w - 18, y + h - 12); ctx.fill(); }
     }
     drawParticles(ctx, map) {
       const z = this.cam.zoom;
@@ -918,10 +1227,15 @@
       let autoY = 5;
       ctx.font = 'bold 11px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'middle';
       for (const m of this.monitors) {
-        if (!m.visible) continue;
+        if (!m.visible) { m._rect = null; continue; }
         const t = m.target ? this.findTarget(null, m.target) : this.stage; if (!t) continue;
         const label = (m.target ? m.target + ': ' : '') + m.name;
         const x = m.x ?? 5, y = m.y ?? autoY;
+        if (!m.isList && m.mode === 'large') {
+          const val = toStr(m.builtin ? this.builtinValue(m.name, t) : this.v(t, m.name)); ctx.font = 'bold 15px Helvetica, Arial, sans-serif'; const w = Math.max(44, ctx.measureText(val).width + 16), h = 26;
+          ctx.fillStyle = '#FF8C1A'; this.roundRect(ctx, x, y, w, h, 4); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(val, x + w / 2, y + h / 2); ctx.textAlign = 'left'; ctx.font = 'bold 11px Helvetica, Arial, sans-serif';
+          m._rect = { x, y, w, h }; if (m.y == null) autoY += h + 5; continue;
+        }
         if (m.isList) {
           const list = this.l(t, m.name); const w = 110, h = 140;
           ctx.fillStyle = '#e6e8ee'; ctx.strokeStyle = '#c2c6d5'; this.roundRect(ctx, x, y, w, h, 4); ctx.fill(); ctx.stroke();
@@ -930,17 +1244,26 @@
           const rows = Math.min(list.length, 6);
           for (let i = 0; i < rows; i++) { ctx.fillStyle = '#575e75'; ctx.fillText(String(i + 1), x + 4, y + 30 + i * 18); ctx.fillStyle = '#FF661A'; this.roundRect(ctx, x + 16, y + 22 + i * 18, w - 20, 16, 3); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(toStr(list[i]).slice(0, 14), x + 20, y + 30 + i * 18); }
           ctx.font = 'bold 11px Helvetica, Arial, sans-serif'; ctx.fillStyle = '#575e75'; ctx.textAlign = 'center'; ctx.fillText('length ' + list.length, x + w / 2, y + h - 9); ctx.textAlign = 'left';
-          if (m.y == null) autoY += h + 5;
+          m._rect = { x, y, w, h }; if (m.y == null) autoY += h + 5;
         } else {
-          const val = toStr(m.builtin ? this.builtinValue(m.name, t) : this.v(t, m.name)); const lw = ctx.measureText(label).width; const vw = Math.max(36, ctx.measureText(val).width + 12); const w = lw + vw + 16, h = 22;
+          const val = toStr(m.builtin ? this.builtinValue(m.name, t) : this.v(t, m.name)); const lw = ctx.measureText(label).width; const vw = Math.max(36, ctx.measureText(val).width + 12); const slider = m.mode === 'slider' && !m.builtin; const w = Math.max(lw + vw + 16, slider ? 110 : 0), h = slider ? 40 : 22;
           ctx.fillStyle = '#e6f0ff'; ctx.strokeStyle = '#c2d3f0'; this.roundRect(ctx, x, y, w, h, 4); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = '#575e75'; ctx.fillText(label, x + 6, y + h / 2);
-          ctx.fillStyle = '#FF8C1A'; this.roundRect(ctx, x + lw + 11, y + 3, vw, h - 6, 4); ctx.fill();
-          ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(val, x + lw + 11 + vw / 2, y + h / 2); ctx.textAlign = 'left';
-          if (m.y == null) autoY += h + 5;
+          ctx.fillStyle = '#575e75'; ctx.fillText(label, x + 6, y + 11);
+          ctx.fillStyle = '#FF8C1A'; this.roundRect(ctx, x + lw + 11, y + 3, vw, 16, 4); ctx.fill();
+          ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(val, x + lw + 11 + vw / 2, y + 11); ctx.textAlign = 'left';
+          if (slider) {
+            const min = m.min ?? 0, max = m.max ?? 100; const k = clamp((toNum(val) - min) / ((max - min) || 1), 0, 1);
+            ctx.fillStyle = '#b9c7e0'; this.roundRect(ctx, x + 8, y + 29, w - 16, 4, 2); ctx.fill();
+            ctx.fillStyle = '#4C97FF'; ctx.beginPath(); ctx.arc(x + 8 + k * (w - 16), y + 31, 6, 0, 6.283); ctx.fill();
+            m._slider = { x: x + 8, w: w - 16, y: y + 24, h: 16, min, max };
+          } else m._slider = null;
+          m._rect = { x, y, w, h }; if (m.y == null) autoY += h + 5;
         }
       }
     }
+    monitorAt(sx, sy) { for (let i = this.monitors.length - 1; i >= 0; i--) { const r = this.monitors[i]._rect; if (r && sx >= r.x && sx <= r.x + r.w && sy >= r.y && sy <= r.y + r.h) return this.monitors[i]; } return null; }
+    cycleMonitorMode(m) { if (m.isList) return; m.mode = m.mode === 'large' ? (m.builtin ? 'normal' : 'slider') : m.mode === 'slider' ? 'normal' : 'large'; this.onEvent('monitorsChanged'); }
+    setMonitorValue(m, k) { const t = m.target ? this.findTarget(null, m.target) : this.stage; const s = m._slider; let v = s.min + k * (s.max - s.min); if (Number.isInteger(s.min) && Number.isInteger(s.max)) v = Math.round(v); this.setV(t, m.name, Math.round(v * 100) / 100); }
     builtinValue(name, t) {
       switch (name) {
         case 'timer': return this.timer(); case 'answer': return this.answer; case 'mouse x': return Math.round(this.mouse.x); case 'mouse y': return Math.round(this.mouse.y); case 'loudness': return this.loudness();
@@ -976,6 +1299,6 @@
     }
   }
 
-  SparkRuntime.W = W; SparkRuntime.H = H; SparkRuntime.PARTICLE_PRESETS = PARTICLE_PRESETS;
+  SparkRuntime.W = W; SparkRuntime.H = H; SparkRuntime.PARTICLE_PRESETS = PARTICLE_PRESETS; SparkRuntime.TILE_NAMES = TILE_NAMES; SparkRuntime.tileSVG = tileSVG;
   window.SparkRuntime = SparkRuntime;
 })();
