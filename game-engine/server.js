@@ -184,7 +184,8 @@ function wsMessage(ws, text) {
     if (room.players.size >= 16) { wsSend(ws, { t: 'error', msg: 'room full' }); return; }
     const id = room.nextId++; const name = String(m.name || 'player').slice(0, 20) || 'player';
     room.players.set(id, { id, ws, name, state: null, seen: Date.now() }); ws._room = key; ws._id = id;
-    wsSend(ws, { t: 'welcome', id, players: playerList(room), vars: room.vars });
+    const states = {}; for (const p of room.players.values()) if (p.state && p.id !== id) states[p.id] = p.state;
+    wsSend(ws, { t: 'welcome', id, players: playerList(room), vars: room.vars, states });
     roomBroadcast(room, { t: 'players', players: playerList(room), joined: { id, name } }, ws);
     return;
   }

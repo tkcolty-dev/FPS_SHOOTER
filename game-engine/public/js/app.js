@@ -516,7 +516,7 @@
     pc.setPointerCapture(e.pointerId); const p = ppos(e); pushUndo(); P.drawing = true; P.start = p; P.snapshot = pctx.getImageData(0, 0, pc.width, pc.height);
     pctx.lineCap = pctx.lineJoin = 'round'; pctx.lineWidth = P.size;
     if (P.tool === 'fill') { floodFill(Math.floor(p.x), Math.floor(p.y)); P.drawing = false; commitPaint(); return; }
-    if (P.tool === 'text') { const t = prompt('Text:'); P.drawing = false; if (t) { pctx.font = `bold ${P.size * 4 + 8}px Helvetica, Arial, sans-serif`; pctx.textBaseline = 'middle'; if (P.outlineWidth > 0) { pctx.strokeStyle = P.outline; pctx.lineWidth = P.outlineWidth * 2; pctx.lineJoin = 'round'; pctx.strokeText(t, p.x, p.y); } if (P.color !== 'transparent') { pctx.fillStyle = P.color; pctx.fillText(t, p.x, p.y); } commitPaint(); } return; }
+    if (P.tool === 'text') { P.drawing = false; paintTextAt(p); return; }
     if (P.tool === 'select') { P.snapCanvas = document.createElement('canvas'); P.snapCanvas.width = pc.width; P.snapCanvas.height = pc.height; P.snapCanvas.getContext('2d').drawImage(pc, 0, 0); return; }
     if (P.tool === 'brush' || P.tool === 'eraser') { strokeTo(p, p); }
   });
@@ -541,6 +541,16 @@
     if (P.color === 'transparent') { pctx.globalCompositeOperation = 'destination-out'; pctx.fillStyle = '#000'; pctx.fill(); pctx.globalCompositeOperation = 'source-over'; }
     else { pctx.fillStyle = P.color; pctx.fill(); }
     if (P.outlineWidth > 0) { pctx.strokeStyle = P.outline; pctx.lineWidth = P.outlineWidth; pctx.stroke(); }
+  }
+  // text tool: type directly on the canvas (Enter commits, Escape cancels)
+  function paintTextAt(p) {
+    const wrap = $('.paint-canvas-wrap'); const old = wrap.querySelector('.paint-text-input'); if (old) old.remove();
+    const r = pc.getBoundingClientRect(), wr = wrap.getBoundingClientRect(); const scale = r.width / pc.width; const fontPx = P.size * 4 + 8;
+    const inp = document.createElement('input'); inp.className = 'paint-text-input'; inp.placeholder = 'type, then Enter';
+    inp.style.cssText = `position:absolute; left:${r.left - wr.left + p.x * scale}px; top:${r.top - wr.top + (p.y - fontPx / 2) * scale}px; font: bold ${fontPx * scale}px Helvetica, Arial, sans-serif; color:${P.color === 'transparent' ? '#000' : P.color}; background:rgba(255,255,255,0.7); border:1px dashed var(--blue); padding:0 4px; min-width:120px; z-index:5; outline:none`;
+    wrap.style.position = 'relative'; wrap.appendChild(inp); inp.focus();
+    const commit = () => { const t = inp.value; inp.remove(); if (!t) return; pctx.globalCompositeOperation = 'source-over'; pctx.font = `bold ${fontPx}px Helvetica, Arial, sans-serif`; pctx.textBaseline = 'middle'; if (P.outlineWidth > 0) { pctx.strokeStyle = P.outline; pctx.lineWidth = P.outlineWidth * 2; pctx.lineJoin = 'round'; pctx.strokeText(t, p.x, p.y); } if (P.color !== 'transparent') { pctx.fillStyle = P.color; pctx.fillText(t, p.x, p.y); } commitPaint(); };
+    inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') commit(); if (e.key === 'Escape') inp.remove(); }; inp.onblur = () => setTimeout(() => { if (inp.isConnected) commit(); }, 0);
   }
   function floodFill(sx, sy) {
     const W = pc.width, H = pc.height, img = pctx.getImageData(0, 0, W, H), d = img.data;
@@ -738,7 +748,8 @@ document.getElementById('start').onclick=function(){this.remove();R.greenFlag();
     }
   }
   $('#btn-help').onclick = () => openModal('Help', `<div class="help">
-    <p><b>Spark</b> works just like Scratch 3.0 — drag blocks from the left into the middle, click the green flag to run. But it has a lot more built in:</p>
+    <p><b>Spark</b> works just like Scratch 3.0 — drag blocks from the left into the middle, click the green flag to run. Click a block or script to run it; click a reporter to see its value; tick the box next to a variable to show it on the stage.</p>
+    <p>Everything beyond Scratch is an <b>extension</b>: press the blue puzzle button at the bottom-left of the palette and add the ones you want (they are added automatically when you open a project that uses them).</p>
     <h3>Physics</h3><p><code>turn physics platformer</code> gives a sprite gravity. Mark floors with <code>make this sprite solid</code>. <code>move with arrow keys</code> in a forever loop is a complete player controller (it also works with a game controller).</p>
     <h3>Camera</h3><p><code>camera follow Sprite</code> makes a scrolling level — the world is much bigger than the screen. Use <code>this sprite stays on screen</code> for score labels and buttons.</p>
     <h3>Game</h3><p>Built-in <code>score</code>, <code>lives</code>, <code>health</code>, <code>coins</code>, <code>level</code> with <code>show score on screen</code>. <code>game over</code> / <code>you win</code> show a screen with a Play again button. <code>when lives = 0</code> is a hat block. High scores are saved automatically.</p>

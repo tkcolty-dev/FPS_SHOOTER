@@ -219,6 +219,7 @@
     yield() {
       if (this.stopped) throw STOP;
       if (this.warp > 0 && performance.now() - this.R.frameStart < 400) return;
+      if (this.R.turbo && performance.now() - this.R.frameStart < 12) return;
       return new Promise(res => { this.wakeFn = res; }).then(() => { if (this.stopped) throw STOP; });
     }
     async wait(secs) {

@@ -99,7 +99,7 @@
     onMessage(m, onWelcome) {
       const R = this.R;
       switch (m.t) {
-        case 'welcome': this.id = m.id; this.players = m.players; this.shared = m.vars || {}; onWelcome && onWelcome(); break;
+        case 'welcome': this.id = m.id; this.players = m.players; this.shared = m.vars || {}; for (const [pid, st] of Object.entries(m.states || {})) { this.states[pid] = { ...st, at: performance.now() }; if (R.running) this.applyRemote(Number(pid), st); } onWelcome && onWelcome(); break;
         case 'players': { const before = new Set(this.players.map(p => p.id)); this.players = m.players; if (m.joined) { this.last.joined = m.joined.name; if (R.running) R.startHats(sc => sc.hat === 'mp_joins'); } if (m.left) { this.last.left = m.left.name; delete this.states[m.left.id]; this.removeRemotesOf(m.left.id); if (R.running) R.startHats(sc => sc.hat === 'mp_leaves'); } for (const p of this.players) if (!before.has(p.id) && !m.joined) this.last.joined = p.name; break; }
         case 's': this.states[m.id] = { ...(this.states[m.id] || {}), ...m.s, at: performance.now() }; if (R.running) this.applyRemote(m.id, m.s); break;
         case 'h': if (R.running && !this.isHost()) this.applyHost(m.id, m.s); break;
