@@ -81,6 +81,14 @@
   function applyVars(t, list) {
     const keep = new Set();
     for (const v of list) {
+      // same id, new name = a rename: carry the value, type and monitor across
+      const byId = t.variables.find(x => x.id === v.id && x.type === v.type && x.name !== v.name);
+      if (byId) {
+        const old = byId.name; byId.name = v.name; t.varTypes[v.name] = t.varTypes[old]; delete t.varTypes[old];
+        if (v.type === 'list') { t.lists[v.name] = t.lists[old] || []; delete t.lists[old]; } else if (v.type === '') { t.vars[v.name] = t.vars[old] ?? 0; delete t.vars[old]; }
+        for (const m of R.monitors) if (m.name === old && m.target === (t.isStage ? null : t.name) && !!m.isList === (v.type === 'list')) m.name = v.name;
+        if (t.isStage && t.cloudVars && t.cloudVars[old]) { delete t.cloudVars[old]; t.cloudVars[v.name] = true; }
+      }
       keep.add(v.name + '|' + v.type);
       const ex = t.variables.find(x => x.name === v.name && x.type === v.type);
       if (ex) { ex.id = v.id; ex.isCloud = !!v.isCloud; } else t.variables.push({ ...v });
