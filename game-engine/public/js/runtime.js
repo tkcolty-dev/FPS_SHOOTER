@@ -268,6 +268,8 @@
       // sync variable declarations from workspace (keep values)
       const mine = variables.filter(v => this.isStage ? true : v.isLocal);
       const keep = {};
+      // globals are registered on the stage by the editor even when the stage's own scripts never mention them — never drop those
+      if (this.isStage) for (const v of this.variables) keep[v.name] = true;
       for (const v of mine) {
         keep[v.name] = true;
         if (!(v.name in this.varTypes)) {

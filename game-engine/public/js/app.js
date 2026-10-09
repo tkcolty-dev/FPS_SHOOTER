@@ -184,8 +184,9 @@
   /* ================= variable / procedure prompts ================= */
   function variablePrompt(message, defaultValue, callback, title, varType) {
     const isList = varType === 'list', isMsg = varType === 'broadcast_msg';
-    const showScope = !current.isStage && !isMsg;
-    const showCloud = !isMsg && !isList && !String(defaultValue || '').startsWith('☁');
+    const renaming = /rename/i.test(String(title || '')) || (!!defaultValue && !isMsg);
+    const showScope = !current.isStage && !isMsg && !renaming;
+    const showCloud = !isMsg && !isList && !renaming && !String(defaultValue || '').startsWith('☁');
     openModal(title || message, `
       <div class="form">
         <label>${message}<br><input type="text" id="var-name" value="${defaultValue || ''}" autocomplete="off"></label>
