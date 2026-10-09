@@ -1115,9 +1115,11 @@
     /* ---------- main loop ---------- */
     async tick(ts) {
       this.frameStart = performance.now();
-      const dtReal = Math.min(0.1, (ts - this.lastTs) / 1000); this.lastTs = ts;
+      const elapsed = (ts - this.lastTs) / 1000; this.lastTs = ts;
+      const dtReal = Math.min(0.1, elapsed); // physics/particles never step more than 0.1s at once
       const dt = this.paused ? 0 : dtReal * this.timeScale;
-      this.time += dt; this.frame++;
+      // waits and timers follow the real clock (like Scratch), so a slow frame rate does not stretch "wait 1 seconds"
+      this.time += this.paused ? 0 : Math.min(1, elapsed) * this.timeScale; this.frame++;
       try {
         if (this.running) {
           this.pad.poll(); this.game.tick();

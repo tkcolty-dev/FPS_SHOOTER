@@ -412,6 +412,10 @@
     $('#ai-use').onclick = () => { if (!src) return; const name = inp.value.trim().slice(0, 24); closeModal(); onPick({ name, src }, name); };
   }
 
+  // uploaded images are scaled to fit the stage (a phone photo would otherwise be a 4000px sprite and overflow browser storage)
+  function fitImage(src, maxW, maxH) {
+    return new Promise(res => { const im = new Image(); im.onload = () => { const k = Math.min(1, maxW / im.naturalWidth, maxH / im.naturalHeight); if (k >= 1) return res(src); const c = document.createElement('canvas'); c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); res(c.toDataURL(src.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png', 0.9)); }; im.onerror = () => res(src); im.src = src; });
+  }
   function pickFile(accept, cb) { const fi = $('#file-input'); fi.accept = accept; fi.value = ''; fi.onchange = () => { const f = fi.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => cb(r.result, f); r.readAsDataURL(f); }; fi.click(); }
   function blankCostume(name) { const c = document.createElement('canvas'); c.width = 2; c.height = 2; return { name, src: c.toDataURL() }; }
 
@@ -424,7 +428,7 @@
       case 'sprite:paint': addSprite([blankCostume('costume1')], 'Sprite1'); showTab('costumes'); break;
       case 'sprite:emoji': emojiPicker(e => addSprite([costumeFromSVG('costume1', Lib.emojiSVG(e))], 'Sprite1')); break;
       case 'sprite:text': addSprite([costumeFromSVG('costume1', Lib.textSVG('Hello', 28, '#333'))], 'Text'); break;
-      case 'sprite:upload': pickFile('image/*', (src, f) => addSprite([{ name: f.name.replace(/\.\w+$/, ''), src }], f.name.replace(/\.\w+$/, '').slice(0, 20))); break;
+      case 'sprite:upload': pickFile('image/*', async (src, f) => addSprite([{ name: f.name.replace(/\.\w+$/, ''), src: await fitImage(src, 480, 360) }], f.name.replace(/\.\w+$/, '').slice(0, 20))); break;
       case 'sprite:ai': aiArtPicker('sprite', (c, n) => addSprite([{ ...c, name: 'costume1' }], n || 'Sprite1')); break;
       case 'costume:ai': if (current.isStage) return handleAdd('backdrop', 'ai'); aiArtPicker('sprite', c => addCostume({ ...c, name: uniqueCostume(target, c.name || 'costume1') })); break;
       case 'backdrop:ai': aiArtPicker('backdrop', c => addCostume({ ...c, name: uniqueCostume(target, c.name || 'backdrop1') })); break;
@@ -432,7 +436,7 @@
       case 'costume:library': if (current.isStage) return handleAdd('backdrop', 'library'); libraryPicker('costume', c => addCostume({ ...c, name: uniqueCostume(target, c.name) })); break;
       case 'costume:paint': case 'backdrop:paint': addCostume(blankCostume(uniqueCostume(target, target.isStage ? 'backdrop1' : 'costume1'))); showTab('costumes'); break;
       case 'costume:emoji': emojiPicker(e => addCostume(costumeFromSVG(uniqueCostume(target, 'costume1'), Lib.emojiSVG(e)))); break;
-      case 'costume:upload': case 'backdrop:upload': pickFile('image/*', (src, f) => addCostume({ name: uniqueCostume(target, f.name.replace(/\.\w+$/, '')), src })); break;
+      case 'costume:upload': case 'backdrop:upload': pickFile('image/*', async (src, f) => addCostume({ name: uniqueCostume(target, f.name.replace(/\.\w+$/, '')), src: await fitImage(src, kind === 'backdrop' ? 960 : 480, kind === 'backdrop' ? 720 : 360) })); break;
       case 'costume:surprise': { if (current.isStage) return handleAdd('backdrop', 'surprise'); const n = Lib.costumeNames[Math.floor(Math.random() * Lib.costumeNames.length)]; addCostume(costumeFromSVG(uniqueCostume(target, n), Lib.costumeSVG(n, Lib.COLORS[Math.floor(Math.random() * Lib.COLORS.length)]))); break; }
       case 'backdrop:library': libraryPicker('backdrop', c => addCostume({ ...c, name: uniqueCostume(target, c.name) })); break;
       case 'backdrop:surprise': { const n = Lib.backdropNames[Math.floor(Math.random() * Lib.backdropNames.length)]; addCostume(costumeFromSVG(uniqueCostume(target, n), Lib.backdropSVG(n))); break; }
