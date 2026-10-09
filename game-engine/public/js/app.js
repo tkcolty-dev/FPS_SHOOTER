@@ -671,6 +671,7 @@ document.getElementById('start').onclick=function(){this.remove();R.greenFlag();
     <h3>Effects</h3><p>Particle bursts and trails, screen shake, flash, fade, slow motion, drop shadows, glow, hit-flash.</p>
     <h3>Text &amp; Speech</h3><p><code>show text</code> turns any sprite into a label. <code>speak</code> uses your computer's voice.</p>
     <h3>Controller</h3><p>Plug in an Xbox/PlayStation controller: buttons, sticks, rumble.</p>
+    <h3>Multiplayer</h3><p><code>join online room [code] as [name]</code> then <code>this sprite is my player</code> — everyone in the same room sees each other's player sprite move, with name tags. <code>send [msg] with value</code> + <code>when I receive online</code> talk between players, <code>shared [name]</code> variables are the same for everyone, <code>am I the host?</code> lets one player spawn the enemies and <code>everyone sees this sprite from the host</code> shows them to the others.</p>
     <h3>Sounds</h3><p>Built-in synth sounds (jump, coin, laser…), record your voice, play notes and drums.</p>
     <h3>Saving</h3><p>Your game autosaves in this browser. Use <b>File › Save</b> to download it, and <b>File › Export</b> to get a single web page you can send to anyone.</p>
   </div>`);
