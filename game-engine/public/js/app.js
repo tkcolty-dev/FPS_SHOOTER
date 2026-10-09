@@ -3,7 +3,7 @@
   const SB = window.ScratchBlocks, Lib = window.SparkLib;
   const $ = s => document.querySelector(s), $$ = s => Array.from(document.querySelectorAll(s));
   const uid = () => Math.random().toString(36).slice(2, 10);
-  const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  const debounce = (fn, ms) => { let t = null, args; const d = (...a) => { args = a; clearTimeout(t); t = setTimeout(() => { t = null; fn(...args); }, ms); }; d.flush = () => { if (t) { clearTimeout(t); t = null; fn(...args); } }; return d; };
 
   /* ================= runtime ================= */
   const R = new SparkRuntime($('#stage'), { overlay: $('#stage-overlay'), editorMode: true });
@@ -38,15 +38,14 @@
     SB.prompt = variablePrompt;
     SB.Procedures.externalProcedureDefCallback = procedurePrompt;
   }
-  const saveWorkspace = debounce(() => {
+  function saveWorkspaceNow() {
     if (!current || loadingWs) return;
     const dom = SB.Xml.workspaceToDom(ws);
     syncVariables(dom);
-    current.xml = SB.Xml.domToText(dom);
-    current.compile();
-    markDirty();
-    autoEnableFromBlocks();
-  }, 250);
+    const xml = SB.Xml.domToText(dom);
+    if (xml !== current.xml) { current.xml = xml; current.compile(); markDirty(); autoEnableFromBlocks(); }
+  }
+  const saveWorkspace = debounce(saveWorkspaceNow, 250);
   // the palette (flyout) is its own workspace: checkbox clicks and block clicks there are reported on it, like Scratch
   let flyoutWs = null;
   function attachFlyoutListener() {
@@ -259,6 +258,7 @@
       const m = document.createElement('mutation');
       m.setAttribute('proccode', code.join(' ')); m.setAttribute('argumentnames', JSON.stringify(an)); m.setAttribute('argumentids', JSON.stringify(aid)); m.setAttribute('argumentdefaults', JSON.stringify(ad)); m.setAttribute('warp', $('#proc-warp').checked ? 'true' : 'false');
       closeModal(); callback(m);
+      setTimeout(() => { try { ws.refreshToolboxSelection_(); } catch (e) {} saveWorkspaceNow(); }, 50);
     };
   }
 
@@ -650,7 +650,9 @@
   }
 
   /* ================= run controls ================= */
-  $('#btn-flag').onclick = () => { if (!loadingWs && current) saveWorkspace.flush ? saveWorkspace.flush() : null; R.greenFlag(); };
+  // buttons must not keep keyboard focus: otherwise Space/Enter while playing re-clicks them (restarting the game)
+  document.addEventListener('click', e => { const b = e.target.closest('button'); if (b && !b.closest('.modal')) b.blur(); });
+  $('#btn-flag').onclick = () => { if (!loadingWs && current) saveWorkspaceNow(); R.greenFlag(); };
   $('#btn-stop').onclick = () => R.stopAll();
   R.on('runStateChanged', on => $('#btn-flag').classList.toggle('active', on));
   $$('.size-btn[data-size]').forEach(b => b.onclick = () => { document.body.classList.toggle('small-stage', b.dataset.size === 'small'); $$('.size-btn[data-size]').forEach(x => x.classList.toggle('active', x === b)); setTimeout(() => SB.svgResize(ws), 0); });
