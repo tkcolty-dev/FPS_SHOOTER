@@ -137,6 +137,55 @@
     for (const t of this.targets) { t._lx = t.x; t._ly = t.y; }
   };
 
+  /* =================================================================== PREMADE BEHAVIOURS (one block = a whole game piece) =================================================================== */
+  sep('game');
+  add('game', 'spark_pre_player', 'set me up as a %1 player', [A.dd('KIND', ['platformer', 'top-down'])], 'statement', true);
+  stmt('spark_pre_player', (b, c) => `S.presetPlayer(${f(c, b, 'KIND')});`);
+  add('game', 'spark_pre_coin', 'act like a coin for %1 worth %2 points', [targetMenu(), A.num('PTS', 1)], 'statement', true);
+  stmt('spark_pre_coin', (b, c) => `S.actCoin(${s(c, b, 'TARGET')}, ${n(c, b, 'PTS', '1')});`);
+  add('game', 'spark_pre_chaser', 'act like an enemy chasing %1 at speed %2, %3 damage', [targetMenu(), A.num('SPEED', 2), A.num('DMG', 5)], 'statement', true);
+  stmt('spark_pre_chaser', (b, c) => `S.actChaser(${s(c, b, 'TARGET')}, ${n(c, b, 'SPEED')}, ${n(c, b, 'DMG')});`);
+  add('game', 'spark_pre_patrol', 'act like a patrolling enemy at speed %1 (hurts %2, squashable)', [A.num('SPEED', 2), targetMenu()], 'statement', true);
+  stmt('spark_pre_patrol', (b, c) => `S.actPatroller(${n(c, b, 'SPEED')}, ${s(c, b, 'TARGET')});`);
+  add('game', 'spark_pre_bullet', 'act like a bullet at speed %1 that hits %2', [A.num('SPEED', 12), cloneMenu()], 'statement', true);
+  stmt('spark_pre_bullet', (b, c) => `S.actBullet(${n(c, b, 'SPEED')}, ${s(c, b, 'TARGET')});`);
+  add('game', 'spark_pre_platform', 'act like a moving platform between x: %1 and x: %2 at speed %3', [A.num('X1', -150), A.num('X2', 150), A.num('SPEED', 2)], 'statement', true);
+  stmt('spark_pre_platform', (b, c) => `S.actPlatform(${n(c, b, 'X1')}, ${n(c, b, 'X2')}, ${n(c, b, 'SPEED')});`);
+  add('game', 'spark_pre_hazard', 'act like a hazard that hurts %1 by %2', [targetMenu(), A.num('DMG', 10)], 'statement', true);
+  stmt('spark_pre_hazard', (b, c) => `S.actHazard(${s(c, b, 'TARGET')}, ${n(c, b, 'DMG')});`);
+  add('game', 'spark_pre_goal', 'act like the goal for %1 (win when touched)', [targetMenu()], 'statement', true);
+  stmt('spark_pre_goal', (b, c) => `S.actGoal(${s(c, b, 'TARGET')});`);
+  TP.presetPlayer = function (kind) {
+    this.setPhysics(kind === 'top-down' ? 'top-down' : 'platformer'); this.rotationStyle = 'left-right'; this.visible = true;
+    if (this.R.world.active) this.goToWorldStart(); this.R.cam.follow = this; this.R.cameraInsideWorld();
+    this.hp.show = false; this.R.game.hud('score', true); this.R.game.hud('lives', true);
+    if (!this.sounds.some(sn => sn.name === 'Jump')) this.sounds.push({ name: 'Jump', preset: 'Jump' });
+    this.phys.carried = true;
+  };
+  TP.actCoin = function (name, pts) { this.R.game.hud('score', true); this.goTo(this.x, this.y + Math.sin(this.R.time * 5) * 0.6); if (this.touching(name)) { this.R.game.change('score', pts); this.playPreset('Coin'); this.R.particles.burst('coins', this.x, this.y); this.R.floatText('+' + toStr(pts), this.x, this.y + 20, '#ffd740'); if (this.isClone) { this.R.deleteClone(this); throw STOP; } this.visible = false; } };
+  TP.actChaser = function (name, speed, dmg) {
+    if (this.phys.mode === 'off') this.setPhysics(this.R.world.sideView ? 'platformer' : 'top-down');
+    this.behave('chase', name, speed, 100000);
+    const t = this.R.findTarget(this, name); if (!t) return; this.R.game.hud('health', true);
+    if (this.touching(name) && this.R.time >= (t.hp.invUntil || 0)) { this.R.game.change('health', -dmg); t.hp.invUntil = this.R.time + 0.5; t.tintFor('#ff0000', 0.2); this.playPreset('Hit'); this.R.cam.shakeFor(5, 0.2); }
+  };
+  TP.actPatroller = function (speed, name) {
+    if (this.phys.mode === 'off') { this.setPhysics(this.R.world.sideView ? 'platformer' : 'top-down'); this.rotationStyle = 'left-right'; }
+    if (this._pdir === undefined) this._pdir = 1;
+    this.phys.vx = this._pdir * speed; if (this.phys.mode === 'top-down') this.phys.vy = 0;
+    const b = this.bounds(); const ahead = { left: b.left + this._pdir * speed * 2, right: b.right + this._pdir * speed * 2, top: b.top, bottom: b.bottom };
+    const blocked = this.phys.wall || this.R.world.solidRects(ahead).some(r => this.R.aabb(ahead, r)) || (this.phys.mode === 'platformer' && this.R.world.active && this.phys.onGround && !this.R.world.isSolid(this.R.world.get(this.R.world.colOf(this._pdir > 0 ? b.right + 4 : b.left - 4), this.R.world.rowOf(b.bottom - 4)))) || this.touchingEdge(this._pdir > 0 ? 'right' : 'left');
+    if (blocked) this._pdir = -this._pdir;
+    this.direction = this._pdir > 0 ? 90 : -90;
+    const t = this.R.findTarget(this, name); if (!t || !this.touching(name)) return;
+    if (t.phys.mode === 'platformer' && t.phys.vy < 0 && t.y > this.y + 10) { this.playPreset('Pop'); this.R.particles.burst('smoke', this.x, this.y); this.R.game.change('score', 2); t.phys.vy = 8; if (this.isClone) { this.R.deleteClone(this); throw STOP; } this.visible = false; }
+    else if (this.R.time >= (t.hp.invUntil || 0)) { this.R.game.change('lives', -1); this.R.game.hud('lives', true); t.hp.invUntil = this.R.time + 1; t.tintFor('#ff0000', 0.3); this.playPreset('Hit'); this.R.cam.shakeFor(8, 0.3); t.knockback(this.name, 8); }
+  };
+  TP.actBullet = function (speed, name) { this.move(speed); if (this.touching(name)) { this.R.hurt(this, name, 10); this.R.game.change('score', 1); this.R.particles.burst('sparkles', this.x, this.y, 0.6); if (this.isClone) { this.R.deleteClone(this); throw STOP; } this.visible = false; return; } if (this.touchingEdge('any') || (this.R.world.active && this.R.world.solidRects(this.bounds()).length)) { if (this.isClone) { this.R.deleteClone(this); throw STOP; } this.visible = false; } };
+  TP.actPlatform = function (x1, x2, speed) { this.phys.solid = true; this.patrol(x1, x2, speed); if (this.phys.mode !== 'off') this.phys.mode = 'off'; this.goTo(this.x + (this._patrolDir || 1) * speed, this.y); };
+  TP.actHazard = function (name, dmg) { const t = this.R.findTarget(this, name); if (!t) return; if (this.touching(name) && this.R.time >= (t.hp.invUntil || 0)) { this.R.game.hud('health', true); this.R.game.change('health', -dmg); t.hp.invUntil = this.R.time + 0.6; t.tintFor('#ff0000', 0.2); this.playPreset('Hit'); } };
+  TP.actGoal = function (name) { if (this.touching(name)) { this.playPreset('Win'); this.R.particles.burst('confetti', this.x, this.y, 1.5); this.R.game.over('Level complete!', true); throw STOP; } };
+
   /* =================================================================== GAME: HEALTH, COMBAT, LEVELS, XP, INVENTORY, SAVING =================================================================== */
   sep('game');
   add('game', 'spark_g_sethp', 'set my health to %1', [A.num('HP', 100)], 'statement', true);

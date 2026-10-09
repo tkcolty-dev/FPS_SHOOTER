@@ -357,39 +357,6 @@
     };
     $('#ai-use').onclick = () => { if (!src) return; const name = inp.value.trim().slice(0, 24); closeModal(); onPick({ name, src }, name); };
   }
-  /* ---- Kits ---- */
-  function appendScripts(t, xmls) {
-    const doc = new DOMParser().parseFromString(t.xml || '<xml></xml>', 'text/xml'); const root = doc.documentElement;
-    for (const x of xmls) { const d = new DOMParser().parseFromString(`<xml>${x}</xml>`, 'text/xml'); for (const b of Array.from(d.documentElement.children)) root.appendChild(doc.importNode(b, true)); }
-    t.xml = new XMLSerializer().serializeToString(root);
-    const w = new SB.Workspace(); try { SB.Xml.domToWorkspace(workspaceXMLFor(t), w); w.cleanUp(); t.xml = SB.Xml.domToText(SB.Xml.workspaceToDom(w)); } catch (e) {} w.dispose();
-    t.compile();
-  }
-  function kitsPicker() {
-    const kits = window.SparkKits.KITS;
-    openModal('🧰 Kits — tick what you want in your game', `<div class="form"><p class="hint" style="margin:0">Each kit drops ready-made sprites and blocks into your game. Pick a player first, then add coins, enemies, a timer… You can change every block afterwards.</p>
-      <div class="kit-list">${kits.map(k => `<label class="kit"><input type="checkbox" data-kit="${k.id}"><span class="kit-icon">${k.icon}</span><span class="kit-body"><b>${k.name}</b><small>${esc(k.desc)}</small>${k.options ? Object.entries(k.options).map(([key, vals]) => `<select data-opt="${key}" onclick="event.stopPropagation()">${vals.map(v => `<option>${v}</option>`).join('')}</select>`).join('') : ''}</span></label>`).join('')}</div>
-      <div class="actions"><button class="btn" id="kit-cancel">Cancel</button><button class="btn primary" id="kit-add">Add to my game</button></div></div>`);
-    $('#kit-cancel').onclick = closeModal;
-    $('#kit-add').onclick = () => {
-      const chosen = $$('.kit input[type=checkbox]:checked').map(cb => { const k = kits.find(x => x.id === cb.dataset.kit); const opts = {}; cb.closest('.kit').querySelectorAll('select').forEach(s => opts[s.dataset.opt] = s.value); return { k, opts }; });
-      closeModal(); if (!chosen.length) return;
-      let first = null; const pending = {};
-      for (const { k, opts } of chosen) {
-        const out = k.build(opts);
-        for (const s of out.sprites || []) { s.name = uniqueName(s.name); s.x = 0; s.y = 0; const t = R.addSprite(s); appendScripts(t, []); first = first || t; }
-        for (const [name, xmls] of Object.entries(out.scripts || {})) (pending[name] = pending[name] || []).push(...xmls);
-        if (out.stage) (pending.Stage = pending.Stage || []).push(...out.stage);
-      }
-      const missing = [];
-      for (const [name, xmls] of Object.entries(pending)) { const t = name === 'Stage' ? R.stage : R.findTarget(null, name); if (t) appendScripts(t, xmls); else missing.push(name); }
-      if (missing.length) alert(`These kits add blocks to a sprite called "${missing.join('", "')}" — add a player kit first (or rename your player sprite to ${missing[0]}).`);
-      if (current && (first || pending[current.name] || (current.isStage && pending.Stage))) { const t = first || current; current = null; selectTarget(t); } else refreshToolbox();
-      renderSprites(); markDirty();
-      R.toast && R.toast('Kit added — press the green flag!', 3);
-    };
-  }
-  $('#btn-kits').onclick = kitsPicker;
 
   function pickFile(accept, cb) { const fi = $('#file-input'); fi.accept = accept; fi.value = ''; fi.onchange = () => { const f = fi.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => cb(r.result, f); r.readAsDataURL(f); }; fi.click(); }
   function blankCostume(name) { const c = document.createElement('canvas'); c.width = 2; c.height = 2; return { name, src: c.toDataURL() }; }
