@@ -475,7 +475,7 @@
   expr('spark_w_nearest', (b, c) => `R.nearestTile(S, ${f(c, b, 'TILE')}, "distance")`);
   add('world', 'spark_w_gonearest', 'go to nearest %1 tile', [A.dd('TILE', TILES)], 'statement', true);
   stmt('spark_w_gonearest', (b, c) => `{ const p = R.nearestTile(S, ${f(c, b, 'TILE')}, "point"); if (p) S.goTo(p.x, p.y); }`);
-  add('world', 'spark_w_fromtext', 'build %2 world from text %1 (# wall . empty G grass W water T tree C chest S start E door L lava ^ spike)', [A.txt('TEXT', '#########\n#S..C...#\n#..##...#\n#.....E.#\n#########'), A.dd('VIEW', ['top-down', 'side-view'])]);
+  add('world', 'spark_w_fromtext', 'build %2 world from text %1 (rows split by |)', [A.txt('TEXT', '#########|#S..C...#|#..##...#|#.....E.#|#########'), A.dd('VIEW', ['top-down', 'side-view'])]);
   stmt('spark_w_fromtext', (b, c) => `R.worldFromText(${s(c, b, 'TEXT')}, ${f(c, b, 'VIEW')});`);
   add('world', 'spark_w_totext', 'world as text', [], 'string');
   expr('spark_w_totext', () => `R.worldToText()`);
@@ -485,7 +485,7 @@
   hat('spark_w_whentile', (b, c) => ({ hat: 'tiletouch', cond: `S.touchingTile(${f(c, b, 'TILE')})` }));
   var TEXT_TILES = { '#': 'wall', '.': 'empty', G: 'grass', D: 'dirt', W: 'water', T: 'tree', C: 'chest', E: 'door', L: 'lava', '^': 'spike', B: 'brick', F: 'floor', P: 'path', R: 'rock', I: 'ice', O: 'wood', U: 'bush', A: 'sand', N: 'snow', K: 'cloud', X: 'stone', S: 'empty' };
   RP.worldFromText = function (text, view) {
-    const rows = toStr(text).replace(/\r/g, '').split('\n').filter(r => r.length); if (!rows.length) return;
+    const rows = toStr(text).replace(/\r/g, '').split(/\n|\||\//).filter(r => r.length); if (!rows.length) return;
     const w = Math.max(...rows.map(r => r.length)), h = rows.length; const Wd = this.world; Wd.generate('empty', w, h, 1); Wd.sideView = view === 'side-view'; Wd.type = 'text';
     rows.forEach((row, r) => { for (let c = 0; c < row.length; c++) { const ch = row[c]; const name = TEXT_TILES[ch] ?? TEXT_TILES[ch.toUpperCase()]; if (name) Wd.set(c, r, Wd.kindOf(name)); if (ch === 'S') Wd.start = Wd.centerOf(c, r); } });
     this.cameraInsideWorld();
@@ -498,7 +498,7 @@
   /* ---- world building blocks (no presets: you place chunks, fill areas, scatter tiles) ---- */
   BL.def('spark_world_new', 'world', 'make a %1 world %2 tiles wide %3 tall', [A.dd('VIEW', ['top-down', 'side-view']), A.num('W', 30), A.num('H', 20)]);
   stmt('spark_world_new', (b, c) => `R.worldNew(${f(c, b, 'VIEW')}, ${n(c, b, 'W', '30')}, ${n(c, b, 'H', '20')});`);
-  BL.def('spark_world_chunk', 'world', 'place chunk %1 at column %2 row %3 (# wall . empty G grass D dirt W water T tree C chest E door L lava ^ spike S start)', [A.txt('TEXT', 'GGGG\nG..G\nGGGG'), A.num('COL', 0), A.num('ROW', 0)]);
+  BL.def('spark_world_chunk', 'world', 'place chunk %1 at column %2 row %3  (rows split by |  # wall . empty G grass D dirt W water T tree C chest E door L lava ^ spike S start)', [A.txt('TEXT', '#####|#S..#|#.C.#|#####'), A.num('COL', 0), A.num('ROW', 0)]);
   stmt('spark_world_chunk', (b, c) => `R.worldChunk(${s(c, b, 'TEXT')}, ${n(c, b, 'COL')}, ${n(c, b, 'ROW')});`);
   BL.def('spark_world_scatter', 'world', 'scatter %1 tiles on %2 % of empty spots', [A.dd('TILE', TILES), A.num('PCT', 5)]);
   stmt('spark_world_scatter', (b, c) => `R.worldScatter(${f(c, b, 'TILE')}, ${n(c, b, 'PCT', '5')});`);
@@ -507,7 +507,7 @@
   RP.worldNew = function (view, w, h) { const Wd = this.world; Wd.generate('empty', w, h, 1); Wd.sideView = view === 'side-view'; Wd.type = 'custom'; Wd.start = Wd.sideView ? Wd.centerOf(1, Math.max(0, Wd.h - 5)) : Wd.centerOf(Math.floor(Wd.w / 2), Math.floor(Wd.h / 2)); this.cameraInsideWorld(); };
   RP.worldChunk = function (text, col, row) {
     const Wd = this.world; if (!Wd.active) this.worldNew('top-down', 30, 20);
-    const rows = toStr(text).replace(/\r/g, '').split('\n'); col = Math.round(col); row = Math.round(row);
+    const rows = toStr(text).replace(/\r/g, '').split(/\n|\||\//); col = Math.round(col); row = Math.round(row);
     rows.forEach((line, r) => { for (let c = 0; c < line.length; c++) { const ch = line[c]; if (ch === ' ') continue; const name = TEXT_TILES[ch] ?? TEXT_TILES[ch.toUpperCase()]; if (name === undefined) continue; Wd.set(col + c, row + r, Wd.kindOf(name)); if (ch === 'S') Wd.start = Wd.centerOf(col + c, row + r); } });
   };
   RP.worldScatter = function (tile, pct) { const Wd = this.world; if (!Wd.active) return; const k = Wd.kindOf(tile); for (let i = 0; i < Wd.tiles.length; i++) if (Wd.tiles[i] === 0 && Math.random() * 100 < pct) { if (Wd.sideView && !Wd.isSolid(Wd.get(i % Wd.w, Math.floor(i / Wd.w) + 1))) continue; Wd.tiles[i] = k; } };
