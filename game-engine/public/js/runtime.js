@@ -538,7 +538,7 @@
       this.game = this.makeGame(); this.pad = this.makePad();
       this.listeners = {}; this.viewScale = 1; this.dpr = window.devicePixelRatio || 1;
       this.drag = null; this.snapshot = null; this.loudnessVal = -1;
-      this.scratchCanvas = document.createElement('canvas'); this.scratchCanvas2 = document.createElement('canvas');
+      this.scratchCanvas = document.createElement('canvas'); this.scratchCanvas2 = document.createElement('canvas'); this.maskCache = new Map();
       this.bindInput();
       for (const p of SparkRuntime.plugins) if (p.init) p.init(this);
       this.lastTs = performance.now();
@@ -752,23 +752,46 @@
       this.drawSprite(ctx, t, (x, y) => [(x - rect.left) * sx, (rect.top - y) * sy], sx, true);
       return ctx.getImageData(0, 0, cw, ch).data;
     }
+    // cached silhouette mask per sprite look (costume, size, direction, flips): collision never re-rasterizes a sprite twice
+    maskOf(t) {
+      const im = t.img(); if (!im || !im.ready) return null;
+      const c = t.textCostume || t.costume; const rot = Math.round(t.rotationRad() * 180 / Math.PI / 3) * 3;
+      if (c && c.src && !c._hash) { let h = 0; const str = c.src; for (let i = 0; i < str.length; i += 7) h = (h * 31 + str.charCodeAt(i)) | 0; c._hash = str.length + ':' + h; }
+      const key = (c && c._hash || 'x') + '|' + t.scaleX().toFixed(3) + '|' + t.scaleY().toFixed(3) + '|' + rot + '|' + (t.flipX ? 1 : 0) + (t.flipY ? 1 : 0) + ((t.rotationStyle === 'left-right' && t.direction < 0) ? 'L' : '');
+      if (t._mask && t._mask.key === key) return t._mask;
+      let m = this.maskCache.get(key);
+      if (!m) {
+        const b0 = t.bounds(); const w = b0.right - b0.left, h = b0.top - b0.bottom; if (!(w > 0 && h > 0)) return null;
+        const scale = Math.min(1, 96 / Math.max(w, h)); const cw = Math.max(1, Math.ceil(w * scale)), ch = Math.max(1, Math.ceil(h * scale));
+        const cv = this.scratchCanvas; cv.width = cw; cv.height = ch; const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cw, ch);
+        // draw the sprite as if it were at the origin, mapping its bounds box onto the mask canvas
+        const ox = b0.left - t.x, oy = b0.top - t.y; const sx = cw / w, sy = ch / h;
+        const saveX = t.x, saveY = t.y; t.x = 0; t.y = 0;
+        this.drawSprite(ctx, t, (x, y) => [(x - ox) * sx, (oy - y) * sy], sx, true);
+        t.x = saveX; t.y = saveY;
+        const data = ctx.getImageData(0, 0, cw, ch).data; const alpha = new Uint8Array(cw * ch); for (let i = 0; i < alpha.length; i++) alpha[i] = data[i * 4 + 3];
+        m = { key, alpha, w: cw, h: ch, sx, sy, ox, oy };
+        this.maskCache.set(key, m); if (this.maskCache.size > 600) this.maskCache.delete(this.maskCache.keys().next().value);
+      }
+      t._mask = m; return m;
+    }
+    maskAlpha(m, t, x, y) { // alpha of sprite t at world point (x,y) via its mask
+      const px = Math.floor((x - t.x - m.ox) * m.sx), py = Math.floor((t.y + m.oy - y) * m.sy);
+      if (px < 0 || py < 0 || px >= m.w || py >= m.h) return 0; return m.alpha[py * m.w + px];
+    }
     pixelOverlap(a, b) {
       const ba = a.bounds(), bb = b.bounds();
-      const rect = { left: Math.max(ba.left, bb.left), right: Math.min(ba.right, bb.right), top: Math.min(ba.top, bb.top), bottom: Math.max(ba.bottom, bb.bottom) };
-      const w = rect.right - rect.left, h = rect.top - rect.bottom; if (w <= 0 || h <= 0) return false;
-      const scale = Math.min(1, 40 / Math.max(w, h)); const cw = Math.max(1, Math.ceil(w * scale)), ch = Math.max(1, Math.ceil(h * scale));
-      const da = this.maskFor(a, rect, cw, ch);
-      const c2 = this.scratchCanvas2; c2.width = cw; c2.height = ch; const ctx2 = c2.getContext('2d');
-      const sx = cw / w, sy = ch / h; this.drawSprite(ctx2, b, (x, y) => [(x - rect.left) * sx, (rect.top - y) * sy], sx, true);
-      const db = ctx2.getImageData(0, 0, cw, ch).data;
-      for (let i = 3; i < da.length; i += 4) if (da[i] > 20 && db[i] > 20) return true;
+      const left = Math.max(ba.left, bb.left), right = Math.min(ba.right, bb.right), top = Math.min(ba.top, bb.top), bottom = Math.max(ba.bottom, bb.bottom);
+      if (right <= left || top <= bottom) return false;
+      const ma = this.maskOf(a), mb = this.maskOf(b); if (!ma || !mb) return false;
+      const step = Math.max(1 / Math.max(ma.sx, mb.sx), 1); // world units per sample, matching the finer mask
+      for (let y = bottom + step / 2; y < top; y += step) for (let x = left + step / 2; x < right; x += step) if (this.maskAlpha(ma, a, x, y) > 20 && this.maskAlpha(mb, b, x, y) > 20) return true;
       return false;
     }
     pixelAt(t, x, y) {
       const b = t.bounds(); if (x < b.left || x > b.right || y < b.bottom || y > b.top) return false;
-      const c = this.scratchCanvas; c.width = 1; c.height = 1; const ctx = c.getContext('2d'); ctx.clearRect(0, 0, 1, 1);
-      this.drawSprite(ctx, t, (px, py) => [px - x + 0.5, y - py + 0.5], 1, true);
-      return ctx.getImageData(0, 0, 1, 1).data[3] > 20;
+      const m = this.maskOf(t); if (!m) return false;
+      return this.maskAlpha(m, t, x, y) > 20;
     }
     parseColor(c) {
       c = toStr(c); if (typeof c === 'string' && c[0] === '#') { const n = parseInt(c.length === 4 ? c.replace(/./g, (m, i) => i ? m + m : m) : c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
