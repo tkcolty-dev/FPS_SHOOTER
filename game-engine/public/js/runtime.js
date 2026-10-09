@@ -281,6 +281,8 @@
       this.variables = this.variables.filter(v => keep[v.name]);
       for (const name of Object.keys(this.varTypes)) if (!keep[name]) { delete this.varTypes[name]; delete this.vars[name]; delete this.lists[name]; }
       if (this.isStage) { for (const v of variables) if (v.isCloud) { this.cloudVars[v.name] = true; const ex = this.variables.find(x => x.name === v.name); if (ex) ex.isCloud = true; } this.R.cloudSetup(this); }
+      // projects that use camera/world blocks anywhere are scrolling games: sprites may leave the screen (no Scratch fence)
+      this.R.recomputeUsesCamera(this);
       this.R.onEvent('variablesChanged', this);
     }
     get costume() { return this.costumes[this.currentCostume] || this.costumes[0]; }
@@ -552,7 +554,8 @@
       this.stopAll(true);
       this.projectName = p.name || 'Untitled'; this.cloudId = p.cloudId || null; this.cloudClose();
       this.stage = new Target(this, p.stage || { name: 'Stage', costumes: [{ name: 'backdrop1', src: Lib.svgToDataURL(Lib.backdropSVG('Blank')) }] }, true);
-      this.targets = (p.sprites || []).map(s => new Target(this, s, false));
+      this.targets = []; for (const sd of p.sprites || []) this.targets.push(new Target(this, sd, false));
+      this.recomputeUsesCamera();
       this.monitors = (p.monitors || []).map(m => ({ ...m }));
       this.pen.clear(); this.world.clear(); this.resetGameState();
       for (const t of this.allTargets()) { for (const c of t.costumes) this.img(c); this.audio.preload(t); }
@@ -726,7 +729,8 @@
       if (name === '_random_') { const v = this.viewRect(S && S.sticky); return { x: v.left + Math.random() * (v.right - v.left), y: v.bottom + Math.random() * (v.top - v.bottom) }; }
       const t = this.findTarget(S, name); return t && !t.isStage ? { x: t.x, y: t.y } : null;
     }
-    fenceLikeScratch() { const c = this.cam; return !this.world.active && !c.follow && c.zoom === 1 && c.x === 0 && c.y === 0 && !c.bounds; }
+    recomputeUsesCamera(extra) { this.usesCamera = this.allTargets().concat(extra ? [extra] : []).some(t => /spark_(cam|world|w|pre)_/.test(t.xml || '')); }
+    fenceLikeScratch() { if (this.usesCamera) return false; const c = this.cam; return !this.world.active && !c.follow && c.zoom === 1 && c.x === 0 && c.y === 0 && !c.bounds; }
     viewRect(sticky) {
       if (sticky) return { left: -W / 2, right: W / 2, top: H / 2, bottom: -H / 2 };
       const z = this.cam.zoom; return { left: this.cam.x - W / 2 / z, right: this.cam.x + W / 2 / z, top: this.cam.y + H / 2 / z, bottom: this.cam.y - H / 2 / z };
