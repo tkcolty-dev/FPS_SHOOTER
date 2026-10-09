@@ -66,9 +66,10 @@
       if (t === 'colour_picker') return q(b.fields.COLOUR?.text);
       const g = EXPR[t];
       if (g) return g(b, this);
-      // menu blocks: single field → string
+      // menu blocks: single field → string (an empty menu shadow means "no choice yet")
       const keys = Object.keys(b.fields);
       if (keys.length === 1) return q(b.fields[keys[0]].text);
+      if (keys.length === 0 && /_menu$|^looks_costume$|^looks_backdrops$|^sensing_keyoptions$|^sensing_touchingobjectmenu$|^sensing_distancetomenu$|^event_touchingobjectmenu$/.test(t)) return '""';
       console.warn('Spark: unknown reporter', t);
       return '0';
     }

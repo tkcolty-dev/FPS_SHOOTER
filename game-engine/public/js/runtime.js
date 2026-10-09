@@ -6,7 +6,8 @@
   const uid = () => Math.random().toString(36).slice(2, 10);
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const toNum = v => { if (typeof v === 'number') return isNaN(v) ? 0 : v; if (typeof v === 'boolean') return v ? 1 : 0; const n = Number(v); return (v === '' || v === null || v === undefined || isNaN(n)) ? 0 : n; };
-  const toStr = v => { if (typeof v === 'number') return String(v); if (v === null || v === undefined) return ''; return String(v); };
+  // numbers display without floating-point noise (0.1+0.2 -> 0.3) but keep real precision (1/3 -> 0.333333333333333)
+  const toStr = v => { if (typeof v === 'number') return isFinite(v) ? String(Number(v.toPrecision(15))) : String(v); if (v === null || v === undefined) return ''; return String(v); };
   const toBool = v => { if (typeof v === 'boolean') return v; if (typeof v === 'string') { const s = v.toLowerCase(); return !(s === '' || s === '0' || s === 'false'); } return !!v; };
   const isNumeric = v => typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v)));
   const KEYMAP = { ' ': 'space', ArrowUp: 'up arrow', ArrowDown: 'down arrow', ArrowLeft: 'left arrow', ArrowRight: 'right arrow', Enter: 'enter' };
@@ -912,6 +913,7 @@
     async setBackdropAndWait(T, v) { const ths = this.setBackdrop(v); while (ths.some(t => !t.done)) await T.yield(); }
     nextBackdrop() { this.setBackdrop('next backdrop'); }
     backdropNumberName(w) { return this.stage.costumeNumberName(w); }
+    stopAllSounds() { this.audio.stopAll(); this.music && this.music.stop && this.music.stop(); }
     layerFrontBack(S, where) { if (S.isStage) return; this.targets = this.targets.filter(t => t !== S); if (where === 'front') this.targets.push(S); else this.targets.unshift(S); }
     layerMove(S, dir, n) { if (S.isStage) return; const i = this.targets.indexOf(S); this.targets.splice(i, 1); const j = clamp(i + (dir === 'forward' ? n : -n), 0, this.targets.length); this.targets.splice(j, 0, S); }
 

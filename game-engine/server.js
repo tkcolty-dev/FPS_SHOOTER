@@ -109,11 +109,39 @@ async function handleAI(req, res) {
   });
 }
 
-/* ---------- cloud variables: shared per project id, pushed to every open player over SSE ---------- */
+/* ---------- cloud variables: shared per project id, pushed to every open player over SSE ----------
+   Durable store: Postgres when a postgres service is bound (Cloud Foundry) or DATABASE_URL is set; otherwise data/cloud.json. */
 const DATA = path.join(__dirname, 'data'); const CLOUD_FILE = path.join(DATA, 'cloud.json');
-let cloud = {}; try { cloud = JSON.parse(fs.readFileSync(CLOUD_FILE, 'utf8')); } catch (e) {}
+let cloud = {};
+function pgConfig() {
+  try { const vcap = JSON.parse(process.env.VCAP_SERVICES || '{}'); const svc = Object.values(vcap).flat().find(s => /postgres/i.test(s.label || '') || /postgres/i.test((s.tags || []).join(',')) || /postgres/i.test(s.name || '')); if (svc) { const c = svc.credentials || {}; if (c.uri || c.url) return { connectionString: (c.uri || c.url).replace(/^jdbc:/, ''), ssl: false }; return { host: c.hostname || c.host || (c.hosts && c.hosts[0]), port: c.port || 5432, database: c.db || c.name || c.dbname || c.database || 'postgres', user: c.user || c.username, password: c.password, ssl: false }; } } catch (e) {}
+  if (process.env.DATABASE_URL) return { connectionString: process.env.DATABASE_URL, ssl: false };
+  return null;
+}
+let pgPool = null; const dirtyProjects = new Set();
+async function cloudStoreInit() {
+  const cfg = pgConfig();
+  if (cfg) {
+    try {
+      const { Pool } = require('pg'); pgPool = new Pool({ ...cfg, max: 4 });
+      await pgPool.query('CREATE TABLE IF NOT EXISTS cloud_vars (project TEXT PRIMARY KEY, data JSONB NOT NULL, updated TIMESTAMPTZ DEFAULT now())');
+      const r = await pgPool.query('SELECT project, data FROM cloud_vars'); for (const row of r.rows) cloud[row.project] = row.data;
+      console.log('cloud store: postgres (' + r.rows.length + ' projects)'); return;
+    } catch (e) { console.error('postgres unavailable, using file store:', e.message); pgPool = null; }
+  }
+  try { cloud = JSON.parse(fs.readFileSync(CLOUD_FILE, 'utf8')); } catch (e) {}
+  console.log('cloud store: file');
+}
 let cloudSaveTimer = null;
-const saveCloud = () => { if (cloudSaveTimer) return; cloudSaveTimer = setTimeout(() => { cloudSaveTimer = null; try { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(CLOUD_FILE, JSON.stringify(cloud)); } catch (e) {} }, 500); };
+const saveCloud = (project) => {
+  if (project) dirtyProjects.add(project);
+  if (cloudSaveTimer) return;
+  cloudSaveTimer = setTimeout(async () => {
+    cloudSaveTimer = null;
+    if (pgPool) { const ids = [...dirtyProjects]; dirtyProjects.clear(); for (const id of ids) { try { await pgPool.query('INSERT INTO cloud_vars (project, data, updated) VALUES ($1, $2, now()) ON CONFLICT (project) DO UPDATE SET data = EXCLUDED.data, updated = now()', [id, cloud[id] || {}]); } catch (e) { console.error('cloud save failed', e.message); } } }
+    else { try { fs.mkdirSync(DATA, { recursive: true }); fs.writeFileSync(CLOUD_FILE, JSON.stringify(cloud)); } catch (e) {} }
+  }, 400);
+};
 const streams = {}; // projectId -> Set(res)
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS' };
 function handleCloud(req, res, parts) {
@@ -142,7 +170,7 @@ function handleCloud(req, res, parts) {
         try {
           const { name, score } = JSON.parse(body || '{}'); const n = String(name || 'player').slice(0, 20), sc = Number(score) || 0;
           const ex = board.find(e => e.name === n); if (ex) ex.score = Math.max(ex.score, sc); else board.push({ name: n, score: sc });
-          board.sort((a, b) => b.score - a.score); board.splice(20); saveCloud();
+          board.sort((a, b) => b.score - a.score); board.splice(20); saveCloud(id);
           for (const s of streams[id] || []) s.write(`data: ${JSON.stringify({ leaderboard: board.slice(0, 10) })}\n\n`);
           res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); res.end(JSON.stringify(board.slice(0, 10)));
         } catch (e) { res.writeHead(400, cors); res.end(); }
@@ -159,7 +187,7 @@ function handleCloud(req, res, parts) {
         const keys = Object.keys(vars || {}).slice(0, 50);
         for (const k of keys) { let v = vars[k]; if (typeof v === 'string') v = v.slice(0, 1000); else if (typeof v !== 'number' && typeof v !== 'boolean') continue; store[k] = v; for (const s of streams[id] || []) s.write(`data: ${JSON.stringify({ name: k, value: v })}\n\n`); }
         if (Object.keys(store).length > 200) for (const k of Object.keys(store).slice(200)) delete store[k];
-        saveCloud(); res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); res.end('{"ok":true}');
+        saveCloud(id); res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); res.end('{"ok":true}');
       } catch (e) { res.writeHead(400, cors); res.end(); }
     });
     return;
@@ -246,4 +274,4 @@ const server = http.createServer((req, res) => {
   });
 });
 server.on('upgrade', handleUpgrade);
-server.listen(PORT, () => { console.log(`Spark Engine → http://localhost:${PORT}  (AI: ${creds ? 'genai' : hasAnthropic ? 'anthropic' : claudeCli ? 'claude cli' : 'none'})`); pickModel(); });
+cloudStoreInit().finally(() => server.listen(PORT, () => { console.log(`Spark Engine → http://localhost:${PORT}  (AI: ${creds ? 'genai' : hasAnthropic ? 'anthropic' : claudeCli ? 'claude cli' : 'none'})`); pickModel(); }));

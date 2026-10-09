@@ -7,3 +7,4 @@ applications:
   command: node server.js
   services:
   - spark-ai
+  - spark-db

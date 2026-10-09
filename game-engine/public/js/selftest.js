@@ -46,7 +46,7 @@
     // ---------- looks ----------
     { name: 'say / think', sprite: wrap(flagScript(blk('looks_say', { v: { MESSAGE: 'hi' } }))), check: (R, S) => S.bubble && S.bubble.text === 'hi' && !S.bubble.think || 'no bubble' },
     { name: 'say for secs clears', sprite: wrap(flagScript(blk('looks_sayforsecs', { v: { MESSAGE: 'hi', SECS: 0.1 } }))), ms: 400, check: (R, S) => S.bubble === null || 'bubble stayed' },
-    { name: 'say number formatting', sprite: wrap(flagScript(blk('looks_say', { v: { MESSAGE: rep('operator_divide', { v: { NUM1: 1, NUM2: 3 } }) } }))), check: (R, S) => S.bubble.text === '0.3333333333333333' || S.bubble.text },
+    { name: 'say number formatting', sprite: wrap(flagScript(blk('looks_say', { v: { MESSAGE: rep('operator_divide', { v: { NUM1: 1, NUM2: 3 } }) } }))), check: (R, S) => S.bubble.text === '0.333333333333333' || S.bubble.text },
     { name: 'show / hide', sprite: wrap(flagScript(hide())), check: (R, S) => S.visible === false },
     { name: 'switch costume by name / number / next', sprite: wrap(flagScript(blk('looks_switchcostumeto', { v: { COSTUME: menu('looks_costume', 'COSTUME', 'c') } }), blk('looks_nextcostume'), blk('looks_nextcostume'), blk('looks_switchcostumeto', { v: { COSTUME: 2 } }))), check: (R, S) => S.currentCostume === 1 || `costume=${S.currentCostume}` },
     { name: 'costume number wraps', sprite: wrap(flagScript(blk('looks_switchcostumeto', { v: { COSTUME: 5 } }))), check: (R, S) => S.currentCostume === 1 || `costume=${S.currentCostume}` },
