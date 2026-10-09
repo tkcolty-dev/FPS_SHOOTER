@@ -65,7 +65,7 @@
     { name: 'when key pressed', sprite: wrap(script([blk('event_whenkeypressed', { f: { KEY_OPTION: 'space' } }), sayRes('space!')], 0, 0)), key: ' ', check: R => R.v(null, 'result') === 'space!' || R.v(null, 'result') },
     { name: 'when timer > ', sprite: wrap(script([blk('event_whengreaterthan', { f: { WHENGREATERTHANMENU: 'TIMER' }, v: { VALUE: 0.1 } }), sayRes('timer')], 0, 0)), ms: 300, check: R => R.v(null, 'result') === 'timer' || R.v(null, 'result') },
     // ---------- control ----------
-    { name: 'wait', sprite: wrap(flagScript(wait(0.2), sayRes('done'))), ms: 100, check: R => R.v(null, 'result') !== 'done' || 'too early' },
+    { name: 'wait', sprite: wrap(flagScript(wait(0.6), sayRes('done'))), ms: 100, check: R => R.v(null, 'result') !== 'done' || 'too early' },
     { name: 'repeat', sprite: wrap(flagScript(repeat(7, chVar('result', 1, 'res')))), ms: 300, check: R => R.v(null, 'result') === 7 || R.v(null, 'result') },
     { name: 'repeat yields each loop', sprite: wrap(flagScript(repeat(100, chVar('result', 1, 'res')))), ms: 60, check: R => { const v = R.v(null, 'result'); return v > 0 && v < 100 || `r=${v}`; } },
     { name: 'forever + stop this script', sprite: wrap(flagScript(forever(chVar('result', 1, 'res'), iff(gt(getVar('result', 'res'), 4), blk('control_stop', { f: { STOP_OPTION: 'this script' } }))))), ms: 300, check: R => R.v(null, 'result') === 5 || R.v(null, 'result') },

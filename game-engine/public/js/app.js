@@ -28,12 +28,14 @@
   function initWorkspace() {
     ws = SB.inject('blocks', {
       toolbox: SparkBlocks.makeToolbox(false), media: 'vendor/scratch-blocks/media/',
-      zoom: { controls: true, wheel: true, startScale: 0.675 }, grid: { spacing: 40, length: 2, colour: '#ddd' },
+      zoom: { controls: true, wheel: false, startScale: 0.675 }, grid: { spacing: 40, length: 2, colour: '#ddd' },
       comments: true, collapse: false, sounds: false, scrollbars: true,
       colours: { workspace: '#F9F9F9', flyout: '#F9F9F9', toolbox: '#FFFFFF', toolboxSelected: '#E9EEF2', scrollbar: '#CECDCE', scrollbarHover: '#CECDCE', insertionMarker: '#000000', insertionMarkerOpacity: 0.2, fieldShadow: 'rgba(255, 255, 255, 0.3)', dragShadowOpacity: 0.6 }
     });
     ws.addChangeListener(onWorkspaceEvent);
     window.addEventListener('resize', () => SB.svgResize(ws));
+    // like Scratch: wheel scrolls the workspace, Ctrl/⌘ + wheel zooms
+    $('#blocks').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); ws.zoomCenter(e.deltaY < 0 ? 1 : -1); } }, { passive: false });
     SB.prompt = variablePrompt;
     SB.Procedures.externalProcedureDefCallback = procedurePrompt;
   }

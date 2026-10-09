@@ -1000,7 +1000,7 @@
       });
       window.addEventListener('keyup', e => { this.keys.delete(keyName(e)); });
       window.addEventListener('blur', () => this.keys.clear());
-      const spos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; };
+      const spos = e => { const r = cv.getBoundingClientRect(); this.canvasRect = r; return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; };
       const pos = e => { const s = spos(e); return this.screenToWorld(s.x, s.y); };
       cv.addEventListener('pointerdown', e => {
         this.audio.ctx(); cv.setPointerCapture(e.pointerId);
@@ -1110,7 +1110,9 @@
           if (this.toastMsg && this.time > this.toastMsg.until) this.toastMsg = null;
         }
         this.mouse.clicked = false;
-        this.render();
+        // idle in the editor: redraw at ~20fps so block dragging stays snappy
+        const busy = this.running || this.drag || this.monDrag || this.particles.list.length || this.toastMsg || this.flash || this.dialog || this.gameOver;
+        if (busy || this.frame % 3 === 0) this.render();
       } catch (e) { console.error(e); }
       requestAnimationFrame(t => this.tick(t));
     }
@@ -1156,7 +1158,9 @@
     }
     render() {
       const cv = this.canvas, ctx = this.ctx;
-      const rect = cv.getBoundingClientRect(); const pw = Math.max(1, Math.round(rect.width * this.dpr)), ph = Math.max(1, Math.round(rect.height * this.dpr));
+      // the canvas size is cached (a getBoundingClientRect every frame forces layout and makes block dragging stutter)
+      if (!this.canvasRect) { this.canvasRect = cv.getBoundingClientRect(); if (window.ResizeObserver && !this.resizeObs) { this.resizeObs = new ResizeObserver(() => { this.canvasRect = cv.getBoundingClientRect(); }); this.resizeObs.observe(cv); } }
+      const rect = this.canvasRect; const pw = Math.max(1, Math.round(rect.width * this.dpr)), ph = Math.max(1, Math.round(rect.height * this.dpr));
       if (cv.width !== pw || cv.height !== ph) { cv.width = pw; cv.height = ph; }
       ctx.setTransform(pw / W, 0, 0, ph / H, 0, 0); this.viewScale = rect.width / W;
       ctx.clearRect(0, 0, W, H);
