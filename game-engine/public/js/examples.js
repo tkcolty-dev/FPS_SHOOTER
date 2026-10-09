@@ -31,7 +31,7 @@
     return out;
   }
   const script = (blocks, x, y) => { const first = { ...blocks[0] }; first.xml = first.xml.replace(/^<block /, `<block x="${x}" y="${y}" `); return chain([first, ...blocks.slice(1)]); };
-  const xml = (...scripts) => `<xml xmlns="http://www.w3.org/1999/xhtml"><variables></variables>${scripts.join('')}</xml>`;
+  const xml = (...scripts) => `<xml xmlns="http://www.w3.org/1999/xhtml"><variables><variable type="broadcast_msg" id="bhit" islocal="false">hit</variable></variables>${scripts.join('')}</xml>`;
 
   // shorthands
   const flag = () => blk('event_whenflagclicked');
@@ -106,7 +106,7 @@
       script([flag(), goto(0, -130), show(), stat('lives', 3), stat('score', 0), hud('score'), hud('lives'), hud('highscore'), toast('Arrows move • Space shoots', 3),
         forever(blk('spark_phys_control', { f: { KEYS: 'arrow keys' }, v: { SPEED: 6 } }), blk('spark_motion_fence'))], 20, 20),
       script([blk('event_whenkeypressed', { f: { KEY_OPTION: 'space' } }), spawn('Laser', xpos(), add(ypos(), 30)), play('Laser')], 500, 20),
-      script([blk('event_whentouchingobject', { v: { TOUCHINGOBJECTMENU: menu('event_touchingobjectmenu', 'TOUCHINGOBJECTMENU', 'Alien') } }), change('lives', -1), play('Hit'), blk('spark_fx_tint', { v: { COLOR: '#ff0000', SECS: 0.3 } }), shake(12, 0.4), burst('explosion')], 500, 160),
+      script([blk('event_whenbroadcastreceived', { f: { BROADCAST_OPTION: { name: 'hit', id: 'bhit', type: 'broadcast_msg' } } }), change('lives', -1), play('Hit'), blk('spark_fx_tint', { v: { COLOR: '#ff0000', SECS: 0.3 } }), shake(12, 0.4), burst('explosion')], 500, 160),
       script([blk('spark_game_whenstat', { f: { STAT: 'lives', OP: '=' }, v: { VALUE: 0 } }), burst('explosion'), hide(), blk('spark_game_over', { v: { TEXT: 'Game Over' } })], 500, 330)
     ], { x: 0, y: -130, rotationStyle: 'all around' });
     const laser = sprite('Laser', [costume('Laser', '#ffeb3b')], [], [
@@ -117,7 +117,7 @@
       script([flag(), hide(), wait(1), forever(spawn('_myself_', rand(-200, 200), 200), wait(rep('operator_divide', { v: { NUM1: 20, NUM2: add(rep('spark_game_get', { f: { STAT: 'score' } }), 15) } })))], 20, 20),
       script([clone(), show(), blk('looks_setsizeto', { v: { SIZE: rand(60, 110) } }), forever(blk('motion_changeyby', { v: { DY: rep('operator_multiply', { v: { NUM1: -2, NUM2: rep('operator_add', { v: { NUM1: 1, NUM2: rep('operator_divide', { v: { NUM1: rep('spark_game_get', { f: { STAT: 'score' } }), NUM2: 10 } }) } }) } }) } }),
         iff(touching('Laser'), change('score', 1), play('Explosion'), burst('explosion'), delClone()),
-        iff(touching('Ship'), delClone()),
+        iff(touching('Ship'), blk('event_broadcast', { v: { BROADCAST_INPUT: menu('event_broadcast_menu', 'BROADCAST_OPTION', 'hit', { id: 'bhit', type: 'broadcast_msg' }) } }), delClone()),
         iff(lt(ypos(), -200), delClone()))], 20, 200)
     ], { visible: false });
     return { name: 'Space Shooter', stage: { name: 'Stage', costumes: [backdrop('Space')], currentCostume: 0, sounds: [], xml: xml(), variables: [] }, sprites: [laser, alien, ship], monitors: [] };
