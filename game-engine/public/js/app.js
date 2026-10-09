@@ -94,9 +94,11 @@
       if (ex) { ex.id = v.id; ex.isCloud = !!v.isCloud; } else t.variables.push({ ...v });
       if (!(v.name in t.varTypes)) { t.varTypes[v.name] = v.type; if (v.type === 'list') t.lists[v.name] = t.lists[v.name] || []; else if (v.type === '') t.vars[v.name] = t.vars[v.name] ?? 0; }
     }
-    // a rename shows up as delete+create: drop variables no longer present
+    // drop variables that no longer exist (and their stage monitors)
+    const gone = t.variables.filter(v => !keep.has(v.name + '|' + v.type));
     t.variables = t.variables.filter(v => keep.has(v.name + '|' + v.type));
     for (const n of Object.keys(t.varTypes)) if (![...keep].some(k => k.startsWith(n + '|'))) { delete t.varTypes[n]; delete t.vars[n]; delete t.lists[n]; }
+    if (gone.length) { const tn = t.isStage ? null : t.name; R.monitors = R.monitors.filter(m => !gone.some(v => m.name === v.name && m.target === tn && !!m.isList === (v.type === 'list'))); R.onEvent('monitorsChanged'); }
   }
   function workspaceXMLFor(t) {
     const doc = new DOMParser().parseFromString(t.xml || '<xml></xml>', 'text/xml');
@@ -345,6 +347,7 @@
   function deleteSprite(t) {
     if (R.originals().length <= 1 && !confirm('Delete your last sprite?')) return;
     deletedSprites.push(t.toJSON()); if (deletedSprites.length > 5) deletedSprites.shift();
+    R.monitors = R.monitors.filter(m => m.target !== t.name);
     R.removeSprite(t);
     if (current === t) selectTarget(R.originals()[0] || R.stage);
     refreshToolbox(); markDirty();
