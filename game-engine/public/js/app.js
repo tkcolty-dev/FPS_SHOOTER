@@ -28,14 +28,13 @@
   function initWorkspace() {
     ws = SB.inject('blocks', {
       toolbox: SparkBlocks.makeToolbox(false), media: 'vendor/scratch-blocks/media/',
-      zoom: { controls: true, wheel: false, startScale: 0.675 }, grid: { spacing: 40, length: 2, colour: '#ddd' },
+      zoom: { controls: true, wheel: true, startScale: 0.675 }, grid: { spacing: 40, length: 2, colour: '#ddd' },
       comments: true, collapse: false, sounds: false, scrollbars: true,
       colours: { workspace: '#F9F9F9', flyout: '#F9F9F9', toolbox: '#FFFFFF', toolboxSelected: '#E9EEF2', scrollbar: '#CECDCE', scrollbarHover: '#CECDCE', insertionMarker: '#000000', insertionMarkerOpacity: 0.2, fieldShadow: 'rgba(255, 255, 255, 0.3)', dragShadowOpacity: 0.6 }
     });
     ws.addChangeListener(onWorkspaceEvent);
+    attachFlyoutListener();
     window.addEventListener('resize', () => SB.svgResize(ws));
-    // like Scratch: wheel scrolls the workspace, Ctrl/⌘ + wheel zooms
-    $('#blocks').addEventListener('wheel', e => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); ws.zoomCenter(e.deltaY < 0 ? 1 : -1); } }, { passive: false });
     SB.prompt = variablePrompt;
     SB.Procedures.externalProcedureDefCallback = procedurePrompt;
   }
@@ -46,11 +45,19 @@
     current.xml = SB.Xml.domToText(dom);
     current.compile();
     markDirty();
+    autoEnableFromBlocks();
   }, 250);
+  // the palette (flyout) is its own workspace: checkbox clicks and block clicks there are reported on it, like Scratch
+  let flyoutWs = null;
+  function attachFlyoutListener() {
+    const fl = ws.getFlyout && ws.getFlyout(); const fw = fl && fl.getWorkspace && fl.getWorkspace();
+    if (fw && fw !== flyoutWs) { flyoutWs = fw; fw.addChangeListener(onWorkspaceEvent); }
+  }
   function onWorkspaceEvent(e) {
     if (loadingWs) return;
+    if (e.type === 'change' && e.element === 'checkbox') { onCheckbox(e); return; }
     if (e.type === 'ui') {
-      if (e.element === 'checkbox') onCheckbox(e);
+      if (e.element === 'stackclick') onStackClick(e);
       return;
     }
     if (e.workspaceId !== ws.id) return;
@@ -106,7 +113,40 @@
     loadingWs = false;
     syncCheckboxes();
   }
-  function refreshToolbox() { if (!ws || !current) return; loadingWs = true; try { ws.updateToolbox(SparkBlocks.makeToolbox(current.isStage)); ws.getToolbox() && ws.getToolbox().refreshSelection(); } catch (e) {} loadingWs = false; syncCheckboxes(); }
+  /* ---- extensions (Scratch-style "Add Extension") ---- */
+  function allXml() { return R.allTargets().map(t => t.xml); }
+  function enableExtensions(list, quiet) {
+    const before = [...SparkBlocks.enabled]; const set = new Set([...before, ...list]);
+    if (set.size === before.length && !quiet) return;
+    SparkBlocks.setEnabled([...set]);
+    if (ws && current) { if (set.size !== before.length) loadWorkspace(current); attachFlyoutListener(); }
+  }
+  function autoEnableFromBlocks() { const used = SparkBlocks.extensionsUsed(allXml()); const missing = [...used].filter(e => !SparkBlocks.enabled.has(e)); if (missing.length) enableExtensions(missing); }
+  function extensionPicker() {
+    const EXT = SparkBlocks.EXTENSIONS;
+    openModal('Choose an Extension', `<div class="lib-grid ext-grid">${Object.entries(EXT).map(([k, e]) => `<div class="lib-item ext ${SparkBlocks.enabled.has(k) ? 'added' : ''}" data-ext="${k}" style="--c:${SparkBlocks.CATS[k].primary}"><span class="big">${e.icon}</span><b>${e.name}</b><small>${esc(e.desc)}</small>${SparkBlocks.enabled.has(k) ? '<em>added ✓</em>' : ''}</div>`).join('')}</div>`);
+    $$('.ext-grid .lib-item').forEach(d => d.onclick = () => { const k = d.dataset.ext; closeModal(); enableExtensions([k], true); markDirty(); setTimeout(() => { try { ws.getToolbox().setSelectedCategoryById(k); } catch (e) {} }, 50); });
+  }
+  $('#btn-extension').onclick = extensionPicker;
+  function refreshToolbox() { if (!ws || !current) return; loadingWs = true; try { ws.updateToolbox(SparkBlocks.makeToolbox(current.isStage)); ws.getToolbox() && ws.getToolbox().refreshSelection(); } catch (e) {} loadingWs = false; attachFlyoutListener(); syncCheckboxes(); }
+  // clicking a script runs it; clicking a reporter shows its value (like Scratch)
+  function onStackClick(e) {
+    const inFlyout = e.workspaceId !== ws.id; const w = inFlyout ? flyoutWs : ws;
+    const block = w && w.getBlockById(e.blockId); if (!block || !current) return;
+    const root = inFlyout ? block : block.getRootBlock();
+    const dom = SB.Xml.blockToDom(root); const varsDom = workspaceXMLFor(current).querySelector('variables');
+    const xml = '<xml>' + (varsDom ? new XMLSerializer().serializeToString(varsDom) : '') + SB.Xml.domToText(dom) + '</xml>';
+    const compiled = SparkCompiler.compileStack(xml, R); if (!compiled) return;
+    R.audio.ctx();
+    if (compiled.reporter) {
+      let v; try { v = compiled.reporter(current); } catch (err) { v = ''; }
+      if (v && typeof v.then === 'function') return;
+      try { w.reportValue(block.id, R.str(v)); } catch (err) { console.log('reporter value:', v); }
+      return;
+    }
+    const th = R.startScript(current, compiled.script, true);
+    if (!inFlyout) { try { ws.glowStack(root.id, true); } catch (err) {} const un = () => { try { ws.glowStack(root.id, false); } catch (err) {} }; th.promise.then(un, un); }
+  }
 
   // monitor checkboxes in the flyout
   const BUILTIN = { motion_xposition: 'x position', motion_yposition: 'y position', motion_direction: 'direction', looks_costumenumbername: 'costume #', looks_backdropnumbername: 'backdrop #', looks_size: 'size', sound_volume: 'volume', sensing_timer: 'timer', sensing_answer: 'answer', sensing_mousex: 'mouse x', sensing_mousey: 'mouse y', sensing_loudness: 'loudness', spark_game_get: 'score' };
@@ -278,6 +318,7 @@
   setInterval(() => { if (!current || current.isStage || document.activeElement.closest('#sprite-info')) return; if (+$('#info-x').value !== Math.round(current.x) || +$('#info-y').value !== Math.round(current.y) || +$('#info-dir').value !== Math.round(current.direction) || +$('#info-size').value !== Math.round(current.size)) renderInfo(); }, 250);
   R.on('targetsChanged', () => { renderSprites(); });
   R.on('dirty', () => markDirty());
+  R.on('costumesChanged', t => { if (t === current) { renderCostumes(); renderTag(); } renderSprites(); refreshToolbox(); markDirty(); });
   $('#stage').addEventListener('pointerup', () => { if (!R.running && !R.editorDragged) { const hit = R.spriteAt(R.mouse.x, R.mouse.y); if (hit && !hit.isClone && hit !== current) selectTarget(hit); } });
   $('#stage-tile').onclick = () => selectTarget(R.stage);
 
@@ -336,7 +377,7 @@
     openModal(isBackdrop ? '✨ AI backdrop' : '✨ AI pixel art', `
       <div class="form">
         <label>What should it be?<input type="text" id="ai-prompt" placeholder="${isBackdrop ? 'a spooky forest at night' : 'a red dragon with small wings'}" autocomplete="off"></label>
-        ${isBackdrop ? '' : `<label>Size <select id="ai-size"><option value="16">16 × 16 (tiny)</option><option value="24" selected>24 × 24</option><option value="32">32 × 32 (detailed)</option></select></label>`}
+        <div class="ai-opts">${isBackdrop ? '' : `<label>Size <select id="ai-size"><option value="16">16 × 16 (tiny)</option><option value="24" selected>24 × 24</option><option value="32">32 × 32 (detailed)</option></select></label><label>Type <select id="ai-style"><option>character</option><option>enemy / monster</option><option>item / pickup</option><option>weapon / tool</option><option>vehicle</option><option>block / tile</option><option>icon</option></select></label>`}<label>Colors <select id="ai-palette"><option>bright</option><option>pastel</option><option>dark & moody</option><option>retro 4-color</option><option>black & white</option></select></label></div>
         <div id="ai-preview" style="min-height:120px;display:flex;align-items:center;justify-content:center;background:repeating-conic-gradient(#f2f2f2 0 25%, #fff 0 50%) 0 0 / 20px 20px;border-radius:8px;border:1px solid var(--border)"><span style="opacity:.6">Describe it and press Generate — takes about 10 seconds</span></div>
         <div class="actions"><button class="btn" id="ai-cancel">Cancel</button><button class="btn" id="ai-gen">✨ Generate</button><button class="btn primary" id="ai-use" disabled>Use it</button></div>
       </div>`);
@@ -346,9 +387,10 @@
     $('#ai-gen').onclick = async () => {
       const prompt = inp.value.trim(); if (!prompt) return inp.focus();
       const w = isBackdrop ? 48 : +$('#ai-size').value, h = isBackdrop ? 36 : w;
+      const style = isBackdrop ? 'backdrop / scenery' : $('#ai-style').value, palette = $('#ai-palette').value;
       $('#ai-gen').disabled = true; $('#ai-gen').textContent = 'Drawing…'; $('#ai-preview').innerHTML = '<span style="opacity:.6">🎨 drawing pixels…</span>';
       try {
-        const r = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, w, h, kind }) });
+        const r = await fetch('/api/ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: `${style}: ${prompt}. Color palette: ${palette}.`, w, h, kind }) });
         const j = await r.json(); if (!r.ok) throw new Error(j.error || 'failed');
         result = j; src = renderPixels(j, isBackdrop ? 10 : Math.round(96 / w));
         $('#ai-preview').innerHTML = `<img src="${src}" style="image-rendering:pixelated;max-width:100%;max-height:260px">`; $('#ai-use').disabled = false;
@@ -391,8 +433,9 @@
   function uniqueSound(t, base) { let n = base, i = 2; while (t.sounds.some(c => c.name === n)) n = base.replace(/\d+$/, '') + (i++); return n; }
   $$('.asset-add').forEach(a => {
     const kind = a.id === 'add-sprite-wrap' ? 'sprite' : a.querySelector('#add-sprite') ? 'sprite' : a.querySelector('#add-backdrop') ? 'backdrop' : a.querySelector('#add-sound') ? 'sound' : 'costume';
-    a.querySelector('.add-btn').onclick = () => { const def = a.querySelector('.add-menu button'); handleAdd(kind, def.dataset.add); };
-    a.querySelectorAll('.add-menu button').forEach(b => b.onclick = e => { e.stopPropagation(); handleAdd(kind, b.dataset.add); });
+    // the round button opens the menu (tap friendly); the first menu item is the default action when the menu is already open
+    a.querySelector('.add-btn').onclick = e => { e.stopPropagation(); const wasOpen = a.classList.contains('open'); $$('.asset-add').forEach(x => x.classList.remove('open')); if (!wasOpen) a.classList.add('open'); };
+    a.querySelectorAll('.add-menu button').forEach(b => b.onclick = e => { e.stopPropagation(); a.classList.remove('open'); handleAdd(kind, b.dataset.add); });
   });
 
   /* ================= tabs ================= */
@@ -609,6 +652,7 @@
   function loadProject(p) {
     current = null; P.loadedSrc = null; deletedSprites = [];
     R.loadProject(p);
+    SparkBlocks.setEnabled([...(p.extensions || []), ...SparkBlocks.extensionsUsed([p.stage && p.stage.xml, ...(p.sprites || []).map(s => s.xml)])]);
     $('#project-title').value = p.name || 'Untitled game';
     selectTarget(R.originals()[0] || R.stage);
     renderSprites(); refreshToolbox(); setStatus('Saved');
@@ -616,10 +660,38 @@
   function currentProject() {
     if (current && ws && !loadingWs) { const dom = SB.Xml.workspaceToDom(ws); syncVariables(dom); current.xml = SB.Xml.domToText(dom); }
     R.projectName = $('#project-title').value.trim() || 'Untitled game';
-    return R.serialize();
+    const proj = R.serialize(); proj.extensions = [...SparkBlocks.enabled]; return proj;
+  }
+  /* ---- My Projects: every project lives in the browser under its own id ---- */
+  const PIDX = 'spark:projects';
+  function projectIndex() { try { return JSON.parse(localStorage.getItem(PIDX) || '[]'); } catch (e) { return []; } }
+  function saveIndex(list) { localStorage.setItem(PIDX, JSON.stringify(list)); }
+  function thumbnail() { try { const c = document.createElement('canvas'); c.width = 160; c.height = 120; c.getContext('2d').drawImage(R.canvas, 0, 0, 160, 120); return c.toDataURL('image/jpeg', 0.6); } catch (e) { return ''; } }
+  function saveCurrentProject() {
+    const p = currentProject(); if (!R.projectId) R.projectId = uid();
+    localStorage.setItem('spark:project:' + R.projectId, JSON.stringify(p));
+    const list = projectIndex().filter(e => e.id !== R.projectId); list.unshift({ id: R.projectId, name: p.name, updated: Date.now(), thumb: thumbnail(), sprites: p.sprites.length }); saveIndex(list.slice(0, 200));
+    localStorage.setItem('spark:current', R.projectId);
+  }
+  function openProjectById(id) { try { const p = JSON.parse(localStorage.getItem('spark:project:' + id)); if (!p) return false; loadProject(p); R.projectId = id; localStorage.setItem('spark:current', id); setStatus('Saved'); return true; } catch (e) { return false; } }
+  function deleteProjectById(id) { localStorage.removeItem('spark:project:' + id); saveIndex(projectIndex().filter(e => e.id !== id)); }
+  function projectsPicker() {
+    const list = projectIndex();
+    const fmt = t => { const d = new Date(t); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
+    openModal('My Projects', `<div class="form"><div class="proj-actions"><button class="btn primary" id="proj-new">+ New project</button><button class="btn" id="proj-import">Load from your computer…</button><span class="hint" style="margin-left:auto">${list.length} project${list.length === 1 ? '' : 's'} saved in this browser</span></div>
+      <div class="lib-grid proj-grid">${list.map(e => `<div class="lib-item proj ${e.id === R.projectId ? 'current' : ''}" data-id="${e.id}">${e.thumb ? `<img src="${e.thumb}">` : '<span class="big">🎮</span>'}<b>${esc(e.name)}</b><small>${fmt(e.updated)} · ${e.sprites} sprite${e.sprites === 1 ? '' : 's'}</small><div class="proj-btns"><button data-do="open">Open</button><button data-do="dup" title="Duplicate">⧉</button><button data-do="del" title="Delete">🗑</button></div></div>`).join('') || '<p class="hint">No projects yet — make something and it saves here automatically.</p>'}</div></div>`);
+    $('#proj-new').onclick = () => { closeModal(); saveCurrentProject(); R.projectId = null; loadProject(defaultProject()); markDirty(); };
+    $('#proj-import').onclick = () => { closeModal(); menuAction('load'); };
+    $$('.proj-grid .proj').forEach(card => {
+      const id = card.dataset.id;
+      card.querySelector('[data-do=open]').onclick = e => { e.stopPropagation(); closeModal(); if (id !== R.projectId) { saveCurrentProject(); openProjectById(id); } };
+      card.onclick = () => { closeModal(); if (id !== R.projectId) { saveCurrentProject(); openProjectById(id); } };
+      card.querySelector('[data-do=dup]').onclick = e => { e.stopPropagation(); const raw = localStorage.getItem('spark:project:' + id); if (!raw) return; const nid = uid(); const p = JSON.parse(raw); p.name = p.name + ' copy'; localStorage.setItem('spark:project:' + nid, JSON.stringify(p)); const entry = projectIndex().find(x => x.id === id); saveIndex([{ ...entry, id: nid, name: p.name, updated: Date.now() }, ...projectIndex()]); projectsPicker(); };
+      card.querySelector('[data-do=del]').onclick = e => { e.stopPropagation(); if (!confirm('Delete this project? This cannot be undone.')) return; deleteProjectById(id); if (id === R.projectId) { R.projectId = null; loadProject(defaultProject()); markDirty(); } projectsPicker(); };
+    });
   }
   let dirty = false;
-  const autosave = debounce(() => { try { localStorage.setItem('spark:autosave', JSON.stringify(currentProject())); setStatus('Saved'); } catch (e) { setStatus('Too big to autosave — use File › Save'); } }, 1200);
+  const autosave = debounce(() => { try { saveCurrentProject(); setStatus('Saved'); } catch (e) { setStatus('Too big to autosave — use File › Save'); } }, 1200);
   function markDirty() { dirty = true; setStatus('Saving…'); autosave(); }
   function setStatus(s) { $('#save-status').textContent = s; }
   $('#project-title').onchange = markDirty; $('#project-title').onkeydown = e => e.stopPropagation();
@@ -653,9 +725,10 @@ document.getElementById('start').onclick=function(){this.remove();R.greenFlag();
   document.addEventListener('pointerdown', e => { if (!e.target.closest('.menu')) $$('.menu').forEach(x => x.classList.remove('open')); if (!e.target.closest('.asset-add')) $$('.asset-add').forEach(x => x.classList.remove('open')); });
   function menuAction(act) {
     switch (act) {
-      case 'new': if (confirm('Start a new game? Your current game is autosaved in this browser, but save it to your computer first if you want to keep it.')) { loadProject(defaultProject()); markDirty(); } break;
-      case 'load': pickFile('.json,.spark,application/json', (src, f) => { fetch(src).then(r => r.json()).then(p => { if (p.sprites && p.stage) { loadProject(p); markDirty(); } else if (p.costumes) { p.id = uid(); p.name = uniqueName(p.name); const t = R.addSprite(p); selectTarget(t); refreshToolbox(); markDirty(); } else alert('Not a Spark project'); }).catch(e => alert('Could not load: ' + e.message)); }); break;
+      case 'new': saveCurrentProject(); R.projectId = null; loadProject(defaultProject()); markDirty(); break;
+      case 'load': pickFile('.json,.spark,application/json', (src, f) => { fetch(src).then(r => r.json()).then(p => { if (p.sprites && p.stage) { saveCurrentProject(); R.projectId = null; loadProject(p); markDirty(); } else if (p.costumes) { p.id = uid(); p.name = uniqueName(p.name); const t = R.addSprite(p); selectTarget(t); refreshToolbox(); markDirty(); } else alert('Not a Spark project'); }).catch(e => alert('Could not load: ' + e.message)); }); break;
       case 'save': { const p = currentProject(); download(JSON.stringify(p), safeName(p.name) + '.spark.json', 'application/json'); setStatus('Saved'); break; }
+      case 'projects': projectsPicker(); break;
       case 'export': exportHTML(); break;
       case 'restore': restoreSprite(); break;
       case 'cleanup': ws.cleanUp(); break;
@@ -682,7 +755,10 @@ document.getElementById('start').onclick=function(){this.remove();R.greenFlag();
 
   /* ================= boot ================= */
   initWorkspace();
-  let saved = null; try { saved = JSON.parse(localStorage.getItem('spark:autosave')); } catch (e) {}
-  loadProject(saved && saved.sprites ? saved : defaultProject());
+  (function boot() {
+    try { const old = localStorage.getItem('spark:autosave'); if (old && !projectIndex().length) { const p = JSON.parse(old); if (p && p.sprites) { const id = uid(); localStorage.setItem('spark:project:' + id, old); saveIndex([{ id, name: p.name || 'Untitled game', updated: Date.now(), thumb: '', sprites: p.sprites.length }]); localStorage.setItem('spark:current', id); } localStorage.removeItem('spark:autosave'); } } catch (e) {}
+    const cur = localStorage.getItem('spark:current');
+    if (!(cur && openProjectById(cur))) { const first = projectIndex()[0]; if (!(first && openProjectById(first.id))) loadProject(defaultProject()); }
+  })();
   window.SparkEditor = { R, loadProject, currentProject, selectTarget, buildExportHTML, get current() { return current; }, get ws() { return ws; } };
 })();

@@ -388,5 +388,20 @@
     return { factory, variables, source: out };
   }
 
-  window.SparkCompiler = { compile, parseXML, STMT, EXPR, HATS, helpers: { n, s, bool, f, q, list } };
+  // compile one clicked stack (no hat needed): a reporter gives { reporter(S) }, anything else { script }
+  function compileStack(xmlString, R) {
+    const { scripts } = parseXML(xmlString); const top = scripts[0]; if (!top) return null;
+    const c = new Ctx();
+    try {
+      if (EXPR[top.type] || NUM_SHADOWS.has(top.type) || top.type === 'text') {
+        const body = 'const A = {}; return (' + c.expr(top) + ');';
+        const fn = new Function('R', 'S', body); return { reporter: S => fn(R, S) };
+      }
+      const first = HATS[top.type] ? top.next : top;
+      const body = c.stmts(first);
+      const fn = new Function('R', 'return async function(S, T) { const A = {};\n' + body + '}')(R);
+      return { script: { hat: 'click-run', id: 'manual-' + (top.id || ''), fn } };
+    } catch (e) { console.error('compileStack', e); return null; }
+  }
+  window.SparkCompiler = { compileStack, compile, parseXML, STMT, EXPR, HATS, helpers: { n, s, bool, f, q, list } };
 })();

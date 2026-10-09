@@ -483,7 +483,7 @@
   stmt('spark_w_minimap', (b, c) => `R.minimap = ${f(c, b, 'ON')} === "on";`);
   add('world', 'spark_w_whentile', 'when I touch a %1 tile', [A.dd('TILE', ['any hazard', ...TILES])], 'hat', true);
   hat('spark_w_whentile', (b, c) => ({ hat: 'tiletouch', cond: `S.touchingTile(${f(c, b, 'TILE')})` }));
-  const TEXT_TILES = { '#': 'wall', '.': 'empty', G: 'grass', D: 'dirt', W: 'water', T: 'tree', C: 'chest', E: 'door', L: 'lava', '^': 'spike', B: 'brick', F: 'floor', P: 'path', R: 'rock', I: 'ice', O: 'wood', U: 'bush', A: 'sand', N: 'snow', K: 'cloud', X: 'stone', S: 'empty' };
+  var TEXT_TILES = { '#': 'wall', '.': 'empty', G: 'grass', D: 'dirt', W: 'water', T: 'tree', C: 'chest', E: 'door', L: 'lava', '^': 'spike', B: 'brick', F: 'floor', P: 'path', R: 'rock', I: 'ice', O: 'wood', U: 'bush', A: 'sand', N: 'snow', K: 'cloud', X: 'stone', S: 'empty' };
   RP.worldFromText = function (text, view) {
     const rows = toStr(text).replace(/\r/g, '').split('\n').filter(r => r.length); if (!rows.length) return;
     const w = Math.max(...rows.map(r => r.length)), h = rows.length; const Wd = this.world; Wd.generate('empty', w, h, 1); Wd.sideView = view === 'side-view'; Wd.type = 'text';
@@ -494,6 +494,158 @@
   RP.tileInFront = function (S, action, tile) { const Wd = this.world; if (!Wd.active) return; const r = S.direction * Math.PI / 180; const x = S.x + Math.sin(r) * Wd.size, y = S.y + Math.cos(r) * Wd.size; const c = Wd.colOf(x), rr = Wd.rowOf(y); if (action === 'break') { if (Wd.get(c, rr)) { this.particles.burst('dust', Wd.centerOf(c, rr).x, Wd.centerOf(c, rr).y, 0.8); Wd.set(c, rr, 0); } } else Wd.set(c, rr, Wd.kindOf(tile)); };
   RP.countTiles = function (name) { const Wd = this.world; if (!Wd.active) return 0; const k = Wd.kindOf(name); let n2 = 0; for (let i = 0; i < Wd.tiles.length; i++) if (Wd.tiles[i] === k) n2++; return n2; };
   RP.nearestTile = function (S, name, what) { const Wd = this.world; if (!Wd.active) return what === 'distance' ? 10000 : null; const k = Wd.kindOf(name); let best = null, bd = Infinity; for (let r = 0; r < Wd.h; r++) for (let c = 0; c < Wd.w; c++) if (Wd.tiles[r * Wd.w + c] === k) { const p = Wd.centerOf(c, r); const d = Math.hypot(p.x - S.x, p.y - S.y); if (d < bd) { bd = d; best = p; } } return what === 'distance' ? (best ? bd : 10000) : best; };
+
+  /* ---- world building blocks (no presets: you place chunks, fill areas, scatter tiles) ---- */
+  BL.def('spark_world_new', 'world', 'make a %1 world %2 tiles wide %3 tall', [A.dd('VIEW', ['top-down', 'side-view']), A.num('W', 30), A.num('H', 20)]);
+  stmt('spark_world_new', (b, c) => `R.worldNew(${f(c, b, 'VIEW')}, ${n(c, b, 'W', '30')}, ${n(c, b, 'H', '20')});`);
+  BL.def('spark_world_chunk', 'world', 'place chunk %1 at column %2 row %3 (# wall . empty G grass D dirt W water T tree C chest E door L lava ^ spike S start)', [A.txt('TEXT', 'GGGG\nG..G\nGGGG'), A.num('COL', 0), A.num('ROW', 0)]);
+  stmt('spark_world_chunk', (b, c) => `R.worldChunk(${s(c, b, 'TEXT')}, ${n(c, b, 'COL')}, ${n(c, b, 'ROW')});`);
+  BL.def('spark_world_scatter', 'world', 'scatter %1 tiles on %2 % of empty spots', [A.dd('TILE', TILES), A.num('PCT', 5)]);
+  stmt('spark_world_scatter', (b, c) => `R.worldScatter(${f(c, b, 'TILE')}, ${n(c, b, 'PCT', '5')});`);
+  BL.def('spark_world_ground', 'world', 'ground of %1 from column %2 to %3, %4 tiles high', [A.dd('TILE', ['grass', ...TILES.filter(t => t !== 'grass')]), A.num('C1', 0), A.num('C2', 29), A.num('H', 3)]);
+  stmt('spark_world_ground', (b, c) => `R.worldGround(${f(c, b, 'TILE')}, ${n(c, b, 'C1')}, ${n(c, b, 'C2', '29')}, ${n(c, b, 'H', '3')});`);
+  RP.worldNew = function (view, w, h) { const Wd = this.world; Wd.generate('empty', w, h, 1); Wd.sideView = view === 'side-view'; Wd.type = 'custom'; Wd.start = Wd.sideView ? Wd.centerOf(1, Math.max(0, Wd.h - 5)) : Wd.centerOf(Math.floor(Wd.w / 2), Math.floor(Wd.h / 2)); this.cameraInsideWorld(); };
+  RP.worldChunk = function (text, col, row) {
+    const Wd = this.world; if (!Wd.active) this.worldNew('top-down', 30, 20);
+    const rows = toStr(text).replace(/\r/g, '').split('\n'); col = Math.round(col); row = Math.round(row);
+    rows.forEach((line, r) => { for (let c = 0; c < line.length; c++) { const ch = line[c]; if (ch === ' ') continue; const name = TEXT_TILES[ch] ?? TEXT_TILES[ch.toUpperCase()]; if (name === undefined) continue; Wd.set(col + c, row + r, Wd.kindOf(name)); if (ch === 'S') Wd.start = Wd.centerOf(col + c, row + r); } });
+  };
+  RP.worldScatter = function (tile, pct) { const Wd = this.world; if (!Wd.active) return; const k = Wd.kindOf(tile); for (let i = 0; i < Wd.tiles.length; i++) if (Wd.tiles[i] === 0 && Math.random() * 100 < pct) { if (Wd.sideView && !Wd.isSolid(Wd.get(i % Wd.w, Math.floor(i / Wd.w) + 1))) continue; Wd.tiles[i] = k; } };
+  RP.worldGround = function (tile, c1, c2, h) { const Wd = this.world; if (!Wd.active) this.worldNew('side-view', 30, 20); const k = Wd.kindOf(tile), kd = Wd.kindOf('dirt'); for (let c = Math.min(c1, c2); c <= Math.max(c1, c2); c++) for (let r = 0; r < h; r++) Wd.set(c, Wd.h - 1 - r, r === h - 1 || tile !== 'grass' ? k : kd); };
+
+  /* =================================================================== SPRITES & COSTUMES (make things with blocks) =================================================================== */
+  const LIBS = Lib.costumeNames;
+  add('sprites', 'spark_sprite_create', 'create sprite named %1 with %2 costume color %3 at x: %4 y: %5', [A.txt('NAME', 'Enemy'), A.dd('LIB', LIBS), A.col('COLOR', '#59C059'), A.num('X', 0), A.num('Y', 0)]);
+  stmt('spark_sprite_create', (b, c) => `R.createSprite(${s(c, b, 'NAME')}, ${f(c, b, 'LIB')}, ${s(c, b, 'COLOR')}, ${n(c, b, 'X')}, ${n(c, b, 'Y')});`);
+  add('sprites', 'spark_sprite_delete', 'delete sprite %1', [spriteMenu()]);
+  stmt('spark_sprite_delete', (b, c) => `R.deleteSprite(${s(c, b, 'TARGET')});`);
+  add('sprites', 'spark_sprite_addcostume', 'add %1 costume named %2 color %3', [A.dd('LIB', LIBS), A.txt('NAME', 'costume2'), A.col('COLOR', '#4C97FF')], 'statement', true);
+  stmt('spark_sprite_addcostume', (b, c) => `S.addLibCostume(${f(c, b, 'LIB')}, ${s(c, b, 'NAME')}, ${s(c, b, 'COLOR')});`);
+  add('sprites', 'spark_sprite_pixel', 'add pixel art costume %1 named %2 colors %3 scale %4', [A.txt('ART', '.rr.\nrrrr\n.rr.\n.bb.'), A.txt('NAME', 'pixel'), A.txt('PAL', 'r=#ff0000 b=#0000ff'), A.num('SCALE', 8)], 'statement', true);
+  stmt('spark_sprite_pixel', (b, c) => `S.addPixelCostume(${s(c, b, 'ART')}, ${s(c, b, 'NAME')}, ${s(c, b, 'PAL')}, ${n(c, b, 'SCALE', '8')});`);
+  add('sprites', 'spark_sprite_shape', 'look like a %1 color %2 size %3', [A.dd('SHAPE', ['circle', 'square', 'triangle', 'star', 'heart', 'diamond', 'ring', 'arrow']), A.col('COLOR', '#4C97FF'), A.num('SIZE', 48)], 'statement', true);
+  stmt('spark_sprite_shape', (b, c) => `S.showShape(${f(c, b, 'SHAPE')}, ${s(c, b, 'COLOR')}, ${n(c, b, 'SIZE', '48')});`);
+  add('sprites', 'spark_sprite_emoji', 'look like emoji %1 size %2', [A.txt('EMOJI', '🐱'), A.num('SIZE', 64)], 'statement', true);
+  stmt('spark_sprite_emoji', (b, c) => `S.showEmoji(${s(c, b, 'EMOJI')}, ${n(c, b, 'SIZE', '64')});`);
+  add('sprites', 'spark_sprite_delcostume', 'delete costume %1', [A.menu('COSTUME', 'looks_costume')], 'statement', true);
+  stmt('spark_sprite_delcostume', (b, c) => `S.deleteCostume(${c.val(b, 'COSTUME', '""')});`);
+  add('sprites', 'spark_sprite_costumecount', 'number of costumes', [], 'number', true);
+  expr('spark_sprite_costumecount', () => `S.costumes.length`);
+  sep('sprites');
+  add('sprites', 'spark_sprite_grid', 'make %1 by %2 clones of %3 spaced %4 starting here', [A.num('COLS', 5), A.num('ROWS', 1), cloneMenu(), A.num('GAP', 48)], 'statement', true);
+  stmt('spark_sprite_grid', (b, c) => `R.cloneGrid(S, ${s(c, b, 'TARGET')}, ${n(c, b, 'COLS', '5')}, ${n(c, b, 'ROWS', '1')}, ${n(c, b, 'GAP', '48')});`);
+  add('sprites', 'spark_sprite_cloneindex', 'my clone number', [], 'number', true);
+  expr('spark_sprite_cloneindex', () => `(S.cloneIndex || 0)`);
+  add('sprites', 'spark_sprite_cloneat', 'clone of %1 nearest to x: %2 y: %3 %4', [cloneMenu(), A.num('X', 0), A.num('Y', 0), A.dd('WHICH', ['x position', 'y position', 'clone number'])], 'number');
+  expr('spark_sprite_cloneat', (b, c) => `R.cloneNear(${s(c, b, 'TARGET')}, ${n(c, b, 'X')}, ${n(c, b, 'Y')}, ${f(c, b, 'WHICH')})`);
+  sep('sprites');
+  add('sprites', 'spark_sprite_offscreen', 'off screen?', [], 'boolean', true);
+  expr('spark_sprite_offscreen', () => `(!R.onScreen(S))`);
+  add('sprites', 'spark_sprite_whenoff', 'when I go off screen', [], 'hat', true);
+  hat('spark_sprite_whenoff', () => ({ hat: 'offscreen', cond: `(!R.onScreen(S))` }));
+  add('sprites', 'spark_sprite_wrap', 'wrap around the screen edges', [], 'statement', true);
+  stmt('spark_sprite_wrap', () => `S.wrapScreen();`);
+  add('sprites', 'spark_sprite_edge', '%1 edge of %2', [A.dd('EDGE', ['left', 'right', 'top', 'bottom']), cloneMenu()], 'number');
+  expr('spark_sprite_edge', (b, c) => `R.edgeOf(S, ${s(c, b, 'TARGET')}, ${f(c, b, 'EDGE')})`);
+  add('sprites', 'spark_sprite_size', 'my %1', [A.dd('WHICH', ['width', 'height'])], 'number', true);
+  expr('spark_sprite_size', (b, c) => `S.bounds()[${f(c, b, 'WHICH') === 'width' ? '"w"' : '"h"'}]`);
+  RP.createSprite = function (name, lib, color, x, y) {
+    name = toStr(name) || 'Sprite'; let nm = name, i = 2; while (this.originals().some(o => o.name === nm)) nm = name + (i++);
+    const t = this.addSprite({ id: uid(), name: nm, x, y, costumes: [{ name: 'costume1', src: Lib.svgToDataURL(Lib.costumeSVG(lib, color)) }], currentCostume: 0, sounds: [], xml: '<xml></xml>', variables: [] });
+    t.hp = { value: 100, max: 100, show: false, invUntil: 0 }; this.onEvent('dirty'); return t;
+  };
+  RP.deleteSprite = function (name) { const t = this.findTarget(null, name); if (t && !t.isStage) { this.removeSprite(t); this.onEvent('dirty'); } };
+  TP.addLibCostume = function (lib, name, color) { const c = { name: toStr(name) || lib, src: Lib.svgToDataURL(Lib.costumeSVG(lib, color)) }; this.costumes.push(c); this.R.img(c); this.R.onEvent('costumesChanged', this); };
+  TP.addPixelCostume = function (art, name, pal, scale) {
+    const palette = {}; for (const m of toStr(pal).matchAll(/(\S)\s*=\s*(#[0-9a-f]{3,8}|\w+)/gi)) palette[m[1]] = m[2];
+    const rows = toStr(art).replace(/\r/g, '').split('\n').filter(r => r.length); const w = Math.max(...rows.map(r => r.length)), h = rows.length; scale = clamp(Math.round(scale) || 8, 1, 40);
+    const cv = document.createElement('canvas'); cv.width = w * scale; cv.height = h * scale; const g = cv.getContext('2d');
+    rows.forEach((row, y) => { for (let x = 0; x < row.length; x++) { const ch = row[x]; if (ch === '.' || ch === ' ') continue; g.fillStyle = palette[ch] || (/^[0-9a-f]$/i.test(ch) ? '#' + ch + ch + ch : '#333'); g.fillRect(x * scale, y * scale, scale, scale); } });
+    const c = { name: toStr(name) || 'pixel', src: cv.toDataURL(), w: cv.width, h: cv.height, cx: cv.width / 2, cy: cv.height / 2 }; this.costumes.push(c); this.R.img(c); this.R.onEvent('costumesChanged', this);
+  };
+  TP.deleteCostume = function (v) { if (this.costumes.length <= 1) return; let i = -1; if (typeof v === 'string' && !/^\d+$/.test(v)) i = this.costumes.findIndex(c => c.name === v); else i = Math.round(toNum(v)) - 1; if (i < 0 || i >= this.costumes.length) return; this.costumes.splice(i, 1); this.currentCostume = Math.min(this.currentCostume, this.costumes.length - 1); this.R.onEvent('costumesChanged', this); };
+  TP.showShape = function (shape, color, size) {
+    const S2 = Math.max(4, size), h = S2 / 2; let path;
+    switch (shape) { case 'square': path = `<rect x="1" y="1" width="${S2 - 2}" height="${S2 - 2}" rx="${S2 / 10}"/>`; break; case 'triangle': path = `<path d="M${h} 1 L${S2 - 1} ${S2 - 1} L1 ${S2 - 1} Z"/>`; break; case 'star': { let d = ''; for (let i = 0; i < 10; i++) { const r = i % 2 ? h * 0.45 : h - 1, a = i * Math.PI / 5 - Math.PI / 2; d += (i ? 'L' : 'M') + (h + Math.cos(a) * r) + ' ' + (h + Math.sin(a) * r) + ' '; } path = `<path d="${d}Z"/>`; break; } case 'heart': path = `<path d="M${h} ${S2 - 2} L${S2 * 0.1} ${S2 * 0.5} Q0 ${S2 * 0.25} ${S2 * 0.2} ${S2 * 0.1} Q${S2 * 0.4} 0 ${h} ${S2 * 0.2} Q${S2 * 0.6} 0 ${S2 * 0.8} ${S2 * 0.1} Q${S2} ${S2 * 0.25} ${S2 * 0.9} ${S2 * 0.5} Z"/>`; break; case 'diamond': path = `<path d="M${h} 1 L${S2 - 1} ${h} L${h} ${S2 - 1} L1 ${h} Z"/>`; break; case 'ring': path = `<circle cx="${h}" cy="${h}" r="${h - S2 / 8}" fill="none" stroke="${color}" stroke-width="${S2 / 5}"/>`; break; case 'arrow': path = `<path d="M1 ${S2 * 0.35} L${S2 * 0.55} ${S2 * 0.35} L${S2 * 0.55} ${S2 * 0.1} L${S2 - 1} ${h} L${S2 * 0.55} ${S2 * 0.9} L${S2 * 0.55} ${S2 * 0.65} L1 ${S2 * 0.65} Z"/>`; break; default: path = `<circle cx="${h}" cy="${h}" r="${h - 1}"/>`; }
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${S2}" height="${S2}" viewBox="0 0 ${S2} ${S2}"><g fill="${color}">${path}</g></svg>`;
+    this.textCostume = { name: '_shape_', text: shape, src: Lib.svgToDataURL(svg), w: S2, h: S2, cx: h, cy: h }; this.R.img(this.textCostume);
+  };
+  TP.showEmoji = function (emoji, size) { const svg = Lib.emojiSVG(toStr(emoji) || '🙂', Math.max(8, size)); const m = svg.match(/width="(\d+)" height="(\d+)"/); this.textCostume = { name: '_emoji_', text: emoji, src: Lib.svgToDataURL(svg), w: +m[1], h: +m[2], cx: +m[1] / 2, cy: +m[2] / 2 }; this.R.img(this.textCostume); };
+  RP.cloneGrid = function (S, name, cols, rows, gap) { let idx = 0; for (let r = 0; r < Math.round(rows); r++) for (let c = 0; c < Math.round(cols); c++) { const cl = this.createClone(S, name); if (!cl) return; cl.x = S.x + c * gap; cl.y = S.y - r * gap; cl.visible = true; cl.cloneIndex = ++idx; } };
+  RP.cloneNear = function (name, x, y, which) { const orig = this.findTarget(null, name); if (!orig) return 0; let best = null, bd = Infinity; for (const o of this.targets) if ((o === orig || o.original === orig) && o.visible) { const d = Math.hypot(o.x - x, o.y - y); if (d < bd) { bd = d; best = o; } } if (!best) return 0; return which === 'x position' ? best.x : which === 'y position' ? best.y : (best.cloneIndex || 0); };
+  RP.edgeOf = function (S, name, edge) { const t = this.findTarget(S, name); if (!t || t.isStage) return 0; const b = t.bounds(); return b[edge]; };
+  TP.wrapScreen = function () { const v = this.R.viewRect(this.sticky); const b = this.bounds(); const w = b.right - b.left, h = b.top - b.bottom; if (b.left > v.right) this.x -= (v.right - v.left) + w; else if (b.right < v.left) this.x += (v.right - v.left) + w; if (b.bottom > v.top) this.y -= (v.top - v.bottom) + h; else if (b.top < v.bottom) this.y += (v.top - v.bottom) + h; };
+  const origCloneForIndex = RP.createClone;
+
+  /* =================================================================== TEXT ENGINE (styles, outline, shadow, background, wrap, speed) =================================================================== */
+  sep('text');
+  add('text', 'spark_t_bold', 'text %1 %2', [A.dd('WHAT', ['bold', 'italic', 'shadow']), A.dd('ON', ['on', 'off'])], 'statement', true);
+  stmt('spark_t_bold', (b, c) => `S.setTextStyle(${f(c, b, 'WHAT')}, ${f(c, b, 'ON')} === "on");`);
+  add('text', 'spark_t_outline', 'text outline %1 thickness %2', [A.col('COLOR', '#000000'), A.num('SIZE', 2)], 'statement', true);
+  stmt('spark_t_outline', (b, c) => `S.setTextStyle("outline", { color: ${s(c, b, 'COLOR')}, size: ${n(c, b, 'SIZE', '2')} });`);
+  add('text', 'spark_t_bg', 'text background %1 padding %2', [A.col('COLOR', '#ffffff'), A.num('PAD', 8)], 'statement', true);
+  stmt('spark_t_bg', (b, c) => `S.setTextStyle("bg", { color: ${s(c, b, 'COLOR')}, pad: ${n(c, b, 'PAD', '8')} });`);
+  add('text', 'spark_t_nobg', 'no text background', [], 'statement', true);
+  stmt('spark_t_nobg', () => `S.setTextStyle("bg", null);`);
+  add('text', 'spark_t_wrap', 'wrap text every %1 letters', [A.num('N', 20)], 'statement', true);
+  stmt('spark_t_wrap', (b, c) => `S.setTextStyle("wrap", ${n(c, b, 'N', '20')});`);
+  add('text', 'spark_t_align', 'align text %1', [A.dd('ALIGN', ['center', 'left', 'right'])], 'statement', true);
+  stmt('spark_t_align', (b, c) => `S.setTextStyle("align", ${f(c, b, 'ALIGN')});`);
+  add('text', 'spark_t_speed', 'set typing speed to %1 letters per second', [A.num('N', 30)], 'statement', true);
+  stmt('spark_t_speed', (b, c) => `S.setTextStyle("speed", Math.max(1, ${n(c, b, 'N', '30')}));`);
+  add('text', 'spark_t_dialogstyle', 'dialogue box color %1 text %2 speed %3', [A.col('BG', '#141828'), A.col('FG', '#ffffff'), A.num('SPEED', 40)]);
+  stmt('spark_t_dialogstyle', (b, c) => `R.dialogStyle = { bg: ${s(c, b, 'BG')}, fg: ${s(c, b, 'FG')}, speed: Math.max(1, ${n(c, b, 'SPEED', '40')}) };`);
+  add('text', 'spark_t_rainbow', 'rainbow text %1', [A.dd('ON', ['on', 'off'])], 'statement', true);
+  stmt('spark_t_rainbow', (b, c) => `S.setTextStyle("rainbow", ${f(c, b, 'ON')} === "on");`);
+  add('text', 'spark_t_text', 'my text', [], 'string', true);
+  expr('spark_t_text', () => `(S.textCostume && S.textCostume.text || "")`);
+  TP.setTextStyle = function (k, v) { this.textStyle = this.textStyle || {}; this.textStyle[k] = v; if (this.textCostume && this.textCostume.text !== undefined && this.textCostume.name === '_text_') this.showText(this.textCostume.text); };
+  const escX = s2 => String(s2).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  TP.showText = function (text, size, color) {
+    if (text === null || text === undefined) { this.textCostume = null; return; }
+    const st = this.textStyle = this.textStyle || {}; if (size) st.size = size; if (color) st.color = color;
+    const fs = clamp(st.size || 24, 6, 200), col = st.color || '#333333', font = Lib.FONTS[this.font] || Lib.FONTS.Sans;
+    let raw = toStr(text); if (st.wrap > 0) { const words = raw.split(/(\s+)/); const lines = []; let cur = ''; for (const w of words) { if (w.includes('\n')) { lines.push(cur); cur = ''; continue; } if ((cur + w).length > st.wrap && cur.trim()) { lines.push(cur.trimEnd()); cur = w.trimStart(); } else cur += w; } lines.push(cur); raw = lines.join('\n'); }
+    const lines = raw.split('\n'); const lh = fs * 1.25; const pad = st.bg ? (st.bg.pad || 8) : 2; const ol = st.outline ? Math.max(0, st.outline.size) : 0;
+    const cw = fs * 0.6; const tw = Math.max(1, ...lines.map(l => l.length)) * cw; const w = Math.ceil(tw + pad * 2 + ol * 2 + 8), h = Math.ceil(lines.length * lh + pad * 2 + ol * 2 + 4);
+    const anchor = st.align === 'left' ? 'start' : st.align === 'right' ? 'end' : 'middle'; const x = st.align === 'left' ? pad + ol + 4 : st.align === 'right' ? w - pad - ol - 4 : w / 2;
+    const weight = st.bold === false ? 'normal' : 'bold', style = st.italic ? 'italic' : 'normal';
+    const fill = st.rainbow ? 'url(#rb)' : col;
+    const defs = st.rainbow ? `<defs><linearGradient id="rb" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f44336"/><stop offset=".2" stop-color="#ff9800"/><stop offset=".4" stop-color="#ffeb3b"/><stop offset=".6" stop-color="#4caf50"/><stop offset=".8" stop-color="#2196f3"/><stop offset="1" stop-color="#9c27b0"/></linearGradient></defs>` : '';
+    const bg = st.bg ? `<rect x="${ol}" y="${ol}" width="${w - ol * 2}" height="${h - ol * 2}" rx="${Math.min(12, pad)}" fill="${st.bg.color}"/>` : '';
+    const common = `font-size="${fs}" font-family="${font}" font-weight="${weight}" font-style="${style}" text-anchor="${anchor}"`;
+    const rows = (attrs) => lines.map((l, i) => `<text x="${x}" y="${pad + ol + fs + i * lh}" ${common} ${attrs}>${escX(l)}</text>`).join('');
+    const shadow = st.shadow ? rows(`fill="rgba(0,0,0,0.35)" transform="translate(2,3)"`) : '';
+    const outline = ol ? rows(`fill="none" stroke="${st.outline.color}" stroke-width="${ol * 2}" stroke-linejoin="round"`) : '';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${defs}${bg}${shadow}${outline}${rows(`fill="${fill}"`)}</svg>`;
+    this.textCostume = { name: '_text_', text: toStr(text), src: Lib.svgToDataURL(svg), w, h, cx: w / 2, cy: h / 2 }; this.R.img(this.textCostume);
+  };
+  TP.typeText = async function (T, text, size, color) { const s2 = toStr(text); const speed = (this.textStyle && this.textStyle.speed) || 30; for (let i = 1; i <= s2.length; i++) { this.showText(s2.slice(0, i), size, color); await T.wait(1 / speed); } if (!s2.length) this.showText('', size, color); };
+  // dialogue box honours the style block
+  const origDrawDialog = RP.drawDialog;
+  RP.drawDialog = function (ctx) {
+    const d = this.dialog; const st = this.dialogStyle || { bg: 'rgba(20,24,40,0.92)', fg: '#ffffff', speed: 40 };
+    if (!d.done) { d.shown = Math.min(d.text.length, Math.floor((this.time - d.start) * st.speed)); if (d.shown >= d.text.length) d.done = true; }
+    if (this.wantAdvance()) { if (!d.advArmed) { d.advArmed = true; this.dialogAdvance = true; } } else d.advArmed = false;
+    const x = 12, y = H - 96, w = W - 24, h = 84;
+    ctx.fillStyle = st.bg; this.roundRect(ctx, x, y, w, h, 10); ctx.fill(); ctx.strokeStyle = st.fg; ctx.lineWidth = 2; this.roundRect(ctx, x + 3, y + 3, w - 6, h - 6, 8); ctx.stroke();
+    if (d.name) { ctx.font = 'bold 13px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'middle'; const nw = ctx.measureText(d.name).width + 16; ctx.fillStyle = '#4C97FF'; this.roundRect(ctx, x + 10, y - 11, nw, 22, 11); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.fillText(d.name, x + 18, y); }
+    ctx.font = '15px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'top'; ctx.fillStyle = st.fg; ctx.textAlign = 'left';
+    d.text.slice(0, d.shown).split('\n').forEach((line, i) => ctx.fillText(line, x + 16, y + 16 + i * 20));
+    if (d.done && Math.floor(this.time * 2) % 2 === 0) { ctx.fillStyle = st.fg; ctx.beginPath(); ctx.moveTo(x + w - 24, y + h - 20); ctx.lineTo(x + w - 12, y + h - 20); ctx.lineTo(x + w - 18, y + h - 12); ctx.fill(); }
+  };
+
+  /* =================================================================== VARIABLE MONITOR COLOURS & MODES =================================================================== */
+  const varArg = { json: { type: 'field_variable', name: 'VAR', variableTypes: [''], defaultType: '' }, shadow: '' };
+  add('data', 'spark_d_varcolor', 'set color of %1 display to %2', [varArg, A.col('COLOR', '#FF8C1A')]);
+  stmt('spark_d_varcolor', (b, c) => `R.monitorStyle(S, ${f(c, b, 'VAR')}, { color: ${s(c, b, 'COLOR')} });`);
+  add('data', 'spark_d_varmode', 'show %1 as %2', [varArg, A.dd('MODE', ['normal', 'large readout', 'slider'])]);
+  stmt('spark_d_varmode', (b, c) => `R.monitorStyle(S, ${f(c, b, 'VAR')}, { mode: ${f(c, b, 'MODE')} === "large readout" ? "large" : ${f(c, b, 'MODE')} });`);
+  add('data', 'spark_d_varpos', 'move %1 display to x: %2 y: %3', [varArg, A.num('X', 5), A.num('Y', 5)]);
+  stmt('spark_d_varpos', (b, c) => `R.monitorStyle(S, ${f(c, b, 'VAR')}, { x: ${n(c, b, 'X')}, y: ${n(c, b, 'Y')} });`);
+  add('data', 'spark_d_slider', 'slider for %1 from %2 to %3', [varArg, A.num('MIN', 0), A.num('MAX', 100)]);
+  stmt('spark_d_slider', (b, c) => `R.monitorStyle(S, ${f(c, b, 'VAR')}, { mode: "slider", min: ${n(c, b, 'MIN')}, max: ${n(c, b, 'MAX', '100')} });`);
+  RP.monitorStyle = function (S, name, style) { const targetName = S && !S.isStage && (name in S.vars) ? S.name : null; let m = this.monitors.find(x => x.name === name && x.target === targetName && !x.isList); if (!m) { m = { target: targetName, name, isList: false, visible: true, x: null, y: null }; this.monitors.push(m); } Object.assign(m, style); m.visible = true; this.onEvent('monitorsChanged'); };
 
   /* =================================================================== LISTS & DATA (shown in Operators) =================================================================== */
   sep('operators');

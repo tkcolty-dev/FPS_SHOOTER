@@ -1260,7 +1260,7 @@
         const x = m.x ?? 5, y = m.y ?? autoY;
         if (!m.isList && m.mode === 'large') {
           const val = toStr(m.builtin ? this.builtinValue(m.name, t) : this.v(t, m.name)); ctx.font = 'bold 15px Helvetica, Arial, sans-serif'; const w = Math.max(44, ctx.measureText(val).width + 16), h = 26;
-          ctx.fillStyle = '#FF8C1A'; this.roundRect(ctx, x, y, w, h, 4); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(val, x + w / 2, y + h / 2); ctx.textAlign = 'left'; ctx.font = 'bold 11px Helvetica, Arial, sans-serif';
+          ctx.fillStyle = m.color || '#FF8C1A'; this.roundRect(ctx, x, y, w, h, 4); ctx.fill(); ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(val, x + w / 2, y + h / 2); ctx.textAlign = 'left'; ctx.font = 'bold 11px Helvetica, Arial, sans-serif';
           m._rect = { x, y, w, h }; if (m.y == null) autoY += h + 5; continue;
         }
         if (m.isList) {
@@ -1269,14 +1269,14 @@
           ctx.fillStyle = '#575e75'; ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + 10);
           ctx.textAlign = 'left'; ctx.font = '10px Helvetica, Arial, sans-serif';
           const rows = Math.min(list.length, 6);
-          for (let i = 0; i < rows; i++) { ctx.fillStyle = '#575e75'; ctx.fillText(String(i + 1), x + 4, y + 30 + i * 18); ctx.fillStyle = '#FF661A'; this.roundRect(ctx, x + 16, y + 22 + i * 18, w - 20, 16, 3); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(toStr(list[i]).slice(0, 14), x + 20, y + 30 + i * 18); }
+          for (let i = 0; i < rows; i++) { ctx.fillStyle = '#575e75'; ctx.fillText(String(i + 1), x + 4, y + 30 + i * 18); ctx.fillStyle = m.color || '#FF661A'; this.roundRect(ctx, x + 16, y + 22 + i * 18, w - 20, 16, 3); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText(toStr(list[i]).slice(0, 14), x + 20, y + 30 + i * 18); }
           ctx.font = 'bold 11px Helvetica, Arial, sans-serif'; ctx.fillStyle = '#575e75'; ctx.textAlign = 'center'; ctx.fillText('length ' + list.length, x + w / 2, y + h - 9); ctx.textAlign = 'left';
           m._rect = { x, y, w, h }; if (m.y == null) autoY += h + 5;
         } else {
           const val = toStr(m.builtin ? this.builtinValue(m.name, t) : this.v(t, m.name)); const lw = ctx.measureText(label).width; const vw = Math.max(36, ctx.measureText(val).width + 12); const slider = m.mode === 'slider' && !m.builtin; const w = Math.max(lw + vw + 16, slider ? 110 : 0), h = slider ? 40 : 22;
           ctx.fillStyle = '#e6f0ff'; ctx.strokeStyle = '#c2d3f0'; this.roundRect(ctx, x, y, w, h, 4); ctx.fill(); ctx.stroke();
           ctx.fillStyle = '#575e75'; ctx.fillText(label, x + 6, y + 11);
-          ctx.fillStyle = '#FF8C1A'; this.roundRect(ctx, x + lw + 11, y + 3, vw, 16, 4); ctx.fill();
+          ctx.fillStyle = m.color || '#FF8C1A'; this.roundRect(ctx, x + lw + 11, y + 3, vw, 16, 4); ctx.fill();
           ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.fillText(val, x + lw + 11 + vw / 2, y + 11); ctx.textAlign = 'left';
           if (slider) {
             const min = m.min ?? 0, max = m.max ?? 100; const k = clamp((toNum(val) - min) / ((max - min) || 1), 0, 1);

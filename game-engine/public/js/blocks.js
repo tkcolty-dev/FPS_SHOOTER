@@ -200,6 +200,38 @@
   const M = (name, type) => `<value name="${name}"><shadow type="${type}"></shadow></value>`;
   const B = (type, inner = '') => `<block type="${type}" id="${type}">${inner}</block>`;
 
+  // Extensions: everything that is not core Scratch lives in an extension category you add with the "Add Extension" button
+  const EXTENSIONS = {
+    sprites: { name: 'Sprites & Costumes', icon: '🧩', desc: 'Make sprites, costumes and pixel art with blocks, clone chunks, off-screen checks.' },
+    physics: { name: 'Physics & Movement', icon: '🏃', desc: 'Gravity, jumping, solid platforms, one-block player control, chasing, patrolling, dashing.' },
+    camera: { name: 'Camera & Scrolling', icon: '🎥', desc: 'Scrolling levels: follow a sprite, camera position, bounds, zoom, shake, HUD sprites.' },
+    world: { name: 'World (tiles)', icon: '🧱', desc: 'A tile grid you build with blocks: chunks from text, fill areas, set tiles, touching tiles, mini-map.' },
+    game: { name: 'Game', icon: '🎮', desc: 'Score, lives, health, levels, inventory, saving, leaderboard, timers, premade behaviours.' },
+    fx: { name: 'Effects', icon: '✨', desc: 'Particles, trails, flash, fade, shake, tint, outline, glow, weather, darkness, transitions.' },
+    text: { name: 'Text', icon: '🔤', desc: 'Text labels, dialogue boxes, typewriter, fonts, styles, speech, text tools.' },
+    music: { name: 'Music & Sound', icon: '🎵', desc: 'Notes, drums, tempo, built-in sound effects, looping music, positional sound.' },
+    pad: { name: 'Input & Controller', icon: '🕹️', desc: 'Game controllers, touch controls, key just pressed, mouse buttons, swipes, tilt.' },
+    mp: { name: 'Multiplayer', icon: '🌐', desc: 'Online rooms: other players appear in your game, messages, shared variables, players chart.' },
+    data: { name: 'Data & Lists', icon: '📊', desc: 'List tools (shuffle, sort, sum), grids, key=value pairs, math helpers, cloud status.' },
+    pen: { name: 'Pen', icon: '🖊️', desc: 'Draw with your sprite, stamp, pen colour and size.' }
+  };
+  CATS.sprites = { name: 'Sprites', primary: '#4C97FF', secondary: '#4280D7', tertiary: '#3373CC' };
+  CATS.music = { name: 'Music', primary: '#CF63CF', secondary: '#C94FC9', tertiary: '#BD42BD' };
+  CATS.data = { name: 'Data', primary: '#FF8C1A', secondary: '#FF8000', tertiary: '#DB6E00' };
+  CATS.physics.name = 'Physics'; CATS.camera.name = 'Camera'; CATS.pad.name = 'Input'; CATS.world.name = 'World';
+  // extras registered for core categories are shown in the matching extension instead
+  const REMAP = { motion: 'physics', looks: 'fx', sound: 'music', sensing: 'pad', operators: 'data', events: 'game', control: 'game' };
+  const extraFor = key => Object.keys(REMAP).filter(k => REMAP[k] === key).map(k => extra(k)).join('') + extra(key);
+  const enabled = new Set();
+  const setEnabled = list => { enabled.clear(); for (const e of list || []) if (EXTENSIONS[e]) enabled.add(e); };
+  // which extension does a block type belong to?
+  const EXT_OF = type => {
+    if (type.startsWith('pen_')) return 'pen';
+    const m = type.match(/^spark_(\w+?)_/); if (!m) return null; const p = m[1];
+    return { motion: 'physics', phys: 'physics', p: 'physics', m: 'physics', pre: 'game', cam: 'camera', world: 'world', w: 'world', game: 'game', g: 'game', fx: 'fx', f: 'fx', looks: 'fx', l: 'fx', text: 'text', t: 'text', sound: 'music', s: 'music', pad: 'pad', i: 'pad', sense: 'pad', mp: 'mp', d: 'data', cloud: 'data', sprite: 'sprites', sp: 'sprites' }[p] || null;
+  };
+  const extensionsUsed = xmls => { const out = new Set(); for (const x of xmls) for (const m of (x || '').matchAll(/<block type="([\w]+)"/g)) { const e = EXT_OF(m[1]); if (e) out.add(e); } return out; };
+
   function makeToolbox(isStage) {
     stageMode = isStage;
     const motion = isStage ? '<label text="Stage selected: no motion blocks"></label>' :
@@ -207,7 +239,7 @@
       B('motion_goto', M('TO', 'motion_goto_menu')) + B('motion_gotoxy', N('X', 0) + N('Y', 0)) + B('motion_glideto', N('SECS', 1) + M('TO', 'motion_glideto_menu')) + B('motion_glidesecstoxy', N('SECS', 1) + N('X', 0) + N('Y', 0)) + sep +
       B('motion_pointindirection', `<value name="DIRECTION"><shadow type="math_angle"><field name="NUM">90</field></shadow></value>`) + B('motion_pointtowards', M('TOWARDS', 'motion_pointtowards_menu')) + sep +
       B('motion_changexby', N('DX', 10)) + B('motion_setx', N('X', 0)) + B('motion_changeyby', N('DY', 10)) + B('motion_sety', N('Y', 0)) + sep +
-      B('motion_ifonedgebounce') + sep + B('motion_setrotationstyle') + sep + xmlFor('spark_motion_toward') + xmlFor('spark_motion_fence') + sep +
+      B('motion_ifonedgebounce') + sep + B('motion_setrotationstyle') + sep +
       B('motion_xposition') + B('motion_yposition') + B('motion_direction');
     const looks = isStage ?
       B('looks_switchbackdropto', M('BACKDROP', 'looks_backdrops')) + B('looks_switchbackdroptoandwait', M('BACKDROP', 'looks_backdrops')) + B('looks_nextbackdrop') + sep +
@@ -217,18 +249,16 @@
       B('looks_switchcostumeto', M('COSTUME', 'looks_costume')) + B('looks_nextcostume') + B('looks_switchbackdropto', M('BACKDROP', 'looks_backdrops')) + B('looks_nextbackdrop') + sep +
       B('looks_changesizeby', N('CHANGE', 10)) + B('looks_setsizeto', N('SIZE', 100)) + sep +
       B('looks_changeeffectby', N('CHANGE', 25)) + B('looks_seteffectto', N('VALUE', 0)) + B('looks_cleargraphiceffects') + sep +
-      B('looks_show') + B('looks_hide') + xmlFor('spark_looks_flip') + sep +
+      B('looks_show') + B('looks_hide') + sep +
       B('looks_gotofrontback') + B('looks_goforwardbackwardlayers', `<value name="NUM"><shadow type="math_integer"><field name="NUM">1</field></shadow></value>`) + sep +
       B('looks_costumenumbername') + B('looks_backdropnumbername') + B('looks_size');
     const sound =
       B('sound_playuntildone', M('SOUND_MENU', 'sound_sounds_menu')) + B('sound_play', M('SOUND_MENU', 'sound_sounds_menu')) + B('sound_stopallsounds') + sep +
-      xmlFor('spark_sound_preset') + sep +
       B('sound_changeeffectby', N('VALUE', 10)) + B('sound_seteffectto', N('VALUE', 100)) + B('sound_cleareffects') + sep +
-      B('sound_changevolumeby', N('VOLUME', -10)) + B('sound_setvolumeto', N('VOLUME', 100)) + B('sound_volume') + sep +
-      blocksXML('spark_sound_note', 'spark_sound_drum', 'spark_sound_rest', 'spark_sound_tempo');
+      B('sound_changevolumeby', N('VOLUME', -10)) + B('sound_setvolumeto', N('VOLUME', 100)) + B('sound_volume');
     const events =
       B('event_whenflagclicked') + B('event_whenkeypressed') + (isStage ? B('event_whenstageclicked') : B('event_whenthisspriteclicked')) + B('event_whenbackdropswitchesto') + sep +
-      B('event_whengreaterthan', N('VALUE', 10)) + (isStage ? '' : B('event_whentouchingobject', M('TOUCHINGOBJECTMENU', 'event_touchingobjectmenu'))) + sep +
+      B('event_whengreaterthan', N('VALUE', 10)) + sep +
       B('event_whenbroadcastreceived') + B('event_broadcast', M('BROADCAST_INPUT', 'event_broadcast_menu')) + B('event_broadcastandwait', M('BROADCAST_INPUT', 'event_broadcast_menu'));
     const control =
       B('control_wait', `<value name="DURATION"><shadow type="math_positive_number"><field name="NUM">1</field></shadow></value>`) + sep +
@@ -236,12 +266,12 @@
       B('control_if') + B('control_if_else') + B('control_wait_until') + B('control_repeat_until') + sep + B('control_stop') + sep +
       (isStage ? '' : B('control_start_as_clone')) + B('control_create_clone_of', M('CLONE_OPTION', 'control_create_clone_of_menu')) + (isStage ? '' : B('control_delete_this_clone'));
     const sensing =
-      (isStage ? '' : B('sensing_touchingobject', M('TOUCHINGOBJECTMENU', 'sensing_touchingobjectmenu')) + B('sensing_touchingcolor', M('COLOR', 'colour_picker')) + B('sensing_coloristouchingcolor', M('COLOR', 'colour_picker') + M('COLOR2', 'colour_picker')) + B('sensing_distanceto', M('DISTANCETOMENU', 'sensing_distancetomenu')) + xmlFor('spark_sense_touchingedge') + xmlFor('spark_sense_isclone') + sep) +
+      (isStage ? '' : B('sensing_touchingobject', M('TOUCHINGOBJECTMENU', 'sensing_touchingobjectmenu')) + B('sensing_touchingcolor', M('COLOR', 'colour_picker')) + B('sensing_coloristouchingcolor', M('COLOR', 'colour_picker') + M('COLOR2', 'colour_picker')) + B('sensing_distanceto', M('DISTANCETOMENU', 'sensing_distancetomenu')) + sep) +
       B('sensing_askandwait', Tx('QUESTION', "What's your name?")) + B('sensing_answer') + sep +
-      B('sensing_keypressed', M('KEY_OPTION', 'sensing_keyoptions')) + B('sensing_mousedown') + xmlFor('spark_sense_mouseclicked') + B('sensing_mousex') + B('sensing_mousey') + sep +
+      B('sensing_keypressed', M('KEY_OPTION', 'sensing_keyoptions')) + B('sensing_mousedown') + B('sensing_mousex') + B('sensing_mousey') + sep +
       (isStage ? '' : B('sensing_setdragmode') + sep) +
       B('sensing_loudness') + sep + B('sensing_timer') + B('sensing_resettimer') + sep +
-      B('sensing_of', M('OBJECT', 'sensing_of_object_menu')) + sep + B('sensing_current') + B('sensing_dayssince2000') + sep + B('sensing_username') + xmlFor('spark_cloud_status');
+      B('sensing_of', M('OBJECT', 'sensing_of_object_menu')) + sep + B('sensing_current') + B('sensing_dayssince2000') + sep + B('sensing_username');
     const op2 = (t, a, b) => B(t, N('NUM1', a) + N('NUM2', b));
     const cmp = (t) => B(t, Tx('OPERAND1', '') + Tx('OPERAND2', '50'));
     const operators =
@@ -250,8 +280,9 @@
       B('operator_and') + B('operator_or') + B('operator_not') + sep +
       B('operator_join', Tx('STRING1', 'apple ') + Tx('STRING2', 'banana')) + B('operator_letter_of', N('LETTER', 1) + Tx('STRING', 'apple')) + B('operator_length', Tx('STRING', 'apple')) + B('operator_contains', Tx('STRING1', 'apple') + Tx('STRING2', 'a')) + sep +
       op2('operator_mod', '', '') + B('operator_round', N('NUM', '')) + B('operator_mathop', N('NUM', ''));
-    const cat = (name, id, c1, c2, inner) => `<category name="${name}" id="${id}" colour="${c1}" secondaryColour="${c2}">${inner}${extra(id)}</category>`;
-    const spark = isStage ? '' : catXML('physics', blocksXML('spark_phys_mode', 'spark_phys_control', 'spark_phys_jump', 'spark_phys_onground') + sep + blocksXML('spark_phys_solid', 'spark_phys_touchingsolid') + sep + blocksXML('spark_phys_setgravity', 'spark_phys_setvel', 'spark_phys_changevel', 'spark_phys_velx', 'spark_phys_vely') + sep + blocksXML('spark_phys_setbounce', 'spark_phys_setfriction', 'spark_phys_setmaxspeed'));
+    const cat = (name, id, c1, c2, inner) => `<category name="${name}" id="${id}" colour="${c1}" secondaryColour="${c2}">${inner}</category>`;
+    const ext = (key, inner) => { if (!enabled.has(key)) return ''; const c = CATS[key]; return `<category name="${c.name}" id="${key}" colour="${c.primary}" secondaryColour="${c.tertiary}">${inner}${extraFor(key)}</category>`; };
+    const sp = (...types) => isStage ? '' : blocksXML(...types); // sprite-only groups
     return `<xml id="toolbox-categories" style="display: none">` +
       cat('Motion', 'motion', '#4C97FF', '#3373CC', motion) +
       cat('Looks', 'looks', '#9966FF', '#774DCB', looks) +
@@ -262,17 +293,20 @@
       cat('Operators', 'operators', '#59C059', '#389438', operators) +
       `<category name="Variables" id="data" colour="#FF8C1A" secondaryColour="#DB6E00" custom="VARIABLE"></category>` +
       `<category name="My Blocks" id="more" colour="#FF6680" secondaryColour="#FF3355" custom="PROCEDURE"></category>` +
-      spark +
-      catXML('camera', blocksXML('spark_cam_follow', 'spark_cam_stop') + sep + blocksXML('spark_cam_goto', 'spark_cam_change', 'spark_cam_zoom', 'spark_cam_shake') + sep + blocksXML('spark_cam_bounds', 'spark_cam_nobounds') + sep + (isStage ? '' : xmlFor('spark_cam_sticky') + sep) + blocksXML('spark_cam_x', 'spark_cam_y')) +
-      catXML('fx', (isStage ? '' : blocksXML('spark_fx_burst')) + blocksXML('spark_fx_burstat') + (isStage ? '' : blocksXML('spark_fx_trail', 'spark_fx_tint', 'spark_fx_squash', 'spark_fx_shadow', 'spark_fx_glow')) + sep + blocksXML('spark_fx_flash', 'spark_fx_fade', 'spark_fx_timescale')) +
-      catXML('game', blocksXML('spark_game_set', 'spark_game_change', 'spark_game_get', 'spark_game_hud') + sep + blocksXML('spark_game_whenstat', 'spark_game_over', 'spark_game_win', 'spark_game_whenover', 'spark_game_restart', 'spark_game_pause') + sep + blocksXML('spark_game_countdown', 'spark_game_countdownval', 'spark_game_whencountdown') + sep + blocksXML('spark_game_toast', 'spark_game_spawn', 'spark_game_clonecount') + sep + blocksXML('spark_game_save', 'spark_game_load', 'spark_game_highscore')) +
-      catXML('world', blocksXML('spark_world_generate', 'spark_world_clear', 'spark_world_camera') + sep + (isStage ? '' : blocksXML('spark_world_gotostart', 'spark_world_gotofree', 'spark_world_touching') + sep) + blocksXML('spark_world_tileat', 'spark_world_settile', 'spark_world_fill', 'spark_world_tilesize') + sep + blocksXML('spark_world_info', 'spark_world_active')) +
-      catXML('text', (isStage ? '' : blocksXML('spark_text_show', 'spark_text_type', 'spark_text_style', 'spark_text_font', 'spark_text_clear') + sep) + blocksXML('spark_text_dialogue', 'spark_text_dialogopen') + sep + blocksXML('spark_text_label', 'spark_text_hidelabel') + sep + blocksXML('spark_text_speak', 'spark_text_voice') + sep + blocksXML('spark_text_case', 'spark_text_replace', 'spark_text_split', 'spark_text_count', 'spark_text_repeat', 'spark_text_commas')) +
-      catXML('pad', blocksXML('spark_pad_whenbutton', 'spark_pad_button', 'spark_pad_stick', 'spark_pad_connected', 'spark_pad_rumble')) +
-      (CATS.mp ? catXML('mp', '') : '') +
-      catXML('pen', blocksXML('pen_clear') + (isStage ? '' : blocksXML('pen_stamp', 'pen_penDown', 'pen_penUp') + sep + blocksXML('pen_setPenColorToColor', 'pen_changePenSizeBy', 'pen_setPenSizeTo', 'pen_setPenTransparency'))) +
+      ext('sprites', '') +
+      ext('physics', sp('spark_phys_mode', 'spark_phys_control', 'spark_phys_jump', 'spark_phys_onground') + sep + sp('spark_phys_solid', 'spark_phys_touchingsolid') + sep + sp('spark_phys_setgravity', 'spark_phys_setvel', 'spark_phys_changevel', 'spark_phys_velx', 'spark_phys_vely') + sep + sp('spark_phys_setbounce', 'spark_phys_setfriction', 'spark_phys_setmaxspeed') + sep + sp('spark_motion_toward', 'spark_motion_fence')) +
+      ext('camera', blocksXML('spark_cam_follow', 'spark_cam_stop') + sep + blocksXML('spark_cam_goto', 'spark_cam_change', 'spark_cam_zoom', 'spark_cam_shake') + sep + blocksXML('spark_cam_bounds', 'spark_cam_nobounds') + sep + sp('spark_cam_sticky') + blocksXML('spark_cam_x', 'spark_cam_y')) +
+      ext('world', blocksXML('spark_world_new', 'spark_world_clear', 'spark_world_camera') + sep + blocksXML('spark_world_chunk', 'spark_world_fill', 'spark_world_settile', 'spark_world_scatter', 'spark_world_ground') + sep + sp('spark_world_gotostart', 'spark_world_gotofree', 'spark_world_touching') + blocksXML('spark_world_tileat', 'spark_world_tilesize') + sep + blocksXML('spark_world_info', 'spark_world_active')) +
+      ext('game', blocksXML('spark_game_set', 'spark_game_change', 'spark_game_get', 'spark_game_hud') + sep + blocksXML('spark_game_whenstat', 'spark_game_over', 'spark_game_win', 'spark_game_whenover', 'spark_game_restart', 'spark_game_pause') + sep + blocksXML('spark_game_countdown', 'spark_game_countdownval', 'spark_game_whencountdown') + sep + blocksXML('spark_game_toast', 'spark_game_spawn', 'spark_game_clonecount') + sep + blocksXML('spark_game_save', 'spark_game_load', 'spark_game_highscore')) +
+      ext('fx', sp('spark_fx_burst') + blocksXML('spark_fx_burstat') + sp('spark_fx_trail', 'spark_fx_tint', 'spark_fx_squash', 'spark_fx_shadow', 'spark_fx_glow', 'spark_looks_flip') + sep + blocksXML('spark_fx_flash', 'spark_fx_fade', 'spark_fx_timescale')) +
+      ext('text', sp('spark_text_show', 'spark_text_type', 'spark_text_style', 'spark_text_font', 'spark_text_clear') + sep + blocksXML('spark_text_dialogue', 'spark_text_dialogopen') + sep + blocksXML('spark_text_label', 'spark_text_hidelabel') + sep + blocksXML('spark_text_speak', 'spark_text_voice') + sep + blocksXML('spark_text_case', 'spark_text_replace', 'spark_text_split', 'spark_text_count', 'spark_text_repeat', 'spark_text_commas')) +
+      ext('music', blocksXML('spark_sound_preset') + sep + blocksXML('spark_sound_note', 'spark_sound_drum', 'spark_sound_rest', 'spark_sound_tempo')) +
+      ext('pad', blocksXML('spark_pad_whenbutton', 'spark_pad_button', 'spark_pad_stick', 'spark_pad_connected', 'spark_pad_rumble') + sep + sp('spark_sense_touchingedge', 'spark_sense_isclone') + blocksXML('spark_sense_mouseclicked')) +
+      ext('mp', '') +
+      ext('data', blocksXML('spark_cloud_status')) +
+      ext('pen', blocksXML('pen_clear') + sp('pen_stamp', 'pen_penDown', 'pen_penUp') + sep + sp('pen_setPenColorToColor', 'pen_changePenSizeBy', 'pen_setPenSizeTo', 'pen_setPenTransparency')) +
       `</xml>`;
   }
 
-  window.SparkBlocks = { makeToolbox, CATS, EXTRA, def, args: { num, txt, col, note, menu, dd }, xmlFor };
+  window.SparkBlocks = { makeToolbox, CATS, EXTRA, def, args: { num, txt, col, note, menu, dd }, xmlFor, EXTENSIONS, enabled, setEnabled, extensionsUsed, EXT_OF };
 })();

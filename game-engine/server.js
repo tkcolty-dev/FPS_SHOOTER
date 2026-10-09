@@ -194,7 +194,8 @@ function wsMessage(ws, text) {
   }
   if (m.t === 'h') { if (text.length > 60000) return; roomBroadcast(room, { t: 'h', id: me.id, s: m.s }, ws); return; }
   if (m.t === 'var') { const name = String(m.name).slice(0, 100); let v = m.value; if (typeof v === 'string') v = v.slice(0, 2000); else if (typeof v !== 'number' && typeof v !== 'boolean') return; room.vars[name] = v; if (Object.keys(room.vars).length > 200) delete room.vars[name]; roomBroadcast(room, { t: 'var', name, value: v }, ws); return; }
-  if (m.t === 'msg') { roomBroadcast(room, { t: 'msg', name: String(m.name).slice(0, 100), value: typeof m.value === 'string' ? m.value.slice(0, 2000) : (typeof m.value === 'number' ? m.value : ''), from: me.id, fromName: me.name, to: m.to }, ws); return; }
+  if (m.t === 'msg') { const out = { t: 'msg', name: String(m.name).slice(0, 100), value: typeof m.value === 'string' ? m.value.slice(0, 2000) : (typeof m.value === 'number' ? m.value : ''), from: me.id, fromName: me.name, to: m.to }; if (typeof m.to === 'number') { const p = room.players.get(m.to); if (p) wsSend(p.ws, out); } else roomBroadcast(room, out, ws); return; }
+  if (m.t === 'kick') { const hostId = Math.min(...room.players.keys()); if (me.id !== hostId) return; const p = room.players.get(Number(m.id)); if (p && p.id !== me.id) { wsSend(p.ws, { t: 'error', msg: 'you were removed from the room' }); wsLeave(p.ws); p.ws.end(); } return; }
   if (m.t === 'ping') { wsSend(ws, { t: 'pong', at: m.at }); return; }
   if (m.t === 'leave') { wsLeave(ws); return; }
 }

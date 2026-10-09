@@ -47,11 +47,36 @@
   add('spark_mp_tags', 'show player names above players %1', [A.dd('ON', ['on', 'off'])]);
   stmt('spark_mp_tags', (b, c) => `R.mp.tags = ${f(c, b, 'ON')} === "on";`);
 
+  sep();
+  add('spark_mp_syncopt', 'share my player %1 %2', [A.dd('WHAT', ['position', 'costume', 'size', 'direction', 'visibility', 'say bubble', 'effects']), A.dd('ON', ['on', 'off'])], 'statement', true);
+  stmt('spark_mp_syncopt', (b, c) => `S.mpFlags = S.mpFlags || {}; S.mpFlags[${f(c, b, 'WHAT')}] = ${f(c, b, 'ON')} === "on";`);
+  add('spark_mp_setdata', 'set my player %1 to %2', [A.txt('KEY', 'team'), A.txt('VALUE', 'red')]);
+  stmt('spark_mp_setdata', (b, c) => `R.mp.data[${s(c, b, 'KEY')}] = ${c.val(b, 'VALUE', '""')};`);
+  add('spark_mp_getdata', 'player %1 %2', [A.num('N', 2), A.txt('KEY', 'team')], 'string');
+  expr('spark_mp_getdata', (b, c) => `R.mp.playerData(${n(c, b, 'N', '2')}, ${s(c, b, 'KEY')})`);
+  add('spark_mp_sendto', 'send %1 with value %2 to player %3', [A.txt('MSG', 'hit'), A.txt('VALUE', '10'), A.num('N', 2)]);
+  stmt('spark_mp_sendto', (b, c) => `R.mp.send(${s(c, b, 'MSG')}, ${c.val(b, 'VALUE', '""')}, R.mp.idOf(${n(c, b, 'N', '2')}));`);
+  const listArg = { json: { type: 'field_variable', name: 'LIST', variableTypes: ['list'], defaultType: 'list' }, shadow: '' };
+  add('spark_mp_names', 'put player %1 into list %2', [A.dd('WHAT', ['names', 'numbers', 'scores']), listArg]);
+  stmt('spark_mp_names', (b, c) => `R.mp.fillList(R.l(S, ${f(c, b, 'LIST')}), ${f(c, b, 'WHAT')});`);
+  add('spark_mp_color', 'set my player color to %1', [A.col('COLOR', '#4C97FF')]);
+  stmt('spark_mp_color', (b, c) => `R.mp.color = ${s(c, b, 'COLOR')};`);
+  add('spark_mp_chart', 'show players chart %1', [A.dd('ON', ['on', 'off'])]);
+  stmt('spark_mp_chart', (b, c) => `R.mp.chart = ${f(c, b, 'ON')} === "on";`);
+  add('spark_mp_kick', 'kick player %1 (host only)', [A.num('N', 2)]);
+  stmt('spark_mp_kick', (b, c) => `R.mp.kick(${n(c, b, 'N', '2')});`);
+  add('spark_mp_isme', 'player %1 is me?', [A.num('N', 1)], 'boolean');
+  expr('spark_mp_isme', (b, c) => `(R.mp.idOf(${n(c, b, 'N', '1')}) === R.mp.id)`);
+
   // the "when I receive online X" hat needs its text at compile time
   C.HATS.spark_mp_whenmsg = (b, c) => ({ hat: 'mpmsg', name: toStr(c.field(b, 'MSG') || (b.values.MSG && b.values.MSG.fields.TEXT && b.values.MSG.fields.TEXT.text) || '').toLowerCase() });
 
   class Multiplayer {
-    constructor(R) { this.R = R; this.ws = null; this.id = 0; this.name = ''; this.room = ''; this.players = []; this.states = {}; this.shared = {}; this.remotes = new Map(); this.last = { joined: '', left: '' }; this.rx = { value: '', sender: '', senderId: 0 }; this.ping = 0; this.tags = true; this.lastSend = 0; }
+    constructor(R) { this.R = R; this.ws = null; this.id = 0; this.name = ''; this.room = ''; this.players = []; this.states = {}; this.shared = {}; this.remotes = new Map(); this.last = { joined: '', left: '' }; this.rx = { value: '', sender: '', senderId: 0 }; this.ping = 0; this.tags = true; this.lastSend = 0; this.data = {}; this.color = '#4C97FF'; this.chart = false; }
+    idOf(nth) { const p = this.players[Math.round(nth) - 1]; return p ? p.id : -1; }
+    playerData(nth, key) { const p = this.players[Math.round(nth) - 1]; if (!p) return ''; if (p.id === this.id) return this.data[key] ?? ''; const st = this.states[p.id]; return st && st.d ? (st.d[key] ?? '') : ''; }
+    fillList(list, what) { list.length = 0; for (const p of this.players) { if (what === 'names') list.push(p.name); else if (what === 'numbers') list.push(p.id); else { const st = p.id === this.id ? this.myState() : this.states[p.id]; list.push(st ? (st.score || 0) : 0); } } }
+    kick(nth) { if (!this.isHost() || !this.connected()) return; const id = this.idOf(nth); if (id > 0 && id !== this.id) this.ws.send(JSON.stringify({ t: 'kick', id })); }
     url() { const base = window.SPARK_CLOUD_URL || location.origin; return base.replace(/^http/, 'ws') + '/ws'; }
     connected() { return !!(this.ws && this.ws.readyState === 1 && this.id); }
     isHost() { return this.connected() && this.players.length > 0 && Math.min(...this.players.map(p => p.id)) === this.id; }
@@ -91,8 +116,8 @@
     setShared(name, value) { this.shared[toStr(name)] = value; if (this.connected()) this.ws.send(JSON.stringify({ t: 'var', name: toStr(name), value })); }
     myState() {
       const R = this.R; const p = {};
-      for (const t of R.originals()) if (t.mpPlayer) p[t.name] = { x: Math.round(t.x * 10) / 10, y: Math.round(t.y * 10) / 10, d: Math.round(t.direction), c: t.currentCostume, v: t.visible ? 1 : 0, sz: Math.round(t.size), say: t.bubble ? t.bubble.text : '', rs: t.rotationStyle === 'left-right' ? 1 : 0, g: t.effects.GHOST || 0 };
-      return { p, score: R.game.get('score') };
+      for (const t of R.originals()) if (t.mpPlayer) { const fl = t.mpFlags || {}; const on = k => fl[k] !== false; p[t.name] = { x: on('position') ? Math.round(t.x * 10) / 10 : undefined, y: on('position') ? Math.round(t.y * 10) / 10 : undefined, d: on('direction') ? Math.round(t.direction) : undefined, c: on('costume') ? t.currentCostume : undefined, v: on('visibility') ? (t.visible ? 1 : 0) : undefined, sz: on('size') ? Math.round(t.size) : undefined, say: on('say bubble') ? (t.bubble ? t.bubble.text : '') : undefined, rs: t.rotationStyle === 'left-right' ? 1 : 0, g: on('effects') ? (t.effects.GHOST || 0) : undefined, tc: t.textCostume && t.textCostume.text !== undefined ? { t: t.textCostume.text, s: t.textCostume.src.length < 4000 ? t.textCostume.src : null, w: t.textCostume.w, h: t.textCostume.h } : undefined }; }
+      return { p, score: R.game.get('score'), d: this.data, col: this.color };
     }
     tick() {
       const R = this.R; if (!this.connected() || !R.running) return;
@@ -117,9 +142,11 @@
       for (const [name, v] of Object.entries(st.p || {})) {
         const orig = R.findTarget(null, name); if (!orig) continue; const key = playerId + ':' + name; keys.add(key);
         const rt = this.remoteFor(key, orig, playerId, player ? player.name : ''); const fresh = !rt._net;
-        rt._net = { x: v.x, y: v.y }; if (fresh) { rt.x = v.x; rt.y = v.y; }
-        rt.direction = v.d; rt.currentCostume = v.c; rt.visible = !!v.v; rt.size = v.sz; rt.rotationStyle = v.rs ? 'left-right' : orig.rotationStyle; rt.effects.GHOST = v.g || 0;
-        rt.bubble = v.say ? { text: v.say, think: false, id: 'r' } : null;
+        if (v.x !== undefined) { rt._net = { x: v.x, y: v.y }; if (fresh) { rt.x = v.x; rt.y = v.y; } }
+        if (v.d !== undefined) rt.direction = v.d; if (v.c !== undefined) rt.currentCostume = v.c; if (v.v !== undefined) rt.visible = !!v.v; if (v.sz !== undefined) rt.size = v.sz; rt.rotationStyle = v.rs ? 'left-right' : orig.rotationStyle; if (v.g !== undefined) rt.effects.GHOST = v.g || 0;
+        if (v.say !== undefined) rt.bubble = v.say ? { text: v.say, think: false, id: 'r' } : null;
+        if (v.tc && v.tc.s) { if (!rt.textCostume || rt.textCostume.src !== v.tc.s) { rt.textCostume = { name: '_text_', text: v.tc.t, src: v.tc.s, w: v.tc.w, h: v.tc.h, cx: v.tc.w / 2, cy: v.tc.h / 2 }; R.img(rt.textCostume); } } else if (v.tc === undefined || !v.tc) rt.textCostume = null;
+        rt.playerColor = st.col || '#4C97FF';
       }
       for (const [key, rt] of this.remotes) if (key.startsWith(playerId + ':') && !keys.has(key)) { R.targets = R.targets.filter(t => t !== rt); this.remotes.delete(key); }
     }
@@ -133,9 +160,18 @@
     draw(ctx, map) {
       if (!this.tags) return; ctx.font = 'bold 11px Helvetica, Arial, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
       const label = (t, text, color) => { const b = t.bounds(); const [sx, sy] = map(t.x, b.top); const w = ctx.measureText(text).width + 10; ctx.fillStyle = 'rgba(0,0,0,0.55)'; this.R.roundRect(ctx, sx - w / 2, sy - 18, w, 15, 7); ctx.fill(); ctx.fillStyle = color; ctx.fillText(text, sx, sy - 5); };
-      for (const rt of this.remotes.values()) if (rt.visible && rt.playerName && !rt.hostSynced) label(rt, rt.playerName, '#fff');
-      if (this.connected()) for (const t of this.R.originals()) if (t.mpPlayer && t.visible) label(t, this.name + ' (you)', '#9ff');
+      for (const rt of this.remotes.values()) if (rt.visible && rt.playerName && !rt.hostSynced) label(rt, rt.playerName, rt.playerColor || '#fff');
+      if (this.connected()) for (const t of this.R.originals()) if (t.mpPlayer && t.visible) label(t, this.name + ' (you)', this.color);
       ctx.textAlign = 'left';
+    }
+    drawChart(ctx) {
+      if (!this.chart || !this.connected()) return;
+      const rows = this.players.map(p => { const st = p.id === this.id ? this.myState() : this.states[p.id]; return { name: p.name, id: p.id, score: st ? (st.score || 0) : 0, col: p.id === this.id ? this.color : (st && st.col) || '#888', host: p.id === Math.min(...this.players.map(q => q.id)), me: p.id === this.id }; });
+      const x = 8, y = 36, w = 170, h = 26 + rows.length * 20;
+      ctx.fillStyle = 'rgba(0,0,0,0.65)'; this.R.roundRect(ctx, x, y, w, h, 8); ctx.fill();
+      ctx.font = 'bold 12px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'top'; ctx.fillStyle = '#9ff'; ctx.textAlign = 'left'; ctx.fillText(`👥 ${rows.length} in "${this.room}"`, x + 10, y + 7);
+      ctx.font = '12px Helvetica, Arial, sans-serif';
+      rows.forEach((r, i) => { const ry = y + 26 + i * 20; ctx.fillStyle = r.col; ctx.beginPath(); ctx.arc(x + 16, ry + 7, 5, 0, 6.283); ctx.fill(); ctx.fillStyle = '#fff'; ctx.fillText((r.host ? '★ ' : '') + r.name + (r.me ? ' (you)' : ''), x + 28, ry); ctx.textAlign = 'right'; ctx.fillText(String(r.score), x + w - 10, ry); ctx.textAlign = 'left'; });
     }
   }
 
@@ -143,6 +179,8 @@
     init(R) { R.mp = new Multiplayer(R); },
     tick(R) { R.mp.tick(); },
     stop(R) { R.mp.clearRemotes(); R.mp.states = {}; for (const t of R.allTargets()) { t.mpPlayer = false; t.mpSync = false; } },
-    drawWorld(R, ctx, map) { R.mp.draw(ctx, map); }
+    drawWorld(R, ctx, map) { R.mp.draw(ctx, map); },
+    drawScreen(R, ctx) { R.mp.drawChart(ctx); },
+    reset(R) { R.mp.chart = false; R.mp.data = {}; }
   });
 })();
