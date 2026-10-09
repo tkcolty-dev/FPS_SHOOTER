@@ -269,6 +269,7 @@
       catXML('world', blocksXML('spark_world_generate', 'spark_world_clear', 'spark_world_camera') + sep + (isStage ? '' : blocksXML('spark_world_gotostart', 'spark_world_gotofree', 'spark_world_touching') + sep) + blocksXML('spark_world_tileat', 'spark_world_settile', 'spark_world_fill', 'spark_world_tilesize') + sep + blocksXML('spark_world_info', 'spark_world_active')) +
       catXML('text', (isStage ? '' : blocksXML('spark_text_show', 'spark_text_type', 'spark_text_style', 'spark_text_font', 'spark_text_clear') + sep) + blocksXML('spark_text_dialogue', 'spark_text_dialogopen') + sep + blocksXML('spark_text_label', 'spark_text_hidelabel') + sep + blocksXML('spark_text_speak', 'spark_text_voice') + sep + blocksXML('spark_text_case', 'spark_text_replace', 'spark_text_split', 'spark_text_count', 'spark_text_repeat', 'spark_text_commas')) +
       catXML('pad', blocksXML('spark_pad_whenbutton', 'spark_pad_button', 'spark_pad_stick', 'spark_pad_connected', 'spark_pad_rumble')) +
+      (CATS.mp ? catXML('mp', '') : '') +
       catXML('pen', blocksXML('pen_clear') + (isStage ? '' : blocksXML('pen_stamp', 'pen_penDown', 'pen_penUp') + sep + blocksXML('pen_setPenColorToColor', 'pen_changePenSizeBy', 'pen_setPenSizeTo', 'pen_setPenTransparency'))) +
       `</xml>`;
   }

@@ -168,8 +168,69 @@ function handleCloud(req, res, parts) {
   res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); res.end(JSON.stringify(vars));
 }
 
-http.createServer((req, res) => {
+/* ---------- multiplayer: tiny WebSocket server (no dependencies), rooms keyed by project + room code ---------- */
+const crypto = require('crypto');
+const rooms = new Map(); // key -> { players: Map(id -> {ws, name, state, seen}), vars: {}, nextId }
+const wsSend = (ws, obj) => { if (ws.destroyed) return; const payload = Buffer.from(JSON.stringify(obj)); const len = payload.length; let head; if (len < 126) head = Buffer.from([0x81, len]); else if (len < 65536) { head = Buffer.alloc(4); head[0] = 0x81; head[1] = 126; head.writeUInt16BE(len, 2); } else { head = Buffer.alloc(10); head[0] = 0x81; head[1] = 127; head.writeBigUInt64BE(BigInt(len), 2); } try { ws.write(Buffer.concat([head, payload])); } catch (e) {} };
+const roomOf = ws => ws._room && rooms.get(ws._room);
+const roomBroadcast = (room, obj, except) => { for (const p of room.players.values()) if (p.ws !== except) wsSend(p.ws, obj); };
+const playerList = room => Array.from(room.players.values()).map(p => ({ id: p.id, name: p.name }));
+function wsMessage(ws, text) {
+  let m; try { m = JSON.parse(text); } catch (e) { return; }
+  if (m.t === 'join') {
+    wsLeave(ws);
+    const key = String(m.project || 'x').replace(/[^\w-]/g, '').slice(0, 64) + '/' + String(m.room || 'lobby').trim().toLowerCase().replace(/[^\w-]/g, '').slice(0, 32);
+    let room = rooms.get(key); if (!room) { room = { players: new Map(), vars: {}, nextId: 1 }; rooms.set(key, room); }
+    if (room.players.size >= 16) { wsSend(ws, { t: 'error', msg: 'room full' }); return; }
+    const id = room.nextId++; const name = String(m.name || 'player').slice(0, 20) || 'player';
+    room.players.set(id, { id, ws, name, state: null, seen: Date.now() }); ws._room = key; ws._id = id;
+    wsSend(ws, { t: 'welcome', id, players: playerList(room), vars: room.vars });
+    roomBroadcast(room, { t: 'players', players: playerList(room), joined: { id, name } }, ws);
+    return;
+  }
+  const room = roomOf(ws); if (!room) return; const me = room.players.get(ws._id); if (!me) return; me.seen = Date.now();
+  if (m.t === 's') { // player state (positions etc.), relayed to everyone else
+    if (text.length > 20000) return; me.state = m.s; roomBroadcast(room, { t: 's', id: me.id, s: m.s }, ws); return;
+  }
+  if (m.t === 'h') { if (text.length > 60000) return; roomBroadcast(room, { t: 'h', id: me.id, s: m.s }, ws); return; }
+  if (m.t === 'var') { const name = String(m.name).slice(0, 100); let v = m.value; if (typeof v === 'string') v = v.slice(0, 2000); else if (typeof v !== 'number' && typeof v !== 'boolean') return; room.vars[name] = v; if (Object.keys(room.vars).length > 200) delete room.vars[name]; roomBroadcast(room, { t: 'var', name, value: v }, ws); return; }
+  if (m.t === 'msg') { roomBroadcast(room, { t: 'msg', name: String(m.name).slice(0, 100), value: typeof m.value === 'string' ? m.value.slice(0, 2000) : (typeof m.value === 'number' ? m.value : ''), from: me.id, fromName: me.name, to: m.to }, ws); return; }
+  if (m.t === 'ping') { wsSend(ws, { t: 'pong', at: m.at }); return; }
+  if (m.t === 'leave') { wsLeave(ws); return; }
+}
+function wsLeave(ws) {
+  const room = roomOf(ws); if (!room) return; const me = room.players.get(ws._id); room.players.delete(ws._id); ws._room = null;
+  if (room.players.size === 0) rooms.delete(ws._roomKey);
+  else roomBroadcast(room, { t: 'players', players: playerList(room), left: me ? { id: me.id, name: me.name } : null });
+}
+setInterval(() => { for (const [key, room] of rooms) { for (const [id, p] of room.players) if (Date.now() - p.seen > 60000) { p.ws.destroy(); room.players.delete(id); roomBroadcast(room, { t: 'players', players: playerList(room), left: { id, name: p.name } }); } if (!room.players.size) rooms.delete(key); } }, 15000);
+function handleUpgrade(req, socket) {
+  if (!req.url.startsWith('/ws')) { socket.destroy(); return; }
+  const key = req.headers['sec-websocket-key']; if (!key) { socket.destroy(); return; }
+  const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
+  socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ' + accept + '\r\n\r\n');
+  socket.setNoDelay(true); let buf = Buffer.alloc(0);
+  socket.on('data', chunk => {
+    buf = Buffer.concat([buf, chunk]);
+    while (buf.length >= 2) {
+      const op = buf[0] & 0x0f, masked = buf[1] & 0x80; let len = buf[1] & 0x7f, off = 2;
+      if (len === 126) { if (buf.length < 4) return; len = buf.readUInt16BE(2); off = 4; } else if (len === 127) { if (buf.length < 10) return; len = Number(buf.readBigUInt64BE(2)); off = 10; }
+      if (len > 200000) { socket.destroy(); return; }
+      const total = off + (masked ? 4 : 0) + len; if (buf.length < total) return;
+      let data = buf.subarray(off + (masked ? 4 : 0), total);
+      if (masked) { const mask = buf.subarray(off, off + 4); data = Buffer.from(data); for (let i = 0; i < data.length; i++) data[i] ^= mask[i & 3]; }
+      buf = buf.subarray(total);
+      if (op === 8) { wsLeave(socket); socket.end(); return; }
+      if (op === 9) { const pong = Buffer.concat([Buffer.from([0x8a, data.length]), data]); socket.write(pong); continue; }
+      if (op === 1) wsMessage(socket, data.toString('utf8'));
+    }
+  });
+  socket.on('close', () => wsLeave(socket)); socket.on('error', () => wsLeave(socket));
+}
+
+const server = http.createServer((req, res) => {
   let url = decodeURIComponent(req.url.split('?')[0]);
+  if (url === '/api/mp/rooms') { res.writeHead(200, { ...cors, 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ rooms: rooms.size, players: Array.from(rooms.values()).reduce((a, r) => a + r.players.size, 0) })); }
   if (url.startsWith('/api/cloud/')) return handleCloud(req, res, url.slice('/api/cloud/'.length).split('/'));
   if (url === '/api/ai/status') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ available: aiAvailable(), backend: creds ? 'genai' : hasAnthropic ? 'anthropic' : claudeCli ? 'claude-cli' : null })); }
   if (url === '/api/ai' && req.method === 'POST') return handleAI(req, res);
@@ -181,4 +242,6 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     res.end(data);
   });
-}).listen(PORT, () => { console.log(`Spark Engine → http://localhost:${PORT}  (AI: ${creds ? 'genai' : hasAnthropic ? 'anthropic' : claudeCli ? 'claude cli' : 'none'})`); pickModel(); });
+});
+server.on('upgrade', handleUpgrade);
+server.listen(PORT, () => { console.log(`Spark Engine → http://localhost:${PORT}  (AI: ${creds ? 'genai' : hasAnthropic ? 'anthropic' : claudeCli ? 'claude cli' : 'none'})`); pickModel(); });
