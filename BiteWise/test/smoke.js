@@ -136,6 +136,10 @@ async function serverTests() {
       const fam = list.j.groups?.[0];
       bobRow = fam?.members.find(m => m.stats?.name === 'Bob');
       ok(bobRow?.sharing && bobRow.stats.weightLb === 171.5 && bobRow.log?.foods?.[0]?.name === 'Taco' && bobRow.log.weights?.[0]?.lb === 171.5 && bobRow.log.days.find(d => d.date === '2026-10-12')?.eaten === 400, 'sharing on: weight and food log visible', JSON.stringify(bobRow?.log));
+      await call('share', { stats: { name: 'Bob', streak: 3, weightLb: 171.5, lostLb: 4.5 }, full: true, exact: false }, bob.j.token);
+      bobRow = (await call('groups?date=2026-10-12', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
+      ok(bobRow?.sharing && bobRow.stats.weightLb == null && bobRow.stats.lostLb === 4.5 && bobRow.log?.weights?.length === 0 && bobRow.log.foods.length === 1, 'exact weight off: pounds lost shows, the number does not', JSON.stringify(bobRow?.stats));
+      await call('share', { stats: { name: 'Bob', streak: 3, weightLb: 171.5 }, full: true }, bob.j.token);
       ok(fam && fam.members.length === 2, 'both members listed', JSON.stringify(list.j));
       ok(fam?.members.some(m => m.stats?.name === 'Bob' && m.stats.streak === 3), 'shared stats visible');
       const eve = await call('signup', { username: 'eve', password: 'secret3' });

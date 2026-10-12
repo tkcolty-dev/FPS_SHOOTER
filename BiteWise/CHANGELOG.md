@@ -21,6 +21,15 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.13.0 · Groups at a glance
+_2026-10-12 · git tag `v1.13.0`_
+
+- New: Your groups show up on Today with everyone’s calories, progress bar, pounds lost, weight and streak. No tapping needed. Same on Progress.
+- New: Log weight button right in the group card and group screen.
+- New: Me → Sharing → “Show my exact weight”. Turn it off and your groups see how much you’ve lost, like “down 3 lb”, never the number.
+- New: Pounds lost shows for everyone who’s sharing, in the group list and on their page.
+- Changed: Me → Groups row shows a quick line of how your people are doing today.
+
 ## 1.12.0 · Goals you just type
 _2026-10-12 · git tag `v1.12.0`_
 

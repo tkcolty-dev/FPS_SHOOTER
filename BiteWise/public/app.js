@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.12.0';
+  const APP_VERSION = '1.13.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -479,6 +479,7 @@
       </div>
       ${isToday ? fitsCard(d) : ''}
       <div class="t-week">${weekCard()}</div>
+      ${isToday ? `<div class="t-groups">${groupsToday()}</div>` : ''}
     </div>`;
   }
 
@@ -852,7 +853,7 @@
     </div><div class="col-side">
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Rewards</div><div class="group">
       ${row('palette', theme.color, 'Look', theme.name + (p.appearance && p.appearance !== 'auto' ? ' · ' + cap(p.appearance) : ''), 'data-act="themes"', `Colors and light or dark mode · ${THEMES.filter(t => t.level <= lv.n).length} of ${THEMES.length} colors`)}
-      ${row('person', 'var(--purple)', 'Groups', (S.groups || LS.get('groupsCache', [])).length || 'None', 'data-go="progress"', 'Friends and family see each other\u2019s progress')}
+      ${row('person', 'var(--purple)', 'Groups', (S.groups || LS.get('groupsCache', [])).length || 'None', 'data-go="progress"', (() => { const ms = (S.groups || LS.get('groupsCache', [])).flatMap(g => g.members.filter(m => !m.you && m.sharing)); return ms.length ? ms.slice(0, 4).map(m => `${esc(m.stats?.name || m.username || 'Friend')} ${m.stats?.todayPct != null ? m.stats.todayPct + '%' : ''}${m.stats?.lostLb > 0 ? ' ↓' + m.stats.lostLb : ''}`).join(' · ') : 'Friends and family see each other\u2019s progress'; })())}
       ${row('eye', shareOn() ? 'var(--green)' : 'var(--label3)', 'Sharing', shareOn() ? 'On' : 'Off', 'data-act="shareprefs"', shareOn() ? 'Your groups see your weight and food, and can log for you' : 'Your groups only see your name')}
       ${row('trophy', '#FFB800', 'Badges', `${BW.badges().filter(b => b.earned).length} / ${BW.badges().length}`, 'data-go="progress"')}
     </div></div>
@@ -1263,6 +1264,7 @@
   // ---------- groups ----------
   // one switch, off until you turn it on. Saved in your profile, so it follows you to every device.
   const shareOn = () => BW.profile().share?.all === true;
+  const exactWeight = () => BW.profile().share?.exact !== false; // off = groups see pounds lost, never the number
   const MEMBER_COLORS = ['#FF9500', '#34C759', '#007AFF', '#AF52DE', '#FF2D55', '#30B0C7', '#FFB800', '#5856D6'];
   function myShareStats() {
     const p = BW.profile(), g = BW.goals(), k = BW.dayKey(), d = BW.day(k), tr = BW.trend(), lv = BW.level();
@@ -1273,7 +1275,7 @@
       goal: g.custom ? `${fmt(g.budget)} cal a day` : g.goalType === 'lose' ? `Lose ${g.pace} lb a week` : g.goalType === 'gain' ? `Gain ${g.gain} lb a week` : 'Stay steady',
       budget: g.budget, streak: BW.streak().days, onTrackDays: week,
       todayPct: Math.round(d.eaten / d.budget * 100), steps: d.steps,
-      level: lv.n, levelName: lv.name, lostLb: tr ? tr.lost : null, weightLb: tr ? tr.now : p.weightLb, goalLb: g.goalType === 'maintain' ? null : p.goalLb,
+      level: lv.n, levelName: lv.name, lostLb: tr ? tr.lost : null, weightLb: exactWeight() ? (tr ? tr.now : p.weightLb) : null, goalLb: exactWeight() && g.goalType !== 'maintain' ? p.goalLb : null,
     };
   }
   let shareT = null, lastShared = '';
@@ -1282,9 +1284,9 @@
     clearTimeout(shareT);
     shareT = setTimeout(async () => {
       if (!navigator.onLine) return;
-      const stats = myShareStats(), key = JSON.stringify(stats) + shareOn();
+      const stats = myShareStats(), key = JSON.stringify(stats) + shareOn() + exactWeight();
       if (key === lastShared) return;
-      try { await BW.api('share', { stats, full: shareOn() }); lastShared = key; } catch {}
+      try { await BW.api('share', { stats, full: shareOn(), exact: exactWeight() }); lastShared = key; } catch {}
     }, now ? 50 : 4000);
   }
   async function loadGroups() {
@@ -1293,6 +1295,27 @@
     catch { S.groups ||= LS.get('groupsCache', []); }
     return S.groups;
   }
+  // compact one-line view of a member: today's calories, progress bar, pounds lost, weight, streak
+  function memberBits(m) {
+    if (!m.sharing) return null; const st = m.stats || {}, lg = m.log;
+    const todayCal = lg ? (lg.days.find(x => x.date === lg.today)?.eaten ?? null) : null;
+    const weight = lg?.weights?.length ? lg.weights[lg.weights.length - 1].lb : st.weightLb;
+    return { todayCal, pct: st.todayPct, lost: st.lostLb, weight, streak: st.streak, steps: st.steps, budget: st.budget, foods: lg?.foods?.length };
+  }
+  const lostText = lost => lost > 0 ? `↓ ${lost} lb lost` : lost < 0 ? `↑ ${Math.abs(lost)} lb` : null;
+  function memberMini(g, m, i) {
+    const b = memberBits(m), st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend';
+    if (!b) return `<div class="gm"><span>${face(st, m.username, i)}</span><div class="gm-body"><div class="gm-top"><b>${esc(nm)}</b></div><div class="gm-sub caption">${m.you ? 'You’re not sharing yet · Me → Sharing' : m.stats ? 'Hasn’t turned on sharing' : 'Hasn’t opened BiteWise yet'}</div></div></div>`;
+    const sub = [lostText(b.lost), b.weight ? `${b.weight} lb` : null, b.streak ? `${b.streak} day streak` : null, b.steps ? `${fmt(b.steps)} steps` : null].filter(Boolean).join(' · ');
+    return `<button class="gm tap" type="button" data-act="member" data-member="${esc(g.id + ':' + m.key)}">${face(st, m.username, i)}<div class="gm-body"><div class="gm-top"><b>${esc(nm)}</b><span class="num">${b.todayCal != null ? fmt(b.todayCal) + ' cal' : b.pct != null ? b.pct + '%' : ''}${b.budget && b.todayCal != null ? ` <small>/ ${fmt(b.budget)}</small>` : ''}</span></div><div class="bar"><i style="width:${Math.min(100, b.pct || 0)}%;${b.pct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="gm-sub caption">${sub || 'Sharing'}</div></div></button>`;
+  }
+  const sortMembers = g => g.members.slice().sort((a, b) => (b.stats?.streak ?? -1) - (a.stats?.streak ?? -1));
+  // on Today: every group, everyone's numbers, no tapping needed, plus a one-tap weigh-in
+  function groupsToday() {
+    const gs = S.groups || LS.get('groupsCache', []); if (!gs.length) return '';
+    return gs.map(g => `<div class="card t-group"><div class="card-head"><div><div class="st-k">Group</div><div class="big-stat" style="font-size:20px">${esc(g.name)}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">${I('scale')} Log weight</button><button class="link-btn" type="button" data-group="${g.id}" style="font-size:15px">Open</button></div></div>
+      <div class="gm-list">${sortMembers(g).map((m, i) => memberMini(g, m, i)).join('')}</div></div>`).join('');
+  }
   const face = (st, fallbackName, i, big) => `<span class="face ${big ? 'big' : ''}" style="background:${st?.color || MEMBER_COLORS[i % 8]}">${esc(((st?.name || fallbackName || '?')[0] || '?').toUpperCase())}</span>`;
   function groupsCard() {
     const gs = S.groups || LS.get('groupsCache', []);
@@ -1300,11 +1323,10 @@
       <p class="insight">Make a group with friends or family. Turn on sharing and everyone sees each other's progress, weight and food, and can log for each other.</p>
       <div class="acct-btns flat"><button class="btn small" type="button" data-act="newgroup">Make a group</button><button class="btn small tinted" type="button" data-act="joingroup">Join with code</button></div></div>`;
     return gs.map(g => {
-      const ms = g.members.slice().sort((a, b) => (b.stats?.streak ?? -1) - (a.stats?.streak ?? -1));
-      const lead = ms[0];
-      return `<button class="card group-card" type="button" data-group="${g.id}"><div class="card-head"><div><div class="st-k">Group · ${g.members.length} ${g.members.length === 1 ? 'person' : 'people'}</div><div class="big-stat" style="font-size:22px">${esc(g.name)}</div></div><span style="color:var(--label3);font-size:22px">›</span></div>
-        <div class="faces">${ms.slice(0, 6).map((m, i) => face(m.stats, m.username, i)).join('')}${ms.length > 6 ? `<span class="face more">+${ms.length - 6}</span>` : ''}
-        <span class="caption" style="margin-left:auto">${lead?.stats?.streak ? `${esc(lead.you ? 'You lead' : (lead.stats.name || 'Friend') + ' leads')} · ${lead.stats.streak} days` : g.members.length === 1 ? 'Send the code to invite people' : 'Tap to see everyone'}</span></div></button>`;
+      const ms = sortMembers(g);
+      return `<div class="card group-card"><div class="card-head"><div><div class="st-k">Group · ${g.members.length} ${g.members.length === 1 ? 'person' : 'people'}</div><div class="big-stat" style="font-size:22px">${esc(g.name)}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">${I('scale')} Log weight</button><button class="link-btn" type="button" data-group="${g.id}" style="font-size:15px">Open ›</button></div></div>
+        <div class="gm-list">${ms.map((m, i) => memberMini(g, m, i)).join('')}</div>
+        ${g.members.length === 1 ? `<div class="caption" style="margin-top:8px">Send code <b class="num">${esc(g.code)}</b> to invite people.</div>` : ''}</div>`;
     }).join('') + `<div class="acct-btns flat" style="margin-top:8px"><button class="btn small tinted" type="button" data-act="newgroup">Make another</button><button class="btn small tinted" type="button" data-act="joingroup">Join with code</button></div>`;
   }
   async function needAccountFor(what) {
@@ -1343,10 +1365,11 @@
       const ms = g.members.slice().sort((a, b2) => (b2.stats?.streak ?? -1) - (a.stats?.streak ?? -1));
       b.innerHTML = `<div class="code-card"><div class="caption">Invite code</div><div class="code num">${esc(g.code)}</div><div class="acct-btns flat" style="padding:0;margin-top:10px"><button class="btn small tinted" type="button" id="gcopy">Copy code</button>${navigator.share ? '<button class="btn small tinted" type="button" id="gshare">Share</button>' : ''}</div></div>
         ${shareOn() ? '' : `<div class="banner" style="margin-top:14px">${I('eye')}<span><b>You’re not sharing yet.</b> Turn it on so people here can see your progress and log food for you.</span><button class="btn small" type="button" id="gshareon" style="margin-left:auto;flex:none">Turn on</button></div>`}
+        <button class="btn tinted" type="button" id="gweigh" style="margin-top:14px">${I('scale')} Log my weight</button>
         <div class="footnote" style="margin:18px 16px 6px">${g.members.length} ${g.members.length === 1 ? 'PERSON' : 'PEOPLE'} · LONGEST STREAK FIRST</div>
         <div class="group">${ms.map((m, i) => { const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
           const todayCal = lg ? (lg.days.find(x => x.date === lg.today)?.eaten || 0) : null, w = lg?.weights?.length ? lg.weights[lg.weights.length - 1] : null;
-          const info = m.sharing ? [st.goal, w ? `${w.lb} lb` : st.weightLb ? `${st.weightLb} lb` : null, st.lostLb > 0 ? `down ${st.lostLb} lb` : null].filter(Boolean).map(esc).join(' · ') : '';
+          const info = m.sharing ? [lostText(st.lostLb), w ? `${w.lb} lb now` : st.weightLb ? `${st.weightLb} lb now` : null, st.goal].filter(Boolean).map(esc).join(' · ') : '';
           return `<div class="row member ${m.sharing ? 'tap' : ''}" ${m.sharing ? `data-act="member" data-member="${esc(g.id + ':' + m.key)}" role="button" tabindex="0"` : ''}>${face(st, m.username, i, true)}
             <div class="grow"><div class="title">${esc(nm)}${m.owner ? ' <span class="caption">· started it</span>' : ''}</div>
               <div class="sub">${info || (m.sharing ? 'Sharing' : m.you ? 'Not sharing yet. Turn it on above.' : m.stats ? 'Hasn’t turned on sharing' : 'Hasn’t opened BiteWise yet')}</div>
@@ -1359,6 +1382,7 @@
       $('#gcopy', b).onclick = async () => { try { await navigator.clipboard.writeText(g.code); toast('Code copied'); } catch { toast('Code: ' + g.code, { icon: 'info' }); } };
       $('#gshare', b) && ($('#gshare', b).onclick = () => navigator.share({ title: 'Join my BiteWise group', text: `Join my BiteWise group “${g.name}” with code ${g.code}`, url: location.origin }).catch(() => {}));
       $('#gprefs', b).onclick = () => sharePrefsSheet();
+      $('#gweigh', b).onclick = () => weightSheet();
       const on = $('#gshareon', b); if (on) on.onclick = async () => { setShare(true); on.disabled = true; on.textContent = 'On'; toast('Sharing is on'); await new Promise(r => setTimeout(r, 500)); const g2 = ((await loadGroups()) || []).find(x => x.id === g.id); if (g2) draw(b, g2); };
       b.querySelectorAll('[data-logfor]').forEach(x => x.onclick = e => { e.stopPropagation(); logForSheet(g, x.dataset.logfor, x.dataset.lfname); });
       b.querySelectorAll('[data-member]').forEach(x => x.onclick = e => { if (e.target.closest('[data-logfor]')) return; memberSheet(x.dataset.member); });
@@ -1400,12 +1424,15 @@
       <button class="btn" type="button" id="sa_on">Turn on sharing</button><button class="btn gray" type="button" id="sa_no" style="margin-top:10px">Not now</button>`,
       mount: (b, close) => { $('#sa_on', b).onclick = () => { setShare(true); haptic(8); close(); toast('Sharing is on'); setTimeout(() => groupSheet(g.id), 300); }; $('#sa_no', b).onclick = () => { close(); setTimeout(() => groupSheet(g.id), 300); }; } });
   }
-  function setShare(on) { BW.saveProfile({ share: { all: !!on } }); lastShared = ''; scheduleShare(true); }
+  function setShare(on) { BW.saveProfile({ share: { ...(BW.profile().share || {}), all: !!on } }); lastShared = ''; scheduleShare(true); }
+  function setExact(on) { BW.saveProfile({ share: { ...(BW.profile().share || {}), exact: !!on } }); lastShared = ''; scheduleShare(true); }
   function sharePrefsSheet() {
     openSheet({ title: 'Sharing', left: 'Done', body: '', mount: b => {
-      const draw = () => { const on = shareOn(); b.innerHTML = `<div class="group"><div class="row"><span class="icon-sq" style="background:${on ? 'var(--green)' : 'var(--label3)'}">${I('eye')}</span><div class="grow"><div class="title">Share with my groups</div><div class="sub">${on ? 'On' : 'Off'}</div></div><button class="switch" type="button" role="switch" id="shsw" aria-checked="${on}" aria-label="Share with my groups"></button></div></div>
-        <div class="footnote" style="margin:14px 16px 0;line-height:1.45">One switch. Off, and people in your groups only see your name.<br><br>On, and everyone in your groups can see your goal, streak, steps, today’s progress, <b>your weight</b> and <b>the food you log</b>. They can also log food for you, and it shows who added it.<br><br>It’s saved with your profile, so it stays the same on every device you sign in on. Change it any time.</div>`;
-        $('#shsw', b).onclick = () => { setShare(!shareOn()); haptic(8); draw(); toast(shareOn() ? 'Sharing is on' : 'Sharing is off'); }; };
+      const draw = () => { const on = shareOn(), ex = exactWeight(); b.innerHTML = `<div class="group"><div class="row"><span class="icon-sq" style="background:${on ? 'var(--green)' : 'var(--label3)'}">${I('eye')}</span><div class="grow"><div class="title">Share with my groups</div><div class="sub">${on ? 'On' : 'Off'}</div></div><button class="switch" type="button" role="switch" id="shsw" aria-checked="${on}" aria-label="Share with my groups"></button></div>
+        ${on ? `<div class="row"><span class="icon-sq" style="background:${ex ? 'var(--teal)' : 'var(--label3)'}">${I('scale')}</span><div class="grow"><div class="title">Show my exact weight</div><div class="sub">${ex ? 'They see the number, like 172.4 lb' : 'They only see pounds lost, like “down 3 lb”'}</div></div><button class="switch" type="button" role="switch" id="exsw" aria-checked="${ex}" aria-label="Show my exact weight"></button></div>` : ''}</div>
+        <div class="footnote" style="margin:14px 16px 0;line-height:1.45">One switch. Off, and people in your groups only see your name.<br><br>On, and everyone in your groups can see your goal, streak, steps, today’s progress, how much weight you’ve lost, and <b>the food you log</b>. They can also log food for you, and it shows who added it. Your exact weight is up to you, with the second switch.<br><br>It’s saved with your profile, so it stays the same on every device you sign in on. Change it any time.</div>`;
+        $('#shsw', b).onclick = () => { setShare(!shareOn()); haptic(8); draw(); toast(shareOn() ? 'Sharing is on' : 'Sharing is off'); };
+        const ex2 = $('#exsw', b); if (ex2) ex2.onclick = () => { setExact(!exactWeight()); haptic(8); draw(); }; };
       draw();
     } });
   }
@@ -1419,7 +1446,7 @@
     const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.find(x => x.date <= BW.addDays(lg?.today || BW.dayKey(), -6));
     const body = `<div style="display:flex;align-items:center;gap:12px;margin:4px 4px 14px">${face(st, m.username, 0, true)}<div><div style="font-size:20px;font-weight:600">${esc(nm)}</div><div class="caption">${esc([st.goal, st.level ? `Level ${st.level}` : null].filter(Boolean).join(' · ') || 'Sharing')}</div></div>${st.streak ? `<span class="pill streak" style="margin-left:auto">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>
       <div class="results2">
-        <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${w ? w.lb : st.weightLb ?? '–'}<small> lb</small></div><div class="caption">${w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No weigh-ins yet'}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
+        <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${w ? w.lb + '<small> lb</small>' : st.weightLb ? st.weightLb + '<small> lb</small>' : st.lostLb > 0 ? '↓ ' + st.lostLb + '<small> lb lost</small>' : '–'}</div><div class="caption">${w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : st.lostLb > 0 ? 'Keeps the exact number private' : 'No weigh-ins yet'}${w && st.lostLb > 0 ? ` · ${st.lostLb} lb lost` : ''}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
         <div class="card"><div class="st-k">Today</div><div class="big-stat num">${st.todayPct != null ? st.todayPct + '%' : '–'}</div><div class="caption">${st.budget ? `of ${fmt(st.budget)} cal` : 'of goal'}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div></div>
       </div>
       ${wk.length ? `<div class="card" style="margin-top:12px"><div class="st-k">This week</div><div class="mini-bars">${wk.map(d => `<span title="${d.date}: ${fmt(d.eaten)}"><i style="height:${Math.max(3, d.eaten / mx * 100)}%;${st.budget && d.eaten > st.budget * 1.1 ? 'background:var(--orange)' : ''}"></i><em>${BW.parseDay(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</em></span>`).join('')}</div></div>` : ''}

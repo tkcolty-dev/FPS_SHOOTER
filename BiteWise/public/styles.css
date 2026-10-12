@@ -967,3 +967,19 @@ body.sheet-open .toast.show, body.pad-open .toast.show { transform: none !import
 .mini-bars i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: var(--accent); }
 .mini-bars em { font-style: normal; font-size: 11px; color: var(--label2); }
 .member.tap { cursor: pointer; }
+/* ---------- group members inline (Today, Progress) ---------- */
+.gm-list { display: flex; flex-direction: column; margin-top: 6px; }
+.gm { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: .5px solid var(--sep); text-align: left; width: 100%; }
+.gm:first-child { border-top: 0; }
+.gm .face { margin: 0; border: 0; width: 34px; height: 34px; font-size: 14px; }
+.gm-body { flex: 1; min-width: 0; }
+.gm-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 15px; }
+.gm-top b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm-top .num { font-weight: 600; white-space: nowrap; } .gm-top small { color: var(--label2); font-weight: 500; }
+.gm .bar { margin: 5px 0 3px; }
+.gm-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gm.tap:active { opacity: .7; }
+.gh-btns { display: flex; gap: 8px; align-items: center; flex: none; }
+.t-groups { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; }
+.t-groups:empty { display: none; }
+.t-group .card-head, .group-card .card-head { align-items: center; }

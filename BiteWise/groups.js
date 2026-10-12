@@ -46,11 +46,12 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
       const share = await store.kvGet('share:' + m);
       const u = await store.userById(m);
       const auto = !u || u.auto || /^bw-/.test(u.username || '');
-      const sharing = !!share?.full;
-      const st = share?.stats || null;
-      return { key: memberKey(g.id, m), you: m === uid, owner: m === g.owner, username: auto ? null : u.username, sharing,
-        stats: sharing ? st : (st ? { name: st.name, color: st.color } : null), at: share?.at || null, canLog: sharing,
-        log: sharing ? await logView(store, m, today).catch(() => null) : null };
+      const sharing = !!share?.full, exact = share?.exact !== false; // exact = share the actual weight number, not just pounds lost
+      let st = share?.stats || null, log = sharing ? await logView(store, m, today).catch(() => null) : null;
+      if (sharing && st && !exact) st = { ...st, weightLb: null, goalLb: null };
+      if (log && !exact) log = { ...log, weights: [] };
+      return { key: memberKey(g.id, m), you: m === uid, owner: m === g.owner, username: auto ? null : u.username, sharing, exact,
+        stats: sharing ? st : (st ? { name: st.name, color: st.color } : null), at: share?.at || null, canLog: sharing, log };
     }));
     return { id: g.id, name: g.name, code: g.code, created: g.created, members };
   }
@@ -120,7 +121,7 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
 
   // the app posts a fresh summary whenever the person's numbers change. `full` is their one sharing switch.
   app.post('/api/share', needUser, limit(60, 60e3), async (req, res) => {
-    await store.kvSet('share:' + req.uid, { stats: cleanStats(req.body.stats), full: !!req.body.full, at: Date.now() });
+    await store.kvSet('share:' + req.uid, { stats: cleanStats(req.body.stats), full: !!req.body.full, exact: req.body.exact !== false, at: Date.now() });
     res.json({ ok: true });
   });
 };
