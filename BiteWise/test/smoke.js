@@ -52,6 +52,11 @@ function fileTests() {
 
 function dataTests() {
   const { BW } = sandbox();
+  BW.put({ id: 'preset:1', kind: 'preset', name: 'Coffee', calories: 40, color: '#FF9500', order: 2 });
+  BW.put({ id: 'preset:2', kind: 'preset', name: 'Lunch', calories: 650, color: '#007AFF', order: 1 });
+  BW.put({ id: 'preset:3', kind: 'preset', name: '', calories: 0 });
+  ok(BW.presets().length === 2 && BW.presets()[0].name === 'Lunch', 'quick adds listed in order, blanks skipped', JSON.stringify(BW.presets()));
+  BW.remove('preset:1'); ok(BW.presets().length === 1, 'quick add deleted');
   BW.saveProfile({ setup: true, sex: 'female', age: 30, heightIn: 64, weightLb: 160, goalLb: 140, activity: 1.375, goalType: 'lose', pace: 2 });
   let g = BW.goals();
   ok(g.budget >= 1200, 'adult floor', g.budget);
@@ -121,9 +126,16 @@ async function serverTests() {
       ok((await call('groups/join', { code: 'ZZZZZZ' }, bob.j.token)).status === 404, 'bad code rejected');
       const jn = await call('groups/join', { code: g.j.group.code }, bob.j.token);
       ok(jn.status === 200, 'join group');
-      await call('share', { stats: { name: 'Bob', goal: 'Lose 1 lb a week', streak: 3 } }, bob.j.token);
-      const list = await call('groups', null, a.j.token, 'GET');
+      await call('sync', { since: 0, changes: [{ id: 'e:b1', kind: 'entry', date: '2026-10-12', meal: 'lunch', name: 'Taco', calories: 400, time: 1, updatedAt: 10 }, { id: 'weight:2026-10-12', kind: 'weight', date: '2026-10-12', lb: 171.5, updatedAt: 10 }] }, bob.j.token);
+      await call('share', { stats: { name: 'Bob', goal: 'Lose 1 lb a week', streak: 3, weightLb: 171.5 } }, bob.j.token);
+      let list = await call('groups?date=2026-10-12', null, a.j.token, 'GET');
+      let bobRow = list.j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
+      ok(bobRow && !bobRow.sharing && bobRow.stats.streak == null && !bobRow.log && !bobRow.canLog, 'sharing is off by default: only the name shows', JSON.stringify(bobRow));
+      await call('share', { stats: { name: 'Bob', goal: 'Lose 1 lb a week', streak: 3, weightLb: 171.5 }, full: true }, bob.j.token);
+      list = await call('groups?date=2026-10-12', null, a.j.token, 'GET');
       const fam = list.j.groups?.[0];
+      bobRow = fam?.members.find(m => m.stats?.name === 'Bob');
+      ok(bobRow?.sharing && bobRow.stats.weightLb === 171.5 && bobRow.log?.foods?.[0]?.name === 'Taco' && bobRow.log.weights?.[0]?.lb === 171.5 && bobRow.log.days.find(d => d.date === '2026-10-12')?.eaten === 400, 'sharing on: weight and food log visible', JSON.stringify(bobRow?.log));
       ok(fam && fam.members.length === 2, 'both members listed', JSON.stringify(list.j));
       ok(fam?.members.some(m => m.stats?.name === 'Bob' && m.stats.streak === 3), 'shared stats visible');
       const eve = await call('signup', { username: 'eve', password: 'secret3' });
@@ -134,8 +146,8 @@ async function serverTests() {
       ok(lf.status === 200, 'log food for a group member', JSON.stringify(lf.j));
       const bs = await call('sync', { since: 0 }, bob.j.token);
       ok(bs.j.records.some(r => r.name === 'Pizza' && r.source === 'group' && r.by), 'friend-logged food lands in their log');
-      await call('share', { stats: { name: 'Bob' }, allowLog: false }, bob.j.token);
-      ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, a.j.token)).status === 403, 'respects "don\'t let others log"');
+      await call('share', { stats: { name: 'Bob' }, full: false }, bob.j.token);
+      ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, a.j.token)).status === 403, 'sharing off blocks logging for them');
       ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, eve.j.token)).status === 404, 'outsiders cannot log for members');
       ok((await call(`groups/${fam.id}/leave`, {}, bob.j.token)).status === 200, 'leave group');
     }

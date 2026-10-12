@@ -1,7 +1,19 @@
 {
-  "version": "1.10.0",
-  "date": "2026-09-28",
+  "version": "1.11.0",
+  "date": "2026-10-12",
   "history": [
+    {
+      "version": "1.11.0",
+      "date": "2026-10-12",
+      "title": "Quick adds and simple sharing",
+      "changes": [
+        "New: Quick adds. Make your own one-tap buttons for Today with a name, the calories and a color. They replace the guessed “usual” chips, so nothing shows up that you didn’t set yourself.",
+        "Changed: Sharing is one switch (Me → Sharing). It’s off until you turn it on. On, everyone in your groups sees your goal, streak, steps, weight and the food you log, and can log food for you.",
+        "New: Tap someone in a group to see their weight, this week, and what they ate today, with a Log for them button right there.",
+        "Changed: The sharing switch is saved with your profile, so it’s the same on every device you sign in on.",
+        "Changed: Logging food for a friend only works once they’ve turned sharing on."
+      ]
+    },
     {
       "version": "1.10.0",
       "date": "2026-09-28",

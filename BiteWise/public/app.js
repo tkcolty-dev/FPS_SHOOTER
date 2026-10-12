@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.10.0';
+  const APP_VERSION = '1.11.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -326,6 +326,52 @@
     </div>`;
   }
 
+  // ---------- quick adds: your own one-tap buttons, each with a name, calories and a color ----------
+  const PRESET_COLORS = [['#FF9500', 'Orange'], ['#FF2D55', 'Pink'], ['#AF52DE', 'Purple'], ['#007AFF', 'Blue'], ['#30B0C7', 'Teal'], ['#34C759', 'Green'], ['#FFB800', 'Yellow'], ['#8E8E93', 'Gray']];
+  function presetChips() {
+    const ps = BW.presets();
+    if (!ps.length) return [100, 200, 300, 500].map(n => `<button class="chip fill" type="button" data-quick="${n}">+${n}</button>`).join('');
+    return ps.map(p => `<button class="chip preset" type="button" data-preset="${p.id}" style="--pc:${p.color || '#8E8E93'}"><i></i>${esc(p.name)} <span class="k num">${fmt(p.calories)}</span></button>`).join('');
+  }
+  function logPreset(id) {
+    const p = BW.get(id); if (!p) return;
+    const en = BW.addEntry({ date: S.date, meal: qMeal(), name: p.name, calories: p.calories, source: 'quick' });
+    haptic(12); toast(`${p.name} · ${fmt(p.calories)} cal`, { undo: () => BW.remove(en.id) });
+  }
+  function presetsSheet() {
+    openSheet({ title: 'Quick adds', left: 'Done', body: '', mount: b => {
+      const draw = () => { const ps = BW.presets(); b.innerHTML = `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">Your own buttons on Today. One tap logs it. You pick the words, the calories and the color.</p>
+        ${ps.length ? `<div class="group">${ps.map(p => `<button class="row" type="button" data-editpreset="${p.id}"><span class="dot-sq" style="background:${p.color || '#8E8E93'}"></span><div class="grow"><div class="title">${esc(p.name)}</div></div><span class="value num">${fmt(p.calories)} cal</span><span class="chev">›</span></button>`).join('')}</div>` : `<div class="empty card"><b>No quick adds yet</b><span>Add things you log a lot, like “Coffee 40” or “My lunch 650”.</span></div>`}
+        <button class="btn" type="button" id="padd" style="margin-top:14px">${I('plus')} Add a quick add</button>`;
+        $('#padd', b).onclick = () => editPresetSheet(null, draw);
+        b.querySelectorAll('[data-editpreset]').forEach(x => x.onclick = () => editPresetSheet(x.dataset.editpreset, draw)); };
+      draw();
+    } });
+  }
+  function editPresetSheet(id, after) {
+    const cur = id ? BW.get(id) : null;
+    const st = { name: cur?.name || '', calories: cur?.calories || '', color: cur?.color || PRESET_COLORS[BW.presets().length % PRESET_COLORS.length][0] };
+    openSheet({ title: cur ? 'Edit quick add' : 'New quick add', right: 'Save', body: `
+      <div class="group"><div class="row"><input class="field" id="pname" placeholder="Name, like “Coffee with milk”" maxlength="40" value="${esc(st.name)}" style="background:transparent;padding:0" aria-label="Name"></div>
+      <div class="row"><span class="grow">Calories</span><input class="inline-input num" id="pcal" inputmode="numeric" placeholder="0" value="${st.calories || ''}" aria-label="Calories"></div></div>
+      <div class="footnote" style="margin:16px 16px 6px">COLOR</div>
+      <div class="color-row" id="pcolors">${PRESET_COLORS.map(([c, n]) => `<button type="button" class="csw ${st.color === c ? 'on' : ''}" data-c="${c}" style="background:${c}" aria-label="${n}" aria-pressed="${st.color === c}">${st.color === c ? I('check') : ''}</button>`).join('')}</div>
+      <div class="chips center" style="margin-top:18px"><span class="chip preset" id="pprev" style="--pc:${st.color}"><i></i>${esc(st.name || 'Preview')} <span class="k num">${st.calories ? fmt(+st.calories) : '0'}</span></span></div>
+      ${cur ? `<button class="btn danger" type="button" id="pdel" style="margin-top:22px">Delete</button>` : ''}`,
+      mount: (b, close) => {
+        setTimeout(() => $('#pname', b)?.focus(), 350);
+        const prev = () => { const el = $('#pprev', b); el.style.setProperty('--pc', st.color); el.innerHTML = `<i></i>${esc(st.name || 'Preview')} <span class="k num">${st.calories ? fmt(+st.calories) : '0'}</span>`; };
+        $('#pname', b).oninput = e => { st.name = e.target.value; prev(); };
+        $('#pcal', b).oninput = e => { st.calories = e.target.value.replace(/\D/g, '').slice(0, 5); e.target.value = st.calories; prev(); };
+        $('#pcolors', b).onclick = e => { const x = e.target.closest('[data-c]'); if (!x) return; st.color = x.dataset.c; $$('.csw', b).forEach(y => { const on = y.dataset.c === st.color; y.classList.toggle('on', on); y.setAttribute('aria-pressed', on); y.innerHTML = on ? I('check') : ''; }); haptic(5); prev(); };
+        if (cur) $('#pdel', b).onclick = () => { BW.remove(cur.id); close(); toast('Deleted'); after && after(); };
+      },
+      onRight: close => { const name = st.name.trim(), cal = parseInt(st.calories, 10) || 0;
+        if (!name) return toast('Give it a name', { icon: 'info' }); if (!(cal > 0)) return toast('Enter the calories', { icon: 'info' });
+        BW.put({ ...(cur || { id: 'preset:' + BW.uid(), kind: 'preset', order: Date.now() }), name: name.slice(0, 40), calories: Math.min(5000, cal), color: st.color });
+        close(); toast(cur ? 'Saved' : `Added “${name}” to Today`); after && after(); } });
+  }
+
   // ---------- saved meals (synced records) + "same as yesterday" ----------
   const savedMeals = () => BW.all('meal').sort((a, b) => (b.used || 0) - (a.used || 0));
   function logItems(items, { meal, source = 'quick', label } = {}) {
@@ -358,7 +404,7 @@
     const want = Math.min(remaining, target);
     const foodAl = n => (window.BW_FOODS.find(f => f.aliases.some(a => a.toLowerCase() === n.toLowerCase().replace(/^\d+ /, ''))) || {}).allergens || [];
     const pool = [];
-    for (const u of BW.frequent()) pool.push({ name: u.name, calories: u.calories, usual: true });
+    for (const u of BW.presets()) pool.push({ name: u.name, calories: u.calories, usual: true });
     for (const n of STAPLES) { const r = BW_PARSE.parseLog(n).items[0]; if (r?.calories) pool.push({ name: r.name, calories: r.calories, allergens: r.allergens }); }
     const seen = new Set();
     return pool.filter(f => f.calories > 0 && f.calories <= remaining && !clash(f.allergens || foodAl(f.name)).length && !seen.has(f.name.toLowerCase()) && seen.add(f.name.toLowerCase()))
@@ -371,18 +417,17 @@
     if (!list.length) return '';
     S.fits = list;
     return `<div class="card t-fits"><div class="card-head"><div><div class="st-k">Fits your day</div><div class="big-stat" style="font-size:20px">Ideas for ${esc(label)}</div></div><span class="caption num">${fmt(d.remaining)} left</span></div>
-      <div class="fits">${list.map((f, i) => `<button class="fit" type="button" data-fit="${i}"><span class="grow"><b>${esc(f.name)}</b><span class="caption">${f.usual ? 'You have this a lot' : 'Everyday pick'}</span></span><span class="kcal num">${fmt(f.calories)}</span><span class="fit-add">${I('plus')}</span></button>`).join('')}</div></div>`;
+      <div class="fits">${list.map((f, i) => `<button class="fit" type="button" data-fit="${i}"><span class="grow"><b>${esc(f.name)}</b><span class="caption">${f.usual ? 'One of your quick adds' : 'Everyday pick'}</span></span><span class="kcal num">${fmt(f.calories)}</span><span class="fit-add">${I('plus')}</span></button>`).join('')}</div></div>`;
   }
   function viewToday() {
     const p = BW.profile(), k = S.date, d = BW.day(k), st = BW.streak(), today = BW.dayKey(), isToday = k === today;
     const over = d.remaining < 0, calPct = Math.min(100, d.eaten / d.budget * 100), stepPct = Math.min(100, d.steps / p.stepGoal * 100);
     const linked = !!LS.get('healthLinked', false), pulled = LS.get('healthPulled', 0), src = BW.stepSource(k);
-    const usuals = BW.frequent().slice(0, 8);
     const ydMeal = BW.day(BW.addDays(k, -1)).meals[qMeal()] || [];
-    const chips = savedMeals().slice(0, 3).map(m => `<button class="chip meal-chip" type="button" data-savedmeal="${m.id}">${I('fork')}${esc(m.name)} <span class="k num">${fmt(m.items.reduce((a, i) => a + i.calories, 0))}</span></button>`).join('')
+    const chips = presetChips()
+      + savedMeals().slice(0, 3).map(m => `<button class="chip meal-chip" type="button" data-savedmeal="${m.id}">${I('fork')}${esc(m.name)} <span class="k num">${fmt(m.items.reduce((a, i) => a + i.calories, 0))}</span></button>`).join('')
       + (ydMeal.length && !d.meals[qMeal()].length ? `<button class="chip meal-chip" type="button" data-yday="1">${I('sync')}Same as yesterday <span class="k num">${fmt(ydMeal.reduce((a, e) => a + e.calories, 0))}</span></button>` : '')
-      + (usuals.length ? usuals.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
-      : [100, 200, 300, 500].map(n => `<button class="chip fill" type="button" data-quick="${n}">+${n}</button>`).join(''));
+      + `<button class="chip fill edit-chip" type="button" data-act="presets" aria-label="Edit quick adds">${I('edit')}${BW.presets().length ? '' : 'Make quick adds'}</button>`;
     const stepLine = S.syncingSteps ? `<span class="sync-dot"></span>Syncing Fitbit…`
       : src === 'fitbit' ? `${I('watch')}Fitbit · ${ago(pulled)}` : linked ? `${I('watch')}Fitbit · tap to sync` : S.status.health ? 'Tap to connect Fitbit' : 'Tap to add steps';
     const es = d.entries.slice().sort((a, b) => b.time - a.time);
@@ -789,7 +834,8 @@
       ${row('scale', 'var(--teal)', 'Goal weight', g.goalType === 'maintain' ? '—' : p.goalLb + ' lb', 'data-act="goals"')}
       ${row('shoe', 'var(--pink)', 'Step goal', fmt(p.stepGoal), 'data-act="stepgoal"')}
       ${row('drop', 'var(--cyan)', 'Water goal', p.waterGoal + ' glasses', 'data-act="watergoal"')}
-      ${row('fork', 'var(--orange)', 'Saved meals', BW.all('meal').length || 'None', 'data-act="savedmeals"', 'Log foods you eat together in one tap')}
+      ${row('bolt', 'var(--orange)', 'Quick adds', BW.presets().length || 'None', 'data-act="presets"', 'Your own one-tap buttons on Today')}
+      ${row('fork', 'var(--teal)', 'Saved meals', BW.all('meal').length || 'None', 'data-act="savedmeals"', 'Log foods you eat together in one tap')}
       ${row('today', 'var(--indigo, #5856D6)', 'Daily pace', BW.paceSettings().on ? (BW.profile().pacePoints?.length ? 'Custom' : BW.PACE_PRESETS[BW.paceSettings().preset]?.name || 'Normal') : 'Off', 'data-act="pace"', 'How much you usually eat by certain times')}
       ${row('info', 'var(--red)', 'Allergies', (p.allergies || []).length ? (p.allergies.length > 2 ? p.allergies.length + ' set' : p.allergies.map(cap).join(', ')) : 'None', 'data-act="allergies"', 'Get a heads-up when a food has them')}
     </div></div>
@@ -804,7 +850,7 @@
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Rewards</div><div class="group">
       ${row('palette', theme.color, 'Look', theme.name + (p.appearance && p.appearance !== 'auto' ? ' · ' + cap(p.appearance) : ''), 'data-act="themes"', `Colors and light or dark mode · ${THEMES.filter(t => t.level <= lv.n).length} of ${THEMES.length} colors`)}
       ${row('person', 'var(--purple)', 'Groups', (S.groups || LS.get('groupsCache', [])).length || 'None', 'data-go="progress"', 'Friends and family see each other\u2019s progress')}
-      ${row('eye', 'var(--label3)', 'What groups see', '', 'data-act="shareprefs"')}
+      ${row('eye', shareOn() ? 'var(--green)' : 'var(--label3)', 'Sharing', shareOn() ? 'On' : 'Off', 'data-act="shareprefs"', shareOn() ? 'Your groups see your weight and food, and can log for you' : 'Your groups only see your name')}
       ${row('trophy', '#FFB800', 'Badges', `${BW.badges().filter(b => b.earned).length} / ${BW.badges().length}`, 'data-go="progress"')}
     </div></div>
 
@@ -841,9 +887,8 @@
         <button class="btn" type="button" data-act="additems" style="margin-top:14px" ${total <= 0 && unknown === st.items.length ? 'disabled' : ''}>Add ${st.items.length} item${st.items.length > 1 ? 's' : ''} · ${fmt(total)} cal</button>`;
     }
     function html() {
-      const recent = BW.recentAmounts(), usual = BW.frequent().slice(0, 6);
-      const quickChips = usual.length ? usual.map((u, i) => `<button class="chip fill" type="button" data-usual="${i}">${esc(u.name)} <span class="k num">${u.calories}</span></button>`).join('')
-        : recent.map(n => `<button class="chip fill" type="button" data-amt="${n}">${fmt(n)}</button>`).join('');
+      const recent = BW.recentAmounts();
+      const quickChips = BW.presets().length ? presetChips() : recent.map(n => `<button class="chip fill" type="button" data-amt="${n}">${fmt(n)}</button>`).join('');
       return `
       <div class="log-sticky"><div class="seg log-modes">${[['quick', 'hash', 'Number'], ['search', 'search', 'Search'], ['voice', 'mic', 'Voice'], ['type', 'keyboard', 'Type']].map(([m, ic, l]) => `<button type="button" data-mode="${m}" aria-pressed="${st.mode === m}">${I(ic)}${l}</button>`).join('')}</div>
       ${st.mode === 'search' ? `<form class="search-bar" id="fsform"><span class="sb-ic">${I('search')}</span><input id="fsq" type="search" enterkeyhint="search" placeholder="Search ${BW_PARSE.usdaReady ? fmt(BW_PARSE.usdaCount + window.BW_FOODS.length) + '+' : 'thousands of'} foods" value="${esc(st.sq || '')}" autocomplete="off" aria-label="Search foods"></form>` : ''}</div>
@@ -888,8 +933,8 @@
     function searchResultsHTML() {
       const q = (st.sq || '').trim();
       if (q.length < 2) {
-        const usual = BW.frequent().slice(0, 6);
-        return usual.length ? `<div class="footnote" style="margin:14px 4px 6px">YOUR USUALS</div><div class="group">${usual.map((u, i) => `<button class="row" type="button" data-usual="${i}"><div class="grow"><div class="title">${esc(u.name)}</div></div><span class="kcal num">${u.calories}</span></button>`).join('')}</div>` : `<div class="empty" style="padding:30px 10px"><b>Search any food</b><span>Try “banana”, “pad thai” or “doritos”.</span></div>`;
+        const usual = BW.presets().slice(0, 8);
+        return usual.length ? `<div class="footnote" style="margin:14px 4px 6px">YOUR QUICK ADDS</div><div class="group">${usual.map(u => `<button class="row" type="button" data-preset="${u.id}"><span class="dot-sq" style="background:${u.color || '#8E8E93'};width:22px;height:22px;border-radius:7px"></span><div class="grow"><div class="title">${esc(u.name)}</div></div><span class="kcal num">${u.calories}</span></button>`).join('')}</div>` : `<div class="empty" style="padding:30px 10px"><b>Search any food</b><span>Try “banana”, “pad thai” or “doritos”.</span></div>`;
       }
       st.local = BW_PARSE.searchAll(q, 25);
       const brands = st.brands && st.brandsFor === q ? st.brands : null;
@@ -927,7 +972,7 @@
           return;
         }
         if (b.dataset.amt) { st.amount = b.dataset.amt; entry.redraw(); return; }
-        if (b.dataset.usual) { const u = BW.frequent()[+b.dataset.usual]; if (u) commit([{ name: u.name, calories: u.calories }], 'quick'); return; }
+        if (b.dataset.preset) { const u = BW.get(b.dataset.preset); if (u) commit([{ name: u.name, calories: u.calories }], 'quick'); return; }
         if (b.dataset.pick) { st.open = st.open === b.dataset.pick ? null : b.dataset.pick; st.pi = 0; st.qty = 1; $('#fsres').innerHTML = searchResultsHTML(); haptic(5); return; }
         if (b.dataset.por) { st.pi = +b.dataset.por; $('#fsres').innerHTML = searchResultsHTML(); return; }
         if (b.dataset.q) { st.qty = +b.dataset.q; $('#fsres').innerHTML = searchResultsHTML(); return; }
@@ -1213,20 +1258,19 @@
   }
 
   // ---------- groups ----------
-  const SHARE_DEFAULTS = { goal: true, streak: true, today: true, steps: true, level: true, lost: false, letLog: true };
-  const sharePrefs = () => ({ ...SHARE_DEFAULTS, ...(BW.profile().share || {}) });
+  // one switch, off until you turn it on. Saved in your profile, so it follows you to every device.
+  const shareOn = () => BW.profile().share?.all === true;
   const MEMBER_COLORS = ['#FF9500', '#34C759', '#007AFF', '#AF52DE', '#FF2D55', '#30B0C7', '#FFB800', '#5856D6'];
   function myShareStats() {
-    const p = BW.profile(), g = BW.goals(), pr = sharePrefs(), k = BW.dayKey(), d = BW.day(k), tr = BW.trend(), lv = BW.level();
+    const p = BW.profile(), g = BW.goals(), k = BW.dayKey(), d = BW.day(k), tr = BW.trend(), lv = BW.level();
+    const base = { name: p.name || 'Friend', color: THEMES.find(t => t.id === p.theme)?.color || null };
+    if (!shareOn()) return base;
     const week = Array.from({ length: 7 }, (_, i) => BW.day(BW.addDays(k, -i - 1))).filter(x => x.entries.length && x.eaten <= x.budget * 1.1).length;
-    return {
-      name: p.name || 'Friend',
-      goal: pr.goal ? (g.custom ? `${fmt(g.budget)} cal a day` : g.goalType === 'lose' ? `Lose ${g.pace} lb a week` : g.goalType === 'gain' ? `Gain ${g.gain} lb a week` : 'Stay steady') : null,
-      budget: pr.goal ? g.budget : null,
-      streak: pr.streak ? BW.streak().days : null, onTrackDays: pr.streak ? week : null,
-      todayPct: pr.today ? Math.round(d.eaten / d.budget * 100) : null, steps: pr.steps ? d.steps : null,
-      level: pr.level ? lv.n : null, levelName: pr.level ? lv.name : null, lostLb: pr.lost && tr ? tr.lost : null,
-      color: THEMES.find(t => t.id === p.theme)?.color || null,
+    return { ...base,
+      goal: g.custom ? `${fmt(g.budget)} cal a day` : g.goalType === 'lose' ? `Lose ${g.pace} lb a week` : g.goalType === 'gain' ? `Gain ${g.gain} lb a week` : 'Stay steady',
+      budget: g.budget, streak: BW.streak().days, onTrackDays: week,
+      todayPct: Math.round(d.eaten / d.budget * 100), steps: d.steps,
+      level: lv.n, levelName: lv.name, lostLb: tr ? tr.lost : null, weightLb: tr ? tr.now : p.weightLb, goalLb: g.goalType === 'maintain' ? null : p.goalLb,
     };
   }
   let shareT = null, lastShared = '';
@@ -1235,14 +1279,14 @@
     clearTimeout(shareT);
     shareT = setTimeout(async () => {
       if (!navigator.onLine) return;
-      const stats = myShareStats(), key = JSON.stringify(stats) + sharePrefs().letLog;
+      const stats = myShareStats(), key = JSON.stringify(stats) + shareOn();
       if (key === lastShared) return;
-      try { await BW.api('share', { stats, allowLog: sharePrefs().letLog }); lastShared = key; } catch {}
+      try { await BW.api('share', { stats, full: shareOn() }); lastShared = key; } catch {}
     }, now ? 50 : 4000);
   }
   async function loadGroups() {
     if (!BW.acct() || !navigator.onLine) return (S.groups ||= LS.get('groupsCache', []));
-    try { const j = await BW.api('groups', null, 'GET'); S.groups = j.groups; LS.set('groupsCache', j.groups); LS.set('inGroups', j.groups.length > 0); }
+    try { const j = await BW.api('groups?date=' + BW.dayKey(), null, 'GET'); S.groups = j.groups; LS.set('groupsCache', j.groups); LS.set('inGroups', j.groups.length > 0); }
     catch { S.groups ||= LS.get('groupsCache', []); }
     return S.groups;
   }
@@ -1250,7 +1294,7 @@
   function groupsCard() {
     const gs = S.groups || LS.get('groupsCache', []);
     if (!gs.length) return `<div class="card group-cta"><div class="card-head"><div><div class="st-k">Groups</div><div class="big-stat" style="font-size:22px">Do it together</div></div><span class="icon-sq" style="background:var(--purple)">${I('person')}</span></div>
-      <p class="insight">Make a group with friends or family. Everyone sees each other's goals, streaks and progress, never your food list.</p>
+      <p class="insight">Make a group with friends or family. Turn on sharing and everyone sees each other's progress, weight and food, and can log for each other.</p>
       <div class="acct-btns flat"><button class="btn small" type="button" data-act="newgroup">Make a group</button><button class="btn small tinted" type="button" data-act="joingroup">Join with code</button></div></div>`;
     return gs.map(g => {
       const ms = g.members.slice().sort((a, b) => (b.stats?.streak ?? -1) - (a.stats?.streak ?? -1));
@@ -1295,22 +1339,26 @@
     const draw = (b, g) => {
       const ms = g.members.slice().sort((a, b2) => (b2.stats?.streak ?? -1) - (a.stats?.streak ?? -1));
       b.innerHTML = `<div class="code-card"><div class="caption">Invite code</div><div class="code num">${esc(g.code)}</div><div class="acct-btns flat" style="padding:0;margin-top:10px"><button class="btn small tinted" type="button" id="gcopy">Copy code</button>${navigator.share ? '<button class="btn small tinted" type="button" id="gshare">Share</button>' : ''}</div></div>
+        ${shareOn() ? '' : `<div class="banner" style="margin-top:14px">${I('eye')}<span><b>You’re not sharing yet.</b> Turn it on so people here can see your progress and log food for you.</span><button class="btn small" type="button" id="gshareon" style="margin-left:auto;flex:none">Turn on</button></div>`}
         <div class="footnote" style="margin:18px 16px 6px">${g.members.length} ${g.members.length === 1 ? 'PERSON' : 'PEOPLE'} · LONGEST STREAK FIRST</div>
-        <div class="group">${ms.map((m, i) => { const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend';
-          const info = [st.goal, st.level ? `Level ${st.level}` : null, st.lostLb > 0 ? `down ${st.lostLb} lb` : null].filter(Boolean).map(esc).join(' · ');
-          return `<div class="row member">${face(st, m.username, i, true)}
+        <div class="group">${ms.map((m, i) => { const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
+          const todayCal = lg ? (lg.days.find(x => x.date === lg.today)?.eaten || 0) : null, w = lg?.weights?.length ? lg.weights[lg.weights.length - 1] : null;
+          const info = m.sharing ? [st.goal, w ? `${w.lb} lb` : st.weightLb ? `${st.weightLb} lb` : null, st.lostLb > 0 ? `down ${st.lostLb} lb` : null].filter(Boolean).map(esc).join(' · ') : '';
+          return `<div class="row member ${m.sharing ? 'tap' : ''}" ${m.sharing ? `data-act="member" data-member="${esc(g.id + ':' + m.key)}" role="button" tabindex="0"` : ''}>${face(st, m.username, i, true)}
             <div class="grow"><div class="title">${esc(nm)}${m.owner ? ' <span class="caption">· started it</span>' : ''}</div>
-              <div class="sub">${info || (m.stats ? 'Keeps their numbers private' : 'Hasn’t opened BiteWise yet')}</div>
-              ${st.todayPct != null ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, st.todayPct)}%;${st.todayPct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="caption num" style="margin-top:3px">Today ${st.todayPct}% of goal${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div>` : ''}
+              <div class="sub">${info || (m.sharing ? 'Sharing' : m.you ? 'Not sharing yet. Turn it on above.' : m.stats ? 'Hasn’t turned on sharing' : 'Hasn’t opened BiteWise yet')}</div>
+              ${st.todayPct != null ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, st.todayPct)}%;${st.todayPct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="caption num" style="margin-top:3px">Today ${todayCal != null ? fmt(todayCal) + ' cal · ' : ''}${st.todayPct}% of goal${lg ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div>` : ''}
               ${!m.you && m.canLog ? `<button class="btn small tinted logfor" type="button" data-logfor="${esc(m.key)}" data-lfname="${esc(nm)}">${I('plus')} Log for ${esc(nm)}</button>` : ''}
-            </div>${st.streak != null ? `<span class="pill streak">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>`; }).join('')}</div>
-        <button class="btn gray" type="button" id="gprefs" style="margin-top:16px">${I('eye')} What I share</button>
+            </div>${st.streak != null ? `<span class="pill streak">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}${m.sharing ? '<span class="chev">›</span>' : ''}</div>`; }).join('')}</div>
+        <button class="btn gray" type="button" id="gprefs" style="margin-top:16px">${I('eye')} Sharing: ${shareOn() ? 'on' : 'off'}</button>
         <button class="btn danger" type="button" id="gleave" style="margin-top:10px">Leave group</button>
-        <div class="footnote" style="text-align:center">Groups only see what you choose to share, never your food list or exact weight.</div>`;
+        <div class="footnote" style="text-align:center">${shareOn() ? 'People here see your goal, streak, steps, weight and food, and can log food for you. Tap someone to see their day.' : 'With sharing off, people here only see your name.'}</div>`;
       $('#gcopy', b).onclick = async () => { try { await navigator.clipboard.writeText(g.code); toast('Code copied'); } catch { toast('Code: ' + g.code, { icon: 'info' }); } };
       $('#gshare', b) && ($('#gshare', b).onclick = () => navigator.share({ title: 'Join my BiteWise group', text: `Join my BiteWise group “${g.name}” with code ${g.code}`, url: location.origin }).catch(() => {}));
       $('#gprefs', b).onclick = () => sharePrefsSheet();
-      b.querySelectorAll('[data-logfor]').forEach(x => x.onclick = () => logForSheet(g, x.dataset.logfor, x.dataset.lfname));
+      const on = $('#gshareon', b); if (on) on.onclick = async () => { setShare(true); on.disabled = true; on.textContent = 'On'; toast('Sharing is on'); await new Promise(r => setTimeout(r, 500)); const g2 = ((await loadGroups()) || []).find(x => x.id === g.id); if (g2) draw(b, g2); };
+      b.querySelectorAll('[data-logfor]').forEach(x => x.onclick = e => { e.stopPropagation(); logForSheet(g, x.dataset.logfor, x.dataset.lfname); });
+      b.querySelectorAll('[data-member]').forEach(x => x.onclick = e => { if (e.target.closest('[data-logfor]')) return; memberSheet(x.dataset.member); });
       $('#gleave', b).onclick = () => confirmSheet({ title: `Leave ${g.name}?`, text: 'You can join again later with the code.', confirm: 'Leave group', danger: true, onConfirm: async () => { try { await BW.api(`groups/${g.id}/leave`); } catch {} await loadGroups(); LS.set('inGroups', (S.groups || []).length > 0); sheets.slice().forEach(x => x.close()); render(); toast('You left the group'); } });
     };
     const cached = (S.groups || LS.get('groupsCache', [])).find(x => x.id === id);
@@ -1342,12 +1390,34 @@
         };
       } });
   }
+  function setShare(on) { BW.saveProfile({ share: { all: !!on } }); lastShared = ''; scheduleShare(true); }
   function sharePrefsSheet() {
-    const pr = sharePrefs();
-    const rows = [['goal', 'My goal', 'Like “Lose 1 lb a week”'], ['streak', 'Streak', 'Days in a row you logged'], ['today', 'Today’s progress', 'How much of your calorie goal you’ve used'], ['steps', 'Steps', 'Today’s step count'], ['level', 'Level', 'Your BiteWise level'], ['lost', 'Weight lost', 'Only “down 3 lb”, never your actual weight'], ['letLog', 'Let them log food for me', 'Group members can add food to your day. It shows who added it.']];
-    openSheet({ title: 'What I share', left: 'Cancel', right: 'Save', body: `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">Everyone in your groups sees your name, plus whatever you turn on here.</p><div class="group">${rows.map(([k, t, d]) => `<div class="row"><div class="grow"><div class="title">${t}</div><div class="sub">${d}</div></div><button class="switch" type="button" role="switch" data-pk="${k}" aria-checked="${pr[k]}" aria-label="${t}"></button></div>`).join('')}</div>`,
-      mount: b => { b.onclick = e => { const x = e.target.closest('[data-pk]'); if (!x) return; pr[x.dataset.pk] = !pr[x.dataset.pk]; x.setAttribute('aria-checked', pr[x.dataset.pk]); haptic(5); }; },
-      onRight: close => { BW.saveProfile({ share: pr }); lastShared = ''; scheduleShare(true); close(); toast('Sharing updated'); } });
+    openSheet({ title: 'Sharing', left: 'Done', body: '', mount: b => {
+      const draw = () => { const on = shareOn(); b.innerHTML = `<div class="group"><div class="row"><span class="icon-sq" style="background:${on ? 'var(--green)' : 'var(--label3)'}">${I('eye')}</span><div class="grow"><div class="title">Share with my groups</div><div class="sub">${on ? 'On' : 'Off'}</div></div><button class="switch" type="button" role="switch" id="shsw" aria-checked="${on}" aria-label="Share with my groups"></button></div></div>
+        <div class="footnote" style="margin:14px 16px 0;line-height:1.45">One switch. Off, and people in your groups only see your name.<br><br>On, and everyone in your groups can see your goal, streak, steps, today’s progress, <b>your weight</b> and <b>the food you log</b>. They can also log food for you, and it shows who added it.<br><br>It’s saved with your profile, so it stays the same on every device you sign in on. Change it any time.</div>`;
+        $('#shsw', b).onclick = () => { setShare(!shareOn()); haptic(8); draw(); toast(shareOn() ? 'Sharing is on' : 'Sharing is off'); }; };
+      draw();
+    } });
+  }
+  // one group member's day: weight, this week, today's foods, and a big "log for them" button
+  function memberSheet(ref) {
+    const [gid, key] = String(ref).split(':');
+    const g = (S.groups || LS.get('groupsCache', [])).find(x => x.id === gid), m = g?.members.find(x => x.key === key);
+    if (!g || !m) return toast('Open the group again to refresh', { icon: 'info' });
+    const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
+    const wk = lg?.days || [], mx = Math.max(st.budget || 0, ...wk.map(d => d.eaten), 1);
+    const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.find(x => x.date <= BW.addDays(lg?.today || BW.dayKey(), -6));
+    const body = `<div style="display:flex;align-items:center;gap:12px;margin:4px 4px 14px">${face(st, m.username, 0, true)}<div><div style="font-size:20px;font-weight:600">${esc(nm)}</div><div class="caption">${esc([st.goal, st.level ? `Level ${st.level}` : null].filter(Boolean).join(' · ') || 'Sharing')}</div></div>${st.streak ? `<span class="pill streak" style="margin-left:auto">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>
+      <div class="results2">
+        <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${w ? w.lb : st.weightLb ?? '–'}<small> lb</small></div><div class="caption">${w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No weigh-ins yet'}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
+        <div class="card"><div class="st-k">Today</div><div class="big-stat num">${st.todayPct != null ? st.todayPct + '%' : '–'}</div><div class="caption">${st.budget ? `of ${fmt(st.budget)} cal` : 'of goal'}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div></div>
+      </div>
+      ${wk.length ? `<div class="card" style="margin-top:12px"><div class="st-k">This week</div><div class="mini-bars">${wk.map(d => `<span title="${d.date}: ${fmt(d.eaten)}"><i style="height:${Math.max(3, d.eaten / mx * 100)}%;${st.budget && d.eaten > st.budget * 1.1 ? 'background:var(--orange)' : ''}"></i><em>${BW.parseDay(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</em></span>`).join('')}</div></div>` : ''}
+      <div class="section-head" style="margin-top:16px"><h2>Today’s food</h2>${lg ? `<span class="caption num">${fmt(wk.find(x => x.date === lg.today)?.eaten || 0)} cal</span>` : ''}</div>
+      ${lg?.foods?.length ? `<div class="group">${lg.foods.map(e => `<div class="row"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal || 'snack')}${e.time ? ' · ' + new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}${e.by ? ` · <span class="by">added by ${esc(e.by)}</span>` : ''}</div></div><span class="kcal num">${fmt(e.calories)}</span></div>`).join('')}</div>`
+      : `<div class="card empty"><b>Nothing logged yet today</b><span>${m.you ? 'Add something on Today.' : `You can log something for ${esc(nm)} below.`}</span></div>`}
+      ${!m.you && m.canLog ? `<button class="btn" type="button" id="mlog" style="margin-top:16px">${I('plus')} Log food for ${esc(nm)}</button>` : ''}`;
+    openSheet({ title: nm, left: 'Done', tall: true, body, mount: b => { const x = $('#mlog', b); if (x) x.onclick = () => logForSheet(g, m.key, nm); } });
   }
 
   const minLabel = m => { m = ((m % 1440) + 1440) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}${mm ? ':' + String(mm).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
@@ -1576,7 +1646,7 @@
       if (d.fit) { const f = (S.fits || [])[+d.fit]; if (!f) return; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: f.name, calories: f.calories, source: 'quick', allergens: f.allergens }); haptic(12); toast(`${f.name} · ${f.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
       if (d.savedmeal) { const m = BW.get(d.savedmeal); if (!m) return; logItems(m.items, { label: m.name }); BW.put({ ...m, used: (m.used || 0) + 1 }); return; }
       if (d.yday) { const items = (BW.day(BW.addDays(S.date, -1)).meals[qMeal()] || []).map(e => ({ name: e.name, calories: e.calories, allergens: e.allergens })); if (items.length) logItems(items, { label: 'Same as yesterday' }); return; }
-      if (d.usual) { const u = BW.frequent()[+d.usual]; const en = BW.addEntry({ date: S.date, meal: qMeal(), name: u.name, calories: u.calories, source: 'quick' }); haptic(12); toast(`${u.name} · ${u.calories} cal`, { undo: () => BW.remove(en.id) }); return; }
+      if (d.preset) { logPreset(d.preset); return; }
       if (d.entry) { if (t.closest('.swipe')?.classList.contains('open')) { closeSwipes(); return; } editEntry(d.entry); return; }
       if (d.del) { delEntry(d.del); return; }
       if (d.addmeal) return openLog({ meal: d.addmeal });
@@ -1608,6 +1678,8 @@
         case 'pace': return paceSheet();
         case 'savemeal': return saveMealSheet();
         case 'savedmeals': return savedMealsSheet();
+        case 'presets': return presetsSheet();
+        case 'member': return memberSheet(d.member);
         case 'versions': checkVersion(); return whatsNew(true);
         case 'newgroup': return newGroupSheet();
         case 'joingroup': return joinGroupSheet();

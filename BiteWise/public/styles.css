@@ -946,3 +946,24 @@ body.sheet-open .toast.show, body.pad-open .toast.show { transform: none !import
 .demo-banner b { font-size: 15px; }
 .demo-banner span:not(.icon-sq) { font-size: 13px; color: var(--label2); }
 .demo-banner .btn.small { flex: none; }
+
+/* ---------- quick adds (your own colored one-tap buttons) ---------- */
+.chip.preset { background: color-mix(in srgb, var(--pc) 16%, var(--card)); box-shadow: none; color: var(--label); }
+.chip.preset i { width: 10px; height: 10px; border-radius: 50%; background: var(--pc); flex: none; }
+.chip.preset .k { color: color-mix(in srgb, var(--pc) 70%, var(--label)); }
+.chip.edit-chip { padding: 0 12px; color: var(--label2); }
+.chip.edit-chip svg { width: 18px; height: 18px; }
+.dot-sq { width: 30px; height: 30px; border-radius: 9px; flex: none; }
+.color-row { display: flex; gap: 10px; flex-wrap: wrap; padding: 0 16px; }
+.csw { width: 40px; height: 40px; border-radius: 50%; color: #fff; display: grid; place-items: center; border: 3px solid transparent; box-shadow: 0 0 0 2px var(--bg); transition: transform .12s; }
+.csw.on { border-color: var(--label); transform: scale(1.1); }
+.csw svg { width: 20px; height: 20px; }
+/* ---------- group member view ---------- */
+.results2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.results2 .card { padding: 14px; }
+.results2 .big-stat { font-size: 26px; }
+.mini-bars { display: flex; gap: 8px; align-items: flex-end; height: 70px; margin-top: 10px; }
+.mini-bars span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px; }
+.mini-bars i { display: block; width: 100%; border-radius: 4px 4px 2px 2px; background: var(--accent); }
+.mini-bars em { font-style: normal; font-size: 11px; color: var(--label2); }
+.member.tap { cursor: pointer; }

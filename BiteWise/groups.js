@@ -1,5 +1,7 @@
-// Groups: make a group, share a 6-letter code, and members see each other's goals and progress.
-// Each person decides what they share (Me → Groups → What I share); the app sends a small summary, never the food log.
+// Groups: make a group, share a 6-letter code, and members see each other's progress.
+// Sharing is one switch per person (off until they turn it on). Once on, everyone in their groups sees their
+// goal, streak, steps, weight and food log, and can log food for them. The app posts a summary; the server adds
+// the food log and weigh-ins straight from their synced records, so it is current even if their phone is offline.
 const crypto = require('crypto');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I so codes are easy to read out loud
 const newCode = () => Array.from(crypto.randomBytes(6), b => CODE_CHARS[b % CODE_CHARS.length]).join('');
@@ -12,8 +14,24 @@ function cleanStats(s = {}) {
   return {
     name: str(s.name, 30), goal: str(s.goal, 60), budget: num(s.budget, 0, 9999), streak: num(s.streak, 0, 9999),
     level: num(s.level, 1, 99), levelName: str(s.levelName, 30), todayPct: num(s.todayPct, 0, 500), onTrackDays: num(s.onTrackDays, 0, 7),
-    steps: num(s.steps, 0, 200000), lostLb: num(s.lostLb, -500, 500), goalLb: num(s.goalLb, 0, 1000), color: /^#[0-9a-f]{6}$/i.test(s.color || '') ? s.color : null,
+    steps: num(s.steps, 0, 200000), lostLb: num(s.lostLb, -500, 500), goalLb: num(s.goalLb, 0, 1000), weightLb: num(s.weightLb, 0, 1500), color: /^#[0-9a-f]{6}$/i.test(s.color || '') ? s.color : null,
   };
+}
+const dayKey = (d = new Date()) => d.toISOString().slice(0, 10);
+const addDays = (k, n) => dayKey(new Date(Date.parse(k) + n * 864e5));
+
+// what a sharing member's groups see of their actual log: this week's totals, today's foods, recent weigh-ins
+async function logView(store, uid, today) {
+  const from = addDays(today, -6);
+  const recs = await store.recentRecords(uid, ['entry', 'weight'], addDays(today, -60));
+  const days = {}; for (let i = 6; i >= 0; i--) days[addDays(today, -i)] = 0;
+  const foods = [];
+  for (const r of recs) {
+    if (r.kind === 'entry' && r.date >= from && r.date <= today) { days[r.date] = (days[r.date] || 0) + (+r.calories || 0); if (r.date === today) foods.push({ name: String(r.name || 'Food').slice(0, 80), calories: Math.round(+r.calories || 0), meal: r.meal, time: r.time, by: r.by ? String(r.by).slice(0, 30) : undefined }); }
+  }
+  foods.sort((a, b) => (b.time || 0) - (a.time || 0));
+  const weights = recs.filter(r => r.kind === 'weight' && r.lb > 0).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10 })).slice(-12);
+  return { today, days: Object.entries(days).map(([date, eaten]) => ({ date, eaten })), foods: foods.slice(0, 60), weights };
 }
 
 // members are addressed by a per-group key, never by their account id
@@ -23,15 +41,20 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
   const myGroups = async uid => (await store.kvGet('ugroups:' + uid)) || [];
   const setMyGroups = (uid, ids) => store.kvSet('ugroups:' + uid, ids);
 
-  async function view(uid, g) {
+  async function view(uid, g, today = dayKey()) {
     const members = await Promise.all(g.members.map(async m => {
       const share = await store.kvGet('share:' + m);
       const u = await store.userById(m);
       const auto = !u || u.auto || /^bw-/.test(u.username || '');
-      return { key: memberKey(g.id, m), you: m === uid, owner: m === g.owner, username: auto ? null : u.username, stats: share?.stats || null, at: share?.at || null, canLog: share?.allowLog !== false };
+      const sharing = !!share?.full;
+      const st = share?.stats || null;
+      return { key: memberKey(g.id, m), you: m === uid, owner: m === g.owner, username: auto ? null : u.username, sharing,
+        stats: sharing ? st : (st ? { name: st.name, color: st.color } : null), at: share?.at || null, canLog: sharing,
+        log: sharing ? await logView(store, m, today).catch(() => null) : null };
     }));
     return { id: g.id, name: g.name, code: g.code, created: g.created, members };
   }
+  const todayOf = req => /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : dayKey();
 
   app.post('/api/groups', needUser, limit(10, 60 * 60e3), async (req, res) => {
     const name = String(req.body.name || '').trim().slice(0, 40);
@@ -60,7 +83,7 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
 
   app.get('/api/groups', needUser, async (req, res) => {
     const out = [];
-    for (const id of await myGroups(req.uid)) { const g = await store.kvGet('group:' + id); if (g && g.members.includes(req.uid)) out.push(await view(req.uid, g)); }
+    for (const id of await myGroups(req.uid)) { const g = await store.kvGet('group:' + id); if (g && g.members.includes(req.uid)) out.push(await view(req.uid, g, todayOf(req))); }
     res.json({ groups: out });
   });
 
@@ -75,7 +98,7 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     res.json({ ok: true });
   });
 
-  // a member logs food for someone else in the group (only if that person allows it). It lands in their log
+  // a member logs food for someone else in the group (only if that person has sharing on). It lands in their log
   // like any synced record, so it shows up on their phone the next time it syncs, even if they were offline.
   app.post('/api/groups/:id/log', needUser, limit(60, 60 * 60e3), async (req, res) => {
     const g = await store.kvGet('group:' + req.params.id);
@@ -83,7 +106,7 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     const to = g.members.find(m => memberKey(g.id, m) === String(req.body.to || ''));
     if (!to || to === req.uid) return res.status(404).json({ error: 'That person isn\u2019t in the group anymore.' });
     const share = await store.kvGet('share:' + to);
-    if (share && share.allowLog === false) return res.status(403).json({ error: 'They\u2019ve turned off logging from their groups.' });
+    if (!share?.full) return res.status(403).json({ error: 'They haven\u2019t turned on sharing, so nobody can log for them yet.' });
     const name = String(req.body.name || 'Food').trim().slice(0, 80), calories = Math.round(+req.body.calories);
     if (!(calories > 0 && calories <= 5000)) return res.status(400).json({ error: 'Enter calories between 1 and 5,000.' });
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : new Date().toISOString().slice(0, 10);
@@ -95,9 +118,9 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     res.json({ ok: true });
   });
 
-  // the app posts a fresh summary of what the person chose to share whenever their numbers change
+  // the app posts a fresh summary whenever the person's numbers change. `full` is their one sharing switch.
   app.post('/api/share', needUser, limit(60, 60e3), async (req, res) => {
-    await store.kvSet('share:' + req.uid, { stats: cleanStats(req.body.stats), allowLog: req.body.allowLog !== false, at: Date.now() });
+    await store.kvSet('share:' + req.uid, { stats: cleanStats(req.body.stats), full: !!req.body.full, at: Date.now() });
     res.json({ ok: true });
   });
 };

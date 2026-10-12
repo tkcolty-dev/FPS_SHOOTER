@@ -257,6 +257,8 @@
     all('entry').slice(-300).forEach(e => { if (!e.name || e.name === 'Quick add') return; const k = e.name.toLowerCase() + '|' + e.calories; const c = m.get(k) || { name: e.name, calories: e.calories, n: 0, meal: e.meal }; c.n++; m.set(k, c); });
     return [...m.values()].filter(x => x.n >= 1).sort((a, b) => b.n - a.n).slice(0, 8);
   };
+  // quick adds: the person's own one-tap buttons (a name, calories and a color), no guessing involved
+  const presets = () => all('preset').filter(x => x.name && x.calories > 0).sort((a, b) => (a.order || 0) - (b.order || 0) || (a.updatedAt || 0) - (b.updatedAt || 0));
   const recentAmounts = () => { const s = []; all('entry').sort((a, b) => b.time - a.time).forEach(e => { if (!s.includes(e.calories) && e.calories > 0) s.push(e.calories); }); return s.slice(0, 4); };
 
   function mealForNow(d = new Date()) { const h = d.getHours() + d.getMinutes() / 60; return h < 10.5 ? 'breakfast' : h < 15 ? 'lunch' : h < 17 ? 'snack' : h < 21 ? 'dinner' : 'snack'; }
@@ -399,7 +401,7 @@
 
   window.BW = {
     LS, dayKey, parseDay, addDays, uid, put, remove, all, get: id => recs[id], profile, saveProfile, goals, day, health, streak, level, LEVELS, xpBreakdown, badges, trend,
-    challenge: () => challengeFor(weekStart()), weekStart, frequent, recentAmounts, mealForNow, addEntry, entriesOn,
+    challenge: () => challengeFor(weekStart()), weekStart, frequent, presets, recentAmounts, mealForNow, addEntry, entriesOn,
     clearDemo, isDemo, setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, wipeCloud, deleteAccount, api, ensureAccount, claimAccount, pullHealth, exportCSV, wipe, seedDemo,
     get syncing() { return syncing; }, get syncError() { return lastSyncErr; }, get dirtyCount() { return dirty.size; },
     on: f => listeners.add(f), hasData: () => Object.keys(recs).length > 0,

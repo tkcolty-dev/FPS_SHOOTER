@@ -21,6 +21,15 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.11.0 · Quick adds and simple sharing
+_2026-10-12 · git tag `v1.11.0`_
+
+- New: Quick adds. Make your own one-tap buttons for Today with a name, the calories and a color. They replace the guessed “usual” chips, so nothing shows up that you didn’t set yourself.
+- Changed: Sharing is one switch (Me → Sharing). It’s off until you turn it on. On, everyone in your groups sees your goal, streak, steps, weight and the food you log, and can log food for you.
+- New: Tap someone in a group to see their weight, this week, and what they ate today, with a Log for them button right there.
+- Changed: The sharing switch is saved with your profile, so it’s the same on every device you sign in on.
+- Changed: Logging food for a friend only works once they’ve turned sharing on.
+
 ## 1.10.0 · Fresh starts and your own goal
 _2026-09-28 · git tag `v1.10.0`_
 
