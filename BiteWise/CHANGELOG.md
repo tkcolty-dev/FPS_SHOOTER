@@ -21,6 +21,15 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.12.0 · Goals you just type
+_2026-10-12 · git tag `v1.12.0`_
+
+- Changed: Goals is now three numbers: weight now, goal weight, calories a day. Type them and save. No formula unless you tap “Work out a number for me”.
+- Fixed: The goal weight field used to disappear once you set your own calorie number, so it couldn’t be changed. It’s always there now.
+- Fixed: Telling Bitey “set my goal to 150” now sets your goal weight. Before, there was no such action, so nothing changed (or offline Bitey treated 150 as calories).
+- Changed: Telling Bitey your weight also updates the weight on your Goals screen.
+- New: Right after you make or join a group, BiteWise asks if you want to share with it. One tap.
+
 ## 1.11.0 · Quick adds and simple sharing
 _2026-10-12 · git tag `v1.11.0`_
 

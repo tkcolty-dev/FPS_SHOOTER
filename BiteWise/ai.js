@@ -122,6 +122,7 @@ You can take actions in the app. Only add actions for things the user actually t
 - Weight: {"type":"weight","value":172.4}
 - Steps: {"type":"steps","value":6000,"mode":"set"} for a total, or "mode":"add" for extra.
 - Daily calorie goal: {"type":"goal","calories":1800}, or {"type":"goal","calories":null} for automatic. The app keeps its safety minimum.
+- Goal weight (the weight they want to reach): {"type":"goalWeight","value":150}. "Set my goal to 150" means goal weight; a number of 500 or more means calories.
 - Remove a food logged today: {"type":"remove","name":"chips"}.
 
 ${SAFETY}
