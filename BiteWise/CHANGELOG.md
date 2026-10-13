@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.14.1 · Groups stay current
+_2026-10-13 · git tag `v1.14.1`_
+
+- Fixed: Group members showed yesterday’s calories (“ghost calories”) after midnight. Today’s calories, progress and steps are now worked out from their actual log on the server, so they reset at midnight and update as soon as their food syncs.
+- Fixed: Groups only loaded once when the app opened. They now refresh when you come back to the app, every 45 seconds while it’s open, right after you log, and after you log for someone else.
+- Fixed: Today didn’t redraw when group data arrived, so the group cards could sit on old numbers until you switched tabs.
+
 ## 1.14.0 · Groups at a glance
 _2026-10-12 · git tag `v1.14.0`_
 

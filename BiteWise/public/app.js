@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.14.0';
+  const APP_VERSION = '1.14.1';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -1286,8 +1286,15 @@
       if (!navigator.onLine) return;
       const stats = myShareStats(), key = JSON.stringify(stats) + shareOn() + exactWeight();
       if (key === lastShared) return;
-      try { await BW.api('share', { stats, full: shareOn(), exact: exactWeight() }); lastShared = key; } catch {}
+      try { await BW.api('share', { stats, full: shareOn(), exact: exactWeight() }); lastShared = key; setTimeout(() => refreshGroups(true), 1200); } catch {}
     }, now ? 50 : 4000);
+  }
+  let groupsT = 0, groupsBusy = false;
+  async function refreshGroups(force) {
+    if (!LS.get('inGroups', false) || !BW.acct() || !navigator.onLine || groupsBusy) return;
+    if (!force && Date.now() - groupsT < 8000) return; // the server has rate limits; coalesce bursts
+    groupsBusy = true; groupsT = Date.now();
+    try { const before = JSON.stringify(S.groups || []); await loadGroups(); if (JSON.stringify(S.groups || []) !== before) render(); } catch {} finally { groupsBusy = false; }
   }
   async function loadGroups() {
     if (!BW.acct() || !navigator.onLine) return (S.groups ||= LS.get('groupsCache', []));
@@ -1298,7 +1305,7 @@
   // compact one-line view of a member: today's calories, progress bar, pounds lost, weight, streak
   function memberBits(m) {
     if (!m.sharing) return null; const st = m.stats || {}, lg = m.log;
-    const todayCal = lg ? (lg.days.find(x => x.date === lg.today)?.eaten ?? null) : null;
+    const todayCal = lg ? (lg.todayCal ?? lg.days.find(x => x.date === lg.today)?.eaten ?? 0) : null;
     const weight = lg?.weights?.length ? lg.weights[lg.weights.length - 1].lb : st.weightLb;
     return { todayCal, pct: st.todayPct, lost: st.lostLb, weight, streak: st.streak, steps: st.steps, budget: st.budget, foods: lg?.foods?.length };
   }
@@ -1368,12 +1375,12 @@
         <button class="btn tinted" type="button" id="gweigh" style="margin-top:14px">${I('scale')} Log my weight</button>
         <div class="footnote" style="margin:18px 16px 6px">${g.members.length} ${g.members.length === 1 ? 'PERSON' : 'PEOPLE'} · LONGEST STREAK FIRST</div>
         <div class="group">${ms.map((m, i) => { const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
-          const todayCal = lg ? (lg.days.find(x => x.date === lg.today)?.eaten || 0) : null, w = lg?.weights?.length ? lg.weights[lg.weights.length - 1] : null;
+          const todayCal = lg ? (lg.todayCal ?? lg.days.find(x => x.date === lg.today)?.eaten ?? 0) : null, w = lg?.weights?.length ? lg.weights[lg.weights.length - 1] : null;
           const info = m.sharing ? [lostText(st.lostLb), w ? `${w.lb} lb now` : st.weightLb ? `${st.weightLb} lb now` : null, st.goal].filter(Boolean).map(esc).join(' · ') : '';
           return `<div class="row member ${m.sharing ? 'tap' : ''}" ${m.sharing ? `data-act="member" data-member="${esc(g.id + ':' + m.key)}" role="button" tabindex="0"` : ''}>${face(st, m.username, i, true)}
             <div class="grow"><div class="title">${esc(nm)}${m.owner ? ' <span class="caption">· started it</span>' : ''}</div>
               <div class="sub">${info || (m.sharing ? 'Sharing' : m.you ? 'Not sharing yet. Turn it on above.' : m.stats ? 'Hasn’t turned on sharing' : 'Hasn’t opened BiteWise yet')}</div>
-              ${st.todayPct != null ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, st.todayPct)}%;${st.todayPct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="caption num" style="margin-top:3px">Today ${todayCal != null ? fmt(todayCal) + ' cal · ' : ''}${st.todayPct}% of goal${lg ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div>` : ''}
+              ${st.todayPct != null ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, st.todayPct)}%;${st.todayPct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="caption num" style="margin-top:3px">Today ${todayCal != null ? fmt(todayCal) + ' cal · ' : ''}${st.todayPct}% of goal${lg ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div>` : lg ? `<div class="caption num" style="margin-top:3px">Today ${fmt(lg.todayCal || 0)} cal${lg.foods.length ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}</div>` : ''}
               ${!m.you && m.canLog ? `<button class="btn small tinted logfor" type="button" data-logfor="${esc(m.key)}" data-lfname="${esc(nm)}">${I('plus')} Log for ${esc(nm)}</button>` : ''}
             </div>${st.streak != null ? `<span class="pill streak">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}${m.sharing ? '<span class="chev">›</span>' : ''}</div>`; }).join('')}</div>
         <button class="btn gray" type="button" id="gprefs" style="margin-top:16px">${I('eye')} Sharing: ${shareOn() ? 'on' : 'off'}</button>
@@ -1414,6 +1421,7 @@
           close();
           const ok = await queueOnline(`groups/${g.id}/log`, { to: key, name: nm, calories: cal, meal, date: BW.dayKey() }, `${nm} for ${name}`);
           toast(ok ? `Added ${nm} to ${name}'s day` : `Saved. It'll send to ${name} when you're back online`, { icon: ok ? 'check' : 'cloud' });
+          if (ok) setTimeout(() => refreshGroups(true), 600);
         };
       } });
   }
@@ -1439,8 +1447,10 @@
   // one group member's day: weight, this week, today's foods, and a big "log for them" button
   function memberSheet(ref) {
     const [gid, key] = String(ref).split(':');
-    const g = (S.groups || LS.get('groupsCache', [])).find(x => x.id === gid), m = g?.members.find(x => x.key === key);
+    const find = () => { const g = (S.groups || LS.get('groupsCache', [])).find(x => x.id === gid); return { g, m: g?.members.find(x => x.key === key) }; };
+    let { g, m } = find();
     if (!g || !m) return toast('Open the group again to refresh', { icon: 'info' });
+    const build = (g, m) => {
     const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
     const wk = lg?.days || [], mx = Math.max(st.budget || 0, ...wk.map(d => d.eaten), 1);
     const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.find(x => x.date <= BW.addDays(lg?.today || BW.dayKey(), -6));
@@ -1454,7 +1464,13 @@
       ${lg?.foods?.length ? `<div class="group">${lg.foods.map(e => `<div class="row"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal || 'snack')}${e.time ? ' · ' + new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}${e.by ? ` · <span class="by">added by ${esc(e.by)}</span>` : ''}</div></div><span class="kcal num">${fmt(e.calories)}</span></div>`).join('')}</div>`
       : `<div class="card empty"><b>Nothing logged yet today</b><span>${m.you ? 'Add something on Today.' : `You can log something for ${esc(nm)} below.`}</span></div>`}
       ${!m.you && m.canLog ? `<button class="btn" type="button" id="mlog" style="margin-top:16px">${I('plus')} Log food for ${esc(nm)}</button>` : ''}`;
-    openSheet({ title: nm, left: 'Done', tall: true, body, mount: b => { const x = $('#mlog', b); if (x) x.onclick = () => logForSheet(g, m.key, nm); } });
+    return { nm, body }; };
+    const first = build(g, m);
+    openSheet({ title: first.nm, left: 'Done', tall: true, body: first.body, mount: b => {
+      const bind = () => { const x = $('#mlog', b); if (x) x.onclick = () => logForSheet(g, m.key, build(g, m).nm); }; bind();
+      // show the freshest numbers: re-fetch once the sheet is open and redraw in place
+      refreshGroups(true).then(() => { const f = find(); if (f.g && f.m && document.body.contains(b)) { g = f.g; m = f.m; b.innerHTML = build(g, m).body; bind(); } });
+    } });
   }
 
   const minLabel = m => { m = ((m % 1440) + 1440) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}${mm ? ':' + String(mm).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
@@ -2085,7 +2101,8 @@
   addEventListener('online', setOnline); addEventListener('offline', setOnline);
   addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.installEvt = e; });
   addEventListener('hashchange', () => { readHash(); render(); });
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { const t = BW.dayKey(); if (S.date !== t && S._lastToday !== t) { S.date = t; } S._lastToday = t; render(); BW.sync(); autoHealth(); } });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { const t = BW.dayKey(); if (S.date !== t && S._lastToday !== t) { S.date = t; } S._lastToday = t; render(); BW.sync(); autoHealth(); refreshGroups(); } });
+  addEventListener('focus', () => refreshGroups());
   S._lastToday = BW.dayKey();
 
   if (location.search.includes('u=')) history.replaceState(null, '', location.pathname + location.hash);
@@ -2095,6 +2112,8 @@
   checkVersion().then(() => { if (BW.profile().setup) { if (LS.get('seenVersion', null) == null && !BW.hasData()) LS.set('seenVersion', APP_VERSION); else if (vcmp(APP_VERSION, LS.get('seenVersion', '0.0.0')) > 0) setTimeout(() => whatsNew(false), 900); } });
   setInterval(() => document.visibilityState === 'visible' && checkVersion(), 30 * 60e3);
   addEventListener('online', () => { checkVersion(); setTimeout(flushPendingCoach, 1500); scheduleShare(true); flushOutbox(); });
-  BW.sync(); refreshMe(); loadGroups().then(() => { if (S.tab === 'progress' || S.tab === 'me') render(); scheduleShare(true); });
+  BW.sync(); refreshMe(); loadGroups().then(() => { render(); scheduleShare(true); });
+  // keep group numbers fresh: when you come back to the app, every 45 s while it's open, and after your own numbers are shared
+  setInterval(() => { if (document.visibilityState === 'visible') refreshGroups(); }, 45e3);
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 })();

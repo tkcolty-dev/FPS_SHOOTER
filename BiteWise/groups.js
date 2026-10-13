@@ -23,7 +23,7 @@ const addDays = (k, n) => dayKey(new Date(Date.parse(k) + n * 864e5));
 // what a sharing member's groups see of their actual log: this week's totals, today's foods, recent weigh-ins
 async function logView(store, uid, today) {
   const from = addDays(today, -6);
-  const recs = await store.recentRecords(uid, ['entry', 'weight'], addDays(today, -60));
+  const recs = await store.recentRecords(uid, ['entry', 'weight', 'steps'], addDays(today, -60));
   const days = {}; for (let i = 6; i >= 0; i--) days[addDays(today, -i)] = 0;
   const foods = [];
   for (const r of recs) {
@@ -31,7 +31,8 @@ async function logView(store, uid, today) {
   }
   foods.sort((a, b) => (b.time || 0) - (a.time || 0));
   const weights = recs.filter(r => r.kind === 'weight' && r.lb > 0).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10 })).slice(-12);
-  return { today, days: Object.entries(days).map(([date, eaten]) => ({ date, eaten })), foods: foods.slice(0, 60), weights };
+  const stepsRec = recs.find(r => r.kind === 'steps' && r.date === today);
+  return { today, days: Object.entries(days).map(([date, eaten]) => ({ date, eaten })), foods: foods.slice(0, 60), weights, todayCal: days[today] || 0, steps: stepsRec ? Math.round(+stepsRec.steps || +stepsRec.count || 0) : null };
 }
 
 // members are addressed by a per-group key, never by their account id
@@ -50,6 +51,8 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
       let st = share?.stats || null, log = sharing ? await logView(store, m, today).catch(() => null) : null;
       if (sharing && st && !exact) st = { ...st, weightLb: null, goalLb: null };
       if (log && !exact) log = { ...log, weights: [] };
+      // today's progress comes from the log itself, not from the summary their phone last pushed (which could be yesterday's)
+      if (sharing && st && log) { st = { ...st, todayPct: st.budget ? Math.round(log.todayCal / st.budget * 100) : null }; if (log.steps != null) st.steps = log.steps; else if (Date.now() - (share.at || 0) > 36e5 * 20) st.steps = null; }
       return { key: memberKey(g.id, m), you: m === uid, owner: m === g.owner, username: auto ? null : u.username, sharing, exact,
         stats: sharing ? st : (st ? { name: st.name, color: st.color } : null), at: share?.at || null, canLog: sharing, log };
     }));

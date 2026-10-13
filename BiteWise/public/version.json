@@ -1,7 +1,17 @@
 {
-  "version": "1.14.0",
-  "date": "2026-10-12",
+  "version": "1.14.1",
+  "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.14.1",
+      "date": "2026-10-13",
+      "title": "Groups stay current",
+      "changes": [
+        "Fixed: Group members showed yesterday’s calories (“ghost calories”) after midnight. Today’s calories, progress and steps are now worked out from their actual log on the server, so they reset at midnight and update as soon as their food syncs.",
+        "Fixed: Groups only loaded once when the app opened. They now refresh when you come back to the app, every 45 seconds while it’s open, right after you log, and after you log for someone else.",
+        "Fixed: Today didn’t redraw when group data arrived, so the group cards could sit on old numbers until you switched tabs."
+      ]
+    },
     {
       "version": "1.14.0",
       "date": "2026-10-12",
