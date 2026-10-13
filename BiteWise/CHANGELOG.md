@@ -21,6 +21,17 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.17.0 · Stays signed in, pick your starting weight
+_2026-10-13 · git tag `v1.17.0`_
+
+- New: Goals has a starting weight. Pounds lost counts from it, so changing “weight now” can’t make it say you gained. Tap “Start over from today’s weight” to reset it.
+- New: Edit or delete any past weigh-in, or add one for an earlier day — Progress → Weight → All, or Goals → Past weigh-ins.
+- Fixed: Phones clearing site data signed people out and dropped their groups. BiteWise now keeps a second sign-in on the server and signs itself back in. If it can’t, a banner signs you back in with one tap and your groups come straight back.
+- Fixed: A database hiccup used to look like “signed out” and the app dropped the login. It now waits and tries again.
+- New: Adding BiteWise to your home screen opens it already signed in, with the same log and groups as Safari.
+- New: Me → Use on another device shows a 6-letter code that signs in an iPad, Mac or new phone — no password needed, works for automatic accounts too.
+- Changed: Sign out is available for every account.
+
 ## 1.16.0 · Look back on anyone’s days
 _2026-10-13 · git tag `v1.16.0`_
 

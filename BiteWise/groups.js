@@ -34,7 +34,10 @@ async function logView(store, uid, today) {
   }
   for (const d of Object.values(days)) d.foods.sort((a, b) => (b.time || 0) - (a.time || 0));
   const allW = recs.filter(r => r.kind === 'weight' && r.lb > 0 && r.date <= today).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10 })).sort((a, b) => a.date < b.date ? -1 : 1);
-  const lostLb = allW.length ? Math.round((allW[0].lb - allW[allW.length - 1].lb) * 10) / 10 : null;
+  // pounds lost counts from the starting weight they set on Goals (synced in their profile), else their first weigh-in
+  const prof = (await store.recentRecords(uid, ['profile'], '0000-00-00').catch(() => []))[0];
+  const startLb = prof && +prof.startLb > 0 ? +prof.startLb : (allW.length ? allW[0].lb : null);
+  const lostLb = allW.length ? Math.round((startLb - allW[allW.length - 1].lb) * 10) / 10 : null;
   const t = days[today];
   return { today, days: Object.values(days), foods: t.foods, weights: allW.slice(-12), lostLb, weighIns: allW.length, todayCal: t.eaten, steps: t.steps };
 }

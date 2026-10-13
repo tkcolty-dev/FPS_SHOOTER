@@ -189,8 +189,14 @@
     const p = profile();
     let eta = null;
     if (perWeek && perWeek < -0.05 && last.lb > p.goalLb) { const weeks = (last.lb - p.goalLb) / -perWeek; if (weeks < 520) { const d = parseDay(last.date); d.setDate(d.getDate() + Math.round(weeks * 7)); eta = d; } }
-    return { pts, now: last.lb, first: pts[0].lb, perWeek, eta, lost: Math.round((pts[0].lb - last.lb) * 10) / 10 };
+    // pounds lost counts from the starting weight you set on Goals; until you set one, from your first weigh-in
+    const start = p.startLb > 0 ? p.startLb : pts[0].lb;
+    return { pts, now: last.lb, first: pts[0].lb, start, startSet: p.startLb > 0, perWeek, eta, lost: Math.round((start - last.lb) * 10) / 10 };
   });
+  // weigh-ins, newest first, for the editor
+  const weighIns = () => all('weight').filter(w => w.lb > 0).sort((a, b) => a.date < b.date ? 1 : -1).map(w => ({ date: w.date, lb: w.lb }));
+  // keep "weight now" in step with the latest weigh-in after any edit
+  const syncWeightNow = () => { const t = trend(); if (t && Math.abs((profile().weightLb || 0) - t.now) >= 0.05) saveProfile({ weightLb: t.now }); };
 
   const BADGES = [
     ['first', 'First Bite', 'Log your first food', 'bite'],
@@ -293,16 +299,28 @@
       for (const r of res.records) { const cur = recs[r.id]; if (!cur || (r.updatedAt || 0) > (cur.updatedAt || 0)) { recs[r.id] = r; changed = true; } }
       LS.set('seq', res.seq); LS.set('lastSync', Date.now()); lastSyncErr = null;
       persist(); if (changed) emit();
-    } catch (e) { lastSyncErr = e.message; if (e.status === 401) { LS.del('account'); } }
+    } catch (e) { lastSyncErr = e.message; if (e.status === 401) await authLost(); }
     syncing = false; emit();
   }
-  async function signIn(mode, username, password) {
-    if (isDemo()) clearDemo();
-    const j = await api(mode === 'signup' ? 'signup' : 'login', { username, password });
-    LS.set('account', { token: j.token, username: j.username }); LS.set('seq', 0);
+  // The server said our token is no good. Never just drop the account on one bad answer: first try the
+  // sign-in cookie the server keeps (it survives the phone clearing site data), then double-check. Only
+  // when the server says "no" twice do we sign out, and we remember who it was so signing back in is one tap.
+  let losing = null;
+  function authLost() {
+    return losing ||= (async () => {
+      const a = acct(); if (!a) return;
+      try { if (await restoreSession()) return; } catch {}
+      try { await api('me', null, 'GET'); return; } catch (e) { if (e.status !== 401) return; }
+      LS.set('lastAccount', { username: a.username, auto: !!a.auto, at: Date.now() });
+      LS.del('account'); LS.del('seq'); emit();
+    })().finally(() => { losing = null; });
+  }
+  // Pull everything from the cloud after signing in on a device: the cloud copy wins for goals/settings, and
+  // everything else merges. Then push whatever this device had that the cloud didn't.
+  async function adoptSession(j, { fresh = false } = {}) {
+    LS.set('account', { token: j.token, username: j.username, auto: !!j.auto }); LS.set('seq', 0); LS.del('lastAccount');
     let serverProfile = false;
-    if (mode !== 'signup') {
-      // Signing in on another device: the cloud copy wins for goals/settings, and everything else merges.
+    if (!fresh) {
       let since = 0;
       for (let guard = 0; guard < 50; guard++) {
         const res = await api('sync', { since, changes: [] });
@@ -318,9 +336,29 @@
     persist(); emit();
     await sync(); return { ...j, restored: serverProfile };
   }
+  async function signIn(mode, username, password) {
+    if (isDemo()) clearDemo();
+    const j = await api(mode === 'signup' ? 'signup' : 'login', { username, password });
+    return adoptSession(j, { fresh: mode === 'signup' });
+  }
+  // Signed in through the server's cookie (the phone wiped the app's own storage, but the cookie is still there).
+  async function restoreSession() {
+    if (!navigator.onLine) return null;
+    const j = await api('session/restore').catch(e => { if (e.status === 401) return null; throw e; });
+    if (!j?.token) return null;
+    if (isDemo()) clearDemo();
+    return adoptSession(j);
+  }
+  // Sign in with a code from a device that is already signed in (Me → Use on another device), or the key baked
+  // into the home-screen app's address when it was installed.
+  async function redeemLink(code) {
+    const j = await api('link/redeem', { code: String(code || '').trim() });
+    if (isDemo()) clearDemo();
+    return adoptSession(j);
+  }
   async function wipeCloud() { if (acct()) await api('account/wipe'); }
-  async function deleteAccount() { if (acct()) await api('account/delete'); LS.del('account'); LS.del('seq'); wipe(); }
-  async function signOut() { try { await api('logout'); } catch {} LS.del('account'); LS.del('seq'); emit(); }
+  async function deleteAccount() { if (acct()) await api('account/delete'); LS.del('account'); LS.del('seq'); LS.del('lastAccount'); LS.del('installKey'); wipe(); }
+  async function signOut() { try { await api('logout'); } catch {} LS.del('account'); LS.del('seq'); LS.del('lastAccount'); LS.del('installKey'); emit(); }
 
   // An automatic account is created behind the scenes the first time something needs the cloud (like Fitbit),
   // so nobody has to sign up just to connect steps. It can be turned into a real login later.
@@ -330,7 +368,7 @@
     const rand = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => 'abcdefghijkmnpqrstuvwxyz23456789'[b % 32]).join('');
     const username = 'bw-' + rand(12), password = rand(24);
     const j = await api('signup', { username, password });
-    LS.set('account', { token: j.token, username: j.username, auto: true }); LS.set('seq', 0);
+    LS.set('account', { token: j.token, username: j.username, auto: true }); LS.set('seq', 0); LS.del('lastAccount');
     Object.keys(recs).forEach(id => dirty.add(id)); persist(); await sync();
     return acct();
   }
@@ -403,9 +441,9 @@
   window.BW = {
     LS, dayKey, parseDay, addDays, uid, put, remove, all, get: id => recs[id], profile, saveProfile, goals, day, health, streak, level, LEVELS, xpBreakdown, badges, trend,
     challenge: () => challengeFor(weekStart()), weekStart, frequent, presets, recentAmounts, mealForNow, addEntry, entriesOn,
-    clearDemo, isDemo, setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, wipeCloud, deleteAccount, api, ensureAccount, claimAccount, pullHealth, exportCSV, wipe, seedDemo,
+    clearDemo, isDemo, setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, restoreSession, redeemLink, wipeCloud, deleteAccount, api, ensureAccount, claimAccount, weighIns, syncWeightNow, pullHealth, exportCSV, wipe, seedDemo,
     get syncing() { return syncing; }, get syncError() { return lastSyncErr; }, get dirtyCount() { return dirty.size; },
-    on: f => listeners.add(f), hasData: () => Object.keys(recs).length > 0,
+    on: f => listeners.add(f), off: f => listeners.delete(f), hasData: () => Object.keys(recs).length > 0,
   };
   window.addEventListener('online', () => scheduleSync(300));
 })();

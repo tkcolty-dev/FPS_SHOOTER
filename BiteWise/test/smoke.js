@@ -59,6 +59,14 @@ function dataTests() {
   BW.remove('preset:1'); ok(BW.presets().length === 1, 'quick add deleted');
   BW.setWeight('2026-10-12', 180); BW.setWeight('2026-10-13', 179);
   ok(BW.trend().lost === 1 && BW.trend().now === 179, 'two weigh-ins: lost is the real difference', JSON.stringify({ lost: BW.trend().lost, now: BW.trend().now }));
+  BW.saveProfile({ startLb: 185 });
+  ok(BW.trend().lost === 6 && BW.trend().start === 185 && BW.trend().startSet, 'pounds lost counts from the starting weight once set', JSON.stringify(BW.trend()));
+  BW.setWeight('2026-10-10', 190); BW.syncWeightNow();
+  ok(BW.weighIns()[0].date === '2026-10-13' && BW.weighIns().length === 3 && BW.profile().weightLb === 179, 'weigh-ins list newest first; weight now follows the latest', JSON.stringify(BW.weighIns()));
+  BW.remove('weight:2026-10-13'); BW.syncWeightNow();
+  ok(BW.trend().now === 180 && BW.profile().weightLb === 180 && BW.weighIns().length === 2, 'deleting the latest weigh-in moves weight now back', JSON.stringify({ now: BW.trend().now, w: BW.profile().weightLb }));
+  BW.saveProfile({ startLb: null }); BW.setWeight('2026-10-13', 179);
+  ok(BW.trend().lost === 11 && !BW.trend().startSet, 'without a starting weight, lost counts from the first weigh-in', BW.trend().lost);
   BW.saveProfile({ setup: true, sex: 'female', age: 30, heightIn: 64, weightLb: 160, goalLb: 140, activity: 1.375, goalType: 'lose', pace: 2 });
   let g = BW.goals();
   ok(g.budget >= 1200, 'adult floor', g.budget);
@@ -167,7 +175,38 @@ async function serverTests() {
       ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, a.j.token)).status === 403, 'sharing off blocks logging for them');
       ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, eve.j.token)).status === 404, 'outsiders cannot log for members');
       ok((await call(`groups/${fam.id}/leave`, {}, bob.j.token)).status === 200, 'leave group');
+      // starting weight (synced in the profile) drives the server's pounds lost
+      await call('sync', { since: 0, changes: [{ id: 'profile', kind: 'profile', startLb: 180, updatedAt: 12 }] }, bob.j.token);
+      await call('share', { stats: { name: 'Bob', budget: 2000 }, full: true }, bob.j.token);
+      await call('groups/join', { code: g.j.group.code }, bob.j.token);
+      bobRow = (await call('groups?date=2026-10-13', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
+      ok(bobRow?.stats?.lostLb === 9.5 && bobRow.log.lostLb === 9.5, 'server pounds lost counts from the starting weight', JSON.stringify({ lost: bobRow?.stats?.lostLb }));
     }
+    // staying signed in: cookie restore, sign-in codes, install key
+    const rawLogin = await fetch(base + 'login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'alice', password: 'secret1' }) });
+    const cookie = (rawLogin.headers.get('set-cookie') || '').split(';')[0];
+    ok(/^bw_s=[0-9a-f]{64}$/.test(cookie) && /HttpOnly/.test(rawLogin.headers.get('set-cookie') || ''), 'login sets an HttpOnly sign-in cookie', rawLogin.headers.get('set-cookie'));
+    const restored = await fetch(base + 'session/restore', { method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: '{}' }).then(r => r.json());
+    ok(restored.token && restored.username === 'alice' && restored.auto === false, 'the cookie alone restores the sign-in', JSON.stringify(restored));
+    ok((await call('session/restore')).status === 401, 'no cookie, no restore');
+    ok((await call('sync', { since: 0 }, restored.token)).status === 200, 'restored token works');
+    const lk = await call('link', {}, a.j.token);
+    ok(lk.status === 200 && /^[A-Z2-9]{6}$/.test(lk.j.code || ''), 'sign-in code issued', JSON.stringify(lk.j));
+    const red = await call('link/redeem', { code: lk.j.code.toLowerCase() + ' ' });
+    ok(red.status === 200 && red.j.username === 'alice' && (await call('sync', { since: 0 }, red.j.token)).status === 200, 'code signs another device in as the same account', JSON.stringify(red.j));
+    ok((await call('link/redeem', { code: 'ZZZZZZ' })).status === 404, 'bad code rejected');
+    const ik = await call('link/install', null, a.j.token, 'GET');
+    ok(/^[0-9a-f]{48}$/.test(ik.j.key || ''), 'install key issued');
+    ok((await call('link/install', null, a.j.token, 'GET')).j.key === ik.j.key, 'install key is stable');
+    const man = await fetch(`http://localhost:${PORT}/manifest.webmanifest?k=${ik.j.key}`).then(r => r.json());
+    ok(man.start_url === `/?k=${ik.j.key}#today` && man.name === 'BiteWise', 'manifest carries the install key in its start address', man.start_url);
+    ok((await fetch(`http://localhost:${PORT}/manifest.webmanifest?k=${'0'.repeat(48)}`).then(r => r.json())).start_url === '/#today', 'unknown key gets the plain manifest');
+    const red2 = await call('link/redeem', { code: ik.j.key });
+    ok(red2.status === 200 && red2.j.username === 'alice', 'the installed app signs in with its key', JSON.stringify(red2.j));
+    const autoU = await call('signup', { username: 'bw-abcdefghijkl', password: 'secretsecret' });
+    const lk2 = await call('link', {}, autoU.j.token);
+    ok((await call('link/redeem', { code: lk2.j.code })).j.auto === true, 'automatic accounts can be linked by code too');
+    ok((await call('logout', {}, a.j.token)).status === 200 && (await call('link/redeem', { code: ik.j.key })).status === 404, 'sign out retires the install key');
   } catch (e) { fail++; console.log('  ✗ server tests crashed: ' + e.message + '\n' + log.slice(-800)); }
   srv.kill(); fs.rmSync(dir, { recursive: true, force: true });
 }

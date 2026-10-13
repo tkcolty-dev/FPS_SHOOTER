@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.16.0';
+  const APP_VERSION = '1.17.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -441,7 +441,7 @@
       </div>
       <div style="display:flex;gap:6px;align-items:center">${offlinePill()}${st.days ? `<button class="pill streak" type="button" data-act="streak" aria-label="${st.days} day streak">${I('flame')}<span class="num">${st.days}</span></button>` : ''}</div>
     </div>
-    ${BW.isDemo() ? `<div class="demo-banner"><span class="icon-sq" style="background:var(--orange)">${I('info')}</span><div class="grow"><b>This is sample data</b><span>It isn't yours and it won't be saved to an account.</span></div><button class="btn small" type="button" data-act="startfresh">Start fresh</button></div>` : ''}
+    ${BW.isDemo() ? `<div class="demo-banner"><span class="icon-sq" style="background:var(--orange)">${I('info')}</span><div class="grow"><b>This is sample data</b><span>It isn't yours and it won't be saved to an account.</span></div><button class="btn small" type="button" data-act="startfresh">Start fresh</button></div>` : signedOutBanner()}
     <div class="today-grid">
       <div class="card t-cal" id="heroCard">
         <button class="t-cal-main" type="button" data-act="calinfo">
@@ -553,8 +553,8 @@
         ${stepsChart(n)}
       </div>
       <div class="card">
-        <div class="card-head"><div><div class="st-k">Weight</div><div class="big-stat">${tr ? `<span class="num">${tr.now.toFixed(1)}</span><small> lb</small>` : '<small>No weigh-ins yet</small>'}</div></div><button class="btn small tinted" type="button" data-act="weight">Log weight</button></div>
-        ${tr ? `<p class="insight">${tr.eta ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. At this pace you'll hit ${p.goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.lost > 0 ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. Keep weighing in a few times a week.` : tr.lost < 0 ? `Up <b>${Math.abs(tr.lost).toFixed(1)} lb</b> since your first weigh-in.` : 'Your first weigh-in. Pounds lost counts from here.'}</p>${tr.pts.length > 1 ? weightChart(tr) : ''}` : `<p class="insight">Weigh in 2–3 times a week, in the morning, for numbers you can trust.</p>`}
+        <div class="card-head"><div><div class="st-k">Weight</div><div class="big-stat">${tr ? `<span class="num">${tr.now.toFixed(1)}</span><small> lb</small>` : '<small>No weigh-ins yet</small>'}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">Log weight</button><button class="link-btn" type="button" data-act="weighins" style="font-size:15px">All ›</button></div></div>
+        ${tr ? `<p class="insight">${tr.eta ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. At this pace you'll hit ${p.goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.lost > 0 ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. Keep weighing in a few times a week.` : tr.lost < 0 ? `Up <b>${Math.abs(tr.lost).toFixed(1)} lb</b> since your ${tr.startSet ? 'starting weight' : 'first weigh-in'}. ${tr.startSet ? '' : 'Set a starting weight on Goals if that\u2019s not where you want to count from.'}` : tr.startSet ? `Right at your starting weight of <b>${tr.start} lb</b>. Pounds lost counts from here.` : 'Your first weigh-in. Pounds lost counts from here.'}</p>${tr.pts.length > 1 ? weightChart(tr) : ''}` : `<p class="insight">Weigh in 2–3 times a week, in the morning, for numbers you can trust.</p>`}
       </div>
     </div><div class="col-side">
       <div class="card">
@@ -832,8 +832,8 @@
     </button>
 
     ${a && !a.auto ? `<button class="card acct-card" type="button" data-act="syncnow"><span class="icon-sq" style="background:var(--blue)">${I('cloud')}</span><div class="grow"><b>Signed in as ${esc(a.username)}</b><span>${BW.syncing ? 'Syncing…' : BW.dirtyCount ? BW.dirtyCount + ' change' + (BW.dirtyCount > 1 ? 's' : '') + ' waiting to sync' : lastSync ? 'Backed up ' + ago(lastSync) + ' · stays signed in' : 'Backed up · stays signed in'}</span></div><span class="sync-ic ${BW.syncing ? 'spin' : ''}">${I('sync')}</span></button>`
-      : `<div class="card acct-card cta"><span class="icon-sq" style="background:var(--blue)">${I('cloud')}</span><div class="grow"><b>${a ? 'Use BiteWise on other devices' : 'Save your log to the cloud'}</b><span>${a ? 'Add a username and password' : 'Open it on your iPad, Mac or a new phone'}</span></div></div>
-      <div class="acct-btns">${a ? `<button class="btn small" type="button" data-act="claim">Create login</button>` : `<button class="btn small" type="button" data-act="signup">Create account</button><button class="btn small tinted" type="button" data-act="signin">Sign in</button>`}</div>`}
+      : `<div class="card acct-card cta"><span class="icon-sq" style="background:var(--blue)">${I('cloud')}</span><div class="grow"><b>${a ? 'Add a username and password' : LS.get('lastAccount', null) ? 'You got signed out' : 'Save your log to the cloud'}</b><span>${a ? 'So you can sign in by password too (a code from Use on another device works already)' : LS.get('lastAccount', null) ? 'Sign back in and your log and groups come right back' : 'Open it on your iPad, Mac or a new phone'}</span></div></div>
+      <div class="acct-btns">${a ? `<button class="btn small" type="button" data-act="claim">Create login</button>` : `<button class="btn small" type="button" data-act="signup">Create account</button><button class="btn small tinted" type="button" data-act="signin">Sign in</button><button class="btn small tinted" type="button" data-act="signcode">Use a code</button>`}</div>`}
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Goals</div><div class="group">
       ${row('target', 'var(--accent)', 'Goals', fmt(g.budget) + ' cal', 'data-act="goals"', `${p.weightLb} lb now · goal ${p.goalLb} lb`)}
       ${row('shoe', 'var(--pink)', 'Step goal', fmt(p.stepGoal), 'data-act="stepgoal"')}
@@ -854,6 +854,7 @@
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Rewards</div><div class="group">
       ${row('palette', theme.color, 'Look', theme.name + (p.appearance && p.appearance !== 'auto' ? ' · ' + cap(p.appearance) : ''), 'data-act="themes"', `Colors and light or dark mode · ${THEMES.filter(t => t.level <= lv.n).length} of ${THEMES.length} colors`)}
       ${row('person', 'var(--purple)', 'Groups', (S.groups || LS.get('groupsCache', [])).length || 'None', 'data-go="progress"', (() => { const ms = (S.groups || LS.get('groupsCache', [])).flatMap(g => g.members.filter(m => !m.you && m.sharing)); return ms.length ? ms.slice(0, 4).map(m => `${esc(m.stats?.name || m.username || 'Friend')} ${m.stats?.todayPct != null ? m.stats.todayPct + '%' : ''}${m.stats?.lostLb > 0 ? ' ↓' + m.stats.lostLb : ''}`).join(' · ') : 'Friends and family see each other\u2019s progress'; })())}
+      ${a ? row('lock', 'var(--blue)', 'Use on another device', '', 'data-act="link"', 'Sign in your iPad, Mac or a new phone with a code') : ''}
       ${row('eye', shareOn() ? 'var(--green)' : 'var(--label3)', 'Sharing', shareOn() ? 'On' : 'Off', 'data-act="shareprefs"', shareOn() ? 'Your groups see your weight and food, and can log for you' : 'Your groups only see your name')}
       ${row('trophy', '#FFB800', 'Badges', `${BW.badges().filter(b => b.earned).length} / ${BW.badges().length}`, 'data-go="progress"')}
     </div></div>
@@ -863,7 +864,7 @@
       ${row('mic', 'var(--pink)', 'Offline voice', '', 'data-act="voicehelp"', 'How voice logging works with no internet')}
       ${row('share', 'var(--label3)', 'Export my data', 'CSV', 'data-act="export"')}
       ${row('info', 'var(--accent)', 'Version ' + APP_VERSION, S.updateReady ? 'Update ready' : navigator.onLine ? 'Up to date' : 'Offline', 'data-act="versions"', S.updateReady ? `Version ${S.updateReady} is out. Tap to see what\u2019s new` : 'What\u2019s new and past updates')}
-      ${a && !a.auto ? `<button class="row" type="button" data-act="signout" style="color:var(--red)">Sign out</button>` : ''}
+      ${a ? `<button class="row" type="button" data-act="signout" style="color:var(--red)">Sign out</button>` : ''}
       ${a ? `<button class="row" type="button" data-act="delaccount" style="color:var(--red)">Delete my account</button>` : ''}
       ${BW.isDemo() ? `<button class="row" type="button" data-act="startfresh" style="color:var(--accent)">Clear sample data and start fresh</button>` : ''}
       <button class="row" type="button" data-act="wipe" style="color:var(--red)">Delete all data</button>
@@ -1160,18 +1161,108 @@
 
   function weightSheet() {
     const tr = BW.trend(), cur = BW.day(BW.dayKey()).weight || (tr ? tr.pts[tr.pts.length - 1].lb : BW.profile().weightLb);
-    numberSheet({ title: 'Log weight', label: 'Today', value: cur, unit: 'lb', step: .2, min: 50, max: 700, decimals: 1, onSave: n => { BW.setWeight(BW.dayKey(), n); BW.saveProfile({ weightLb: Math.round(n * 10) / 10 }); toast('Weight logged'); },
-      footer: `<div class="footnote">Weigh in the morning after using the bathroom, before eating, for the most consistent numbers.</div>` });
+    numberSheet({ title: 'Log weight', label: 'Today', value: cur, unit: 'lb', step: .2, min: 50, max: 700, decimals: 1, onSave: n => { BW.setWeight(BW.dayKey(), n); BW.syncWeightNow(); toast('Weight logged'); },
+      footer: `<div class="footnote">Weigh in the morning after using the bathroom, before eating, for the most consistent numbers.</div><button class="btn gray" type="button" data-act="weighins" style="margin-top:8px">${I('today')} Another day, or fix a past weigh-in</button>` });
+  }
+  // every weigh-in, newest first: tap one to change or delete it, or add one for any day
+  function weighInsSheet() {
+    let onCloseRef = null;
+    openSheet({ title: 'Weigh-ins', left: 'Done', right: 'Add', onRight: () => weighEditSheet({ date: BW.dayKey(), lb: null }), body: '', mount: b => {
+      const draw = () => {
+        const ws = BW.weighIns(), tr = BW.trend();
+        b.innerHTML = `${tr ? `<div class="caption" style="margin:2px 16px 10px">Starting weight <b>${tr.start} lb</b>${tr.startSet ? '' : ' (your first weigh-in)'} · now <b>${tr.now} lb</b> · ${tr.lost > 0 ? `down <b>${tr.lost} lb</b>` : tr.lost < 0 ? `up <b>${Math.abs(tr.lost)} lb</b>` : 'no change'}. Change the starting weight on Goals.</div>` : ''}
+          ${ws.length ? `<div class="group">${ws.map(w => `<button class="row" type="button" data-wd="${w.date}"><div class="grow"><div class="title">${esc(dayLabel(w.date))}</div><div class="sub">${BW.parseDay(w.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div></div><span class="value num">${w.lb} lb</span><span class="chev">›</span></button>`).join('')}</div>`
+          : `<div class="muted" style="padding:30px 16px;text-align:center">No weigh-ins yet. Tap Add to log one for any day.</div>`}
+          <button class="btn gray" type="button" id="wadd" style="margin-top:14px">${I('plus')} Add a weigh-in for another day</button>`;
+        $('#wadd', b).onclick = () => weighEditSheet({ date: BW.dayKey(), lb: null });
+        b.querySelectorAll('[data-wd]').forEach(x => x.onclick = () => weighEditSheet({ date: x.dataset.wd, lb: BW.day(x.dataset.wd).weight }));
+      };
+      draw(); BW.on(draw); onCloseRef = () => BW.off(draw);
+    }, onClose: () => onCloseRef && onCloseRef() });
+  }
+  function weighEditSheet({ date, lb }) {
+    const existing = lb != null, today = BW.dayKey();
+    let v = lb ?? (BW.trend()?.now || BW.profile().weightLb);
+    openSheet({ title: existing ? 'Edit weigh-in' : 'Add weigh-in', right: 'Save',
+      body: `<div class="group"><div class="row"><span class="grow">Day</span><span class="value"><input type="date" id="wdate" class="inline-input" value="${date}" max="${today}" aria-label="Day" style="width:auto"></span></div></div>
+        <div class="card" style="text-align:center;padding:22px 16px;margin-top:14px"><div class="caption" style="font-size:14px">Weight</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px"><button class="btn gray small" type="button" data-d="-1" aria-label="Less" style="width:44px;height:44px;border-radius:50%;padding:0;font-size:24px">−</button>
+        <input id="wv" class="num" inputmode="decimal" value="${(+v).toFixed(1)}" style="width:170px;text-align:center;border:0;background:transparent;font:700 52px var(--round)" aria-label="Weight">
+        <button class="btn gray small" type="button" data-d="1" aria-label="More" style="width:44px;height:44px;border-radius:50%;padding:0;font-size:24px">+</button></div><div class="muted" style="font-weight:600">lb</div></div>
+        ${existing ? `<button class="btn gray" type="button" id="wdel" style="margin-top:14px;color:var(--red)">${I('trash')} Delete this weigh-in</button>` : ''}`,
+      mount: (b, close) => {
+        b.onclick = e => { const d = e.target.closest('[data-d]'); if (!d) return; v = Math.min(700, Math.max(50, (parseFloat($('#wv', b).value) || 0) + d.dataset.d * .2)); $('#wv', b).value = v.toFixed(1); haptic(5); };
+        const del = $('#wdel', b); if (del) del.onclick = () => confirmSheet({ title: `Delete the weigh-in for ${dayLabel(date).toLowerCase()}?`, text: 'Pounds lost and the chart update right away.', confirm: 'Delete', danger: true, onConfirm: () => { BW.remove('weight:' + date); BW.syncWeightNow(); close(); toast('Weigh-in deleted'); } });
+      },
+      onRight: close => {
+        const n = parseFloat($('#wv').value), d = $('#wdate').value;
+        if (!Number.isFinite(n) || n < 50 || n > 700) return toast('Enter a weight from 50 to 700 lb', { icon: 'info' });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d > today) return toast('Pick a day up to today', { icon: 'info' });
+        if (existing && d !== date) BW.remove('weight:' + date);
+        BW.setWeight(d, n); BW.syncWeightNow(); haptic(12); close();
+        toast(`${n.toFixed(1)} lb on ${dayLabel(d).toLowerCase()}`, { icon: 'scale' });
+      } });
+  }
+
+  // Shown when the phone dropped the sign-in (cleared storage, or the home-screen copy has its own storage):
+  // one tap gets the same account, log and groups back.
+  function signedOutBanner() {
+    const la = LS.get('lastAccount', null); if (BW.acct() || !la) return '';
+    return `<div class="demo-banner"><span class="icon-sq" style="background:var(--blue)">${I('cloud')}</span><div class="grow"><b>You got signed out</b><span>${la.auto ? 'Your log and groups are safe. Sign back in with a code from your other device.' : `Sign back in as ${esc(la.username)} to get your groups and backup.`}</span></div><button class="btn small" type="button" data-act="${la.auto ? 'signcode' : 'signin'}">Sign in</button></div>`;
+  }
+  // the home-screen app is installed from the manifest; with the account's key in its start address, it opens signed in
+  async function setManifest() {
+    const link = document.querySelector('link[rel=manifest]'); if (!link) return;
+    if (!BW.acct()) { link.href = '/manifest.webmanifest'; return; }
+    let key = LS.get('installKey', null);
+    if (!key && navigator.onLine) { try { key = (await BW.api('link/install', null, 'GET')).key; LS.set('installKey', key); } catch { return; } }
+    if (key) link.href = '/manifest.webmanifest?k=' + key;
+  }
+  function afterSignIn(r, msg) {
+    const onboarding = !$('#tabbar') || $('#tabbar').hidden;
+    if (onboarding && BW.profile().setup) { ob.p = null; finishOnboarding(); } else if (BW.profile().setup) render();
+    if (msg) toast(msg, { icon: 'cloud' });
+    refreshMe(); setManifest(); lastShared = '';
+    loadGroups().then(() => { if (BW.profile().setup) render(); scheduleShare(true); });
+  }
+  // On open: sign in with the key from the installed app's address, or quietly through the server's cookie
+  // when this copy has no account (storage was cleared). Either way the log and groups come straight back.
+  async function bootSession() {
+    const k = new URLSearchParams(location.search).get('k');
+    if (k || location.search) history.replaceState(null, '', location.pathname + location.hash);
+    if (BW.acct()) { setManifest(); return; }
+    if (!navigator.onLine) return;
+    let r = null;
+    try { r = k ? await BW.redeemLink(k) : await BW.restoreSession(); } catch (e) { if (k) toast(e.message, { icon: 'info' }); }
+    if (r) afterSignIn(r, k ? 'Signed in · your log and groups are here' : 'Signed back in');
+  }
+  // a code to sign in another device (or the home-screen app) as this account, no password needed
+  function linkSheet() {
+    openSheet({ title: 'Use on another device', left: 'Done', body: '', mount: b => {
+      const draw = async () => {
+        b.innerHTML = `<div class="muted" style="text-align:center;padding:20px">Getting a code…</div>`;
+        let j; try { j = await BW.api('link'); } catch (e) { b.innerHTML = `<div class="footnote" style="color:var(--red)">${esc(S.online ? e.message : 'Connect to the internet to get a code.')}</div>`; return; }
+        b.innerHTML = `<div style="text-align:center;margin:4px 0 14px"><div class="caption">Sign-in code</div><div class="num" style="font:700 44px var(--round);letter-spacing:6px;margin:6px 0">${j.code}</div><div class="caption" id="lexp">Good for 15 minutes</div></div>
+          <div class="group">${[['share', 'On the other device, open <b>bitewise.apps.tas-ndc.kuhn-labs.com</b>'], ['person', 'Go to <b>Me → Sign in</b> and tap <b>Use a code</b>'], ['check', 'Type the code. Your log and groups show up there.']].map(([ic, t], i) => `<div class="row"><span class="icon-sq" style="background:var(--blue)">${I(ic)}</span><div class="grow"><div class="title" style="white-space:normal;font-size:16px">${i + 1}. ${t}</div></div></div>`).join('')}</div>
+          <div class="footnote">Adding BiteWise to your home screen from here signs it in by itself — no code needed.</div>
+          <button class="btn gray" type="button" id="lnew" style="margin-top:8px">New code</button>`;
+        $('#lnew', b).onclick = draw;
+        const tick = setInterval(() => { const el = $('#lexp', b); if (!el) return clearInterval(tick); const m = Math.ceil((j.exp - Date.now()) / 60e3); el.textContent = m > 0 ? `Good for ${m} minute${m === 1 ? '' : 's'}` : 'Expired — tap New code'; }, 15e3);
+      };
+      draw();
+    } });
   }
 
   function signInSheet(startMode = 'signup') {
     let mode = startMode;
+    const last = LS.get('lastAccount', null);
     openSheet({
       title: 'Back up & sync', body: '', mount: (b, close) => {
         const draw = (err = '') => {
           b.innerHTML = `<div style="text-align:center;margin:4px 0 16px"><div class="icon-sq" style="background:var(--blue);width:56px;height:56px;border-radius:15px;margin:0 auto 10px">${I('cloud', 'style="width:30px;height:30px"')}</div><div class="muted" style="font-size:15px">Your log stays on this phone and gets backed up to the cloud.</div></div>
-            <div class="seg" style="margin-bottom:14px"><button type="button" data-m="signup" aria-pressed="${mode === 'signup'}">Create account</button><button type="button" data-m="login" aria-pressed="${mode === 'login'}">Sign in</button></div>
-            <form id="af"><div class="group"><div class="row"><input class="field" style="background:transparent;padding:0" id="au" placeholder="Username" autocomplete="username" autocapitalize="off" required></div><div class="row"><input class="field" style="background:transparent;padding:0" id="ap" type="password" placeholder="Password (6+ characters)" autocomplete="${mode === 'signup' ? 'new-password' : 'current-password'}" required></div></div>
+            <div class="seg" style="margin-bottom:14px"><button type="button" data-m="signup" aria-pressed="${mode === 'signup'}">Create account</button><button type="button" data-m="login" aria-pressed="${mode === 'login'}">Sign in</button><button type="button" data-m="code" aria-pressed="${mode === 'code'}">Use a code</button></div>
+            <form id="af">${mode === 'code' ? `<div class="caption" style="margin:0 4px 10px">On a device that’s already signed in, go to <b>Me → Use on another device</b> and type the code it shows.</div><div class="group"><div class="row"><input class="field num" style="background:transparent;padding:0;letter-spacing:4px;text-transform:uppercase;font-size:22px" id="ac" placeholder="6-letter code" autocomplete="one-time-code" autocapitalize="characters" maxlength="7" required></div></div>`
+            : `<div class="group"><div class="row"><input class="field" style="background:transparent;padding:0" id="au" placeholder="Username" autocomplete="username" autocapitalize="off" value="${mode === 'login' && last && !last.auto ? esc(last.username) : ''}" required></div><div class="row"><input class="field" style="background:transparent;padding:0" id="ap" type="password" placeholder="Password (6+ characters)" autocomplete="${mode === 'signup' ? 'new-password' : 'current-password'}" required></div></div>`}
             ${err ? `<div class="footnote" style="color:var(--red)">${esc(err)}</div>` : ''}
             <button class="btn" style="margin-top:16px" id="ab">${mode === 'signup' ? 'Create account' : 'Sign in'}</button></form>
             ${!S.online ? `<div class="footnote">You're offline. Connect to the internet to sign in. Logging keeps working in the meantime.</div>` : ''}`;
@@ -1179,11 +1270,8 @@
           $('#af', b).onsubmit = async e => {
             e.preventDefault(); const btn = $('#ab', b); btn.disabled = true; btn.textContent = 'One sec…';
             try {
-              const r = await BW.signIn(mode, $('#au', b).value, $('#ap', b).value); close();
-              const onboarding = !$('#tabbar') || $('#tabbar').hidden;
-              if (onboarding && BW.profile().setup) { ob.p = null; finishOnboarding(); }
-              toast(mode === 'signup' ? 'Account created · you\u2019re backed up' : r.restored ? 'Welcome back · your log is here' : 'Signed in and synced', { icon: 'cloud' });
-              await refreshMe();
+              const r = mode === 'code' ? await BW.redeemLink($('#ac', b).value) : await BW.signIn(mode, $('#au', b).value, $('#ap', b).value); close();
+              afterSignIn(r, mode === 'signup' ? 'Account created · you\u2019re backed up' : r.restored ? 'Welcome back · your log and groups are here' : 'Signed in and synced');
             }
             catch (err) { draw(err.message); }
           };
@@ -1195,7 +1283,8 @@
 
   async function refreshMe() {
     if (!BW.acct() || !navigator.onLine) return;
-    try { const me = await BW.api('me', null, 'GET'); LS.set('healthLinked', !!me.health); if (me.health) autoHealth(); render(); } catch {}
+    try { const me = await BW.api('me', null, 'GET'); LS.set('healthLinked', !!me.health); if (me.auto !== undefined && !!BW.acct()?.auto !== !!me.auto) LS.set('account', { ...BW.acct(), auto: !!me.auto }); if (me.health) autoHealth(); render(); } catch {}
+    setManifest();
   }
   // Steps sync quietly: on open, when the app comes back to the front, and every 10 minutes while it's open.
   async function autoHealth(force) {
@@ -1594,16 +1683,22 @@
   // Goals: just your numbers. Weight now, goal weight, calories a day. The calculator is there if you want it.
   function goalsSheet() {
     const p0 = BW.profile();
-    const st = { weightLb: p0.weightLb, goalLb: p0.goalLb, cal: BW.goals().budget };
+    const tr0 = BW.trend();
+    // "weight now" is the latest weigh-in (what Progress and groups show), not a number saved some other time
+    const st = { weightLb: tr0 ? tr0.now : p0.weightLb, goalLb: p0.goalLb, startLb: p0.startLb > 0 ? p0.startLb : (tr0 ? tr0.first : p0.weightLb), cal: BW.goals().budget };
+    const w0 = st.weightLb;
     let saveRef = null;
     openSheet({ title: 'Goals', left: 'Cancel', right: 'Save', onRight: () => saveRef && saveRef(), body: '',
       mount: (b, close) => {
-        const line = () => { const diff = Math.round((st.goalLb - st.weightLb) * 10) / 10; return !(st.weightLb > 0) || !(st.goalLb > 0) ? '' : Math.abs(diff) < 0.5 ? 'Staying right where you are' : diff < 0 ? `${Math.abs(diff)} lb to go` : `${diff} lb to gain`; };
+        const line = () => { const diff = Math.round((st.goalLb - st.weightLb) * 10) / 10, lost = Math.round((st.startLb - st.weightLb) * 10) / 10; const so = st.startLb > 0 && st.weightLb > 0 && Math.abs(lost) >= 0.05 ? (lost > 0 ? ` · down ${lost} lb so far` : ` · up ${Math.abs(lost)} lb from your start`) : ''; return !(st.weightLb > 0) || !(st.goalLb > 0) ? '' : (Math.abs(diff) < 0.5 ? 'Staying right where you are' : diff < 0 ? `${Math.abs(diff)} lb to go` : `${diff} lb to gain`) + so; };
         const draw = () => { b.innerHTML = `
           <div class="footnote" style="margin:4px 16px 6px">WEIGHT</div>
           <div class="group">
             <div class="row"><span class="grow">Weight now</span><span class="value"><input class="inline-input num" id="g_w" inputmode="decimal" value="${st.weightLb}" style="width:70px" aria-label="Weight now"> lb</span></div>
             <div class="row"><span class="grow">Goal weight</span><span class="value"><input class="inline-input num" id="g_goal" inputmode="decimal" value="${st.goalLb}" style="width:70px" aria-label="Goal weight"> lb</span></div>
+            <div class="row"><div class="grow"><div class="title">Starting weight</div><div class="sub">Pounds lost counts from here</div></div><span class="value"><input class="inline-input num" id="g_start" inputmode="decimal" value="${st.startLb}" style="width:70px" aria-label="Starting weight"> lb</span></div>
+            <button class="row" type="button" id="g_restart" style="color:var(--accent);font-size:15px">Start over from today’s weight</button>
+            <button class="row" type="button" id="g_weighins" style="font-size:15px"><span class="grow">Past weigh-ins</span><span class="value">${BW.weighIns().length || 'None'}</span><span class="chev">›</span></button>
           </div>
           <div class="caption" id="g_line" style="margin:6px 16px 0">${line()}</div>
           <div class="footnote" style="margin:18px 16px 6px">CALORIES A DAY</div>
@@ -1615,20 +1710,22 @@
           <button class="btn gray" type="button" id="g_calc" style="margin-top:16px">${I('spark')} Not sure? Work out a number for me</button>
           <button class="btn" type="button" id="gsave" style="margin-top:10px">Save</button>`;
           $('#gsave', b).onclick = save; $('#g_calc', b).onclick = () => calcSheet(st, n => { st.cal = n; draw(); });
+          $('#g_restart', b).onclick = () => { const w = parseFloat($('#g_w', b).value); if (!(w >= 50)) return toast('Type your weight now first', { icon: 'info' }); st.startLb = w; $('#g_start', b).value = w; $('#g_line', b).textContent = line(); haptic(8); toast('Pounds lost now counts from ' + w + ' lb'); };
+          $('#g_weighins', b).onclick = () => weighInsSheet();
         };
         const save = () => {
-          const w = parseFloat($('#g_w', b).value), gl = parseFloat($('#g_goal', b).value), cal = parseInt($('#g_cb', b).value, 10);
-          if (!(w >= 50 && w < 700) || !(gl >= 50 && gl < 700)) return toast('Check your weights (50–700 lb)', { icon: 'info' });
+          const w = parseFloat($('#g_w', b).value), gl = parseFloat($('#g_goal', b).value), cal = parseInt($('#g_cb', b).value, 10), start = parseFloat($('#g_start', b).value);
+          if (!(w >= 50 && w < 700) || !(gl >= 50 && gl < 700) || !(start >= 50 && start < 700)) return toast('Check your weights (50–700 lb)', { icon: 'info' });
           if (!(cal > 0)) return toast('Type your calories a day', { icon: 'info' });
           const fl = BW.goals().floor, raised = cal < fl, final = Math.min(6000, Math.max(fl, cal));
           const goalType = Math.abs(gl - w) < 0.5 ? 'maintain' : gl < w ? 'lose' : 'gain';
-          BW.saveProfile({ weightLb: w, goalLb: gl, customBudget: final, goalType, pace: goalType === 'lose' ? (BW.profile().pace || 1) : 0 });
-          if (w !== p0.weightLb) BW.setWeight(BW.dayKey(), w);
+          BW.saveProfile({ weightLb: w, goalLb: gl, startLb: Math.round(start * 10) / 10, customBudget: final, goalType, pace: goalType === 'lose' ? (BW.profile().pace || 1) : 0 });
+          if (w !== w0) BW.setWeight(BW.dayKey(), w);
           haptic(12); close(); toast(raised ? `Set to ${fmt(final)}, the lowest allowed` : `Saved · ${fmt(final)} cal a day`, { icon: raised ? 'info' : 'check' });
         };
         saveRef = save; draw();
         b.oninput = e => { const t = e.target, n = parseFloat(t.value);
-          if (t.id === 'g_w') st.weightLb = n; if (t.id === 'g_goal') st.goalLb = n;
+          if (t.id === 'g_w') st.weightLb = n; if (t.id === 'g_goal') st.goalLb = n; if (t.id === 'g_start') st.startLb = n;
           if (t.id === 'g_cb') { st.cal = parseInt(t.value, 10) || 0; const g2 = BW.goals(), note = $('#g_note', b); note.innerHTML = ownNote(g2, st.cal); note.classList.toggle('warn', st.cal > 0 && st.cal < g2.floor); }
           const l = $('#g_line', b); if (l) l.textContent = line(); };
         b.onclick = e => { const x = e.target.closest('[data-cb]'); if (!x) return; st.cal = Math.max(BW.goals().floor, Math.min(6000, (st.cal || BW.goals().budget) + +x.dataset.cb)); $('#g_cb', b).value = st.cal; $('#g_note', b).innerHTML = ownNote(BW.goals(), st.cal); $('#g_note', b).classList.remove('warn'); haptic(5); };
@@ -1743,6 +1840,7 @@
         case 'joingroup': return joinGroupSheet();
         case 'shareprefs': return sharePrefsSheet();
         case 'weight': return weightSheet();
+        case 'weighins': return weighInsSheet();
         case 'clearchat': saveChat([]); render(); return;
         case 'profile': case 'goals': return goalsSheet();
         case 'stepgoal': return numberSheet({ title: 'Step goal', label: 'Every day', value: BW.profile().stepGoal, unit: 'steps', step: 500, min: 1000, max: 40000, onSave: n => BW.saveProfile({ stepGoal: Math.round(n) }) });
@@ -1752,7 +1850,9 @@
         case 'signin': return signInSheet('login');
         case 'signup': return signInSheet('signup');
         case 'syncnow': await BW.sync(); await refreshMe(); toast(BW.syncError ? 'Sync failed: ' + BW.syncError : 'Synced', { icon: 'cloud' }); return;
-        case 'signout': return confirmSheet({ title: 'Sign out?', text: 'Your log stays on this device. Sign back in any time to sync again.', confirm: 'Sign out', danger: true, onConfirm: async () => { await BW.signOut(); LS.set('healthLinked', false); toast('Signed out'); } });
+        case 'signout': return confirmSheet({ title: 'Sign out?', text: BW.acct()?.auto ? 'Your log stays on this device. This account has no password, so get a code from another signed-in device first if you want it back.' : 'Your log stays on this device. Sign back in any time to sync again.', confirm: 'Sign out', danger: true, onConfirm: async () => { await BW.signOut(); LS.set('healthLinked', false); LS.del('groupsCache'); LS.del('inGroups'); S.groups = []; setManifest(); render(); toast('Signed out'); } });
+        case 'signcode': return signInSheet('code');
+        case 'link': return linkSheet();
         case 'themes': return themesSheet();
         case 'install': return installSheet();
         case 'voicehelp': return voiceHelpSheet();
@@ -1840,7 +1940,7 @@
   }
   function installSheet() {
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    openSheet({ title: 'Install BiteWise', left: 'Done', body: `<div class="footnote" style="margin:0 4px 14px;font-size:15px">Installed, BiteWise opens full screen like a real app and works with no internet.</div>
+    openSheet({ title: 'Install BiteWise', left: 'Done', body: `<div class="footnote" style="margin:0 4px 14px;font-size:15px">Installed, BiteWise opens full screen like a real app and works with no internet.${BW.acct() ? ' It opens already signed in, with your log and groups.' : ''}</div>
       ${S.installEvt ? `<button class="btn" type="button" id="ib">${I('download')} Install now</button>` : `<div class="group">${(ios ? [['share', 'Tap the Share button in Safari'], ['plus', 'Scroll down and tap “Add to Home Screen”'], ['check', 'Tap Add. Open BiteWise from your home screen.']] : [['right', 'Open your browser menu (⋮)'], ['download', 'Tap “Install app” or “Add to Home screen”'], ['check', 'Open BiteWise from your home screen.']]).map(([ic, t], i) => `<div class="row"><span class="icon-sq" style="background:var(--accent)">${I(ic)}</span><div class="grow"><div class="title" style="white-space:normal;font-size:16px">${i + 1}. ${t}</div></div></div>`).join('')}</div>`}`,
       mount: (b, close) => { $('#ib', b) && ($('#ib', b).onclick = async () => { S.installEvt.prompt(); await S.installEvt.userChoice; S.installEvt = null; close(); }); } });
   }
@@ -2121,8 +2221,8 @@
   addEventListener('focus', () => refreshGroups());
   S._lastToday = BW.dayKey();
 
-  if (location.search.includes('u=')) history.replaceState(null, '', location.pathname + location.hash);
   readHash(); render(); checkRewards();
+  bootSession();
   (window.requestIdleCallback || (f => setTimeout(f, 1200)))(() => BW_PARSE.loadUSDA());
   fetch('/api/status').then(r => r.json()).then(j => { S.status = j; if (BW.profile().setup) render(); setTimeout(flushPendingCoach, 800); }).catch(() => {});
   checkVersion().then(() => { if (BW.profile().setup) { if (LS.get('seenVersion', null) == null && !BW.hasData()) LS.set('seenVersion', APP_VERSION); else if (vcmp(APP_VERSION, LS.get('seenVersion', '0.0.0')) > 0) setTimeout(() => whatsNew(false), 900); } });

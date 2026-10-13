@@ -28,9 +28,29 @@ function limit(max, windowMs) {
   };
 }
 
+// Sign-in lives in two places: the token the app keeps, and an HttpOnly cookie the browser keeps. iPhones
+// clear a website's own storage after a week of not using it, which used to sign people out; the cookie
+// survives that, so the app can quietly sign itself back in (POST /api/session/restore).
+const COOKIE = 'bw_s';
+const cookies = req => Object.fromEntries((req.get('cookie') || '').split(';').map(c => c.trim().split('=')).filter(c => c[0]).map(([k, ...v]) => [k, decodeURIComponent(v.join('='))]));
+const secure = req => req.secure || req.get('x-forwarded-proto') === 'https';
+const setCookie = (req, res, token) => res.append('Set-Cookie', `${COOKIE}=${token}; Path=/; Max-Age=${400 * 86400}; HttpOnly; SameSite=Lax${secure(req) ? '; Secure' : ''}`);
+const clearCookie = (req, res) => res.append('Set-Cookie', `${COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${secure(req) ? '; Secure' : ''}`);
+async function newSession(req, res, user) {
+  const token = crypto.randomBytes(32).toString('hex');
+  await store.addSession(sha(token), user.id);
+  setCookie(req, res, token);
+  return { token, username: user.username, auto: !!user.auto || /^bw-/.test(user.username || '') };
+}
 async function auth(req, res, next) {
   const tok = (req.get('authorization') || '').replace(/^Bearer /, '');
-  req.uid = tok ? await store.sessionUser(sha(tok)).catch(() => null) : null;
+  try {
+    req.uid = tok ? await store.sessionUser(sha(tok)) : null;
+    if (!req.uid && cookies(req)[COOKIE]) req.uid = await store.sessionUser(sha(cookies(req)[COOKIE]));
+  } catch (e) {
+    // a database hiccup is not "signed out": say so instead of a 401, which would make phones drop their login
+    console.error('auth:', e.message); return res.status(503).json({ error: 'BiteWise is busy for a moment. Try again shortly.' });
+  }
   next();
 }
 const needUser = (req, res, next) => req.uid ? next() : res.status(401).json({ error: 'Sign in to use this.' });
@@ -48,26 +68,71 @@ app.post('/api/signup', limit(10, 60 * 60e3), async (req, res) => {
   const salt = crypto.randomBytes(16).toString('hex');
   const user = { id: crypto.randomUUID(), username, salt, hash: await hashPw(password, salt), created: Date.now() };
   if (!await store.createUser(user)) return res.status(409).json({ error: 'That username is taken.' });
-  const token = crypto.randomBytes(32).toString('hex');
-  await store.addSession(sha(token), user.id);
-  res.json({ token, username });
+  res.json(await newSession(req, res, user));
 });
 app.post('/api/login', limit(20, 15 * 60e3), async (req, res) => {
   const user = await store.userByName(cleanName(req.body.username));
   if (!user || await hashPw(String(req.body.password || ''), user.salt) !== user.hash) return res.status(401).json({ error: 'Wrong username or password.' });
-  const token = crypto.randomBytes(32).toString('hex');
-  await store.addSession(sha(token), user.id);
-  res.json({ token, username: user.username });
+  res.json(await newSession(req, res, user));
 });
 app.post('/api/logout', async (req, res) => {
   const tok = (req.get('authorization') || '').replace(/^Bearer /, '');
   if (tok) await store.dropSession(sha(tok));
+  const c = cookies(req)[COOKIE]; if (c) await store.dropSession(sha(c));
+  if (req.uid) await dropInstallKey(req.uid);
+  clearCookie(req, res);
   res.json({ ok: true });
+});
+// the app lost its token (storage cleared) but the browser still has the cookie: hand it a fresh token
+app.post('/api/session/restore', limit(30, 15 * 60e3), async (req, res) => {
+  const c = cookies(req)[COOKIE];
+  const uid = c ? await store.sessionUser(sha(c)) : null;
+  const user = uid ? await store.userById(uid) : null;
+  if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  res.json(await newSession(req, res, user));
 });
 app.get('/api/me', needUser, async (req, res) => {
   const u = await store.userById(req.uid);
   const t = await store.getFitbit(req.uid);
-  res.json({ username: u?.username, health: !!(t && t.provider === 'google-health'), healthSince: t?.linkedAt || null });
+  res.json({ username: u?.username, auto: !!u?.auto || /^bw-/.test(u?.username || ''), health: !!(t && t.provider === 'google-health'), healthSince: t?.linkedAt || null });
+});
+
+// ---------- signing in on another device, no password needed ----------
+// A short code shown on a signed-in device signs in another one for the same account (works for the
+// automatic accounts too, which have no password anyone knows). Codes last 15 minutes.
+// The home-screen app gets its own key: it is baked into the installed app's start address, so adding
+// BiteWise to the home screen opens it already signed in, with the same log and groups.
+const LINK_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const shortCode = () => Array.from(crypto.randomBytes(6), b => LINK_CHARS[b % LINK_CHARS.length]).join('');
+app.post('/api/link', needUser, limit(20, 60 * 60e3), async (req, res) => {
+  let code; for (let i = 0; i < 20; i++) { code = shortCode(); if (!await store.kvGet('link:' + code)) break; }
+  const exp = Date.now() + 15 * 60e3;
+  await store.kvSet('link:' + code, { uid: req.uid, exp });
+  res.json({ code, exp });
+});
+async function installKey(uid) {
+  let key = await store.kvGet('ikey:' + uid);
+  if (!key) { key = crypto.randomBytes(24).toString('hex'); await store.kvSet('ikey:' + uid, key); await store.kvSet('link:' + key, { uid, install: true }); }
+  return key;
+}
+async function dropInstallKey(uid) { const key = await store.kvGet('ikey:' + uid); if (key) { await store.kvDel('link:' + key); await store.kvDel('ikey:' + uid); } }
+app.get('/api/link/install', needUser, async (req, res) => res.json({ key: await installKey(req.uid) }));
+app.post('/api/link/redeem', limit(30, 15 * 60e3), async (req, res) => {
+  const raw = String(req.body.code || '').trim();
+  const code = /^[0-9a-f]{48}$/.test(raw) ? raw : raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const link = code.length === 6 || code.length === 48 ? await store.kvGet('link:' + code) : null;
+  if (link && link.exp && link.exp < Date.now()) { await store.kvDel('link:' + code); return res.status(404).json({ error: 'That code has expired. Get a new one from your other device.' }); }
+  const user = link ? await store.userById(link.uid) : null;
+  if (!user) return res.status(404).json({ error: code.length === 48 ? 'That install link is no longer valid. Sign in once and you’re set.' : 'No match for that code. Check the letters and try again.' });
+  res.json(await newSession(req, res, user));
+});
+// the manifest with the signed-in person's key in the start address (what "Add to Home Screen" saves)
+app.get('/manifest.webmanifest', async (req, res) => {
+  res.set('Content-Type', 'application/manifest+json'); res.set('Cache-Control', 'no-cache');
+  const m = JSON.parse(require('fs').readFileSync(path.join(__dirname, 'public', 'manifest.webmanifest'), 'utf8'));
+  const k = String(req.query.k || '');
+  if (/^[0-9a-f]{48}$/.test(k) && await store.kvGet('link:' + k).catch(() => null)) m.start_url = '/?k=' + k + '#today';
+  res.json(m);
 });
 
 // ---------- sync ----------
@@ -113,7 +178,9 @@ app.post('/api/account/delete', needUser, limit(5, 60 * 60e3), async (req, res) 
     else { if (g.owner === req.uid) g.owner = g.members[0]; await store.kvSet('group:' + g.id, g); }
   }
   for (const k of ['ugroups:', 'share:']) await store.kvDel(k + req.uid);
+  await dropInstallKey(req.uid);
   await store.deleteUser(req.uid);
+  clearCookie(req, res);
   res.json({ ok: true });
 });
 
