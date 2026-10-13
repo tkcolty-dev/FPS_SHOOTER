@@ -1,7 +1,16 @@
 {
-  "version": "1.15.0",
+  "version": "1.16.0",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.16.0",
+      "date": "2026-10-13",
+      "title": "Look back on anyone’s days",
+      "changes": [
+        "New: On a group member’s page, use the arrows or tap a day in the week bars to see what they ate that day, their calories against their goal, steps, and their weigh-in if they had one. Goes back two weeks.",
+        "New: Log food for someone on the day you’re looking at, not just today."
+      ]
+    },
     {
       "version": "1.15.0",
       "date": "2026-10-13",

@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.15.0';
+  const APP_VERSION = '1.16.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -1405,9 +1405,9 @@
         if (g) draw(b, g); else if (!cached) b.innerHTML = `<div class="banner">${I('info')}<span>${S.online ? 'That group is gone.' : 'Connect to the internet to see your group.'}</span></div>`;
       } });
   }
-  function logForSheet(g, key, name) {
-    let meal = qMeal();
-    openSheet({ title: `Log for ${name}`, body: `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">This goes into ${esc(name)}'s day and shows that you added it.${S.online ? '' : ' You\u2019re offline, so it\u2019ll send when you reconnect.'}</p>
+  function logForSheet(g, key, name, date = BW.dayKey()) {
+    let meal = qMeal(); const dayLbl = date === BW.dayKey() ? '' : ' · ' + BW.parseDay(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    openSheet({ title: `Log for ${name}${dayLbl}`, body: `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">This goes into ${esc(name)}'s day and shows that you added it.${S.online ? '' : ' You\u2019re offline, so it\u2019ll send when you reconnect.'}</p>
       <div class="edit-amount"><input id="lf_cal" class="num" inputmode="numeric" placeholder="0" aria-label="Calories"><span>calories</span></div>
       <input class="name-input" id="lf_name" placeholder="What was it?" aria-label="Food name">
       <div id="lf_meal">${mealPills(meal, 'data-lfm')}</div>
@@ -1420,8 +1420,8 @@
           const cal = parseInt($('#lf_cal', b).value || $('#lf_cal', b).placeholder, 10), nm = $('#lf_name', b).value.trim() || 'Food';
           if (!(cal > 0)) return toast('Enter the calories', { icon: 'info' });
           close();
-          const ok = await queueOnline(`groups/${g.id}/log`, { to: key, name: nm, calories: cal, meal, date: BW.dayKey() }, `${nm} for ${name}`);
-          toast(ok ? `Added ${nm} to ${name}'s day` : `Saved. It'll send to ${name} when you're back online`, { icon: ok ? 'check' : 'cloud' });
+          const ok = await queueOnline(`groups/${g.id}/log`, { to: key, name: nm, calories: cal, meal, date }, `${nm} for ${name}`);
+          toast(ok ? `Added ${nm} to ${name}'s ${date === BW.dayKey() ? 'day' : BW.parseDay(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : `Saved. It'll send to ${name} when you're back online`, { icon: ok ? 'check' : 'cloud' });
           if (ok) setTimeout(() => refreshGroups(true), 600);
         };
       } });
@@ -1451,26 +1451,41 @@
     const find = () => { const g = (S.groups || LS.get('groupsCache', [])).find(x => x.id === gid); return { g, m: g?.members.find(x => x.key === key) }; };
     let { g, m } = find();
     if (!g || !m) return toast('Open the group again to refresh', { icon: 'info' });
+    let sel = m.log?.today || BW.dayKey(); // the day being looked at: arrows and the week bars change it
     const build = (g, m) => {
-    const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
-    const wk = lg?.days || [], mx = Math.max(st.budget || 0, ...wk.map(d => d.eaten), 1);
-    const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.slice().reverse().find(x => x.date <= BW.addDays(lg?.today || BW.dayKey(), -6));
-    const body = `<div style="display:flex;align-items:center;gap:12px;margin:4px 4px 14px">${face(st, m.username, 0, true)}<div><div style="font-size:20px;font-weight:600">${esc(nm)}</div><div class="caption">${esc([st.goal, st.level ? `Level ${st.level}` : null].filter(Boolean).join(' · ') || 'Sharing')}</div></div>${st.streak ? `<span class="pill streak" style="margin-left:auto">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>
+      const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log, today = lg?.today || BW.dayKey();
+      const days = lg?.days || [], d = days.find(x => x.date === sel) || { date: sel, eaten: 0, steps: null, weight: null, foods: [] };
+      const first = days[0]?.date, canBack = !!first && sel > first, canFwd = sel < today;
+      const wk = days.filter(x => x.date > BW.addDays(sel, -7) && x.date <= (sel > BW.addDays(today, -6) ? today : BW.addDays(sel, 0))).slice(-7);
+      const bars = wk.length ? wk : days.slice(-7);
+      const mx = Math.max(st.budget || 0, ...bars.map(x => x.eaten), 1);
+      const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.slice().reverse().find(x => x.date <= BW.addDays(today, -6));
+      const isToday = sel === today, label = isToday ? 'Today' : sel === BW.addDays(today, -1) ? 'Yesterday' : BW.parseDay(sel).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      const pct = st.budget ? Math.round(d.eaten / st.budget * 100) : null;
+      const body = `<div style="display:flex;align-items:center;gap:12px;margin:4px 4px 12px">${face(st, m.username, 0, true)}<div><div style="font-size:20px;font-weight:600">${esc(nm)}</div><div class="caption">${esc([st.goal, st.level ? `Level ${st.level}` : null].filter(Boolean).join(' · ') || 'Sharing')}</div></div>${st.streak ? `<span class="pill streak" style="margin-left:auto">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>
+      <div class="mday-nav"><button class="dn" type="button" data-mday="-1" ${canBack ? '' : 'disabled'} aria-label="Previous day">${I('left')}</button><div class="mday-label"><b>${label}</b>${isToday ? '' : `<span class="caption">${BW.parseDay(sel).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</span>`}</div><button class="dn" type="button" data-mday="1" ${canFwd ? '' : 'disabled'} aria-label="Next day">${I('right')}</button></div>
       <div class="results2">
-        <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${w ? w.lb + '<small> lb</small>' : st.weightLb ? st.weightLb + '<small> lb</small>' : st.lostLb > 0 ? '↓ ' + st.lostLb + '<small> lb lost</small>' : '–'}</div><div class="caption">${w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : st.lostLb > 0 ? 'Keeps the exact number private' : 'No weigh-ins yet'}${w && st.lostLb > 0 ? ` · ${st.lostLb} lb lost` : ''}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
-        <div class="card"><div class="st-k">Today</div><div class="big-stat num">${st.todayPct != null ? st.todayPct + '%' : '–'}</div><div class="caption">${st.budget ? `of ${fmt(st.budget)} cal` : 'of goal'}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div></div>
+        <div class="card"><div class="st-k">${isToday ? 'Today' : 'That day'}</div><div class="big-stat num">${fmt(d.eaten)}<small> cal</small></div><div class="caption">${pct != null ? `${pct}% of ${fmt(st.budget)}` : 'eaten'}${d.steps ? ` · ${fmt(d.steps)} steps` : ''}</div></div>
+        <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${d.weight ? d.weight + '<small> lb</small>' : w ? w.lb + '<small> lb</small>' : st.weightLb ? st.weightLb + '<small> lb</small>' : st.lostLb > 0 ? '↓ ' + st.lostLb + '<small> lb lost</small>' : '–'}</div><div class="caption">${d.weight ? (isToday ? 'Weighed in today' : 'Weighed in that day') : w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : st.lostLb > 0 ? 'Keeps the exact number private' : 'No weigh-ins yet'}${st.lostLb > 0 && (w || d.weight) ? ` · ${st.lostLb} lb lost` : ''}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
       </div>
-      ${wk.length ? `<div class="card" style="margin-top:12px"><div class="st-k">This week</div><div class="mini-bars">${wk.map(d => `<span title="${d.date}: ${fmt(d.eaten)}"><i style="height:${Math.max(3, d.eaten / mx * 100)}%;${st.budget && d.eaten > st.budget * 1.1 ? 'background:var(--orange)' : ''}"></i><em>${BW.parseDay(d.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</em></span>`).join('')}</div></div>` : ''}
-      <div class="section-head" style="margin-top:16px"><h2>Today’s food</h2>${lg ? `<span class="caption num">${fmt(wk.find(x => x.date === lg.today)?.eaten || 0)} cal</span>` : ''}</div>
-      ${lg?.foods?.length ? `<div class="group">${lg.foods.map(e => `<div class="row"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal || 'snack')}${e.time ? ' · ' + new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}${e.by ? ` · <span class="by">added by ${esc(e.by)}</span>` : ''}</div></div><span class="kcal num">${fmt(e.calories)}</span></div>`).join('')}</div>`
-      : `<div class="card empty"><b>Nothing logged yet today</b><span>${m.you ? 'Add something on Today.' : `You can log something for ${esc(nm)} below.`}</span></div>`}
-      ${!m.you && m.canLog ? `<button class="btn" type="button" id="mlog" style="margin-top:16px">${I('plus')} Log food for ${esc(nm)}</button>` : ''}`;
-    return { nm, body }; };
+      ${bars.length ? `<div class="card" style="margin-top:12px"><div class="card-head"><div class="st-k">${bars[bars.length - 1].date === today ? 'This week' : 'That week'}</div><span class="caption">Tap a day</span></div><div class="mini-bars pick">${bars.map(x => `<button type="button" data-mbar="${x.date}" class="${x.date === sel ? 'on' : ''}" aria-label="${x.date}: ${fmt(x.eaten)} calories"><i style="height:${Math.max(3, x.eaten / mx * 100)}%;${st.budget && x.eaten > st.budget * 1.1 ? 'background:var(--orange)' : ''}"></i><em>${BW.parseDay(x.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</em></button>`).join('')}</div></div>` : ''}
+      <div class="section-head" style="margin-top:16px"><h2>${isToday ? 'Today’s food' : 'Food · ' + label}</h2>${lg ? `<span class="caption num">${fmt(d.eaten)} cal</span>` : ''}</div>
+      ${d.foods.length ? `<div class="group">${d.foods.map(e => `<div class="row"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal || 'snack')}${e.time ? ' · ' + new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}${e.by ? ` · <span class="by">added by ${esc(e.by)}</span>` : ''}</div></div><span class="kcal num">${fmt(e.calories)}</span></div>`).join('')}</div>`
+      : `<div class="card empty"><b>${isToday ? 'Nothing logged yet today' : 'Nothing logged ' + (sel === BW.addDays(today, -1) ? 'yesterday' : 'that day')}</b><span>${m.you ? (isToday ? 'Add something on Today.' : 'Use the arrows on Today to log a past day.') : `You can log something for ${esc(nm)} below.`}</span></div>`}
+      ${!m.you && m.canLog ? `<button class="btn" type="button" id="mlog" style="margin-top:16px">${I('plus')} Log food for ${esc(nm)}${isToday ? '' : ' · ' + label}</button>` : ''}`;
+      return { nm, body };
+    };
     const first = build(g, m);
     openSheet({ title: first.nm, left: 'Done', tall: true, body: first.body, mount: b => {
-      const bind = () => { const x = $('#mlog', b); if (x) x.onclick = () => logForSheet(g, m.key, build(g, m).nm); }; bind();
+      const redraw = () => { b.innerHTML = build(g, m).body; };
+      b.onclick = e => {
+        const x = e.target.closest('button'); if (!x) return;
+        if (x.dataset.mday) { sel = BW.addDays(sel, +x.dataset.mday); haptic(5); redraw(); }
+        else if (x.dataset.mbar) { sel = x.dataset.mbar; haptic(5); redraw(); }
+        else if (x.id === 'mlog') logForSheet(g, m.key, build(g, m).nm, sel);
+      };
       // show the freshest numbers: re-fetch once the sheet is open and redraw in place
-      refreshGroups(true).then(() => { const f = find(); if (f.g && f.m && document.body.contains(b)) { g = f.g; m = f.m; b.innerHTML = build(g, m).body; bind(); } });
+      refreshGroups(true).then(() => { const f = find(); if (f.g && f.m && document.body.contains(b)) { g = f.g; m = f.m; redraw(); } });
     } });
   }
 

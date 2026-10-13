@@ -21,6 +21,12 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.16.0 · Look back on anyone’s days
+_2026-10-13 · git tag `v1.16.0`_
+
+- New: On a group member’s page, use the arrows or tap a day in the week bars to see what they ate that day, their calories against their goal, steps, and their weigh-in if they had one. Goes back two weeks.
+- New: Log food for someone on the day you’re looking at, not just today.
+
 ## 1.15.0 · Honest weight numbers
 _2026-10-13 · git tag `v1.15.0`_
 

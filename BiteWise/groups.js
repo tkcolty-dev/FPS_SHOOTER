@@ -22,18 +22,21 @@ const addDays = (k, n) => dayKey(new Date(Date.parse(k) + n * 864e5));
 
 // what a sharing member's groups see of their actual log: this week's totals, today's foods, recent weigh-ins
 async function logView(store, uid, today) {
-  const from = addDays(today, -6);
+  const DAYS = 14, from = addDays(today, -(DAYS - 1));
   const recs = (await store.recentRecords(uid, ['entry', 'steps'], addDays(today, -60))).concat(await store.recentRecords(uid, ['weight'], '0000-00-00'));
-  const days = {}; for (let i = 6; i >= 0; i--) days[addDays(today, -i)] = 0;
-  const foods = [];
+  const days = {}; for (let i = DAYS - 1; i >= 0; i--) days[addDays(today, -i)] = { date: addDays(today, -i), eaten: 0, steps: null, weight: null, foods: [] };
+  const food = r => ({ name: String(r.name || 'Food').slice(0, 80), calories: Math.round(+r.calories || 0), meal: r.meal, time: r.time, by: r.by ? String(r.by).slice(0, 30) : undefined });
   for (const r of recs) {
-    if (r.kind === 'entry' && r.date >= from && r.date <= today) { days[r.date] = (days[r.date] || 0) + (+r.calories || 0); if (r.date === today) foods.push({ name: String(r.name || 'Food').slice(0, 80), calories: Math.round(+r.calories || 0), meal: r.meal, time: r.time, by: r.by ? String(r.by).slice(0, 30) : undefined }); }
+    const d = days[r.date]; if (!d) continue;
+    if (r.kind === 'entry') { d.eaten += (+r.calories || 0); if (d.foods.length < 40) d.foods.push(food(r)); }
+    else if (r.kind === 'steps') d.steps = Math.round(+r.steps || +r.count || 0);
+    else if (r.kind === 'weight' && r.lb > 0) d.weight = Math.round(r.lb * 10) / 10;
   }
-  foods.sort((a, b) => (b.time || 0) - (a.time || 0));
+  for (const d of Object.values(days)) d.foods.sort((a, b) => (b.time || 0) - (a.time || 0));
   const allW = recs.filter(r => r.kind === 'weight' && r.lb > 0 && r.date <= today).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10 })).sort((a, b) => a.date < b.date ? -1 : 1);
   const lostLb = allW.length ? Math.round((allW[0].lb - allW[allW.length - 1].lb) * 10) / 10 : null;
-  const stepsRec = recs.find(r => r.kind === 'steps' && r.date === today);
-  return { today, days: Object.entries(days).map(([date, eaten]) => ({ date, eaten })), foods: foods.slice(0, 60), weights: allW.slice(-12), lostLb, weighIns: allW.length, todayCal: days[today] || 0, steps: stepsRec ? Math.round(+stepsRec.steps || +stepsRec.count || 0) : null };
+  const t = days[today];
+  return { today, days: Object.values(days), foods: t.foods, weights: allW.slice(-12), lostLb, weighIns: allW.length, todayCal: t.eaten, steps: t.steps };
 }
 
 // members are addressed by a per-group key, never by their account id

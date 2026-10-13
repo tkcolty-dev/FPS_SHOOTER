@@ -151,6 +151,8 @@ async function serverTests() {
       await call('share', { stats: { name: 'Bob', budget: 2000, lostLb: 0.2, weightLb: 171.5 }, full: true }, bob.j.token);
       bobRow = (await call('groups?date=2026-10-13', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
       ok(bobRow?.stats?.lostLb === 4.5 && bobRow.stats.weightLb === 170.5 && bobRow.log.lostLb === 4.5, 'pounds lost and weight come from the weigh-ins, not the pushed summary', JSON.stringify({ lost: bobRow?.stats?.lostLb, w: bobRow?.stats?.weightLb }));
+      const yd = bobRow?.log?.days?.find(d => d.date === '2026-10-12');
+      ok(bobRow?.log?.days?.length === 14 && yd && yd.eaten === 600 && yd.foods.length === 2 && yd.steps === 7100 && yd.weight === 171.5, 'past days carry their foods, steps and weigh-in', JSON.stringify(yd));
       ok(fam && fam.members.length === 2, 'both members listed', JSON.stringify(list.j));
       ok(fam?.members.some(m => m.stats?.name === 'Bob' && m.stats.streak === 3), 'shared stats visible');
       const eve = await call('signup', { username: 'eve', password: 'secret3' });
