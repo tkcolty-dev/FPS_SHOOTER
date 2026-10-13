@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.14.1';
+  const APP_VERSION = '1.15.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -321,7 +321,7 @@
         ${stat('Average', done.length ? fmt(avg) : '–', done.length ? (avg <= g.budget ? `${fmt(g.budget - avg)} under goal` : `${fmt(avg - g.budget)} over goal`) : 'cal a day')}
         ${stat('On track', done.length ? `${on}/${done.length}` : '–', 'days this week')}
         ${stat('Streak', st.days, st.days === 1 ? 'day' : 'days', st.days ? 'var(--orange)' : '')}
-        ${stat('Weight', tr ? tr.now.toFixed(1) : '–', tr && tr.perWeek != null ? (Math.abs(tr.perWeek) < .1 ? 'steady' : `${tr.perWeek < 0 ? '↓' : '↑'} ${Math.abs(tr.perWeek).toFixed(1)} lb/wk`) : tr ? 'lb trend' : 'log a weigh-in')}
+        ${stat('Weight', tr ? tr.now.toFixed(1) : '–', tr && tr.perWeek != null ? (Math.abs(tr.perWeek) < .1 ? 'steady' : `${tr.perWeek < 0 ? '↓' : '↑'} ${Math.abs(tr.perWeek).toFixed(1)} lb/wk`) : tr ? 'lb now' : 'log a weigh-in')}
       </div>
     </div>`;
   }
@@ -553,8 +553,8 @@
         ${stepsChart(n)}
       </div>
       <div class="card">
-        <div class="card-head"><div><div class="st-k">Weight · trend</div><div class="big-stat">${tr ? `<span class="num">${tr.now.toFixed(1)}</span><small> lb</small>` : '<small>No weigh-ins yet</small>'}</div></div><button class="btn small tinted" type="button" data-act="weight">Log weight</button></div>
-        ${tr ? `<p class="insight">${tr.eta ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. At this pace you'll hit ${p.goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.lost > 0 ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. Keep weighing in a few times a week.` : 'The line smooths out daily water-weight ups and downs.'}</p>${tr.pts.length > 1 ? weightChart(tr) : ''}` : `<p class="insight">Weigh in 2–3 times a week, in the morning. The trend line ignores day-to-day swings.</p>`}
+        <div class="card-head"><div><div class="st-k">Weight</div><div class="big-stat">${tr ? `<span class="num">${tr.now.toFixed(1)}</span><small> lb</small>` : '<small>No weigh-ins yet</small>'}</div></div><button class="btn small tinted" type="button" data-act="weight">Log weight</button></div>
+        ${tr ? `<p class="insight">${tr.eta ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. At this pace you'll hit ${p.goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.lost > 0 ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. Keep weighing in a few times a week.` : tr.lost < 0 ? `Up <b>${Math.abs(tr.lost).toFixed(1)} lb</b> since your first weigh-in.` : 'Your first weigh-in. Pounds lost counts from here.'}</p>${tr.pts.length > 1 ? weightChart(tr) : ''}` : `<p class="insight">Weigh in 2–3 times a week, in the morning, for numbers you can trust.</p>`}
       </div>
     </div><div class="col-side">
       <div class="card">
@@ -1160,7 +1160,7 @@
 
   function weightSheet() {
     const tr = BW.trend(), cur = BW.day(BW.dayKey()).weight || (tr ? tr.pts[tr.pts.length - 1].lb : BW.profile().weightLb);
-    numberSheet({ title: 'Log weight', label: 'Today', value: cur, unit: 'lb', step: .2, min: 50, max: 700, decimals: 1, onSave: n => { BW.setWeight(BW.dayKey(), n); BW.saveProfile({ weightLb: Math.round(n) }); toast('Weight logged'); },
+    numberSheet({ title: 'Log weight', label: 'Today', value: cur, unit: 'lb', step: .2, min: 50, max: 700, decimals: 1, onSave: n => { BW.setWeight(BW.dayKey(), n); BW.saveProfile({ weightLb: Math.round(n * 10) / 10 }); toast('Weight logged'); },
       footer: `<div class="footnote">Weigh in the morning after using the bathroom, before eating, for the most consistent numbers.</div>` });
   }
 
@@ -1297,9 +1297,10 @@
     try { const before = JSON.stringify(S.groups || []); await loadGroups(); if (JSON.stringify(S.groups || []) !== before) render(); } catch {} finally { groupsBusy = false; }
   }
   async function loadGroups() {
-    if (!BW.acct() || !navigator.onLine) return (S.groups ||= LS.get('groupsCache', []));
-    try { const j = await BW.api('groups?date=' + BW.dayKey(), null, 'GET'); S.groups = j.groups; LS.set('groupsCache', j.groups); LS.set('inGroups', j.groups.length > 0); }
-    catch { S.groups ||= LS.get('groupsCache', []); }
+    const cached = () => { let gs = LS.get('groupsCache', []); if (LS.get('groupsCacheDay', '') !== BW.dayKey()) gs = gs.map(g => ({ ...g, members: g.members.map(m => ({ ...m, log: null, stats: m.stats ? { ...m.stats, todayPct: null, steps: null } : null })) })); return gs; };
+    if (!BW.acct() || !navigator.onLine) return (S.groups ||= cached());
+    try { const j = await BW.api('groups?date=' + BW.dayKey(), null, 'GET'); S.groups = j.groups; LS.set('groupsCache', j.groups); LS.set('groupsCacheDay', BW.dayKey()); LS.set('inGroups', j.groups.length > 0); }
+    catch { S.groups ||= cached(); }
     return S.groups;
   }
   // compact one-line view of a member: today's calories, progress bar, pounds lost, weight, streak
@@ -1453,7 +1454,7 @@
     const build = (g, m) => {
     const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
     const wk = lg?.days || [], mx = Math.max(st.budget || 0, ...wk.map(d => d.eaten), 1);
-    const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.find(x => x.date <= BW.addDays(lg?.today || BW.dayKey(), -6));
+    const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.slice().reverse().find(x => x.date <= BW.addDays(lg?.today || BW.dayKey(), -6));
     const body = `<div style="display:flex;align-items:center;gap:12px;margin:4px 4px 14px">${face(st, m.username, 0, true)}<div><div style="font-size:20px;font-weight:600">${esc(nm)}</div><div class="caption">${esc([st.goal, st.level ? `Level ${st.level}` : null].filter(Boolean).join(' · ') || 'Sharing')}</div></div>${st.streak ? `<span class="pill streak" style="margin-left:auto">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>
       <div class="results2">
         <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${w ? w.lb + '<small> lb</small>' : st.weightLb ? st.weightLb + '<small> lb</small>' : st.lostLb > 0 ? '↓ ' + st.lostLb + '<small> lb lost</small>' : '–'}</div><div class="caption">${w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : st.lostLb > 0 ? 'Keeps the exact number private' : 'No weigh-ins yet'}${w && st.lostLb > 0 ? ` · ${st.lostLb} lb lost` : ''}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
@@ -2114,6 +2115,6 @@
   addEventListener('online', () => { checkVersion(); setTimeout(flushPendingCoach, 1500); scheduleShare(true); flushOutbox(); });
   BW.sync(); refreshMe(); loadGroups().then(() => { render(); scheduleShare(true); });
   // keep group numbers fresh: when you come back to the app, every 45 s while it's open, and after your own numbers are shared
-  setInterval(() => { if (document.visibilityState === 'visible') refreshGroups(); }, 45e3);
+  setInterval(() => { if (document.visibilityState !== 'visible') return; const t = BW.dayKey(); if (t !== S._lastToday) { if (S.date === S._lastToday) S.date = t; S._lastToday = t; lastShared = ''; scheduleShare(true); render(); refreshGroups(true); } else refreshGroups(); }, 45e3);
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('/sw.js').catch(() => {});
 })();

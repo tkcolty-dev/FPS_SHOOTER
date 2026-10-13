@@ -181,14 +181,15 @@
     let t = ws[0].lb; const pts = [];
     for (const w of ws) { t = t + 0.25 * (w.lb - t); pts.push({ date: w.date, lb: w.lb, trend: Math.round(t * 10) / 10 }); }
     const last = pts[pts.length - 1];
-    // rate from trend over last ~21 days
+    // the numbers people see are the real weigh-ins: latest weight, and first minus latest for pounds lost.
+    // (the smoothed line is only drawn on the chart)
     const back = pts.filter(x => x.date >= addDays(last.date, -21));
     const span = (parseDay(last.date) - parseDay(back[0].date)) / 864e5;
-    const perWeek = span >= 6 ? (last.trend - back[0].trend) / span * 7 : null;
+    const perWeek = span >= 6 ? (last.lb - back[0].lb) / span * 7 : null;
     const p = profile();
     let eta = null;
-    if (perWeek && perWeek < -0.05 && last.trend > p.goalLb) { const weeks = (last.trend - p.goalLb) / -perWeek; if (weeks < 520) { const d = parseDay(last.date); d.setDate(d.getDate() + Math.round(weeks * 7)); eta = d; } }
-    return { pts, now: last.trend, first: pts[0].lb, perWeek, eta, lost: Math.round((pts[0].lb - last.trend) * 10) / 10 };
+    if (perWeek && perWeek < -0.05 && last.lb > p.goalLb) { const weeks = (last.lb - p.goalLb) / -perWeek; if (weeks < 520) { const d = parseDay(last.date); d.setDate(d.getDate() + Math.round(weeks * 7)); eta = d; } }
+    return { pts, now: last.lb, first: pts[0].lb, perWeek, eta, lost: Math.round((pts[0].lb - last.lb) * 10) / 10 };
   });
 
   const BADGES = [
@@ -200,8 +201,8 @@
     ['steps10', 'Step Star', '10,000 steps in a day', 'shoe'],
     ['target5', 'On Target', '5 days within 10% of your budget', 'target'],
     ['scale', 'Scale Brave', 'Log your weight', 'scale'],
-    ['down5', 'Down 5', 'Trend weight 5 lb below your start', 'trophy'],
-    ['down10', 'Double Digits', 'Trend weight 10 lb below your start', 'trophy'],
+    ['down5', 'Down 5', 'Weigh in 5 lb below your first weigh-in', 'trophy'],
+    ['down10', 'Double Digits', 'Weigh in 10 lb below your first weigh-in', 'trophy'],
     ['voice', 'Just Say It', 'Log food with your voice', 'mic'],
     ['coach', 'Coach’s Pick', 'Chat with Bitey, your AI coach', 'spark'],
     ['early', 'Early Bird', 'Log breakfast before 9am on 5 days', 'sun'],

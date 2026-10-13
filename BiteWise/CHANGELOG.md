@@ -21,6 +21,17 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.15.0 · Honest weight numbers
+_2026-10-13 · git tag `v1.15.0`_
+
+- Fixed: Pounds lost was taken from a smoothed trend line, so 180 then 179 showed as “down 0.2”. It’s now simply your first weigh-in minus your latest. Same for the weight shown everywhere.
+- Fixed: In groups, weight and pounds lost are worked out on the server from the real weigh-ins, so they can’t go stale.
+- Fixed: If a member’s log can’t be read, old pushed numbers are dropped instead of shown, so yesterday’s calories can’t appear as today’s.
+- Fixed: Group numbers saved from an earlier day are blanked while the fresh ones load.
+- Fixed: If the app stays open past midnight, Today moves to the new day and groups refresh on their own.
+- Fixed: Logging a weight like 176.4 kept the decimals on the Goals screen.
+- Fixed: “This week” weight change on a member’s page compared against the wrong weigh-in.
+
 ## 1.14.1 · Groups stay current
 _2026-10-13 · git tag `v1.14.1`_
 

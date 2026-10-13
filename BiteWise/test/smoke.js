@@ -57,6 +57,8 @@ function dataTests() {
   BW.put({ id: 'preset:3', kind: 'preset', name: '', calories: 0 });
   ok(BW.presets().length === 2 && BW.presets()[0].name === 'Lunch', 'quick adds listed in order, blanks skipped', JSON.stringify(BW.presets()));
   BW.remove('preset:1'); ok(BW.presets().length === 1, 'quick add deleted');
+  BW.setWeight('2026-10-12', 180); BW.setWeight('2026-10-13', 179);
+  ok(BW.trend().lost === 1 && BW.trend().now === 179, 'two weigh-ins: lost is the real difference', JSON.stringify({ lost: BW.trend().lost, now: BW.trend().now }));
   BW.saveProfile({ setup: true, sex: 'female', age: 30, heightIn: 64, weightLb: 160, goalLb: 140, activity: 1.375, goalType: 'lose', pace: 2 });
   let g = BW.goals();
   ok(g.budget >= 1200, 'adult floor', g.budget);
@@ -138,13 +140,17 @@ async function serverTests() {
       ok(bobRow?.sharing && bobRow.stats.weightLb === 171.5 && bobRow.log?.foods?.[0]?.name === 'Taco' && bobRow.log.weights?.[0]?.lb === 171.5 && bobRow.log.days.find(d => d.date === '2026-10-12')?.eaten === 400, 'sharing on: weight and food log visible', JSON.stringify(bobRow?.log));
       await call('share', { stats: { name: 'Bob', streak: 3, weightLb: 171.5, lostLb: 4.5 }, full: true, exact: false }, bob.j.token);
       bobRow = (await call('groups?date=2026-10-12', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
-      ok(bobRow?.sharing && bobRow.stats.weightLb == null && bobRow.stats.lostLb === 4.5 && bobRow.log?.weights?.length === 0 && bobRow.log.foods.length === 1, 'exact weight off: pounds lost shows, the number does not', JSON.stringify(bobRow?.stats));
+      ok(bobRow?.sharing && bobRow.stats.weightLb == null && bobRow.stats.lostLb === 0 && bobRow.log?.weights?.length === 0 && bobRow.log.foods.length === 1, 'exact weight off: pounds lost (from weigh-ins) shows, the number does not', JSON.stringify(bobRow?.stats));
       await call('share', { stats: { name: 'Bob', streak: 3, weightLb: 171.5, budget: 2000, todayPct: 99 }, full: true }, bob.j.token);
       await call('sync', { since: 0, changes: [{ id: 'e:b2', kind: 'entry', date: '2026-10-12', meal: 'dinner', name: 'Soup', calories: 200, time: 2, updatedAt: 11 }, { id: 'steps:2026-10-12', kind: 'steps', date: '2026-10-12', steps: 7100, updatedAt: 11 }] }, bob.j.token);
       bobRow = (await call('groups?date=2026-10-12', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
       ok(bobRow?.log?.todayCal === 600 && bobRow.stats.todayPct === 30 && bobRow.stats.steps === 7100, 'today\'s numbers come from the log, not the stale pushed summary', JSON.stringify({ cal: bobRow?.log?.todayCal, pct: bobRow?.stats?.todayPct, steps: bobRow?.stats?.steps }));
       bobRow = (await call('groups?date=2026-10-13', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
       ok(bobRow?.log?.todayCal === 0 && bobRow.stats.todayPct === 0 && bobRow.log.foods.length === 0, 'a new day starts at zero for everyone', JSON.stringify({ cal: bobRow?.log?.todayCal, pct: bobRow?.stats?.todayPct }));
+      await call('sync', { since: 0, changes: [{ id: 'weight:2026-09-01', kind: 'weight', date: '2026-09-01', lb: 175, updatedAt: 12 }, { id: 'weight:2026-10-13', kind: 'weight', date: '2026-10-13', lb: 170.5, updatedAt: 12 }] }, bob.j.token);
+      await call('share', { stats: { name: 'Bob', budget: 2000, lostLb: 0.2, weightLb: 171.5 }, full: true }, bob.j.token);
+      bobRow = (await call('groups?date=2026-10-13', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
+      ok(bobRow?.stats?.lostLb === 4.5 && bobRow.stats.weightLb === 170.5 && bobRow.log.lostLb === 4.5, 'pounds lost and weight come from the weigh-ins, not the pushed summary', JSON.stringify({ lost: bobRow?.stats?.lostLb, w: bobRow?.stats?.weightLb }));
       ok(fam && fam.members.length === 2, 'both members listed', JSON.stringify(list.j));
       ok(fam?.members.some(m => m.stats?.name === 'Bob' && m.stats.streak === 3), 'shared stats visible');
       const eve = await call('signup', { username: 'eve', password: 'secret3' });

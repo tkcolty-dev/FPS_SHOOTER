@@ -110,7 +110,7 @@ function pgBackend(cfg) {
     },
     async deleteRecords(uid) { await q('DELETE FROM bw_records WHERE uid = $1', [uid]); },
     async recentRecords(uid, kinds, fromDate) {
-      const r = await q(`SELECT data FROM bw_records WHERE uid = $1 AND data->>'kind' = ANY($2) AND COALESCE(data->>'date', '9') >= $3 AND COALESCE((data->>'deleted')::boolean, false) = false ORDER BY data->>'date' LIMIT 2000`, [uid, kinds, fromDate]);
+      const r = await q(`SELECT data FROM bw_records WHERE uid = $1 AND data->>'kind' = ANY($2) AND COALESCE(data->>'date', '9') >= $3 AND COALESCE(data->>'deleted', 'false') <> 'true' ORDER BY data->>'date' LIMIT 2000`, [uid, kinds, fromDate]);
       return r.rows.map(x => x.data);
     },
     async deleteUser(uid) { for (const t of ['bw_records', 'bw_fitbit', 'bw_sessions']) await q(`DELETE FROM ${t} WHERE uid = $1`, [uid]); await q('DELETE FROM bw_users WHERE id = $1', [uid]); },

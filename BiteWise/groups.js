@@ -23,16 +23,17 @@ const addDays = (k, n) => dayKey(new Date(Date.parse(k) + n * 864e5));
 // what a sharing member's groups see of their actual log: this week's totals, today's foods, recent weigh-ins
 async function logView(store, uid, today) {
   const from = addDays(today, -6);
-  const recs = await store.recentRecords(uid, ['entry', 'weight', 'steps'], addDays(today, -60));
+  const recs = (await store.recentRecords(uid, ['entry', 'steps'], addDays(today, -60))).concat(await store.recentRecords(uid, ['weight'], '0000-00-00'));
   const days = {}; for (let i = 6; i >= 0; i--) days[addDays(today, -i)] = 0;
   const foods = [];
   for (const r of recs) {
     if (r.kind === 'entry' && r.date >= from && r.date <= today) { days[r.date] = (days[r.date] || 0) + (+r.calories || 0); if (r.date === today) foods.push({ name: String(r.name || 'Food').slice(0, 80), calories: Math.round(+r.calories || 0), meal: r.meal, time: r.time, by: r.by ? String(r.by).slice(0, 30) : undefined }); }
   }
   foods.sort((a, b) => (b.time || 0) - (a.time || 0));
-  const weights = recs.filter(r => r.kind === 'weight' && r.lb > 0).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10 })).slice(-12);
+  const allW = recs.filter(r => r.kind === 'weight' && r.lb > 0 && r.date <= today).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10 })).sort((a, b) => a.date < b.date ? -1 : 1);
+  const lostLb = allW.length ? Math.round((allW[0].lb - allW[allW.length - 1].lb) * 10) / 10 : null;
   const stepsRec = recs.find(r => r.kind === 'steps' && r.date === today);
-  return { today, days: Object.entries(days).map(([date, eaten]) => ({ date, eaten })), foods: foods.slice(0, 60), weights, todayCal: days[today] || 0, steps: stepsRec ? Math.round(+stepsRec.steps || +stepsRec.count || 0) : null };
+  return { today, days: Object.entries(days).map(([date, eaten]) => ({ date, eaten })), foods: foods.slice(0, 60), weights: allW.slice(-12), lostLb, weighIns: allW.length, todayCal: days[today] || 0, steps: stepsRec ? Math.round(+stepsRec.steps || +stepsRec.count || 0) : null };
 }
 
 // members are addressed by a per-group key, never by their account id
@@ -48,11 +49,16 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
       const u = await store.userById(m);
       const auto = !u || u.auto || /^bw-/.test(u.username || '');
       const sharing = !!share?.full, exact = share?.exact !== false; // exact = share the actual weight number, not just pounds lost
-      let st = share?.stats || null, log = sharing ? await logView(store, m, today).catch(() => null) : null;
+      let st = share?.stats || null, log = sharing ? await logView(store, m, today).catch(e => { console.error('group log view:', e.message); return null; }) : null;
+      // today's progress, weight and pounds lost come from the log itself, never from the summary their phone last
+      // pushed (that could be yesterday's). If the log can't be read, stale pushed numbers are dropped rather than shown.
+      if (sharing && st) {
+        const stale = Date.now() - (share.at || 0) > 36e5 * 20;
+        if (log) { st = { ...st, todayPct: st.budget ? Math.round(log.todayCal / st.budget * 100) : null, steps: log.steps != null ? log.steps : (stale ? null : st.steps) }; if (log.weighIns) { st.lostLb = log.lostLb; st.weightLb = log.weights[log.weights.length - 1].lb; } }
+        else if (stale) st = { ...st, todayPct: null, steps: null };
+      }
       if (sharing && st && !exact) st = { ...st, weightLb: null, goalLb: null };
       if (log && !exact) log = { ...log, weights: [] };
-      // today's progress comes from the log itself, not from the summary their phone last pushed (which could be yesterday's)
-      if (sharing && st && log) { st = { ...st, todayPct: st.budget ? Math.round(log.todayCal / st.budget * 100) : null }; if (log.steps != null) st.steps = log.steps; else if (Date.now() - (share.at || 0) > 36e5 * 20) st.steps = null; }
       return { key: memberKey(g.id, m), you: m === uid, owner: m === g.owner, username: auto ? null : u.username, sharing, exact,
         stats: sharing ? st : (st ? { name: st.name, color: st.color } : null), at: share?.at || null, canLog: sharing, log };
     }));
