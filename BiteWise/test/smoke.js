@@ -76,6 +76,10 @@ function dataTests() {
   ok(g.budget >= 1200, 'adult floor', g.budget);
   ok(g.pace <= 1.6, 'pace capped near 1% body weight', g.pace);
   BW.saveProfile({ customBudget: 900 });
+  BW.setSteps('2026-10-13', 15000);
+  ok(!BW.profile().earnSteps && BW.day('2026-10-13').bonus === 0 && BW.day('2026-10-13').budget === BW.goals().budget, 'steps do not add calories', JSON.stringify({ bonus: BW.day('2026-10-13').bonus }));
+  BW.saveProfile({ earnSteps: true });
+  ok(BW.day('2026-10-13').bonus > 0, 'steps add calories only when switched on');
   ok(BW.goals().budget === 1200 && BW.goals().clamped, 'custom number cannot go under floor', BW.goals().budget);
   BW.saveProfile({ customBudget: 1800 });
   ok(BW.goals().budget === 1800, 'custom number used');

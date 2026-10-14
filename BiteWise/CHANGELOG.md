@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.18.0 · Calories left in groups
+_2026-10-13 · git tag `v1.18.0`_
+
+- New: Groups show how many calories each person has left today (or how far over), on Today, Progress, the group page and a member’s page.
+- Changed: Streaks are gone from groups. People are listed you first, then by name.
+- Changed: Steps no longer add calories to your daily budget. It’s off for everyone; Me → Steps earn calories turns it back on if you want it.
+
 ## 1.17.1 · Pounds lost really follows your weigh-ins
 _2026-10-13 · git tag `v1.17.1`_
 

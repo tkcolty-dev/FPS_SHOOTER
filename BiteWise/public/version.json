@@ -1,7 +1,17 @@
 {
-  "version": "1.17.1",
+  "version": "1.18.0",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.18.0",
+      "date": "2026-10-13",
+      "title": "Calories left in groups",
+      "changes": [
+        "New: Groups show how many calories each person has left today (or how far over), on Today, Progress, the group page and a member’s page.",
+        "Changed: Streaks are gone from groups. People are listed you first, then by name.",
+        "Changed: Steps no longer add calories to your daily budget. It’s off for everyone; Me → Steps earn calories turns it back on if you want it."
+      ]
+    },
     {
       "version": "1.17.1",
       "date": "2026-10-13",

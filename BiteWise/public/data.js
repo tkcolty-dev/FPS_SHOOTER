@@ -34,9 +34,11 @@
   const all = kind => Object.values(recs).filter(r => r.kind === kind && !r.deleted);
 
   // ---------- profile + goals ----------
-  const DEFAULT_PROFILE = { id: 'profile', kind: 'profile', name: '', setup: false, sex: 'female', age: 30, heightIn: 66, weightLb: 170, goalLb: 155, activity: 1.375, pace: 1, customBudget: null, stepGoal: 8000, waterGoal: 8, earnSteps: true, theme: 'fresh', units: 'lb', allergies: [] };
+  const DEFAULT_PROFILE = { id: 'profile', kind: 'profile', name: '', setup: false, sex: 'female', age: 30, heightIn: 66, weightLb: 170, goalLb: 155, activity: 1.375, pace: 1, customBudget: null, stepGoal: 8000, waterGoal: 8, earnSteps: false, theme: 'fresh', units: 'lb', allergies: [] };
   const profile = () => ({ ...DEFAULT_PROFILE, ...(recs.profile || {}) });
   const saveProfile = p => put({ ...profile(), ...p, id: 'profile', kind: 'profile' });
+  // steps no longer add calories to the day's budget unless you turn that on yourself (it used to be on for everyone)
+  if (recs.profile && !recs.profile.stepsOffV2) setTimeout(() => saveProfile({ earnSteps: false, stepsOffV2: true }), 0);
 
   // goalType: 'lose' | 'maintain' | 'gain'. customBudget (a number) overrides the math, but never below the safe floor.
   function goals(p = profile()) {

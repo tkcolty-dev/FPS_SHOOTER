@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.17.1';
+  const APP_VERSION = '1.18.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -853,7 +853,7 @@
     </div><div class="col-side">
     <div class="section"><div class="footnote" style="margin:0 16px 6px;text-transform:uppercase">Rewards</div><div class="group">
       ${row('palette', theme.color, 'Look', theme.name + (p.appearance && p.appearance !== 'auto' ? ' · ' + cap(p.appearance) : ''), 'data-act="themes"', `Colors and light or dark mode · ${THEMES.filter(t => t.level <= lv.n).length} of ${THEMES.length} colors`)}
-      ${row('person', 'var(--purple)', 'Groups', (S.groups || LS.get('groupsCache', [])).length || 'None', 'data-go="progress"', (() => { const ms = (S.groups || LS.get('groupsCache', [])).flatMap(g => g.members.filter(m => !m.you && m.sharing)); return ms.length ? ms.slice(0, 4).map(m => `${esc(m.stats?.name || m.username || 'Friend')} ${m.stats?.todayPct != null ? m.stats.todayPct + '%' : ''}${m.stats?.lostLb > 0 ? ' ↓' + m.stats.lostLb : ''}`).join(' · ') : 'Friends and family see each other\u2019s progress'; })())}
+      ${row('person', 'var(--purple)', 'Groups', (S.groups || LS.get('groupsCache', [])).length || 'None', 'data-go="progress"', (() => { const ms = (S.groups || LS.get('groupsCache', [])).flatMap(g => g.members.filter(m => !m.you && m.sharing)); return ms.length ? ms.slice(0, 4).map(m => { const b = memberBits(m), left = b && b.budget && b.todayCal != null ? b.budget - b.todayCal : null; return `${esc(m.stats?.name || m.username || 'Friend')}${left != null ? ' ' + fmt(left) + ' left' : m.stats?.todayPct != null ? ' ' + m.stats.todayPct + '%' : ''}${m.stats?.lostLb > 0 ? ' ↓' + m.stats.lostLb : ''}`; }).join(' · ') : 'Friends and family see each other\u2019s progress'; })())}
       ${a ? row('lock', 'var(--blue)', 'Use on another device', '', 'data-act="link"', 'Sign in your iPad, Mac or a new phone with a code') : ''}
       ${row('eye', shareOn() ? 'var(--green)' : 'var(--label3)', 'Sharing', shareOn() ? 'On' : 'Off', 'data-act="shareprefs"', shareOn() ? 'Your groups see your weight and food, and can log for you' : 'Your groups only see your name')}
       ${row('trophy', '#FFB800', 'Badges', `${BW.badges().filter(b => b.earned).length} / ${BW.badges().length}`, 'data-go="progress"')}
@@ -1396,7 +1396,7 @@
     catch { S.groups ||= cached(); }
     return S.groups;
   }
-  // compact one-line view of a member: today's calories, progress bar, pounds lost, weight, streak
+  // compact one-line view of a member: today's calories and what's left, progress bar, pounds lost, weight, steps
   function memberBits(m) {
     if (!m.sharing) return null; const st = m.stats || {}, lg = m.log;
     const todayCal = lg ? (lg.todayCal ?? lg.days.find(x => x.date === lg.today)?.eaten ?? 0) : null;
@@ -1407,10 +1407,12 @@
   function memberMini(g, m, i) {
     const b = memberBits(m), st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend';
     if (!b) return `<div class="gm"><span>${face(st, m.username, i)}</span><div class="gm-body"><div class="gm-top"><b>${esc(nm)}</b></div><div class="gm-sub caption">${m.you ? 'You’re not sharing yet · Me → Sharing' : m.stats ? 'Hasn’t turned on sharing' : 'Hasn’t opened BiteWise yet'}</div></div></div>`;
-    const sub = [lostText(b.lost), b.weight ? `${b.weight} lb` : null, b.streak ? `${b.streak} day streak` : null, b.steps ? `${fmt(b.steps)} steps` : null].filter(Boolean).join(' · ');
+    const left = b.budget && b.todayCal != null ? b.budget - b.todayCal : null;
+    const sub = [left != null ? (left >= 0 ? `<b>${fmt(left)} left</b>` : `<b style="color:var(--orange)">${fmt(-left)} over</b>`) : null, lostText(b.lost), b.weight ? `${b.weight} lb` : null, b.steps ? `${fmt(b.steps)} steps` : null].filter(Boolean).join(' · ');
     return `<button class="gm tap" type="button" data-act="member" data-member="${esc(g.id + ':' + m.key)}">${face(st, m.username, i)}<div class="gm-body"><div class="gm-top"><b>${esc(nm)}</b><span class="num">${b.todayCal != null ? fmt(b.todayCal) + ' cal' : b.pct != null ? b.pct + '%' : ''}${b.budget && b.todayCal != null ? ` <small>/ ${fmt(b.budget)}</small>` : ''}</span></div><div class="bar"><i style="width:${Math.min(100, b.pct || 0)}%;${b.pct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="gm-sub caption">${sub || 'Sharing'}</div></div></button>`;
   }
-  const sortMembers = g => g.members.slice().sort((a, b) => (b.stats?.streak ?? -1) - (a.stats?.streak ?? -1));
+  const byName = (a, b) => (b.you - a.you) || (b.sharing - a.sharing) || String(a.stats?.name || a.username || '').localeCompare(String(b.stats?.name || b.username || ''));
+  const sortMembers = g => g.members.slice().sort(byName);
   // on Today: every group, everyone's numbers, no tapping needed, plus a one-tap weigh-in
   function groupsToday() {
     const gs = S.groups || LS.get('groupsCache', []); if (!gs.length) return '';
@@ -1463,23 +1465,23 @@
   }
   function groupSheet(id) {
     const draw = (b, g) => {
-      const ms = g.members.slice().sort((a, b2) => (b2.stats?.streak ?? -1) - (a.stats?.streak ?? -1));
+      const ms = g.members.slice().sort(byName);
       b.innerHTML = `<div class="code-card"><div class="caption">Invite code</div><div class="code num">${esc(g.code)}</div><div class="acct-btns flat" style="padding:0;margin-top:10px"><button class="btn small tinted" type="button" id="gcopy">Copy code</button>${navigator.share ? '<button class="btn small tinted" type="button" id="gshare">Share</button>' : ''}</div></div>
         ${shareOn() ? '' : `<div class="banner" style="margin-top:14px">${I('eye')}<span><b>You’re not sharing yet.</b> Turn it on so people here can see your progress and log food for you.</span><button class="btn small" type="button" id="gshareon" style="margin-left:auto;flex:none">Turn on</button></div>`}
         <button class="btn tinted" type="button" id="gweigh" style="margin-top:14px">${I('scale')} Log my weight</button>
-        <div class="footnote" style="margin:18px 16px 6px">${g.members.length} ${g.members.length === 1 ? 'PERSON' : 'PEOPLE'} · LONGEST STREAK FIRST</div>
+        <div class="footnote" style="margin:18px 16px 6px">${g.members.length} ${g.members.length === 1 ? 'PERSON' : 'PEOPLE'}</div>
         <div class="group">${ms.map((m, i) => { const st = m.stats || {}, nm = m.you ? 'You' : st.name || m.username || 'Friend', lg = m.log;
           const todayCal = lg ? (lg.todayCal ?? lg.days.find(x => x.date === lg.today)?.eaten ?? 0) : null, w = lg?.weights?.length ? lg.weights[lg.weights.length - 1] : null;
           const info = m.sharing ? [lostText(st.lostLb), w ? `${w.lb} lb now` : st.weightLb ? `${st.weightLb} lb now` : null, st.goal].filter(Boolean).map(esc).join(' · ') : '';
           return `<div class="row member ${m.sharing ? 'tap' : ''}" ${m.sharing ? `data-act="member" data-member="${esc(g.id + ':' + m.key)}" role="button" tabindex="0"` : ''}>${face(st, m.username, i, true)}
             <div class="grow"><div class="title">${esc(nm)}${m.owner ? ' <span class="caption">· started it</span>' : ''}</div>
               <div class="sub">${info || (m.sharing ? 'Sharing' : m.you ? 'Not sharing yet. Turn it on above.' : m.stats ? 'Hasn’t turned on sharing' : 'Hasn’t opened BiteWise yet')}</div>
-              ${st.todayPct != null ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, st.todayPct)}%;${st.todayPct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="caption num" style="margin-top:3px">Today ${todayCal != null ? fmt(todayCal) + ' cal · ' : ''}${st.todayPct}% of goal${lg ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div>` : lg ? `<div class="caption num" style="margin-top:3px">Today ${fmt(lg.todayCal || 0)} cal${lg.foods.length ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}</div>` : ''}
+              ${st.todayPct != null ? `<div class="bar" style="margin-top:6px"><i style="width:${Math.min(100, st.todayPct)}%;${st.todayPct > 110 ? 'background:var(--orange)' : ''}"></i></div><div class="caption num" style="margin-top:3px">Today ${todayCal != null ? fmt(todayCal) + ' cal · ' : ''}${st.budget && todayCal != null ? (st.budget - todayCal >= 0 ? `<b>${fmt(st.budget - todayCal)} left</b>` : `<b style="color:var(--orange)">${fmt(todayCal - st.budget)} over</b>`) : st.todayPct + '% of goal'}${lg ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}${st.steps ? ` · ${fmt(st.steps)} steps` : ''}</div>` : lg ? `<div class="caption num" style="margin-top:3px">Today ${fmt(lg.todayCal || 0)} cal${lg.foods.length ? ` · ${lg.foods.length} food${lg.foods.length === 1 ? '' : 's'}` : ''}</div>` : ''}
               ${!m.you && m.canLog ? `<button class="btn small tinted logfor" type="button" data-logfor="${esc(m.key)}" data-lfname="${esc(nm)}">${I('plus')} Log for ${esc(nm)}</button>` : ''}
-            </div>${st.streak != null ? `<span class="pill streak">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}${m.sharing ? '<span class="chev">›</span>' : ''}</div>`; }).join('')}</div>
+            </div>${m.sharing ? '<span class="chev">›</span>' : ''}</div>`; }).join('')}</div>
         <button class="btn gray" type="button" id="gprefs" style="margin-top:16px">${I('eye')} Sharing: ${shareOn() ? 'on' : 'off'}</button>
         <button class="btn danger" type="button" id="gleave" style="margin-top:10px">Leave group</button>
-        <div class="footnote" style="text-align:center">${shareOn() ? 'People here see your goal, streak, steps, weight and food, and can log food for you. Tap someone to see their day.' : 'With sharing off, people here only see your name.'}</div>`;
+        <div class="footnote" style="text-align:center">${shareOn() ? 'People here see your goal, calories left, steps, weight and food, and can log food for you. Tap someone to see their day.' : 'With sharing off, people here only see your name.'}</div>`;
       $('#gcopy', b).onclick = async () => { try { await navigator.clipboard.writeText(g.code); toast('Code copied'); } catch { toast('Code: ' + g.code, { icon: 'info' }); } };
       $('#gshare', b) && ($('#gshare', b).onclick = () => navigator.share({ title: 'Join my BiteWise group', text: `Join my BiteWise group “${g.name}” with code ${g.code}`, url: location.origin }).catch(() => {}));
       $('#gprefs', b).onclick = () => sharePrefsSheet();
@@ -1522,7 +1524,7 @@
   // one question right after you make or join a group, so sharing is one tap instead of a trip to settings
   function shareAsk(g) {
     if (shareOn()) return groupSheet(g.id);
-    openSheet({ title: `Share with ${g.name}?`, body: `<div style="text-align:center;margin:4px 0 16px"><div class="icon-sq" style="background:var(--green);width:60px;height:60px;border-radius:16px;margin:0 auto 10px">${I('eye', 'style="width:32px;height:32px"')}</div><div class="muted" style="font-size:15px;margin:0 8px">Everyone in your groups will see your goal, streak, steps, weight and the food you log, and can log food for you. You can turn it off any time in Me → Sharing.</div></div>
+    openSheet({ title: `Share with ${g.name}?`, body: `<div style="text-align:center;margin:4px 0 16px"><div class="icon-sq" style="background:var(--green);width:60px;height:60px;border-radius:16px;margin:0 auto 10px">${I('eye', 'style="width:32px;height:32px"')}</div><div class="muted" style="font-size:15px;margin:0 8px">Everyone in your groups will see your goal, calories left, steps, weight and the food you log, and can log food for you. You can turn it off any time in Me → Sharing.</div></div>
       <button class="btn" type="button" id="sa_on">Turn on sharing</button><button class="btn gray" type="button" id="sa_no" style="margin-top:10px">Not now</button>`,
       mount: (b, close) => { $('#sa_on', b).onclick = () => { setShare(true); haptic(8); close(); toast('Sharing is on'); setTimeout(() => groupSheet(g.id), 300); }; $('#sa_no', b).onclick = () => { close(); setTimeout(() => groupSheet(g.id), 300); }; } });
   }
@@ -1532,7 +1534,7 @@
     openSheet({ title: 'Sharing', left: 'Done', body: '', mount: b => {
       const draw = () => { const on = shareOn(), ex = exactWeight(); b.innerHTML = `<div class="group"><div class="row"><span class="icon-sq" style="background:${on ? 'var(--green)' : 'var(--label3)'}">${I('eye')}</span><div class="grow"><div class="title">Share with my groups</div><div class="sub">${on ? 'On' : 'Off'}</div></div><button class="switch" type="button" role="switch" id="shsw" aria-checked="${on}" aria-label="Share with my groups"></button></div>
         ${on ? `<div class="row"><span class="icon-sq" style="background:${ex ? 'var(--teal)' : 'var(--label3)'}">${I('scale')}</span><div class="grow"><div class="title">Show my exact weight</div><div class="sub">${ex ? 'They see the number, like 172.4 lb' : 'They only see pounds lost, like “down 3 lb”'}</div></div><button class="switch" type="button" role="switch" id="exsw" aria-checked="${ex}" aria-label="Show my exact weight"></button></div>` : ''}</div>
-        <div class="footnote" style="margin:14px 16px 0;line-height:1.45">One switch. Off, and people in your groups only see your name.<br><br>On, and everyone in your groups can see your goal, streak, steps, today’s progress, how much weight you’ve lost, and <b>the food you log</b>. They can also log food for you, and it shows who added it. Your exact weight is up to you, with the second switch.<br><br>It’s saved with your profile, so it stays the same on every device you sign in on. Change it any time.</div>`;
+        <div class="footnote" style="margin:14px 16px 0;line-height:1.45">One switch. Off, and people in your groups only see your name.<br><br>On, and everyone in your groups can see your goal, calories left, steps, today’s progress, how much weight you’ve lost, and <b>the food you log</b>. They can also log food for you, and it shows who added it. Your exact weight is up to you, with the second switch.<br><br>It’s saved with your profile, so it stays the same on every device you sign in on. Change it any time.</div>`;
         $('#shsw', b).onclick = () => { setShare(!shareOn()); haptic(8); draw(); toast(shareOn() ? 'Sharing is on' : 'Sharing is off'); };
         const ex2 = $('#exsw', b); if (ex2) ex2.onclick = () => { setExact(!exactWeight()); haptic(8); draw(); }; };
       draw();
@@ -1555,10 +1557,10 @@
       const ws = lg?.weights || [], w = ws[ws.length - 1], w7 = ws.slice().reverse().find(x => x.date <= BW.addDays(today, -6));
       const isToday = sel === today, label = isToday ? 'Today' : sel === BW.addDays(today, -1) ? 'Yesterday' : BW.parseDay(sel).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
       const pct = st.budget ? Math.round(d.eaten / st.budget * 100) : null;
-      const body = `<div style="display:flex;align-items:center;gap:12px;margin:4px 4px 12px">${face(st, m.username, 0, true)}<div><div style="font-size:20px;font-weight:600">${esc(nm)}</div><div class="caption">${esc([st.goal, st.level ? `Level ${st.level}` : null].filter(Boolean).join(' · ') || 'Sharing')}</div></div>${st.streak ? `<span class="pill streak" style="margin-left:auto">${I('flame')}<span class="num">${st.streak}</span></span>` : ''}</div>
+      const body = `<div style="display:flex;align-items:center;gap:12px;margin:4px 4px 12px">${face(st, m.username, 0, true)}<div><div style="font-size:20px;font-weight:600">${esc(nm)}</div><div class="caption">${esc([st.goal, st.level ? `Level ${st.level}` : null].filter(Boolean).join(' · ') || 'Sharing')}</div></div></div>
       <div class="mday-nav"><button class="dn" type="button" data-mday="-1" ${canBack ? '' : 'disabled'} aria-label="Previous day">${I('left')}</button><div class="mday-label"><b>${label}</b>${isToday ? '' : `<span class="caption">${BW.parseDay(sel).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</span>`}</div><button class="dn" type="button" data-mday="1" ${canFwd ? '' : 'disabled'} aria-label="Next day">${I('right')}</button></div>
       <div class="results2">
-        <div class="card"><div class="st-k">${isToday ? 'Today' : 'That day'}</div><div class="big-stat num">${fmt(d.eaten)}<small> cal</small></div><div class="caption">${pct != null ? `${pct}% of ${fmt(st.budget)}` : 'eaten'}${d.steps ? ` · ${fmt(d.steps)} steps` : ''}</div></div>
+        <div class="card"><div class="st-k">${isToday ? 'Today' : 'That day'}</div><div class="big-stat num">${fmt(d.eaten)}<small> cal</small></div><div class="caption">${st.budget ? (st.budget - d.eaten >= 0 ? `<b>${fmt(st.budget - d.eaten)} left</b> of ${fmt(st.budget)}` : `<b style="color:var(--orange)">${fmt(d.eaten - st.budget)} over</b> ${fmt(st.budget)}`) : 'eaten'}${d.steps ? ` · ${fmt(d.steps)} steps` : ''}</div></div>
         <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${d.weight ? d.weight + '<small> lb</small>' : w ? w.lb + '<small> lb</small>' : st.weightLb ? st.weightLb + '<small> lb</small>' : st.lostLb > 0 ? '↓ ' + st.lostLb + '<small> lb lost</small>' : '–'}</div><div class="caption">${d.weight ? (isToday ? 'Weighed in today' : 'Weighed in that day') : w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : st.lostLb > 0 ? 'Keeps the exact number private' : 'No weigh-ins yet'}${st.lostLb > 0 && (w || d.weight) ? ` · ${st.lostLb} lb lost` : ''}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
       </div>
       ${bars.length ? `<div class="card" style="margin-top:12px"><div class="card-head"><div class="st-k">${bars[bars.length - 1].date === today ? 'This week' : 'That week'}</div><span class="caption">Tap a day</span></div><div class="mini-bars pick">${bars.map(x => `<button type="button" data-mbar="${x.date}" class="${x.date === sel ? 'on' : ''}" aria-label="${x.date}: ${fmt(x.eaten)} calories"><i style="height:${Math.max(3, x.eaten / mx * 100)}%;${st.budget && x.eaten > st.budget * 1.1 ? 'background:var(--orange)' : ''}"></i><em>${BW.parseDay(x.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</em></button>`).join('')}</div></div>` : ''}
