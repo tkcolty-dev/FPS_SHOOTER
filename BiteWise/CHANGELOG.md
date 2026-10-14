@@ -21,6 +21,11 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.18.4 · Notes vanish on Coach too
+_2026-10-13 · git tag `v1.18.4`_
+
+- Fixed: On the Coach page a note slid down but stayed visible above the message box. Notes now fade out completely everywhere.
+
 ## 1.18.3 · No more popups
 _2026-10-13 · git tag `v1.18.3`_
 

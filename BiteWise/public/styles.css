@@ -1006,3 +1006,6 @@ body.sheet-open .toast.show, body.pad-open .toast.show { transform: none !import
 .update-bar .ub-x svg { width: 12px; height: 12px; }
 .toast { cursor: pointer; }
 .toast.show { pointer-events: auto; }
+/* a hidden note is really gone, wherever it sits (on Coach it sits above the message box, so sliding alone left it visible) */
+.toast { opacity: 0; visibility: hidden; transition: transform .3s cubic-bezier(.2,.9,.25,1), opacity .25s, visibility 0s linear .3s; }
+.toast.show { opacity: 1; visibility: visible; transition: transform .3s cubic-bezier(.2,.9,.25,1), opacity .25s, visibility 0s; }

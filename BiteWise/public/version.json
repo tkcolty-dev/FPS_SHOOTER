@@ -1,7 +1,15 @@
 {
-  "version": "1.18.3",
+  "version": "1.18.4",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.18.4",
+      "date": "2026-10-13",
+      "title": "Notes vanish on Coach too",
+      "changes": [
+        "Fixed: On the Coach page a note slid down but stayed visible above the message box. Notes now fade out completely everywhere."
+      ]
+    },
     {
       "version": "1.18.3",
       "date": "2026-10-13",
