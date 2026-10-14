@@ -21,6 +21,12 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.18.3 · No more popups
+_2026-10-13 · git tag `v1.18.3`_
+
+- Changed: Level-ups, new badges and finished challenges show as a short note with confetti that goes away by itself (tap it to dismiss sooner). No more “Nice!” popup to close.
+- Fixed: If a popup was open when BiteWise checked for an update, it gave up on that update for good and the “Update ready” bar stuck around. It now retries until it can update.
+
 ## 1.18.2 · Quieter updates
 _2026-10-13 · git tag `v1.18.2`_
 

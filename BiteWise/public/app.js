@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.18.2';
+  const APP_VERSION = '1.18.3';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -126,14 +126,14 @@
 
   // ---------- toast ----------
   let toastT;
-  function toast(msg, { undo, icon = 'check' } = {}) {
+  function toast(msg, { undo, icon = 'check', ms } = {}) {
     let t = $('#toast');
     if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
     t.innerHTML = `<span class="ticon">${I(icon)}</span><span>${esc(msg)}</span>${undo ? '<button class="undo" type="button">Undo</button>' : '<span style="width:6px"></span>'}`;
     if (undo) t.querySelector('.undo').onclick = e => { e.stopPropagation(); undo(); t.classList.remove('show'); haptic(); };
     t.onclick = () => t.classList.remove('show'); // tap anywhere on it to dismiss
     requestAnimationFrame(() => t.classList.add('show'));
-    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), undo ? 4200 : 2400);
+    clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || (undo ? 4200 : 2400));
     toastAt = Date.now();
   }
   let toastAt = 0;
@@ -1805,19 +1805,20 @@
   }
 
   // ---------- rewards watcher: celebrate level-ups, badges and challenges ----------
-  let celebrating = false;
   function checkRewards() {
-    if (!BW.profile().setup || celebrating) return;
+    if (!BW.profile().setup) return;
     const lv = BW.level(), earned = BW.badges().filter(b => b.earned).map(b => b.id), ch = BW.challenge();
     const seenL = LS.get('seenLevel', null), seenB = LS.get('seenBadges', null), seenC = LS.get('seenChallenge', null);
     if (seenL == null || seenB == null) { LS.set('seenLevel', lv.n); LS.set('seenBadges', earned); LS.set('seenChallenge', ch.done ? ch.week : null); return; }
-    let show = null;
-    if (lv.n > seenL) { const th = THEMES.find(t => t.level === lv.n); show = { color: 'var(--accent)', icon: 'star', title: `Level ${lv.n}!`, sub: `You're now a <b>${lv.name}</b>.${th ? ` You unlocked the <b>${th.name}</b> theme.` : ''}` }; LS.set('seenLevel', lv.n); }
-    else { const nb = earned.find(x => !seenB.includes(x)); if (nb) { const b = BW.badges().find(x => x.id === nb); show = { color: BADGE_COLORS[b.icon] || 'var(--accent)', icon: b.icon, title: b.name, sub: b.desc + ' · +40 XP' }; LS.set('seenBadges', [...seenB, nb]); } }
-    if (!show && ch.done && seenC !== ch.week) { show = { color: 'var(--purple)', icon: 'target', title: 'Challenge complete!', sub: `${ch.title} · +${ch.xp} XP` }; LS.set('seenChallenge', ch.week); }
-    if (!show) return;
-    celebrating = true; confetti(); haptic(30);
-    openSheet({ title: '', left: 'Done', body: `<div class="celebrate"><div class="med" style="background:${show.color}">${I(show.icon)}</div><div style="font-size:28px;font-weight:800">${esc(show.title)}</div><div class="muted" style="margin:6px 12px 18px;font-size:16px">${show.sub}</div><button class="btn" type="button" data-close2>Nice!</button></div>`, mount: (b, close) => { $('[data-close2]', b).onclick = close; }, onClose: () => { celebrating = false; setTimeout(checkRewards, 500); } });
+    // everything earned since last time goes into ONE short note (never a popup)
+    const bits = []; let icon = 'star';
+    if (lv.n > seenL) { const th = THEMES.find(t => t.level === lv.n); bits.push(`Level ${lv.n} \u00b7 ${lv.name}${th ? ` \u00b7 ${th.name} theme unlocked` : ''}`); LS.set('seenLevel', lv.n); }
+    const nb = earned.filter(x => !seenB.includes(x)).map(id => BW.badges().find(x => x.id === id)).filter(Boolean);
+    if (nb.length) { if (!bits.length) icon = nb[0].icon; bits.push(nb.length === 1 ? `${nb[0].name} badge` : `${nb.length} new badges`); LS.set('seenBadges', [...seenB, ...nb.map(b => b.id)]); }
+    if (ch.done && seenC !== ch.week) { bits.push(`Challenge complete \u00b7 +${ch.xp} XP`); LS.set('seenChallenge', ch.week); }
+    if (!bits.length) return;
+    confetti(); haptic(30);
+    toast(bits.join(' \u00b7 '), { icon, ms: 3200 });
   }
 
   // ---------- view events ----------
@@ -2115,7 +2116,10 @@
       S.versionInfo = j; LS.set('remoteVersion', j.version); LS.set('versionChecked', Date.now());
       S.updateReady = vcmp(j.version, APP_VERSION) > 0 ? j.version : null;
       // install new versions by themselves when the app opens (once per version, so it can never loop)
-      if (S.updateReady && !manual && LS.get('autoUpdated', '') !== j.version && !sheets.length) { LS.set('autoUpdated', j.version); toast(`Updating to ${j.version}…`, { icon: 'download' }); return setTimeout(applyUpdate, 700); }
+      if (S.updateReady && !manual && LS.get('autoUpdated', '') !== j.version) {
+        if (sheets.length) { clearTimeout(checkVersion.retry); checkVersion.retry = setTimeout(() => checkVersion(), 20000); } // mid-sheet: try again shortly
+        else { LS.set('autoUpdated', j.version); toast(`Updating to ${j.version}…`, { icon: 'download' }); return setTimeout(applyUpdate, 700); }
+      }
       updateBar();
       if (manual) toast(S.updateReady ? `Version ${S.updateReady} is ready` : `You\u2019re up to date · ${APP_VERSION}`, { icon: S.updateReady ? 'download' : 'check' });
       if (S.tab === 'me') render();

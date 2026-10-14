@@ -1,7 +1,16 @@
 {
-  "version": "1.18.2",
+  "version": "1.18.3",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.18.3",
+      "date": "2026-10-13",
+      "title": "No more popups",
+      "changes": [
+        "Changed: Level-ups, new badges and finished challenges show as a short note with confetti that goes away by itself (tap it to dismiss sooner). No more “Nice!” popup to close.",
+        "Fixed: If a popup was open when BiteWise checked for an update, it gave up on that update for good and the “Update ready” bar stuck around. It now retries until it can update."
+      ]
+    },
     {
       "version": "1.18.2",
       "date": "2026-10-13",
