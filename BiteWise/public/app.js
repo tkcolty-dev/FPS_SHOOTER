@@ -1265,7 +1265,7 @@
         const draw = (err = '') => {
           b.innerHTML = `<div style="text-align:center;margin:4px 0 16px"><div class="icon-sq" style="background:var(--blue);width:56px;height:56px;border-radius:15px;margin:0 auto 10px">${I('cloud', 'style="width:30px;height:30px"')}</div><div class="muted" style="font-size:15px">Your log stays on this phone and gets backed up to the cloud.</div></div>
             <div class="seg" style="margin-bottom:14px"><button type="button" data-m="signup" aria-pressed="${mode === 'signup'}">Create account</button><button type="button" data-m="login" aria-pressed="${mode === 'login'}">Sign in</button><button type="button" data-m="code" aria-pressed="${mode === 'code'}">Use a code</button></div>
-            <form id="af">${mode === 'code' ? `<div class="caption" style="margin:0 4px 10px">On a device that’s already signed in, go to <b>Me → Use on another device</b> and type the code it shows.</div><div class="group"><div class="row"><input class="field num" style="background:transparent;padding:0;letter-spacing:4px;text-transform:uppercase;font-size:22px" id="ac" placeholder="6-letter code" autocomplete="one-time-code" autocapitalize="characters" maxlength="7" required></div></div>`
+            <form id="af">${mode === 'code' ? `<div class="caption" style="margin:0 4px 10px">On the phone or computer where BiteWise already has your log, go to <b>Me \u2192 Use on another device</b> and type the 6-letter code it shows here. Have a username and password instead? Tap <b>Sign in</b> above.</div><div class="group"><div class="row"><input class="field num" style="background:transparent;padding:0;letter-spacing:4px;text-transform:uppercase;font-size:22px" id="ac" placeholder="6-letter code" autocomplete="one-time-code" autocapitalize="characters" maxlength="7" required></div></div>`
             : `<div class="group"><div class="row"><input class="field" style="background:transparent;padding:0" id="au" placeholder="Username" autocomplete="username" autocapitalize="off" value="${mode === 'login' && last && !last.auto ? esc(last.username) : ''}" required></div><div class="row"><input class="field" style="background:transparent;padding:0" id="ap" type="password" placeholder="Password (6+ characters)" autocomplete="${mode === 'signup' ? 'new-password' : 'current-password'}" required></div></div>`}
             ${err ? `<div class="footnote" style="color:var(--red)">${esc(err)}</div>` : ''}
             <button class="btn" style="margin-top:16px" id="ab">${mode === 'signup' ? 'Create account' : 'Sign in'}</button></form>
@@ -1985,7 +1985,10 @@
           ${[['1', 'Tell us a little about you', 'Takes 30 seconds. We suggest a daily goal, or set your own.'], ['2', 'Log what you eat', 'A number, your voice, a search, or ask Bitey.'], ['3', 'Watch it add up', 'See your week, weight trend, streaks, and your group.']].map(([n, t, d]) => `<div class="how-step"><span class="step-n">${n}</span><div><b>${t}</b><span>${d}</span></div></div>`).join('')}
         </div>
         <div class="trust">${[['offline', 'Works offline'], ['lock', 'Your data is yours'], ['gift', 'Free']].map(([ic, t]) => `<span>${I(ic)}${t}</span>`).join('')}</div>`;
-      foot = `<button class="btn" type="button" data-ob="next">Get started</button><button class="btn gray" type="button" data-ob="signin">I already have an account</button><button class="link-btn" type="button" data-ob="demo" style="font-size:15px;padding:6px">Just look around with sample data</button>`;
+      // the buttons sit right under the headline so nobody has to scroll past the tour to find them
+      const cta = `<div class="foot welcome-cta"><button class="btn" type="button" data-ob="next">Get started</button><button class="btn gray" type="button" data-ob="signcode">I already use BiteWise · sign in</button><button class="link-btn" type="button" data-ob="demo" style="font-size:15px;padding:6px">Just look around with sample data</button></div>`;
+      body = body.replace('</div>\n        <div class="feat-grid">', '</div>' + cta + '<div class="feat-grid">');
+      foot = '';
     } else if (ob.step === 1) {
       body = `${steps}<h1>About you</h1><p class="lead">This sets your daily calorie budget. It stays on your phone.</p>
         <div class="group">
@@ -2054,6 +2057,7 @@
       if (a === 'demo') { BW.seedDemo(); finishOnboarding();  }
       if (a === 'finish') { BW.saveProfile({ ...p, setup: true }); BW.setWeight(BW.dayKey(), p.weightLb); finishOnboarding(); confetti(80); }
       if (a === 'signin') { signInSheet('login'); }
+      if (a === 'signcode') { signInSheet('code'); }
       if (a === 'create') {
         const u = $('#ob_u').value.trim(), pw = $('#ob_p').value;
         if (!u || pw.length < 6) { $('#ob_err').innerHTML = '<span style="color:var(--red)">Pick a username and a password with 6+ characters.</span>'; return; }

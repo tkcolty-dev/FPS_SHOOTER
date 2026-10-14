@@ -978,6 +978,12 @@ body.sheet-open .toast.show, body.pad-open .toast.show { transform: none !import
 .gm-top .num { font-weight: 600; white-space: nowrap; } .gm-top small { color: var(--label2); font-weight: 500; }
 .gm .bar { margin: 5px 0 3px; }
 .gm-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* phones: let the member line wrap instead of cutting off "… 6,200 steps" */
+@media (max-width: 767px) { .gm-sub { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.35; } }
+.t-group .card-head, .group-card .card-head { flex-wrap: wrap; }
+.t-group .st-k, .group-card .st-k { white-space: nowrap; }
+.btn.small { white-space: nowrap; }
+.welcome-cta { padding-top: 6px; }
 .gm.tap:active { opacity: .7; }
 .gh-btns { display: flex; gap: 8px; align-items: center; flex: none; }
 .t-groups { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; }

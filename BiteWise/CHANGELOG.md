@@ -27,6 +27,8 @@ _2026-10-13 · git tag `v1.18.0`_
 - New: Groups show how many calories each person has left today (or how far over), on Today, Progress, the group page and a member’s page.
 - Changed: Streaks are gone from groups. People are listed you first, then by name.
 - Changed: Steps no longer add calories to your daily budget. It’s off for everyone; Me → Steps earn calories turns it back on if you want it.
+- Fixed: On a phone where BiteWise has no log yet (like a freshly installed home-screen app), the welcome page buried its buttons under the tour. Get started and “I already use BiteWise · sign in” now sit right under the headline, and sign-in by code needs no password.
+- Fixed: Group lines on phones wrap instead of cutting off at “6,200 st…”, and group card headers no longer squash the title.
 
 ## 1.17.1 · Pounds lost really follows your weigh-ins
 _2026-10-13 · git tag `v1.17.1`_
