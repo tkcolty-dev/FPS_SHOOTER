@@ -60,13 +60,17 @@ function dataTests() {
   BW.setWeight('2026-10-12', 180); BW.setWeight('2026-10-13', 179);
   ok(BW.trend().lost === 1 && BW.trend().now === 179, 'two weigh-ins: lost is the real difference', JSON.stringify({ lost: BW.trend().lost, now: BW.trend().now }));
   BW.saveProfile({ startLb: 185 });
+  ok(BW.trend().lost === 1 && !BW.trend().startSet, 'a starting weight nobody set on purpose is ignored', JSON.stringify(BW.trend()));
+  BW.setStart(185);
   ok(BW.trend().lost === 6 && BW.trend().start === 185 && BW.trend().startSet, 'pounds lost counts from the starting weight once set', JSON.stringify(BW.trend()));
   BW.setWeight('2026-10-10', 190); BW.syncWeightNow();
   ok(BW.weighIns()[0].date === '2026-10-13' && BW.weighIns().length === 3 && BW.profile().weightLb === 179, 'weigh-ins list newest first; weight now follows the latest', JSON.stringify(BW.weighIns()));
   BW.remove('weight:2026-10-13'); BW.syncWeightNow();
   ok(BW.trend().now === 180 && BW.profile().weightLb === 180 && BW.weighIns().length === 2, 'deleting the latest weigh-in moves weight now back', JSON.stringify({ now: BW.trend().now, w: BW.profile().weightLb }));
-  BW.saveProfile({ startLb: null }); BW.setWeight('2026-10-13', 179);
+  BW.setStart(null); BW.setWeight('2026-10-13', 179);
   ok(BW.trend().lost === 11 && !BW.trend().startSet, 'without a starting weight, lost counts from the first weigh-in', BW.trend().lost);
+  BW.remove('weight:2026-10-10');
+  ok(BW.trend().lost === 1 && BW.trend().first === 180, 'deleting the first weigh-in moves the start to the next one', JSON.stringify({ lost: BW.trend().lost, first: BW.trend().first }));
   BW.saveProfile({ setup: true, sex: 'female', age: 30, heightIn: 64, weightLb: 160, goalLb: 140, activity: 1.375, goalType: 'lose', pace: 2 });
   let g = BW.goals();
   ok(g.budget >= 1200, 'adult floor', g.budget);
@@ -177,6 +181,11 @@ async function serverTests() {
       ok((await call(`groups/${fam.id}/leave`, {}, bob.j.token)).status === 200, 'leave group');
       // starting weight (synced in the profile) drives the server's pounds lost
       await call('sync', { since: 0, changes: [{ id: 'profile', kind: 'profile', startLb: 180, updatedAt: 12 }] }, bob.j.token);
+      await call('share', { stats: { name: 'Bob', budget: 2000 }, full: true }, bob.j.token);
+      await call('groups/join', { code: g.j.group.code }, bob.j.token);
+      bobRow = (await call('groups?date=2026-10-13', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');
+      ok(bobRow?.stats?.lostLb === 4.5, 'server ignores a starting weight nobody set on purpose', JSON.stringify({ lost: bobRow?.stats?.lostLb }));
+      await call('sync', { since: 0, changes: [{ id: 'profile', kind: 'profile', startLb: 180, startBy: 'user', updatedAt: 13 }] }, bob.j.token);
       await call('share', { stats: { name: 'Bob', budget: 2000 }, full: true }, bob.j.token);
       await call('groups/join', { code: g.j.group.code }, bob.j.token);
       bobRow = (await call('groups?date=2026-10-13', null, a.j.token, 'GET')).j.groups?.[0]?.members.find(m => m.stats?.name === 'Bob');

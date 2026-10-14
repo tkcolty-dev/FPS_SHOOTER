@@ -190,12 +190,16 @@
     let eta = null;
     if (perWeek && perWeek < -0.05 && last.lb > p.goalLb) { const weeks = (last.lb - p.goalLb) / -perWeek; if (weeks < 520) { const d = parseDay(last.date); d.setDate(d.getDate() + Math.round(weeks * 7)); eta = d; } }
     // pounds lost counts from the starting weight you set on Goals; until you set one, from your first weigh-in
-    const start = p.startLb > 0 ? p.startLb : pts[0].lb;
-    return { pts, now: last.lb, first: pts[0].lb, start, startSet: p.startLb > 0, perWeek, eta, lost: Math.round((start - last.lb) * 10) / 10 };
+    // (startBy === 'user' means they typed it or tapped "start over"; a number that only got there by
+    // saving Goals is ignored, so deleting an old weigh-in really does move the start)
+    const startSet = p.startLb > 0 && p.startBy === 'user';
+    const start = startSet ? p.startLb : pts[0].lb;
+    return { pts, now: last.lb, first: pts[0].lb, firstDate: pts[0].date, start, startSet, perWeek, eta, lost: Math.round((start - last.lb) * 10) / 10 };
   });
   // weigh-ins, newest first, for the editor
   const weighIns = () => all('weight').filter(w => w.lb > 0).sort((a, b) => a.date < b.date ? 1 : -1).map(w => ({ date: w.date, lb: w.lb }));
   // keep "weight now" in step with the latest weigh-in after any edit
+  const setStart = lb => saveProfile(lb > 0 ? { startLb: Math.round(lb * 10) / 10, startBy: 'user' } : { startLb: null, startBy: null });
   const syncWeightNow = () => { const t = trend(); if (t && Math.abs((profile().weightLb || 0) - t.now) >= 0.05) saveProfile({ weightLb: t.now }); };
 
   const BADGES = [
@@ -441,7 +445,7 @@
   window.BW = {
     LS, dayKey, parseDay, addDays, uid, put, remove, all, get: id => recs[id], profile, saveProfile, goals, day, health, streak, level, LEVELS, xpBreakdown, badges, trend,
     challenge: () => challengeFor(weekStart()), weekStart, frequent, presets, recentAmounts, mealForNow, addEntry, entriesOn,
-    clearDemo, isDemo, setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, restoreSession, redeemLink, wipeCloud, deleteAccount, api, ensureAccount, claimAccount, weighIns, syncWeightNow, pullHealth, exportCSV, wipe, seedDemo,
+    clearDemo, isDemo, setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, restoreSession, redeemLink, wipeCloud, deleteAccount, api, ensureAccount, claimAccount, weighIns, syncWeightNow, setStart, pullHealth, exportCSV, wipe, seedDemo,
     get syncing() { return syncing; }, get syncError() { return lastSyncErr; }, get dirtyCount() { return dirty.size; },
     on: f => listeners.add(f), off: f => listeners.delete(f), hasData: () => Object.keys(recs).length > 0,
   };

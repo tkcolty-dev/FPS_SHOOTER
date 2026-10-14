@@ -1,7 +1,17 @@
 {
-  "version": "1.17.0",
+  "version": "1.17.1",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.17.1",
+      "date": "2026-10-13",
+      "title": "Pounds lost really follows your weigh-ins",
+      "changes": [
+        "Fixed: Saving Goals quietly locked in your first weigh-in as the starting weight, so deleting that old weigh-in didn’t change pounds lost. The starting weight now only counts when you actually set it.",
+        "New: The weigh-ins page says exactly where pounds lost is counted from, and lets you change the starting weight or go back to counting from your first weigh-in.",
+        "Changed: Progress says which weight pounds lost is counted from."
+      ]
+    },
     {
       "version": "1.17.0",
       "date": "2026-10-13",

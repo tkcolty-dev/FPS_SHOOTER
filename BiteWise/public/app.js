@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.17.0';
+  const APP_VERSION = '1.17.1';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -554,7 +554,7 @@
       </div>
       <div class="card">
         <div class="card-head"><div><div class="st-k">Weight</div><div class="big-stat">${tr ? `<span class="num">${tr.now.toFixed(1)}</span><small> lb</small>` : '<small>No weigh-ins yet</small>'}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">Log weight</button><button class="link-btn" type="button" data-act="weighins" style="font-size:15px">All ›</button></div></div>
-        ${tr ? `<p class="insight">${tr.eta ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. At this pace you'll hit ${p.goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.lost > 0 ? `Down <b>${tr.lost.toFixed(1)} lb</b> so far. Keep weighing in a few times a week.` : tr.lost < 0 ? `Up <b>${Math.abs(tr.lost).toFixed(1)} lb</b> since your ${tr.startSet ? 'starting weight' : 'first weigh-in'}. ${tr.startSet ? '' : 'Set a starting weight on Goals if that\u2019s not where you want to count from.'}` : tr.startSet ? `Right at your starting weight of <b>${tr.start} lb</b>. Pounds lost counts from here.` : 'Your first weigh-in. Pounds lost counts from here.'}</p>${tr.pts.length > 1 ? weightChart(tr) : ''}` : `<p class="insight">Weigh in 2–3 times a week, in the morning, for numbers you can trust.</p>`}
+        ${tr ? `<p class="insight">${(() => { const from = tr.startSet ? `your starting weight of ${tr.start} lb` : `your first weigh-in (${tr.first} lb)`; return tr.eta ? `Down <b>${tr.lost.toFixed(1)} lb</b> from ${from}. At this pace you'll hit ${p.goalLb} lb around <b>${tr.eta.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</b>.` : tr.lost > 0 ? `Down <b>${tr.lost.toFixed(1)} lb</b> from ${from}. Keep weighing in a few times a week.` : tr.lost < 0 ? `Up <b>${Math.abs(tr.lost).toFixed(1)} lb</b> from ${from}. Tap All to change where it counts from.` : tr.startSet ? `Right at your starting weight of <b>${tr.start} lb</b>. Pounds lost counts from here.` : tr.pts.length > 1 ? `Back at your first weigh-in. Pounds lost counts from ${tr.first} lb.` : 'Your first weigh-in. Pounds lost counts from here.'; })()}</p>${tr.pts.length > 1 ? weightChart(tr) : ''}` : `<p class="insight">Weigh in 2–3 times a week, in the morning, for numbers you can trust.</p>`}
       </div>
     </div><div class="col-side">
       <div class="card">
@@ -1170,11 +1170,15 @@
     openSheet({ title: 'Weigh-ins', left: 'Done', right: 'Add', onRight: () => weighEditSheet({ date: BW.dayKey(), lb: null }), body: '', mount: b => {
       const draw = () => {
         const ws = BW.weighIns(), tr = BW.trend();
-        b.innerHTML = `${tr ? `<div class="caption" style="margin:2px 16px 10px">Starting weight <b>${tr.start} lb</b>${tr.startSet ? '' : ' (your first weigh-in)'} · now <b>${tr.now} lb</b> · ${tr.lost > 0 ? `down <b>${tr.lost} lb</b>` : tr.lost < 0 ? `up <b>${Math.abs(tr.lost)} lb</b>` : 'no change'}. Change the starting weight on Goals.</div>` : ''}
+        b.innerHTML = `${tr ? `<div class="card" style="margin-bottom:12px"><div class="st-k">Pounds lost</div><div class="big-stat"><span class="num">${tr.lost > 0 ? '−' : tr.lost < 0 ? '+' : ''}${Math.abs(tr.lost)}</span><small> lb</small></div>
+          <p class="insight" style="margin-top:6px">Counted from ${tr.startSet ? `the starting weight you set, <b>${tr.start} lb</b>` : `your first weigh-in, <b>${tr.first} lb</b> on ${BW.parseDay(tr.firstDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}, to your latest, <b>${tr.now} lb</b>.</p>
+          <div class="gh-btns" style="margin-top:8px"><button class="btn small tinted" type="button" id="wstart">Change starting weight</button>${tr.startSet ? `<button class="link-btn" type="button" id="wstartoff" style="font-size:15px">Use first weigh-in</button>` : ''}</div></div>` : ''}
           ${ws.length ? `<div class="group">${ws.map(w => `<button class="row" type="button" data-wd="${w.date}"><div class="grow"><div class="title">${esc(dayLabel(w.date))}</div><div class="sub">${BW.parseDay(w.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div></div><span class="value num">${w.lb} lb</span><span class="chev">›</span></button>`).join('')}</div>`
           : `<div class="muted" style="padding:30px 16px;text-align:center">No weigh-ins yet. Tap Add to log one for any day.</div>`}
           <button class="btn gray" type="button" id="wadd" style="margin-top:14px">${I('plus')} Add a weigh-in for another day</button>`;
         $('#wadd', b).onclick = () => weighEditSheet({ date: BW.dayKey(), lb: null });
+        const ws0 = $('#wstart', b); if (ws0) ws0.onclick = () => numberSheet({ title: 'Starting weight', label: 'Pounds lost counts from here', value: tr.start, unit: 'lb', step: .2, min: 50, max: 700, decimals: 1, onSave: n => { BW.setStart(n); toast(`Pounds lost now counts from ${n.toFixed(1)} lb`); } });
+        const wso = $('#wstartoff', b); if (wso) wso.onclick = () => { BW.setStart(null); toast('Counting from your first weigh-in'); };
         b.querySelectorAll('[data-wd]').forEach(x => x.onclick = () => weighEditSheet({ date: x.dataset.wd, lb: BW.day(x.dataset.wd).weight }));
       };
       draw(); BW.on(draw); onCloseRef = () => BW.off(draw);
@@ -1685,8 +1689,8 @@
     const p0 = BW.profile();
     const tr0 = BW.trend();
     // "weight now" is the latest weigh-in (what Progress and groups show), not a number saved some other time
-    const st = { weightLb: tr0 ? tr0.now : p0.weightLb, goalLb: p0.goalLb, startLb: p0.startLb > 0 ? p0.startLb : (tr0 ? tr0.first : p0.weightLb), cal: BW.goals().budget };
-    const w0 = st.weightLb;
+    const st = { weightLb: tr0 ? tr0.now : p0.weightLb, goalLb: p0.goalLb, startLb: tr0 ? tr0.start : (p0.startLb > 0 && p0.startBy === 'user' ? p0.startLb : p0.weightLb), cal: BW.goals().budget };
+    const w0 = st.weightLb; let startTouched = false; // the start is only saved when you change it here
     let saveRef = null;
     openSheet({ title: 'Goals', left: 'Cancel', right: 'Save', onRight: () => saveRef && saveRef(), body: '',
       mount: (b, close) => {
@@ -1696,7 +1700,7 @@
           <div class="group">
             <div class="row"><span class="grow">Weight now</span><span class="value"><input class="inline-input num" id="g_w" inputmode="decimal" value="${st.weightLb}" style="width:70px" aria-label="Weight now"> lb</span></div>
             <div class="row"><span class="grow">Goal weight</span><span class="value"><input class="inline-input num" id="g_goal" inputmode="decimal" value="${st.goalLb}" style="width:70px" aria-label="Goal weight"> lb</span></div>
-            <div class="row"><div class="grow"><div class="title">Starting weight</div><div class="sub">Pounds lost counts from here</div></div><span class="value"><input class="inline-input num" id="g_start" inputmode="decimal" value="${st.startLb}" style="width:70px" aria-label="Starting weight"> lb</span></div>
+            <div class="row"><div class="grow"><div class="title">Starting weight</div><div class="sub" id="g_startsub">${tr0 && !tr0.startSet && !startTouched ? 'Your first weigh-in · pounds lost counts from here' : 'Pounds lost counts from here'}</div></div><span class="value"><input class="inline-input num" id="g_start" inputmode="decimal" value="${st.startLb}" style="width:70px" aria-label="Starting weight"> lb</span></div>
             <button class="row" type="button" id="g_restart" style="color:var(--accent);font-size:15px">Start over from today’s weight</button>
             <button class="row" type="button" id="g_weighins" style="font-size:15px"><span class="grow">Past weigh-ins</span><span class="value">${BW.weighIns().length || 'None'}</span><span class="chev">›</span></button>
           </div>
@@ -1710,7 +1714,7 @@
           <button class="btn gray" type="button" id="g_calc" style="margin-top:16px">${I('spark')} Not sure? Work out a number for me</button>
           <button class="btn" type="button" id="gsave" style="margin-top:10px">Save</button>`;
           $('#gsave', b).onclick = save; $('#g_calc', b).onclick = () => calcSheet(st, n => { st.cal = n; draw(); });
-          $('#g_restart', b).onclick = () => { const w = parseFloat($('#g_w', b).value); if (!(w >= 50)) return toast('Type your weight now first', { icon: 'info' }); st.startLb = w; $('#g_start', b).value = w; $('#g_line', b).textContent = line(); haptic(8); toast('Pounds lost now counts from ' + w + ' lb'); };
+          $('#g_restart', b).onclick = () => { const w = parseFloat($('#g_w', b).value); if (!(w >= 50)) return toast('Type your weight now first', { icon: 'info' }); st.startLb = w; startTouched = true; $('#g_start', b).value = w; $('#g_startsub', b).textContent = 'Pounds lost counts from here'; $('#g_line', b).textContent = line(); haptic(8); toast('Pounds lost now counts from ' + w + ' lb'); };
           $('#g_weighins', b).onclick = () => weighInsSheet();
         };
         const save = () => {
@@ -1719,13 +1723,14 @@
           if (!(cal > 0)) return toast('Type your calories a day', { icon: 'info' });
           const fl = BW.goals().floor, raised = cal < fl, final = Math.min(6000, Math.max(fl, cal));
           const goalType = Math.abs(gl - w) < 0.5 ? 'maintain' : gl < w ? 'lose' : 'gain';
-          BW.saveProfile({ weightLb: w, goalLb: gl, startLb: Math.round(start * 10) / 10, customBudget: final, goalType, pace: goalType === 'lose' ? (BW.profile().pace || 1) : 0 });
+          BW.saveProfile({ weightLb: w, goalLb: gl, customBudget: final, goalType, pace: goalType === 'lose' ? (BW.profile().pace || 1) : 0 });
+          if (startTouched) BW.setStart(start);
           if (w !== w0) BW.setWeight(BW.dayKey(), w);
           haptic(12); close(); toast(raised ? `Set to ${fmt(final)}, the lowest allowed` : `Saved · ${fmt(final)} cal a day`, { icon: raised ? 'info' : 'check' });
         };
         saveRef = save; draw();
         b.oninput = e => { const t = e.target, n = parseFloat(t.value);
-          if (t.id === 'g_w') st.weightLb = n; if (t.id === 'g_goal') st.goalLb = n; if (t.id === 'g_start') st.startLb = n;
+          if (t.id === 'g_w') st.weightLb = n; if (t.id === 'g_goal') st.goalLb = n; if (t.id === 'g_start') { st.startLb = n; startTouched = true; $('#g_startsub', b).textContent = 'Pounds lost counts from here'; }
           if (t.id === 'g_cb') { st.cal = parseInt(t.value, 10) || 0; const g2 = BW.goals(), note = $('#g_note', b); note.innerHTML = ownNote(g2, st.cal); note.classList.toggle('warn', st.cal > 0 && st.cal < g2.floor); }
           const l = $('#g_line', b); if (l) l.textContent = line(); };
         b.onclick = e => { const x = e.target.closest('[data-cb]'); if (!x) return; st.cal = Math.max(BW.goals().floor, Math.min(6000, (st.cal || BW.goals().budget) + +x.dataset.cb)); $('#g_cb', b).value = st.cal; $('#g_note', b).innerHTML = ownNote(BW.goals(), st.cal); $('#g_note', b).classList.remove('warn'); haptic(5); };

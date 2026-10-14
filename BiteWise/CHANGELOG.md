@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.17.1 · Pounds lost really follows your weigh-ins
+_2026-10-13 · git tag `v1.17.1`_
+
+- Fixed: Saving Goals quietly locked in your first weigh-in as the starting weight, so deleting that old weigh-in didn’t change pounds lost. The starting weight now only counts when you actually set it.
+- New: The weigh-ins page says exactly where pounds lost is counted from, and lets you change the starting weight or go back to counting from your first weigh-in.
+- Changed: Progress says which weight pounds lost is counted from.
+
 ## 1.17.0 · Stays signed in, pick your starting weight
 _2026-10-13 · git tag `v1.17.0`_
 
