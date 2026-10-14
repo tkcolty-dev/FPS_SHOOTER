@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.18.2 · Quieter updates
+_2026-10-13 · git tag `v1.18.2`_
+
+- Changed: After an update, BiteWise shows a short note for a couple of seconds instead of a What’s new popup you had to dismiss. The full list is still in Me → Version.
+- Changed: The “Update ready” bar at the top goes away by itself after a couple of seconds (updates install on the next open anyway).
+- Changed: Tap any note to dismiss it right away. The update bar has an × too.
+
 ## 1.18.1 · Groups update live
 _2026-10-13 · git tag `v1.18.1`_
 

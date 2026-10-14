@@ -1,7 +1,17 @@
 {
-  "version": "1.18.1",
+  "version": "1.18.2",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.18.2",
+      "date": "2026-10-13",
+      "title": "Quieter updates",
+      "changes": [
+        "Changed: After an update, BiteWise shows a short note for a couple of seconds instead of a What’s new popup you had to dismiss. The full list is still in Me → Version.",
+        "Changed: The “Update ready” bar at the top goes away by itself after a couple of seconds (updates install on the next open anyway).",
+        "Changed: Tap any note to dismiss it right away. The update bar has an × too."
+      ]
+    },
     {
       "version": "1.18.1",
       "date": "2026-10-13",

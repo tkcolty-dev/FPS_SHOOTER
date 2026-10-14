@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.18.1';
+  const APP_VERSION = '1.18.2';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -130,10 +130,15 @@
     let t = $('#toast');
     if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
     t.innerHTML = `<span class="ticon">${I(icon)}</span><span>${esc(msg)}</span>${undo ? '<button class="undo" type="button">Undo</button>' : '<span style="width:6px"></span>'}`;
-    if (undo) t.querySelector('.undo').onclick = () => { undo(); t.classList.remove('show'); haptic(); };
+    if (undo) t.querySelector('.undo').onclick = e => { e.stopPropagation(); undo(); t.classList.remove('show'); haptic(); };
+    t.onclick = () => t.classList.remove('show'); // tap anywhere on it to dismiss
     requestAnimationFrame(() => t.classList.add('show'));
     clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), undo ? 4200 : 2400);
+    toastAt = Date.now();
   }
+  let toastAt = 0;
+  // phones pause timers while locked: if a toast is still up when the app comes back, drop it
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - toastAt > 2500) $('#toast')?.classList.remove('show'); });
 
   // ---------- confetti ----------
   function confetti(n = 120) {
@@ -2118,10 +2123,12 @@
   }
   function updateBar() {
     let b = $('#updbar');
-    if (!b) { b = document.createElement('button'); b.id = 'updbar'; b.type = 'button'; b.className = 'update-bar'; b.onclick = applyUpdate; document.body.appendChild(b); }
+    if (!b) { b = document.createElement('button'); b.id = 'updbar'; b.type = 'button'; b.className = 'update-bar'; b.onclick = e => { if (e.target.closest('.ub-x')) { b.hidden = true; return; } applyUpdate(); }; document.body.appendChild(b); }
     const waiting = S.updateReady || (!navigator.onLine && vcmp(LS.get('remoteVersion', APP_VERSION), APP_VERSION) > 0 ? LS.get('remoteVersion') : null);
-    b.hidden = !waiting || !BW.profile().setup;
-    if (waiting) b.innerHTML = `${I('download')}<span>${S.updateReady ? `Update ready · <b>${esc(waiting)}</b> · tap to update` : `Update ${esc(waiting)} is waiting · connect to the internet`}</span>`;
+    // shown once per version, for a couple of seconds only: the update installs itself on the next open anyway
+    const show = !!waiting && BW.profile().setup && updateBar.shown !== waiting;
+    b.hidden = !show;
+    if (show) { updateBar.shown = waiting; b.innerHTML = `${I('download')}<span>${S.updateReady ? `Update ready · <b>${esc(waiting)}</b> · tap to update` : `Update ${esc(waiting)} is waiting · connect to the internet`}</span><span class="ub-x" role="button" aria-label="Close">${I('x')}</span>`; clearTimeout(updateBar.t); updateBar.t = setTimeout(() => { b.hidden = true; }, 2500); }
   }
   // a real update: drop the old offline copy and service worker, then load fresh files (your data is untouched)
   async function applyUpdate() {
@@ -2263,7 +2270,8 @@
   bootSession();
   (window.requestIdleCallback || (f => setTimeout(f, 1200)))(() => BW_PARSE.loadUSDA());
   fetch('/api/status').then(r => r.json()).then(j => { S.status = j; if (BW.profile().setup) render(); setTimeout(flushPendingCoach, 800); }).catch(() => {});
-  checkVersion().then(() => { if (BW.profile().setup) { if (LS.get('seenVersion', null) == null && !BW.hasData()) LS.set('seenVersion', APP_VERSION); else if (vcmp(APP_VERSION, LS.get('seenVersion', '0.0.0')) > 0) setTimeout(() => whatsNew(false), 900); } });
+  // after an update: a short toast, never a popup (the full list lives in Me → Version)
+  checkVersion().then(() => { if (BW.profile().setup) { if (LS.get('seenVersion', null) == null && !BW.hasData()) LS.set('seenVersion', APP_VERSION); else if (vcmp(APP_VERSION, LS.get('seenVersion', '0.0.0')) > 0) { LS.set('seenVersion', APP_VERSION); setTimeout(() => toast(`Updated to ${APP_VERSION} \u00b7 what\u2019s new is in Me`, { icon: 'spark' }), 900); } } });
   setInterval(() => document.visibilityState === 'visible' && checkVersion(), 30 * 60e3);
   addEventListener('online', () => { checkVersion(); setTimeout(flushPendingCoach, 1500); scheduleShare(true); flushOutbox(); });
   BW.sync(); refreshMe(); loadGroups().then(() => { render(); scheduleShare(true); });

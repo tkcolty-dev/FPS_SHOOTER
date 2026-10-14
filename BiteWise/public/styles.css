@@ -1002,3 +1002,7 @@ body.sheet-open .toast.show, body.pad-open .toast.show { transform: none !import
 .icon-btn { width: 32px; height: 32px; border-radius: 50%; background: var(--fill2); color: var(--label2); display: inline-grid; place-items: center; flex: none; }
 .icon-btn svg { width: 16px; height: 16px; }
 .icon-btn.spin svg { animation: spin 1s linear infinite; }
+.update-bar .ub-x { margin-left: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.25); display: inline-grid; place-items: center; }
+.update-bar .ub-x svg { width: 12px; height: 12px; }
+.toast { cursor: pointer; }
+.toast.show { pointer-events: auto; }
