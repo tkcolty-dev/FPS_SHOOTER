@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.18.0';
+  const APP_VERSION = '1.18.1';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -1383,11 +1383,27 @@
     }, now ? 50 : 4000);
   }
   let groupsT = 0, groupsBusy = false;
+  const groupWatchers = new Set(); // open group/member sheets redraw themselves when fresh numbers arrive
   async function refreshGroups(force) {
     if (!LS.get('inGroups', false) || !BW.acct() || !navigator.onLine || groupsBusy) return;
     if (!force && Date.now() - groupsT < 8000) return; // the server has rate limits; coalesce bursts
     groupsBusy = true; groupsT = Date.now();
-    try { const before = JSON.stringify(S.groups || []); await loadGroups(); if (JSON.stringify(S.groups || []) !== before) render(); } catch {} finally { groupsBusy = false; }
+    try { const before = JSON.stringify(S.groups || []); await loadGroups(); if (JSON.stringify(S.groups || []) !== before) { render(); groupWatchers.forEach(f => { try { f(); } catch {} }); } } catch {} finally { groupsBusy = false; }
+  }
+  // live updates: every few seconds while the app is open, ask the server for its change stamp (one tiny request)
+  // and refetch the groups only when someone changed something. Also pull down on Today/Progress to refresh.
+  let gstamp = 0, pulseBusy = false;
+  async function pulseGroups() {
+    if (!LS.get('inGroups', false) || !BW.acct() || !navigator.onLine || pulseBusy || document.visibilityState !== 'visible') return;
+    pulseBusy = true;
+    try { const j = await BW.api('groups/pulse', null, 'GET'); if (j.stamp && j.stamp !== gstamp) { const first = !gstamp; gstamp = j.stamp; if (!first) await refreshGroups(true); } } catch {} finally { pulseBusy = false; }
+  }
+  async function manualRefresh() {
+    if (!navigator.onLine) return toast('You\u2019re offline', { icon: 'offline' });
+    document.querySelectorAll('[data-act="grefresh"]').forEach(b => b.classList.add('spin'));
+    await Promise.all([BW.sync(), refreshGroups(true)]); gstamp = 0;
+    document.querySelectorAll('[data-act="grefresh"]').forEach(b => b.classList.remove('spin'));
+    toast('Up to date', { icon: 'sync' });
   }
   async function loadGroups() {
     const cached = () => { let gs = LS.get('groupsCache', []); if (LS.get('groupsCacheDay', '') !== BW.dayKey()) gs = gs.map(g => ({ ...g, members: g.members.map(m => ({ ...m, log: null, stats: m.stats ? { ...m.stats, todayPct: null, steps: null } : null })) })); return gs; };
@@ -1416,7 +1432,7 @@
   // on Today: every group, everyone's numbers, no tapping needed, plus a one-tap weigh-in
   function groupsToday() {
     const gs = S.groups || LS.get('groupsCache', []); if (!gs.length) return '';
-    return gs.map(g => `<div class="card t-group"><div class="card-head"><div><div class="st-k">Group</div><div class="big-stat" style="font-size:20px">${esc(g.name)}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">${I('scale')} Log weight</button><button class="link-btn" type="button" data-group="${g.id}" style="font-size:15px">Open</button></div></div>
+    return gs.map(g => `<div class="card t-group"><div class="card-head"><div><div class="st-k">Group</div><div class="big-stat" style="font-size:20px">${esc(g.name)}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">${I('scale')} Log weight</button><button class="link-btn" type="button" data-group="${g.id}" style="font-size:15px">Open</button><button class="icon-btn" type="button" data-act="grefresh" aria-label="Refresh">${I('sync')}</button></div></div>
       <div class="gm-list">${sortMembers(g).map((m, i) => memberMini(g, m, i)).join('')}</div></div>`).join('');
   }
   const face = (st, fallbackName, i, big) => `<span class="face ${big ? 'big' : ''}" style="background:${st?.color || MEMBER_COLORS[i % 8]}">${esc(((st?.name || fallbackName || '?')[0] || '?').toUpperCase())}</span>`;
@@ -1427,7 +1443,7 @@
       <div class="acct-btns flat"><button class="btn small" type="button" data-act="newgroup">Make a group</button><button class="btn small tinted" type="button" data-act="joingroup">Join with code</button></div></div>`;
     return gs.map(g => {
       const ms = sortMembers(g);
-      return `<div class="card group-card"><div class="card-head"><div><div class="st-k">Group · ${g.members.length} ${g.members.length === 1 ? 'person' : 'people'}</div><div class="big-stat" style="font-size:22px">${esc(g.name)}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">${I('scale')} Log weight</button><button class="link-btn" type="button" data-group="${g.id}" style="font-size:15px">Open ›</button></div></div>
+      return `<div class="card group-card"><div class="card-head"><div><div class="st-k">Group · ${g.members.length} ${g.members.length === 1 ? 'person' : 'people'}</div><div class="big-stat" style="font-size:22px">${esc(g.name)}</div></div><div class="gh-btns"><button class="btn small tinted" type="button" data-act="weight">${I('scale')} Log weight</button><button class="link-btn" type="button" data-group="${g.id}" style="font-size:15px">Open ›</button><button class="icon-btn" type="button" data-act="grefresh" aria-label="Refresh">${I('sync')}</button></div></div>
         <div class="gm-list">${ms.map((m, i) => memberMini(g, m, i)).join('')}</div>
         ${g.members.length === 1 ? `<div class="caption" style="margin-top:8px">Send code <b class="num">${esc(g.code)}</b> to invite people.</div>` : ''}</div>`;
     }).join('') + `<div class="acct-btns flat" style="margin-top:8px"><button class="btn small tinted" type="button" data-act="newgroup">Make another</button><button class="btn small tinted" type="button" data-act="joingroup">Join with code</button></div>`;
@@ -1491,14 +1507,16 @@
       b.querySelectorAll('[data-member]').forEach(x => x.onclick = e => { if (e.target.closest('[data-logfor]')) return; memberSheet(x.dataset.member); });
       $('#gleave', b).onclick = () => confirmSheet({ title: `Leave ${g.name}?`, text: 'You can join again later with the code.', confirm: 'Leave group', danger: true, onConfirm: async () => { try { await BW.api(`groups/${g.id}/leave`); } catch {} await loadGroups(); LS.set('inGroups', (S.groups || []).length > 0); sheets.slice().forEach(x => x.close()); render(); toast('You left the group'); } });
     };
-    const cached = (S.groups || LS.get('groupsCache', [])).find(x => x.id === id);
+    const cached = (S.groups || LS.get('groupsCache', [])).find(x => x.id === id); let gWatch = null;
     openSheet({ title: cached ? cached.name : 'Group', left: 'Done', tall: true, body: '<div class="muted" style="text-align:center;padding:30px">Loading…</div>',
       mount: async b => {
         if (cached) draw(b, cached);
         scheduleShare(true); await new Promise(r => setTimeout(r, 400));
         const g = ((await loadGroups()) || []).find(x => x.id === id);
         if (g) draw(b, g); else if (!cached) b.innerHTML = `<div class="banner">${I('info')}<span>${S.online ? 'That group is gone.' : 'Connect to the internet to see your group.'}</span></div>`;
-      } });
+        gWatch = () => { const g2 = (S.groups || []).find(x => x.id === id); if (g2 && document.body.contains(b) && !b.querySelector('input:focus')) draw(b, g2); };
+        groupWatchers.add(gWatch);
+      }, onClose: () => gWatch && groupWatchers.delete(gWatch) });
   }
   function logForSheet(g, key, name, date = BW.dayKey()) {
     let meal = qMeal(); const dayLbl = date === BW.dayKey() ? '' : ' · ' + BW.parseDay(date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
@@ -1570,7 +1588,7 @@
       ${!m.you && m.canLog ? `<button class="btn" type="button" id="mlog" style="margin-top:16px">${I('plus')} Log food for ${esc(nm)}${isToday ? '' : ' · ' + label}</button>` : ''}`;
       return { nm, body };
     };
-    const first = build(g, m);
+    const first = build(g, m); let watcherRef = null;
     openSheet({ title: first.nm, left: 'Done', tall: true, body: first.body, mount: b => {
       const redraw = () => { b.innerHTML = build(g, m).body; };
       b.onclick = e => {
@@ -1579,9 +1597,11 @@
         else if (x.dataset.mbar) { sel = x.dataset.mbar; haptic(5); redraw(); }
         else if (x.id === 'mlog') logForSheet(g, m.key, build(g, m).nm, sel);
       };
-      // show the freshest numbers: re-fetch once the sheet is open and redraw in place
-      refreshGroups(true).then(() => { const f = find(); if (f.g && f.m && document.body.contains(b)) { g = f.g; m = f.m; redraw(); } });
-    } });
+      // show the freshest numbers: re-fetch once the sheet is open and redraw in place, and again whenever
+      // the live poll brings a change while the sheet is open
+      const sync = () => { const f = find(); if (f.g && f.m && document.body.contains(b)) { g = f.g; m = f.m; redraw(); } };
+      refreshGroups(true).then(sync); groupWatchers.add(sync); watcherRef = sync;
+    }, onClose: () => watcherRef && groupWatchers.delete(watcherRef) });
   }
 
   const minLabel = m => { m = ((m % 1440) + 1440) % 1440; const h = Math.floor(m / 60), mm = m % 60; return `${h % 12 || 12}${mm ? ':' + String(mm).padStart(2, '0') : ''} ${h < 12 ? 'AM' : 'PM'}`; };
@@ -1848,6 +1868,7 @@
         case 'shareprefs': return sharePrefsSheet();
         case 'weight': return weightSheet();
         case 'weighins': return weighInsSheet();
+        case 'grefresh': return manualRefresh();
         case 'clearchat': saveChat([]); render(); return;
         case 'profile': case 'goals': return goalsSheet();
         case 'stepgoal': return numberSheet({ title: 'Step goal', label: 'Every day', value: BW.profile().stepGoal, unit: 'steps', step: 500, min: 1000, max: 40000, onSave: n => BW.saveProfile({ stepGoal: Math.round(n) }) });
@@ -2230,6 +2251,12 @@
   addEventListener('hashchange', () => { readHash(); render(); });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { const t = BW.dayKey(); if (S.date !== t && S._lastToday !== t) { S.date = t; } S._lastToday = t; render(); BW.sync(); autoHealth(); refreshGroups(); } });
   addEventListener('focus', () => refreshGroups());
+  setInterval(pulseGroups, 6000); setTimeout(pulseGroups, 2500);
+  // pull down from the top of Today or Progress to refresh (phones)
+  let pullY = null, pulled = false;
+  addEventListener('touchstart', e => { pullY = scrollY <= 0 && !sheets.length && (S.tab === 'today' || S.tab === 'progress') ? e.touches[0].clientY : null; pulled = false; }, { passive: true });
+  addEventListener('touchmove', e => { if (pullY == null || pulled) return; if (e.touches[0].clientY - pullY > 90 && scrollY <= 0) { pulled = true; haptic(8); manualRefresh(); } }, { passive: true });
+  addEventListener('touchend', () => { pullY = null; }, { passive: true });
   S._lastToday = BW.dayKey();
 
   readHash(); render(); checkRewards();

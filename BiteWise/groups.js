@@ -48,6 +48,10 @@ const memberKey = (gid, uid) => crypto.createHash('sha256').update(gid + ':' + u
 module.exports = function mountGroups(app, { store, needUser, limit }) {
   const myGroups = async uid => (await store.kvGet('ugroups:' + uid)) || [];
   const setMyGroups = (uid, ids) => store.kvSet('ugroups:' + uid, ids);
+  // every group carries a change stamp. Anything that changes what members see (a summary, a food logged, a
+  // weigh-in synced, someone joining or leaving) bumps it, and phones poll the stamp cheaply to know when to refetch.
+  const touchGroup = gid => store.kvSet('gstamp:' + gid, Date.now());
+  const touch = async uid => { for (const gid of await myGroups(uid)) await touchGroup(gid); };
 
   async function view(uid, g, today = dayKey()) {
     const members = await Promise.all(g.members.map(async m => {
@@ -79,7 +83,7 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     if (mine.length >= MAX_GROUPS) return res.status(400).json({ error: `You can be in up to ${MAX_GROUPS} groups.` });
     let code; for (let i = 0; i < 20; i++) { code = newCode(); if (!await store.kvGet('code:' + code)) break; }
     const g = { id: crypto.randomUUID(), code, name, owner: req.uid, members: [req.uid], created: Date.now() };
-    await store.kvSet('group:' + g.id, g); await store.kvSet('code:' + code, g.id); await setMyGroups(req.uid, [...mine, g.id]);
+    await store.kvSet('group:' + g.id, g); await store.kvSet('code:' + code, g.id); await setMyGroups(req.uid, [...mine, g.id]); await touchGroup(g.id);
     res.json({ group: await view(req.uid, g) });
   });
 
@@ -92,7 +96,7 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     if (!g.members.includes(req.uid)) {
       if (g.members.length >= MAX_MEMBERS) return res.status(400).json({ error: 'That group is full.' });
       if (mine.length >= MAX_GROUPS) return res.status(400).json({ error: `You can be in up to ${MAX_GROUPS} groups.` });
-      g.members.push(req.uid); await store.kvSet('group:' + g.id, g); await setMyGroups(req.uid, [...mine, g.id]);
+      g.members.push(req.uid); await store.kvSet('group:' + g.id, g); await setMyGroups(req.uid, [...mine, g.id]); await touchGroup(g.id);
     }
     res.json({ group: await view(req.uid, g) });
   });
@@ -109,9 +113,16 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     if (g) {
       g.members = g.members.filter(m => m !== req.uid);
       if (!g.members.length) { await store.kvDel('group:' + g.id); await store.kvDel('code:' + g.code); }
-      else { if (g.owner === req.uid) g.owner = g.members[0]; await store.kvSet('group:' + g.id, g); }
+      else { if (g.owner === req.uid) g.owner = g.members[0]; await store.kvSet('group:' + g.id, g); await touchGroup(g.id); }
     }
     res.json({ ok: true });
+  });
+
+  // the newest change stamp across the caller's groups: phones poll this every few seconds and refetch only when it moves
+  app.get('/api/groups/pulse', needUser, async (req, res) => {
+    let stamp = 0;
+    for (const gid of await myGroups(req.uid)) stamp = Math.max(stamp, (await store.kvGet('gstamp:' + gid)) || 0);
+    res.json({ stamp });
   });
 
   // a member logs food for someone else in the group (only if that person has sharing on). It lands in their log
@@ -131,12 +142,15 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     const by = me?.stats?.name || (await store.userById(req.uid))?.username || 'A friend';
     const now = Date.now();
     await store.upsertRecords(to, [{ id: 'e:g-' + crypto.randomUUID(), kind: 'entry', date, time: now, meal, name, calories, source: 'group', by: String(by).slice(0, 30), updatedAt: now }]);
+    await touch(to);
     res.json({ ok: true });
   });
 
   // the app posts a fresh summary whenever the person's numbers change. `full` is their one sharing switch.
   app.post('/api/share', needUser, limit(60, 60e3), async (req, res) => {
     await store.kvSet('share:' + req.uid, { stats: cleanStats(req.body.stats), full: !!req.body.full, exact: req.body.exact !== false, at: Date.now() });
+    await touch(req.uid);
     res.json({ ok: true });
   });
+  return { touch };
 };

@@ -21,6 +21,12 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.18.1 · Groups update live
+_2026-10-13 · git tag `v1.18.1`_
+
+- New: While BiteWise is open, groups now update within a few seconds of anyone logging food, weighing in, or changing their numbers — no reopening needed. Open group and member pages update in place too.
+- New: Pull down on Today or Progress to refresh, or tap the round refresh button on a group card.
+
 ## 1.18.0 · Calories left in groups
 _2026-10-13 · git tag `v1.18.0`_
 

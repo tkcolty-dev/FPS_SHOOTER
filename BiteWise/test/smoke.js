@@ -182,7 +182,14 @@ async function serverTests() {
       await call('share', { stats: { name: 'Bob' }, full: false }, bob.j.token);
       ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, a.j.token)).status === 403, 'sharing off blocks logging for them');
       ok((await call(`groups/${fam.id}/log`, { to: bobKey, name: 'Cake', calories: 300 }, eve.j.token)).status === 404, 'outsiders cannot log for members');
+      const st1 = (await call('groups/pulse', null, a.j.token, 'GET')).j.stamp;
+      await new Promise(r => setTimeout(r, 5));
+      await call('sync', { since: 0, changes: [{ id: 'e:p1', kind: 'entry', date: '2026-10-13', calories: 10, updatedAt: 14 }] }, bob.j.token);
+      const st2 = (await call('groups/pulse', null, a.j.token, 'GET')).j.stamp;
+      ok(st1 > 0 && st2 > st1, 'a member syncing a change moves the group stamp', JSON.stringify({ st1, st2 }));
+      ok((await call('groups/pulse', null, a.j.token, 'GET')).j.stamp === st2, 'stamp stays put when nothing changed');
       ok((await call(`groups/${fam.id}/leave`, {}, bob.j.token)).status === 200, 'leave group');
+      ok((await call('groups/pulse', null, a.j.token, 'GET')).j.stamp > st2, 'leaving moves the stamp');
       // starting weight (synced in the profile) drives the server's pounds lost
       await call('sync', { since: 0, changes: [{ id: 'profile', kind: 'profile', startLb: 180, updatedAt: 12 }] }, bob.j.token);
       await call('share', { stats: { name: 'Bob', budget: 2000 }, full: true }, bob.j.token);

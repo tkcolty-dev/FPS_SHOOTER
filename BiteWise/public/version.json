@@ -1,7 +1,16 @@
 {
-  "version": "1.18.0",
+  "version": "1.18.1",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.18.1",
+      "date": "2026-10-13",
+      "title": "Groups update live",
+      "changes": [
+        "New: While BiteWise is open, groups now update within a few seconds of anyone logging food, weighing in, or changing their numbers — no reopening needed. Open group and member pages update in place too.",
+        "New: Pull down on Today or Progress to refresh, or tap the round refresh button on a group card."
+      ]
+    },
     {
       "version": "1.18.0",
       "date": "2026-10-13",

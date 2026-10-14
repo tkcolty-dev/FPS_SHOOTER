@@ -140,6 +140,7 @@ app.get('/manifest.webmanifest', async (req, res) => {
 app.post('/api/sync', needUser, limit(120, 60e3), async (req, res) => {
   const changes = Array.isArray(req.body.changes) ? req.body.changes.filter(r => r && typeof r.id === 'string' && r.id.length < 80).slice(0, 5000) : [];
   const accepted = changes.length ? await store.upsertRecords(req.uid, changes) : 0;
+  if (accepted) groups.touch(req.uid).catch(e => console.error('group touch:', e.message)); // groups see the change right away
   const out = await store.recordsSince(req.uid, Number(req.body.since) || 0);
   res.json({ accepted, ...out });
 });
@@ -164,7 +165,7 @@ app.post('/api/estimate', limit(40, 60e3), async (req, res) => {
 
 // ---------- Fitbit via Google Health ----------
 const health = require('./health')(app, { store, needUser, limit, origin });
-require('./groups')(app, { store, needUser, limit });
+const groups = require('./groups')(app, { store, needUser, limit });
 require('./online-foods')(app, { limit });
 
 // Delete everything in the cloud: just the log (keep the account), or the whole account.
