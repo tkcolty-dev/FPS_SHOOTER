@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.18.5 · Your name in groups, settings that stick
+_2026-10-14 · git tag `v1.18.5`_
+
+- New: Set the name your groups see in Goals → Name. If you never set one, your username is used instead of “Friend”.
+- Fixed: With BiteWise on two devices, a setting changed on one could be quietly undone by the other saving an older copy. Each setting now keeps its newest change.
+- Fixed: The one-time “steps no longer add calories” switch-off waits for the cloud copy first, so it can’t roll back settings from another device.
+
 ## 1.18.4 · Notes vanish on Coach too
 _2026-10-13 · git tag `v1.18.4`_
 

@@ -36,9 +36,29 @@
   // ---------- profile + goals ----------
   const DEFAULT_PROFILE = { id: 'profile', kind: 'profile', name: '', setup: false, sex: 'female', age: 30, heightIn: 66, weightLb: 170, goalLb: 155, activity: 1.375, pace: 1, customBudget: null, stepGoal: 8000, waterGoal: 8, earnSteps: false, theme: 'fresh', units: 'lb', allergies: [] };
   const profile = () => ({ ...DEFAULT_PROFILE, ...(recs.profile || {}) });
-  const saveProfile = p => put({ ...profile(), ...p, id: 'profile', kind: 'profile' });
-  // steps no longer add calories to the day's budget unless you turn that on yourself (it used to be on for everyone)
-  if (recs.profile && !recs.profile.stepsOffV2) setTimeout(() => saveProfile({ earnSteps: false, stepsOffV2: true }), 0);
+  // each setting carries its own timestamp (ts[field]) so two devices never undo each other's changes:
+  // when a profile arrives from the cloud it is merged per field, newest change wins
+  const saveProfile = p => { const cur = profile(), now = Date.now(), ts = { ...(cur.ts || {}) }; for (const k of Object.keys(p)) if (k !== 'ts' && JSON.stringify(p[k]) !== JSON.stringify(cur[k])) ts[k] = now; return put({ ...cur, ...p, ts, id: 'profile', kind: 'profile' }); };
+  function mergeProfile(remote) {
+    const local = recs.profile; if (!local || local.deleted) return remote;
+    const lt = local.ts || {}, rt = remote.ts || {}, out = { ...remote }, ts = { ...rt };
+    for (const k of new Set([...Object.keys(local), ...Object.keys(remote)])) {
+      if (k === 'ts' || k === 'id' || k === 'kind' || k === 'updatedAt') continue;
+      const l = lt[k] || 0, r = rt[k] || 0;
+      // a field only this device has stamped, or stamped later, keeps this device's value
+      if (l > r && k in local) { out[k] = local[k]; ts[k] = l; }
+    }
+    out.ts = ts; return out;
+  }
+  // steps no longer add calories to the day's budget unless you turn that on yourself (it used to be on for everyone).
+  // Runs once, and only after this device has pulled the latest profile from the cloud (writing an old local copy
+  // back with a fresh timestamp would undo settings changed on another device).
+  function migrateProfile() {
+    const p = recs.profile; if (!p || p.stepsOffV2) return;
+    if (p.earnSteps === false) { p.stepsOffV2 = true; persist(); return; } // nothing to change: just mark it, no sync write
+    saveProfile({ earnSteps: false, stepsOffV2: true });
+  }
+  if (!LS.get('account', null)) setTimeout(migrateProfile, 0);
 
   // goalType: 'lose' | 'maintain' | 'gain'. customBudget (a number) overrides the math, but never below the safe floor.
   function goals(p = profile()) {
@@ -302,9 +322,14 @@
       res = { ...res, records: all };
       ids.forEach(id => dirty.delete(id));
       let changed = false;
-      for (const r of res.records) { const cur = recs[r.id]; if (!cur || (r.updatedAt || 0) > (cur.updatedAt || 0)) { recs[r.id] = r; changed = true; } }
+      for (const r of res.records) {
+        const cur = recs[r.id]; if (cur && (r.updatedAt || 0) <= (cur.updatedAt || 0)) continue;
+        if (r.id === 'profile' && cur) { const m = mergeProfile(r); recs.profile = m; changed = true; if (JSON.stringify(m) !== JSON.stringify(r)) { m.updatedAt = Date.now(); dirty.add('profile'); scheduleSync(); } }
+        else { recs[r.id] = r; changed = true; }
+      }
       LS.set('seq', res.seq); LS.set('lastSync', Date.now()); lastSyncErr = null;
       persist(); if (changed) emit();
+      migrateProfile();
     } catch (e) { lastSyncErr = e.message; if (e.status === 401) await authLost(); }
     syncing = false; emit();
   }
@@ -447,7 +472,7 @@
   window.BW = {
     LS, dayKey, parseDay, addDays, uid, put, remove, all, get: id => recs[id], profile, saveProfile, goals, day, health, streak, level, LEVELS, xpBreakdown, badges, trend,
     challenge: () => challengeFor(weekStart()), weekStart, frequent, presets, recentAmounts, mealForNow, addEntry, entriesOn,
-    clearDemo, isDemo, setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, restoreSession, redeemLink, wipeCloud, deleteAccount, api, ensureAccount, claimAccount, weighIns, syncWeightNow, setStart, pullHealth, exportCSV, wipe, seedDemo,
+    clearDemo, isDemo, setWater, setSteps, setWeight, stepBonus, PACE_PRESETS, paceSettings, paceShare, paceNow, stepSource, acct, sync, signIn, signOut, restoreSession, redeemLink, wipeCloud, deleteAccount, api, ensureAccount, claimAccount, weighIns, syncWeightNow, setStart, _mergeProfile: mergeProfile, pullHealth, exportCSV, wipe, seedDemo,
     get syncing() { return syncing; }, get syncError() { return lastSyncErr; }, get dirtyCount() { return dirty.size; },
     on: f => listeners.add(f), off: f => listeners.delete(f), hasData: () => Object.keys(recs).length > 0,
   };

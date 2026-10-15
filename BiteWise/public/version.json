@@ -1,7 +1,17 @@
 {
-  "version": "1.18.4",
+  "version": "1.18.5",
   "date": "2026-10-13",
   "history": [
+    {
+      "version": "1.18.5",
+      "date": "2026-10-14",
+      "title": "Your name in groups, settings that stick",
+      "changes": [
+        "New: Set the name your groups see in Goals → Name. If you never set one, your username is used instead of “Friend”.",
+        "Fixed: With BiteWise on two devices, a setting changed on one could be quietly undone by the other saving an older copy. Each setting now keeps its newest change.",
+        "Fixed: The one-time “steps no longer add calories” switch-off waits for the cloud copy first, so it can’t roll back settings from another device."
+      ]
+    },
     {
       "version": "1.18.4",
       "date": "2026-10-13",

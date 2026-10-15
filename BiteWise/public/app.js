@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.18.4';
+  const APP_VERSION = '1.18.5';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -1366,7 +1366,8 @@
   const MEMBER_COLORS = ['#FF9500', '#34C759', '#007AFF', '#AF52DE', '#FF2D55', '#30B0C7', '#FFB800', '#5856D6'];
   function myShareStats() {
     const p = BW.profile(), g = BW.goals(), k = BW.dayKey(), d = BW.day(k), tr = BW.trend(), lv = BW.level();
-    const base = { name: p.name || 'Friend', color: THEMES.find(t => t.id === p.theme)?.color || null };
+    const a = BW.acct();
+    const base = { name: p.name || (a && !a.auto ? a.username : 'Friend'), color: THEMES.find(t => t.id === p.theme)?.color || null };
     if (!shareOn()) return base;
     const week = Array.from({ length: 7 }, (_, i) => BW.day(BW.addDays(k, -i - 1))).filter(x => x.entries.length && x.eaten <= x.budget * 1.1).length;
     return { ...base,
@@ -1716,14 +1717,17 @@
     const p0 = BW.profile();
     const tr0 = BW.trend();
     // "weight now" is the latest weigh-in (what Progress and groups show), not a number saved some other time
-    const st = { weightLb: tr0 ? tr0.now : p0.weightLb, goalLb: p0.goalLb, startLb: tr0 ? tr0.start : (p0.startLb > 0 && p0.startBy === 'user' ? p0.startLb : p0.weightLb), cal: BW.goals().budget };
+    const st = { name: p0.name || '', weightLb: tr0 ? tr0.now : p0.weightLb, goalLb: p0.goalLb, startLb: tr0 ? tr0.start : (p0.startLb > 0 && p0.startBy === 'user' ? p0.startLb : p0.weightLb), cal: BW.goals().budget };
     const w0 = st.weightLb; let startTouched = false; // the start is only saved when you change it here
     let saveRef = null;
     openSheet({ title: 'Goals', left: 'Cancel', right: 'Save', onRight: () => saveRef && saveRef(), body: '',
       mount: (b, close) => {
         const line = () => { const diff = Math.round((st.goalLb - st.weightLb) * 10) / 10, lost = Math.round((st.startLb - st.weightLb) * 10) / 10; const so = st.startLb > 0 && st.weightLb > 0 && Math.abs(lost) >= 0.05 ? (lost > 0 ? ` · down ${lost} lb so far` : ` · up ${Math.abs(lost)} lb from your start`) : ''; return !(st.weightLb > 0) || !(st.goalLb > 0) ? '' : (Math.abs(diff) < 0.5 ? 'Staying right where you are' : diff < 0 ? `${Math.abs(diff)} lb to go` : `${diff} lb to gain`) + so; };
         const draw = () => { b.innerHTML = `
-          <div class="footnote" style="margin:4px 16px 6px">WEIGHT</div>
+          <div class="footnote" style="margin:4px 16px 6px">YOU</div>
+          <div class="group"><div class="row"><span class="grow">Name</span><span class="value"><input class="inline-input" id="g_name" value="${esc(st.name)}" placeholder="Your name" maxlength="30" autocapitalize="words" style="width:150px;text-align:right" aria-label="Name"></span></div></div>
+          <div class="caption" style="margin:6px 16px 0">This is what your groups see.</div>
+          <div class="footnote" style="margin:18px 16px 6px">WEIGHT</div>
           <div class="group">
             <div class="row"><span class="grow">Weight now</span><span class="value"><input class="inline-input num" id="g_w" inputmode="decimal" value="${st.weightLb}" style="width:70px" aria-label="Weight now"> lb</span></div>
             <div class="row"><span class="grow">Goal weight</span><span class="value"><input class="inline-input num" id="g_goal" inputmode="decimal" value="${st.goalLb}" style="width:70px" aria-label="Goal weight"> lb</span></div>
@@ -1750,14 +1754,15 @@
           if (!(cal > 0)) return toast('Type your calories a day', { icon: 'info' });
           const fl = BW.goals().floor, raised = cal < fl, final = Math.min(6000, Math.max(fl, cal));
           const goalType = Math.abs(gl - w) < 0.5 ? 'maintain' : gl < w ? 'lose' : 'gain';
-          BW.saveProfile({ weightLb: w, goalLb: gl, customBudget: final, goalType, pace: goalType === 'lose' ? (BW.profile().pace || 1) : 0 });
+          BW.saveProfile({ name: ($('#g_name', b).value || '').trim().slice(0, 30), weightLb: w, goalLb: gl, customBudget: final, goalType, pace: goalType === 'lose' ? (BW.profile().pace || 1) : 0 });
           if (startTouched) BW.setStart(start);
+          lastShared = ''; scheduleShare(true); // groups see the new name right away
           if (w !== w0) BW.setWeight(BW.dayKey(), w);
           haptic(12); close(); toast(raised ? `Set to ${fmt(final)}, the lowest allowed` : `Saved · ${fmt(final)} cal a day`, { icon: raised ? 'info' : 'check' });
         };
         saveRef = save; draw();
         b.oninput = e => { const t = e.target, n = parseFloat(t.value);
-          if (t.id === 'g_w') st.weightLb = n; if (t.id === 'g_goal') st.goalLb = n; if (t.id === 'g_start') { st.startLb = n; startTouched = true; $('#g_startsub', b).textContent = 'Pounds lost counts from here'; }
+          if (t.id === 'g_name') st.name = t.value; if (t.id === 'g_w') st.weightLb = n; if (t.id === 'g_goal') st.goalLb = n; if (t.id === 'g_start') { st.startLb = n; startTouched = true; $('#g_startsub', b).textContent = 'Pounds lost counts from here'; }
           if (t.id === 'g_cb') { st.cal = parseInt(t.value, 10) || 0; const g2 = BW.goals(), note = $('#g_note', b); note.innerHTML = ownNote(g2, st.cal); note.classList.toggle('warn', st.cal > 0 && st.cal < g2.floor); }
           const l = $('#g_line', b); if (l) l.textContent = line(); };
         b.onclick = e => { const x = e.target.closest('[data-cb]'); if (!x) return; st.cal = Math.max(BW.goals().floor, Math.min(6000, (st.cal || BW.goals().budget) + +x.dataset.cb)); $('#g_cb', b).value = st.cal; $('#g_note', b).innerHTML = ownNote(BW.goals(), st.cal); $('#g_note', b).classList.remove('warn'); haptic(5); };

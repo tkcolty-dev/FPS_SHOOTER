@@ -51,6 +51,17 @@ function fileTests() {
 }
 
 function dataTests() {
+  {
+    // two devices: each setting keeps the newest change, instead of the last device to save undoing the other
+    const { BW, localStorage: ls } = sandbox();
+    BW.saveProfile({ setup: true, goalLb: 160, waterGoal: 8 });
+    const t = Date.now() + 5000; // "device B" saved water later but with an older goal
+    const remote = { ...BW.profile(), goalLb: 170, waterGoal: 12, ts: { ...BW.profile().ts, goalLb: 1, waterGoal: t }, updatedAt: t };
+    BW.saveProfile({ goalLb: 150 }); // device A changes the goal now (after B's old goal stamp, before B's water stamp)
+    // simulate the cloud copy arriving through the same merge path sync uses
+    const merged = BW._mergeProfile ? BW._mergeProfile(remote) : null;
+    ok(merged && merged.goalLb === 150 && merged.waterGoal === 12, 'profile merge keeps the newest value of each setting', JSON.stringify(merged && { g: merged.goalLb, w: merged.waterGoal }));
+  }
   const { BW } = sandbox();
   BW.put({ id: 'preset:1', kind: 'preset', name: 'Coffee', calories: 40, color: '#FF9500', order: 2 });
   BW.put({ id: 'preset:2', kind: 'preset', name: 'Lunch', calories: 650, color: '#007AFF', order: 1 });
