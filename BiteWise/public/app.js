@@ -8,7 +8,7 @@
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const { LS } = BW;
   // ---------- version + updates (keep in sync with version.json; bump both when shipping) ----------
-  const APP_VERSION = '1.18.5';
+  const APP_VERSION = '1.19.0';
   const vcmp = (a, b) => { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; };
 
   // ---------- icons (SF Symbols-style line icons) ----------
@@ -122,6 +122,8 @@
   const MEAL_ICON = { breakfast: ['sun', '#FF9F0A'], lunch: ['fork', '#30B0C7'], dinner: ['moon', '#5E5CE6'], snack: ['bite', '#FF375F'] };
   const mealPills = (cur, attr = 'data-meal') => `<div class="meal-pills" role="radiogroup" aria-label="Meal">${MEALS.map(([m, l]) => `<button type="button" ${attr}="${m}" role="radio" aria-checked="${cur === m}" aria-pressed="${cur === m}" style="--mc:${MEAL_ICON[m][1]}">${I(MEAL_ICON[m][0])}${l}</button>`).join('')}</div>`;
   const dayLabel = k => { const t = BW.dayKey(); if (k === t) return 'Today'; if (k === BW.addDays(t, -1)) return 'Yesterday'; return BW.parseDay(k).toLocaleDateString(undefined, { weekday: 'long' }); };
+  // "today", "yesterday", else "Oct 3": for sentences about any day, however far back
+  const dayWhen = k => { const t = BW.dayKey(); if (k === t) return 'today'; if (k === BW.addDays(t, -1)) return 'yesterday'; return BW.parseDay(k).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
   const longDate = k => BW.parseDay(k).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
   // ---------- toast ----------
@@ -1178,7 +1180,7 @@
         b.innerHTML = `${tr ? `<div class="card" style="margin-bottom:12px"><div class="st-k">Pounds lost</div><div class="big-stat"><span class="num">${tr.lost > 0 ? '−' : tr.lost < 0 ? '+' : ''}${Math.abs(tr.lost)}</span><small> lb</small></div>
           <p class="insight" style="margin-top:6px">Counted from ${tr.startSet ? `the starting weight you set, <b>${tr.start} lb</b>` : `your first weigh-in, <b>${tr.first} lb</b> on ${BW.parseDay(tr.firstDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`}, to your latest, <b>${tr.now} lb</b>.</p>
           <div class="gh-btns" style="margin-top:8px"><button class="btn small tinted" type="button" id="wstart">Change starting weight</button>${tr.startSet ? `<button class="link-btn" type="button" id="wstartoff" style="font-size:15px">Use first weigh-in</button>` : ''}</div></div>` : ''}
-          ${ws.length ? `<div class="group">${ws.map(w => `<button class="row" type="button" data-wd="${w.date}"><div class="grow"><div class="title">${esc(dayLabel(w.date))}</div><div class="sub">${BW.parseDay(w.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div></div><span class="value num">${w.lb} lb</span><span class="chev">›</span></button>`).join('')}</div>`
+          ${ws.length ? `<div class="group">${ws.map(w => `<button class="row" type="button" data-wd="${w.date}"><div class="grow"><div class="title">${esc(dayLabel(w.date))}</div><div class="sub">${BW.parseDay(w.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}${w.by ? ` · <span class="by">added by ${esc(w.by)}</span>` : ''}</div></div><span class="value num">${w.lb} lb</span><span class="chev">›</span></button>`).join('')}</div>`
           : `<div class="muted" style="padding:30px 16px;text-align:center">No weigh-ins yet. Tap Add to log one for any day.</div>`}
           <button class="btn gray" type="button" id="wadd" style="margin-top:14px">${I('plus')} Add a weigh-in for another day</button>`;
         $('#wadd', b).onclick = () => weighEditSheet({ date: BW.dayKey(), lb: null });
@@ -1530,9 +1532,11 @@
       <div class="edit-amount"><input id="lf_cal" class="num" inputmode="numeric" placeholder="0" aria-label="Calories"><span>calories</span></div>
       <input class="name-input" id="lf_name" placeholder="What was it?" aria-label="Food name">
       <div id="lf_meal">${mealPills(meal, 'data-lfm')}</div>
-      <button class="btn" type="button" id="lf_go" style="margin-top:18px">Add to ${esc(name)}'s day</button>`,
+      <button class="btn" type="button" id="lf_go" style="margin-top:18px">Add to ${esc(name)}'s day</button>
+      <button class="link-btn" type="button" id="lf_w" style="display:block;margin:14px auto 0;font-size:15px">${I('scale')} Log ${esc(name)}'s weight instead</button>`,
       mount: (b, close) => {
         setTimeout(() => $('#lf_cal', b)?.focus(), 350);
+        $('#lf_w', b).onclick = () => { close(); setTimeout(() => logWeightForSheet(g, key, name, date), 300); };
         b.onclick = e => { const m = e.target.closest('[data-lfm]'); if (m) { meal = m.dataset.lfm; $('#lf_meal', b).innerHTML = mealPills(meal, 'data-lfm'); } };
         $('#lf_name', b).oninput = e => { const r = BW_PARSE.parseLog(e.target.value); if (r.allKnown && r.total > 0 && !$('#lf_cal', b).value) $('#lf_cal', b).placeholder = String(r.total); };
         $('#lf_go', b).onclick = async () => {
@@ -1545,10 +1549,36 @@
         };
       } });
   }
+  // log a weigh-in for someone in a group, on whatever day you pick. Starts from their latest weight if they share it.
+  function logWeightForSheet(g, key, name, date = BW.dayKey()) {
+    const today = BW.dayKey(), m = (g.members || []).find(x => x.key === key), lg = m?.log;
+    const onDay = lg?.days?.find(x => x.date === date)?.weight, last = lg?.weights?.length ? lg.weights[lg.weights.length - 1].lb : null;
+    let v = onDay || last || m?.stats?.weightLb || 150;
+    openSheet({ title: `Weigh-in for ${name}`, right: 'Save',
+      body: `<p class="muted" style="text-align:center;margin:4px 12px 14px;font-size:15px">This goes into ${esc(name)}'s weigh-ins and shows that you added it.${S.online ? '' : ' You\u2019re offline, so it\u2019ll send when you reconnect.'}</p>
+        <div class="group"><div class="row"><span class="grow">Day</span><span class="value"><input type="date" id="lwdate" class="inline-input" value="${date}" max="${today}" aria-label="Day" style="width:auto"></span></div></div>
+        <div class="card" style="text-align:center;padding:22px 16px;margin-top:14px"><div class="caption" style="font-size:14px">${esc(name)}'s weight</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:8px"><button class="btn gray small" type="button" data-d="-1" aria-label="Less" style="width:44px;height:44px;border-radius:50%;padding:0;font-size:24px">−</button>
+        <input id="lwv" class="num" inputmode="decimal" value="${(+v).toFixed(1)}" style="width:170px;text-align:center;border:0;background:transparent;font:700 52px var(--round)" aria-label="Weight">
+        <button class="btn gray small" type="button" data-d="1" aria-label="More" style="width:44px;height:44px;border-radius:50%;padding:0;font-size:24px">+</button></div><div class="muted" style="font-weight:600">lb</div></div>
+        ${onDay ? `<div class="footnote" style="margin-top:12px">${esc(name)} already has ${onDay} lb on this day. Saving replaces it.</div>` : last ? `<div class="footnote" style="margin-top:12px">Last weigh-in: ${last} lb.</div>` : ''}`,
+      mount: b => {
+        b.onclick = e => { const d = e.target.closest('[data-d]'); if (!d) return; v = Math.min(700, Math.max(50, (parseFloat($('#lwv', b).value) || 0) + d.dataset.d * .2)); $('#lwv', b).value = v.toFixed(1); haptic(5); };
+      },
+      onRight: async close => {
+        const n = Math.round(parseFloat($('#lwv').value) * 10) / 10, d = $('#lwdate').value;
+        if (!Number.isFinite(n) || n < 50 || n > 700) return toast('Enter a weight from 50 to 700 lb', { icon: 'info' });
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || d > today) return toast('Pick a day up to today', { icon: 'info' });
+        haptic(12); close();
+        const ok = await queueOnline(`groups/${g.id}/weight`, { to: key, lb: n, date: d }, `${n} lb for ${name}`);
+        toast(ok ? `${n.toFixed(1)} lb for ${name} ${d === today ? 'today' : 'on ' + dayWhen(d)}` : `Saved. It'll send to ${name} when you're back online`, { icon: ok ? 'scale' : 'cloud' });
+        if (ok) setTimeout(() => refreshGroups(true), 600);
+      } });
+  }
   // one question right after you make or join a group, so sharing is one tap instead of a trip to settings
   function shareAsk(g) {
     if (shareOn()) return groupSheet(g.id);
-    openSheet({ title: `Share with ${g.name}?`, body: `<div style="text-align:center;margin:4px 0 16px"><div class="icon-sq" style="background:var(--green);width:60px;height:60px;border-radius:16px;margin:0 auto 10px">${I('eye', 'style="width:32px;height:32px"')}</div><div class="muted" style="font-size:15px;margin:0 8px">Everyone in your groups will see your goal, calories left, steps, weight and the food you log, and can log food for you. You can turn it off any time in Me → Sharing.</div></div>
+    openSheet({ title: `Share with ${g.name}?`, body: `<div style="text-align:center;margin:4px 0 16px"><div class="icon-sq" style="background:var(--green);width:60px;height:60px;border-radius:16px;margin:0 auto 10px">${I('eye', 'style="width:32px;height:32px"')}</div><div class="muted" style="font-size:15px;margin:0 8px">Everyone in your groups will see your goal, calories left, steps, weight and the food you log, and can log food and weigh-ins for you. You can turn it off any time in Me → Sharing.</div></div>
       <button class="btn" type="button" id="sa_on">Turn on sharing</button><button class="btn gray" type="button" id="sa_no" style="margin-top:10px">Not now</button>`,
       mount: (b, close) => { $('#sa_on', b).onclick = () => { setShare(true); haptic(8); close(); toast('Sharing is on'); setTimeout(() => groupSheet(g.id), 300); }; $('#sa_no', b).onclick = () => { close(); setTimeout(() => groupSheet(g.id), 300); }; } });
   }
@@ -1558,7 +1588,7 @@
     openSheet({ title: 'Sharing', left: 'Done', body: '', mount: b => {
       const draw = () => { const on = shareOn(), ex = exactWeight(); b.innerHTML = `<div class="group"><div class="row"><span class="icon-sq" style="background:${on ? 'var(--green)' : 'var(--label3)'}">${I('eye')}</span><div class="grow"><div class="title">Share with my groups</div><div class="sub">${on ? 'On' : 'Off'}</div></div><button class="switch" type="button" role="switch" id="shsw" aria-checked="${on}" aria-label="Share with my groups"></button></div>
         ${on ? `<div class="row"><span class="icon-sq" style="background:${ex ? 'var(--teal)' : 'var(--label3)'}">${I('scale')}</span><div class="grow"><div class="title">Show my exact weight</div><div class="sub">${ex ? 'They see the number, like 172.4 lb' : 'They only see pounds lost, like “down 3 lb”'}</div></div><button class="switch" type="button" role="switch" id="exsw" aria-checked="${ex}" aria-label="Show my exact weight"></button></div>` : ''}</div>
-        <div class="footnote" style="margin:14px 16px 0;line-height:1.45">One switch. Off, and people in your groups only see your name.<br><br>On, and everyone in your groups can see your goal, calories left, steps, today’s progress, how much weight you’ve lost, and <b>the food you log</b>. They can also log food for you, and it shows who added it. Your exact weight is up to you, with the second switch.<br><br>It’s saved with your profile, so it stays the same on every device you sign in on. Change it any time.</div>`;
+        <div class="footnote" style="margin:14px 16px 0;line-height:1.45">One switch. Off, and people in your groups only see your name.<br><br>On, and everyone in your groups can see your goal, calories left, steps, today’s progress, how much weight you’ve lost, and <b>the food you log</b>. They can also log food and weigh-ins for you, and it shows who added it. Your exact weight is up to you, with the second switch.<br><br>It’s saved with your profile, so it stays the same on every device you sign in on. Change it any time.</div>`;
         $('#shsw', b).onclick = () => { setShare(!shareOn()); haptic(8); draw(); toast(shareOn() ? 'Sharing is on' : 'Sharing is off'); };
         const ex2 = $('#exsw', b); if (ex2) ex2.onclick = () => { setExact(!exactWeight()); haptic(8); draw(); }; };
       draw();
@@ -1585,13 +1615,14 @@
       <div class="mday-nav"><button class="dn" type="button" data-mday="-1" ${canBack ? '' : 'disabled'} aria-label="Previous day">${I('left')}</button><div class="mday-label"><b>${label}</b>${isToday ? '' : `<span class="caption">${BW.parseDay(sel).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</span>`}</div><button class="dn" type="button" data-mday="1" ${canFwd ? '' : 'disabled'} aria-label="Next day">${I('right')}</button></div>
       <div class="results2">
         <div class="card"><div class="st-k">${isToday ? 'Today' : 'That day'}</div><div class="big-stat num">${fmt(d.eaten)}<small> cal</small></div><div class="caption">${st.budget ? (st.budget - d.eaten >= 0 ? `<b>${fmt(st.budget - d.eaten)} left</b> of ${fmt(st.budget)}` : `<b style="color:var(--orange)">${fmt(d.eaten - st.budget)} over</b> ${fmt(st.budget)}`) : 'eaten'}${d.steps ? ` · ${fmt(d.steps)} steps` : ''}</div></div>
-        <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${d.weight ? d.weight + '<small> lb</small>' : w ? w.lb + '<small> lb</small>' : st.weightLb ? st.weightLb + '<small> lb</small>' : st.lostLb > 0 ? '↓ ' + st.lostLb + '<small> lb lost</small>' : '–'}</div><div class="caption">${d.weight ? (isToday ? 'Weighed in today' : 'Weighed in that day') : w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : st.lostLb > 0 ? 'Keeps the exact number private' : 'No weigh-ins yet'}${st.lostLb > 0 && (w || d.weight) ? ` · ${st.lostLb} lb lost` : ''}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
+        <div class="card"><div class="st-k">Weight</div><div class="big-stat num">${d.weight ? d.weight + '<small> lb</small>' : w ? w.lb + '<small> lb</small>' : st.weightLb ? st.weightLb + '<small> lb</small>' : st.lostLb > 0 ? '↓ ' + st.lostLb + '<small> lb lost</small>' : '–'}</div><div class="caption">${d.weight ? (isToday ? 'Weighed in today' : 'Weighed in that day') + (d.weightBy ? ` · <span class="by">added by ${esc(d.weightBy)}</span>` : '') : w && w7 && w7 !== w ? `${w.lb - w7.lb <= 0 ? '↓' : '↑'} ${Math.abs(Math.round((w.lb - w7.lb) * 10) / 10)} lb this week` : w ? 'Last weigh-in ' + BW.parseDay(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : st.lostLb > 0 ? 'Keeps the exact number private' : 'No weigh-ins yet'}${st.lostLb > 0 && (w || d.weight) ? ` · ${st.lostLb} lb lost` : ''}${st.goalLb ? ` · goal ${st.goalLb}` : ''}</div></div>
       </div>
       ${bars.length ? `<div class="card" style="margin-top:12px"><div class="card-head"><div class="st-k">${bars[bars.length - 1].date === today ? 'This week' : 'That week'}</div><span class="caption">Tap a day</span></div><div class="mini-bars pick">${bars.map(x => `<button type="button" data-mbar="${x.date}" class="${x.date === sel ? 'on' : ''}" aria-label="${x.date}: ${fmt(x.eaten)} calories"><i style="height:${Math.max(3, x.eaten / mx * 100)}%;${st.budget && x.eaten > st.budget * 1.1 ? 'background:var(--orange)' : ''}"></i><em>${BW.parseDay(x.date).toLocaleDateString(undefined, { weekday: 'narrow' })}</em></button>`).join('')}</div></div>` : ''}
       <div class="section-head" style="margin-top:16px"><h2>${isToday ? 'Today’s food' : 'Food · ' + label}</h2>${lg ? `<span class="caption num">${fmt(d.eaten)} cal</span>` : ''}</div>
       ${d.foods.length ? `<div class="group">${d.foods.map(e => `<div class="row"><span class="meal-ic" style="--mc:${MEAL_ICON[e.meal]?.[1] || 'var(--accent)'}">${I(MEAL_ICON[e.meal]?.[0] || 'bite')}</span><div class="grow"><div class="title">${esc(e.name)}</div><div class="sub">${cap(e.meal || 'snack')}${e.time ? ' · ' + new Date(e.time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ''}${e.by ? ` · <span class="by">added by ${esc(e.by)}</span>` : ''}</div></div><span class="kcal num">${fmt(e.calories)}</span></div>`).join('')}</div>`
       : `<div class="card empty"><b>${isToday ? 'Nothing logged yet today' : 'Nothing logged ' + (sel === BW.addDays(today, -1) ? 'yesterday' : 'that day')}</b><span>${m.you ? (isToday ? 'Add something on Today.' : 'Use the arrows on Today to log a past day.') : `You can log something for ${esc(nm)} below.`}</span></div>`}
-      ${!m.you && m.canLog ? `<button class="btn" type="button" id="mlog" style="margin-top:16px">${I('plus')} Log food for ${esc(nm)}${isToday ? '' : ' · ' + label}</button>` : ''}`;
+      ${!m.you && m.canLog ? `<button class="btn" type="button" id="mlog" style="margin-top:16px">${I('plus')} Log food for ${esc(nm)}${isToday ? '' : ' · ' + label}</button>
+      <button class="btn gray" type="button" id="mweight" style="margin-top:10px">${I('scale')} Log weight for ${esc(nm)}${isToday ? '' : ' · ' + label}</button>` : ''}`;
       return { nm, body };
     };
     const first = build(g, m); let watcherRef = null;
@@ -1602,6 +1633,7 @@
         if (x.dataset.mday) { sel = BW.addDays(sel, +x.dataset.mday); haptic(5); redraw(); }
         else if (x.dataset.mbar) { sel = x.dataset.mbar; haptic(5); redraw(); }
         else if (x.id === 'mlog') logForSheet(g, m.key, build(g, m).nm, sel);
+        else if (x.id === 'mweight') logWeightForSheet(g, m.key, build(g, m).nm, sel);
       };
       // show the freshest numbers: re-fetch once the sheet is open and redraw in place, and again whenever
       // the live poll brings a change while the sheet is open
@@ -2257,6 +2289,13 @@
     if (!fresh.length) return;
     LS.set('seenGroupLogs', [...seen, ...fresh.map(e => e.id)].slice(-300));
     if (LS.get('groupLogInit', false)) { const e = fresh[fresh.length - 1]; toast(`${e.by || 'A friend'} added ${e.name} (${fmt(e.calories)} cal) to your day`, { icon: 'person' }); haptic(15); }
+  });
+  // same for weigh-ins a friend logs for you (keyed by day + time so a re-log of the same day shows again)
+  BW.on(() => {
+    const seen = new Set(LS.get('seenGroupWeights', [])), fresh = BW.all('weight').filter(w => w.source === 'group' && w.by && !seen.has(w.id + '@' + w.updatedAt));
+    if (!fresh.length) return;
+    LS.set('seenGroupWeights', [...seen, ...fresh.map(w => w.id + '@' + w.updatedAt)].slice(-100));
+    if (LS.get('groupLogInit', false)) { const w = fresh[fresh.length - 1]; toast(`${w.by} logged ${w.lb} lb for you ${w.date === BW.dayKey() ? 'today' : 'on ' + dayWhen(w.date)}`, { icon: 'scale' }); haptic(15); BW.syncWeightNow(); }
   });
   setTimeout(() => LS.set('groupLogInit', true), 3000);
   setInterval(() => { if (document.visibilityState === 'visible' && BW.acct() && navigator.onLine) BW.sync(); }, 90e3);

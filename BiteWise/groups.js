@@ -1,6 +1,6 @@
 // Groups: make a group, share a 6-letter code, and members see each other's progress.
 // Sharing is one switch per person (off until they turn it on). Once on, everyone in their groups sees their
-// goal, streak, steps, weight and food log, and can log food for them. The app posts a summary; the server adds
+// goal, steps, weight and food log, and can log food and weigh-ins for them. The app posts a summary; the server adds
 // the food log and weigh-ins straight from their synced records, so it is current even if their phone is offline.
 const crypto = require('crypto');
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I so codes are easy to read out loud
@@ -30,10 +30,10 @@ async function logView(store, uid, today) {
     const d = days[r.date]; if (!d) continue;
     if (r.kind === 'entry') { d.eaten += (+r.calories || 0); if (d.foods.length < 40) d.foods.push(food(r)); }
     else if (r.kind === 'steps') d.steps = Math.round(+r.steps || +r.count || 0);
-    else if (r.kind === 'weight' && r.lb > 0) d.weight = Math.round(r.lb * 10) / 10;
+    else if (r.kind === 'weight' && r.lb > 0) { d.weight = Math.round(r.lb * 10) / 10; d.weightBy = r.by ? String(r.by).slice(0, 30) : undefined; }
   }
   for (const d of Object.values(days)) d.foods.sort((a, b) => (b.time || 0) - (a.time || 0));
-  const allW = recs.filter(r => r.kind === 'weight' && r.lb > 0 && r.date <= today).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10 })).sort((a, b) => a.date < b.date ? -1 : 1);
+  const allW = recs.filter(r => r.kind === 'weight' && r.lb > 0 && r.date <= today).map(r => ({ date: r.date, lb: Math.round(r.lb * 10) / 10, by: r.by ? String(r.by).slice(0, 30) : undefined })).sort((a, b) => a.date < b.date ? -1 : 1);
   // pounds lost counts from the starting weight they set on Goals (synced in their profile), else their first weigh-in
   const prof = (await store.recentRecords(uid, ['profile'], '0000-00-00').catch(() => []))[0];
   const startLb = prof && prof.startBy === 'user' && +prof.startLb > 0 ? +prof.startLb : (allW.length ? allW[0].lb : null);
@@ -125,25 +125,45 @@ module.exports = function mountGroups(app, { store, needUser, limit }) {
     res.json({ stamp });
   });
 
+  // who a member may log for: someone else in this group who has sharing on. Returns their uid and the name to
+  // stamp on the record, or sends the error and returns null.
+  async function logTarget(req, res) {
+    const g = await store.kvGet('group:' + req.params.id);
+    if (!g || !g.members.includes(req.uid)) { res.status(404).json({ error: 'That group is gone.' }); return null; }
+    const to = g.members.find(m => memberKey(g.id, m) === String(req.body.to || ''));
+    if (!to || to === req.uid) { res.status(404).json({ error: 'That person isn\u2019t in the group anymore.' }); return null; }
+    const share = await store.kvGet('share:' + to);
+    if (!share?.full) { res.status(403).json({ error: 'They haven\u2019t turned on sharing, so nobody can log for them yet.' }); return null; }
+    const me = await store.kvGet('share:' + req.uid);
+    const by = String(me?.stats?.name || (await store.userById(req.uid))?.username || 'A friend').slice(0, 30);
+    return { to, by };
+  }
+  const cleanDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : new Date().toISOString().slice(0, 10);
+
   // a member logs food for someone else in the group (only if that person has sharing on). It lands in their log
   // like any synced record, so it shows up on their phone the next time it syncs, even if they were offline.
   app.post('/api/groups/:id/log', needUser, limit(60, 60 * 60e3), async (req, res) => {
-    const g = await store.kvGet('group:' + req.params.id);
-    if (!g || !g.members.includes(req.uid)) return res.status(404).json({ error: 'That group is gone.' });
-    const to = g.members.find(m => memberKey(g.id, m) === String(req.body.to || ''));
-    if (!to || to === req.uid) return res.status(404).json({ error: 'That person isn\u2019t in the group anymore.' });
-    const share = await store.kvGet('share:' + to);
-    if (!share?.full) return res.status(403).json({ error: 'They haven\u2019t turned on sharing, so nobody can log for them yet.' });
+    const t = await logTarget(req, res); if (!t) return;
     const name = String(req.body.name || 'Food').trim().slice(0, 80), calories = Math.round(+req.body.calories);
     if (!(calories > 0 && calories <= 5000)) return res.status(400).json({ error: 'Enter calories between 1 and 5,000.' });
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : new Date().toISOString().slice(0, 10);
+    const date = cleanDate(req.body.date);
     const meal = ['breakfast', 'lunch', 'dinner', 'snack'].includes(req.body.meal) ? req.body.meal : 'snack';
-    const me = await store.kvGet('share:' + req.uid);
-    const by = me?.stats?.name || (await store.userById(req.uid))?.username || 'A friend';
     const now = Date.now();
-    await store.upsertRecords(to, [{ id: 'e:g-' + crypto.randomUUID(), kind: 'entry', date, time: now, meal, name, calories, source: 'group', by: String(by).slice(0, 30), updatedAt: now }]);
-    await touch(to);
+    await store.upsertRecords(t.to, [{ id: 'e:g-' + crypto.randomUUID(), kind: 'entry', date, time: now, meal, name, calories, source: 'group', by: t.by, updatedAt: now }]);
+    await touch(t.to);
     res.json({ ok: true });
+  });
+
+  // a member logs a weigh-in for someone else, on any day. Same record id the app uses (weight:<day>), so it
+  // replaces that day's weigh-in and the person can edit or delete it on their own phone like any other.
+  app.post('/api/groups/:id/weight', needUser, limit(60, 60 * 60e3), async (req, res) => {
+    const t = await logTarget(req, res); if (!t) return;
+    const lb = Math.round(+req.body.lb * 10) / 10;
+    if (!(lb >= 50 && lb <= 700)) return res.status(400).json({ error: 'Enter a weight from 50 to 700 lb.' });
+    const date = cleanDate(req.body.date), now = Date.now();
+    await store.upsertRecords(t.to, [{ id: 'weight:' + date, kind: 'weight', date, lb, source: 'group', by: t.by, updatedAt: now }]);
+    await touch(t.to);
+    res.json({ ok: true, date, lb });
   });
 
   // the app posts a fresh summary whenever the person's numbers change. `full` is their one sharing switch.

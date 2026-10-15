@@ -1,7 +1,17 @@
 {
-  "version": "1.18.5",
-  "date": "2026-10-13",
+  "version": "1.19.0",
+  "date": "2026-10-15",
   "history": [
+    {
+      "version": "1.19.0",
+      "date": "2026-10-15",
+      "title": "Log weight for people in your groups",
+      "changes": [
+        "New: Log a weigh-in for anyone in your group who shares, the same way you log food for them. Open their page and tap Log weight, or tap “Log their weight instead” on the food sheet.",
+        "New: Pick the day. Use the arrows or the week bars on their page, or change the day right on the weigh-in sheet, so a missed weigh-in from last week can go in too.",
+        "New: Weigh-ins logged by someone else show who added them, on their page and in your own Past weigh-ins list, and you get a short note when a friend logs one for you."
+      ]
+    },
     {
       "version": "1.18.5",
       "date": "2026-10-14",

@@ -21,6 +21,13 @@ To undo one release but keep everything after it: `git revert <commit>` (see `gi
 3. `npm test`. Everything must pass.
 4. `node tools/changelog.js`, then commit, tag (`git tag v1.x.y`), push, and deploy with `cf push --strategy rolling` (no downtime).
 
+## 1.19.0 · Log weight for people in your groups
+_2026-10-15 · git tag `v1.19.0`_
+
+- New: Log a weigh-in for anyone in your group who shares, the same way you log food for them. Open their page and tap Log weight, or tap “Log their weight instead” on the food sheet.
+- New: Pick the day. Use the arrows or the week bars on their page, or change the day right on the weigh-in sheet, so a missed weigh-in from last week can go in too.
+- New: Weigh-ins logged by someone else show who added them, on their page and in your own Past weigh-ins list, and you get a short note when a friend logs one for you.
+
 ## 1.18.5 · Your name in groups, settings that stick
 _2026-10-14 · git tag `v1.18.5`_
 
