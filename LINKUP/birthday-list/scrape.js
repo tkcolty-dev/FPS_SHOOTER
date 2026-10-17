@@ -144,8 +144,18 @@ async function scrape(input) {
 
 // Name → Amazon results with picture, name and price, best first (real results before ads).
 async function searchResults(q) {
-  const r = await get('https://www.amazon.com/s?k=' + encodeURIComponent(q), UAS[0]);
-  if (r.status >= 400 || isBlocked(r.html)) throw new Error("Amazon search didn't answer — try a link instead");
+  // Amazon sometimes turns a visitor away for a moment; ask a second way before giving up.
+  let r;
+  for (const ua of [UAS[0], UAS[2], UAS[0]]) {
+    try {
+      r = await get('https://www.amazon.com/s?k=' + encodeURIComponent(q), ua);
+    } catch {
+      r = null;
+    }
+    if (r && r.status < 400 && !isBlocked(r.html) && /data-component-type="s-search-result"/.test(r.html)) break;
+    r = null;
+  }
+  if (!r) throw new Error("Amazon search didn't answer — try a link instead");
   const organic = [], ads = [], seen = new Set();
   for (const part of r.html.split(/(?=<div[^>]*data-component-type="s-search-result")/).slice(1)) {
     const p = part.slice(0, 60000);

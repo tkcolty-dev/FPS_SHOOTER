@@ -107,6 +107,9 @@ function view(list, owner) {
 
 const app = express();
 app.use(express.json({ limit: '3mb' }));
+// The page itself is never cached, so a new version shows up right away (app.js/style.css carry ?v=).
+const sendPage = (req, res) => res.set('Cache-Control', 'no-cache').sendFile(path.join(__dirname, 'public', 'index.html'));
+app.get(['/', '/index.html'], sendPage);
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '5m' : 0 }));
 
 async function load(req, res) {
@@ -320,7 +323,7 @@ app.delete('/api/lists/:id/items/:item/claim', wrap(async (req, res) => {
   res.json(view(list, false));
 }));
 
-app.get('/l/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/l/:id', sendPage);
 
 store.init().then(() => {
   app.listen(PORT, () => console.log(`Birthday List on http://localhost:${PORT} (${cfg ? 'postgres' : 'file'} storage)`));
