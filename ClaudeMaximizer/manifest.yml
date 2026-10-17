@@ -10,5 +10,7 @@ applications:
     health-check-http-endpoint: /api/projects
     health-check-invocation-timeout: 10
     timeout: 120
+    services:
+      - claude-maximizer-db
     env:
       NODE_ENV: production
