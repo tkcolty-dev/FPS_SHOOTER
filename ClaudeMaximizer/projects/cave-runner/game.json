@@ -1,0 +1,8 @@
+{
+  "name": "Cave Runner",
+  "mode": "2d",
+  "width": 320,
+  "height": 180,
+  "start": "level1",
+  "scripts": ["scripts/sprites.js", "scripts/entities.js", "scripts/scenes.js"]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "claude-maximizer",
+  "version": "1.0.0",
+  "description": "Make games with Claude: play, click anything, leave a note, Claude fixes it. 2D and 3D.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "notes": "node tools/notes.js",
+    "test": "node test/smoke.js"
+  }
+}

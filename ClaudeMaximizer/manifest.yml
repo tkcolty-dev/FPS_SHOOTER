@@ -1,0 +1,14 @@
+applications:
+  - name: claude-maximizer
+    memory: 256M
+    disk_quota: 1G
+    instances: 1
+    buildpacks:
+      - nodejs_buildpack
+    command: node server.js
+    health-check-type: http
+    health-check-http-endpoint: /api/projects
+    health-check-invocation-timeout: 10
+    timeout: 120
+    env:
+      NODE_ENV: production

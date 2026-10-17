@@ -1,0 +1,8 @@
+{
+  "name": "Dungeon Dash",
+  "mode": "2d",
+  "width": 320,
+  "height": 180,
+  "start": "dungeon",
+  "scripts": ["scripts/sprites.js", "scripts/entities.js", "scripts/scenes.js"]
+}

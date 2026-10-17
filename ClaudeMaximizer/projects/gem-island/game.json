@@ -1,0 +1,6 @@
+{
+  "name": "Gem Island",
+  "mode": "3d",
+  "start": "island",
+  "scripts": ["scripts/models.js", "scripts/entities.js", "scripts/scenes.js"]
+}
