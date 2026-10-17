@@ -1,0 +1,17 @@
+{
+  "name": "birthday-list",
+  "version": "1.0.0",
+  "description": "Birthday wish list — paste an Amazon link, it fills in the picture, name and price",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
