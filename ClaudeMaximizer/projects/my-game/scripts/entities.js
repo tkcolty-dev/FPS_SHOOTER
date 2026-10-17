@@ -2,15 +2,17 @@
 const G = window.G || (window.G = { score: 0, kills: 0, bestWave: CM.load('bestWave', 0) });
 
 // upgrades the player can pick when leveling up
+// each card shows: icon, name, the real number before → after, and a short line. color = the card's outline.
+const r2 = v => Math.round(v * 100) / 100;
 const UPGRADES = [
-  { id: 'dmg', name: 'Sharper shots', text: '+1 damage', apply: h => { h.props.dmg += 1; } },
-  { id: 'rate', name: 'Quick trigger', text: 'Shoot 25% faster', apply: h => { h.props.fireRate *= 0.75; } },
-  { id: 'speed', name: 'Fast feet', text: '+15% speed', apply: h => { h.props.speed *= 1.15; } },
-  { id: 'hp', name: 'Tough skin', text: '+2 max HP, heal 2', apply: h => { h.props.maxHp += 2; h.props.hp = Math.min(h.props.maxHp, h.props.hp + 2); } },
-  { id: 'multi', name: 'Split shot', text: '+1 bullet', apply: h => { h.props.bullets += 1; } },
-  { id: 'range', name: 'Eagle eye', text: '+40 range', apply: h => { h.props.range += 40; } },
-  { id: 'magnet', name: 'Gem magnet', text: 'Pull gems from farther', apply: h => { h.props.magnet += 40; } },
-  { id: 'heal', name: 'Full heal', text: 'Back to full HP', apply: h => { h.props.hp = h.props.maxHp; } }
+  { id: 'dmg', name: 'Sharper shots', icon: 'up-dmg', color: '#ff5f5f', text: 'Hit harder', stat: h => ['DMG', h.props.dmg, h.props.dmg + 1], apply: h => { h.props.dmg += 1; } },
+  { id: 'rate', name: 'Quick trigger', icon: 'up-rate', color: '#ffd93d', text: 'Shoot 25% faster', stat: h => ['SHOTS/S', r2(1 / h.props.fireRate), r2(1 / (h.props.fireRate * 0.75))], apply: h => { h.props.fireRate *= 0.75; } },
+  { id: 'speed', name: 'Fast feet', icon: 'up-speed', color: '#ffb84d', text: 'Move 15% faster', stat: h => ['SPEED', Math.round(h.props.speed), Math.round(h.props.speed * 1.15)], apply: h => { h.props.speed *= 1.15; } },
+  { id: 'hp', name: 'Tough skin', icon: 'up-hp', color: '#ff7b9c', text: 'Heal 2 too', stat: h => ['MAX HP', h.props.maxHp, h.props.maxHp + 2], apply: h => { h.props.maxHp += 2; h.props.hp = Math.min(h.props.maxHp, h.props.hp + 2); } },
+  { id: 'multi', name: 'Split shot', icon: 'up-multi', color: '#4fd4e6', text: 'Fire a spread', stat: h => ['BULLETS', h.props.bullets, h.props.bullets + 1], apply: h => { h.props.bullets += 1; } },
+  { id: 'range', name: 'Eagle eye', icon: 'up-range', color: '#7cc4ff', text: 'Aim farther', stat: h => ['RANGE', h.props.range, h.props.range + 40], apply: h => { h.props.range += 40; } },
+  { id: 'magnet', name: 'Gem magnet', icon: 'up-magnet', color: '#c084fc', text: 'Pull gems in', stat: h => ['PULL', h.props.magnet, h.props.magnet + 40], apply: h => { h.props.magnet += 40; } },
+  { id: 'heal', name: 'Full heal', icon: 'up-heal', color: '#4ade80', text: 'Back to full', stat: h => ['HP', h.props.hp, h.props.maxHp], apply: h => { h.props.hp = h.props.maxHp; } }
 ];
 window.UPGRADES = UPGRADES;
 
@@ -22,14 +24,15 @@ function hurt(h, s, n, why) {
 }
 
 CM.entity('hero', {
-  sprite: 'hero', tags: ['player'], keepInBounds: true,
+  sprite: 'hero-idle', tags: ['player'], keepInBounds: true,
   props: { speed: 95, hp: 6, maxHp: 6, dmg: 1, fireRate: 0.45, bullets: 1, range: 130, magnet: 40, xp: 0, level: 1, nextXp: 5, invuln: 0, cooldown: 0, dashCd: 0, dashT: 0 },
   update(h, dt, s) {
     if (s.data.over || s.data.freeze) { h.vx = 0; h.vy = 0; return; }
     const ax = CM.input.axis(), ay = CM.input.axisY(); const l = Math.hypot(ax, ay) || 1;
     const dashing = h.props.dashT > 0; const sp = h.props.speed * (dashing ? 3 : 1);
     if (dashing) { h.props.dashT -= dt; h.props.invuln = Math.max(h.props.invuln, 0.05); }
-    else { h.vx = ax / l * sp; h.vy = ay / l * sp; if (ax || ay) { h.flip = ax < 0; h.fps = 8; } else { h.fps = 0; h.frame = 0; } }
+    else { h.vx = ax / l * sp; h.vy = ay / l * sp; if (ax) h.flip = ax < 0; }
+    h.sprite = (ax || ay || dashing) ? 'hero' : 'hero-idle'; // standing still = the standing pose, so the legs stop
     h.props.dashCd -= dt;
     if (CM.input.pressed('action') && h.props.dashCd <= 0 && (ax || ay)) { h.props.dashCd = 1.5; h.props.dashT = 0.16; h.vx = ax / l * sp * 3; h.vy = ay / l * sp * 3; CM.sfx('powerup'); CM.burst(h.cx, h.cy, { color: '#4fd4e6', count: 8, speed: 40, gravity: 0 }); }
     // auto-aim: shoot the nearest enemy in range

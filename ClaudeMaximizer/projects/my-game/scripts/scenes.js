@@ -48,7 +48,7 @@ function spawnEnemy(s, type) {
 
 CM.scene('title', {
   bg: '#1b2030',
-  setup(s) { s.data.blink = 0; s.spawn('hero', 156, 106).fps = 0; },
+  setup(s) { s.data.blink = 0; s.spawn('hero', 154, 102); },
   update(s, dt) {
     s.data.blink += dt;
     if (CM.input.pressed('jump') || CM.input.pressed('action')) { G.score = 0; G.kills = 0; CM.deleteSave(); CM.go('arena', { fade: 0.5 }); }
@@ -104,15 +104,40 @@ CM.scene('arena', {
     CM.draw.text(ctx, 'LV ' + h.props.level, 6, CM.H - 21, { size: 7, color: '#4fd4e6' });
     if (h.props.dashCd > 0) CM.draw.bar(ctx, CM.W - 46, CM.H - 20, 40, 4, 1 - h.props.dashCd / 1.5, { color: '#9aa3b2' }); else CM.draw.text(ctx, 'DASH X', CM.W - 6, CM.H - 22, { size: 7, align: 'right', color: '#9aa3b2' });
     if (s.data.banner) { const a = Math.min(1, s.data.banner.t); ctx.globalAlpha = a; CM.draw.text(ctx, s.data.banner.text, CM.W / 2, 70, { size: 14, align: 'center', color: s.data.banner.text.startsWith('BOSS') ? '#ff5fa8' : '#ffd93d' }); ctx.globalAlpha = 1; }
-    if (s.data.freeze && s.data.choices) {
-      ctx.fillStyle = 'rgba(10,12,20,.78)'; ctx.fillRect(0, 0, CM.W, CM.H);
-      CM.draw.text(ctx, 'LEVEL ' + h.props.level + '!  PICK ONE', CM.W / 2, 22, { size: 10, align: 'center', color: '#ffd93d' });
-      s.data.choices.forEach((u, i) => { const x = 14 + i * 100, y = 50, on = i === s.data.choice; ctx.fillStyle = on ? '#2b3a55' : '#1c2230'; ctx.fillRect(x, y, 92, 80); ctx.strokeStyle = on ? '#4fd4e6' : '#3e4654'; ctx.lineWidth = on ? 2 : 1; ctx.strokeRect(x + 0.5, y + 0.5, 91, 79); CM.draw.text(ctx, String(i + 1), x + 6, y + 6, { size: 8, color: '#4fd4e6' }); CM.draw.text(ctx, u.name.toUpperCase(), x + 46, y + 24, { size: 7, align: 'center' }); wrap(u.text.toUpperCase(), 13).forEach((line, j) => CM.draw.text(ctx, line, x + 46, y + 44 + j * 10, { size: 7, align: 'center', color: '#9aa3b2' })); });
-      CM.draw.text(ctx, 'ARROWS + X, OR PRESS 1 2 3', CM.W / 2, 150, { size: 7, align: 'center', color: '#9aa3b2' });
-    }
+    if (s.data.freeze && s.data.choices) drawUpgradeCards(ctx, s, h);
     if (s.time < 3 && s.data.wave === 1) CM.draw.text(ctx, 'ARROWS MOVE · X DASHES · SHOOTING IS AUTOMATIC', CM.W / 2, CM.H - 32, { size: 7, align: 'center', color: '#9aa3b2' });
   }
 });
+
+// the level-up screen: three cards with a title band, icon, real stats and a corner-bracket outline
+function drawUpgradeCards(ctx, s, h) {
+  const t = s.time;
+  ctx.fillStyle = 'rgba(8,10,18,.94)'; ctx.fillRect(0, 0, CM.W, CM.H);
+  ctx.fillStyle = '#ffd93d'; ctx.fillRect(CM.W / 2 - 70, 13, 140, 1); ctx.fillRect(CM.W / 2 - 70, 30, 140, 1);
+  CM.draw.text(ctx, 'LEVEL UP!', CM.W / 2, 15, { size: 14, align: 'center', color: '#ffd93d' });
+  CM.draw.text(ctx, 'LV ' + (h.props.level - 1) + ' → ' + h.props.level, CM.W / 2, 34, { size: 7, align: 'center', color: '#9aa3b2' });
+  const W = 94, H = 104, gap = 8, x0 = Math.round((CM.W - (W * 3 + gap * 2)) / 2);
+  s.data.choices.forEach((u, i) => {
+    const on = i === s.data.choice, x = x0 + i * (W + gap), y = 46 - (on ? 3 : 0), c = u.color;
+    if (on) { ctx.globalAlpha = 0.25 + 0.15 * Math.sin(t * 6); ctx.fillStyle = c; ctx.fillRect(x - 3, y - 3, W + 6, H + 6); ctx.globalAlpha = 1; }
+    ctx.fillStyle = '#121722'; ctx.fillRect(x, y, W, H);                       // panel
+    ctx.fillStyle = '#1a2130'; ctx.fillRect(x + 1, y + 18, W - 2, H - 19);
+    ctx.globalAlpha = on ? 0.55 : 0.3; ctx.fillStyle = c; ctx.fillRect(x + 1, y + 1, W - 2, 16); ctx.globalAlpha = 1;   // title band
+    CM.draw.text(ctx, u.name.toUpperCase(), x + W / 2, y + 6, { size: 7, align: 'center', color: '#fff' });
+    ctx.fillStyle = c; ctx.globalAlpha = on ? 1 : 0.45; ctx.fillRect(x, y, W, 1); ctx.fillRect(x, y + H - 1, W, 1); ctx.fillRect(x, y, 1, H); ctx.fillRect(x + W - 1, y, 1, H); ctx.globalAlpha = 1; // outline
+    const L = 7; ctx.fillStyle = on ? '#fff' : c;                               // corner brackets
+    for (const [cx, cy, dx, dy] of [[x - 1, y - 1, 1, 1], [x + W + 1, y - 1, -1, 1], [x - 1, y + H + 1, 1, -1], [x + W + 1, y + H + 1, -1, -1]]) { ctx.fillRect(dx > 0 ? cx : cx - L, dy > 0 ? cy : cy - 2, L, 2); ctx.fillRect(dx > 0 ? cx : cx - 2, dy > 0 ? cy : cy - L, 2, L); }
+    const bob = on ? Math.round(Math.sin(t * 5) * 1.5) : 0;                    // icon in a little frame
+    ctx.fillStyle = '#0d1119'; ctx.fillRect(x + W / 2 - 13, y + 23 + bob, 26, 26); ctx.fillStyle = c; ctx.globalAlpha = 0.5; ctx.fillRect(x + W / 2 - 13, y + 23 + bob, 26, 1); ctx.fillRect(x + W / 2 - 13, y + 48 + bob, 26, 1); ctx.globalAlpha = 1;
+    CM.draw.sprite(ctx, u.icon, x + W / 2 - 8, y + 28 + bob, { scale: 2 });
+    const [label, a, b] = u.stat(h);                                            // real numbers: before → after
+    CM.draw.text(ctx, label, x + W / 2, y + 56, { size: 7, align: 'center', color: '#9aa3b2' });
+    CM.draw.text(ctx, a + ' → ' + b, x + W / 2, y + 67, { size: 7, align: 'center', color: c });
+    wrap(u.text.toUpperCase(), 14).forEach((line, j) => CM.draw.text(ctx, line, x + W / 2, y + 81 + j * 9, { size: 7, align: 'center', color: '#e4e4ea' }));
+    CM.draw.text(ctx, String(i + 1), x + 4, y + H - 10, { size: 7, color: on ? c : '#5c6473' });
+  });
+  CM.draw.text(ctx, '← → TO CHOOSE · X TO PICK · OR PRESS 1 2 3', CM.W / 2, CM.H - 14, { size: 7, align: 'center', color: '#9aa3b2' });
+}
 
 CM.scene('gameover', {
   bg: '#2a1b20',
