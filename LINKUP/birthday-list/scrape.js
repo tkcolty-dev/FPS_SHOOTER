@@ -142,17 +142,36 @@ async function scrape(input) {
   return out;
 }
 
-// Name → Amazon product codes, best first (real results before ads).
-async function searchAmazon(q) {
+// Name → Amazon results with picture, name and price, best first (real results before ads).
+async function searchResults(q) {
   const r = await get('https://www.amazon.com/s?k=' + encodeURIComponent(q), UAS[0]);
   if (r.status >= 400 || isBlocked(r.html)) throw new Error("Amazon search didn't answer — try a link instead");
-  const organic = [], ads = [];
+  const organic = [], ads = [], seen = new Set();
   for (const part of r.html.split(/(?=<div[^>]*data-component-type="s-search-result")/).slice(1)) {
-    const asin = (part.match(/data-asin="([A-Z0-9]{10})"/) || [])[1];
-    if (!asin || organic.includes(asin) || ads.includes(asin)) continue;
-    (/\/sspa\/click/.test(part.slice(0, 40000)) ? ads : organic).push(asin);
+    const p = part.slice(0, 60000);
+    const asin = (p.match(/data-asin="([A-Z0-9]{10})"/) || [])[1];
+    if (!asin || seen.has(asin)) continue;
+    seen.add(asin);
+    const img = (p.match(/src="(https:\/\/m\.media-amazon\.com\/images\/I\/[^"]+\.jpg)"/) || [])[1];
+    // Mobile results split the brand and the name into separate <h2>s ("LEGO" + "Technic Bush Plane…").
+    const heads = [...p.matchAll(/<h2[^>]*>(?:\s*<a[^>]*>)?\s*<span[^>]*>([^<]+)<\/span>/g)].map((m) => decode(m[1]));
+    const name = heads.length ? heads[heads.length - 1] : decode((p.match(/<h2[^>]*aria-label="([^"]+)"/) || [])[1] || '');
+    const brand = heads.length > 1 ? heads[0] : '';
+    const title = brand && !name.toLowerCase().startsWith(brand.toLowerCase()) ? `${brand} ${name}` : name;
+    const ad = /\/sspa\/click|Sponsored Ad/.test(p);
+    (ad ? ads : organic).push({
+      url: `https://www.amazon.com/dp/${asin}`,
+      title: title.replace(/^Sponsored Ad\s*-\s*/i, '') || null,
+      image: img ? img.replace(/\._[^/]*_\.jpg$/, '._AC_SL1000_.jpg') : null,
+      price: decode((p.match(/a-offscreen">\s*([^<]*\d[^<]*)</) || [])[1]) || null,
+      store: 'Amazon',
+    });
   }
-  return [...organic, ...ads].slice(0, 10);
+  return [...organic, ...ads].slice(0, 12);
+}
+
+async function searchAmazon(q) {
+  return (await searchResults(q)).map((r) => r.url.slice(-10));
 }
 
 // Find something by name. `skip` picks a later result (for "show me a different one").
@@ -166,4 +185,4 @@ async function findByName(q, skip = 0) {
   return { ...out, search: { q, i, n: asins.length } };
 }
 
-module.exports = { scrape, findByName };
+module.exports = { scrape, findByName, searchResults };

@@ -101,10 +101,6 @@ h1, h2, .display { font-family: Fraunces, Georgia, serif; font-weight: 800; lett
 .price { font-weight: 800; font-size: 17px; }
 .price.none { color: var(--muted); font-weight: 500; font-size: 14px; }
 .store { color: var(--muted); font-size: 12px; }
-.want { margin-left: auto; display: flex; gap: 1px; }
-.want button { border: 0; background: none; padding: 2px; font-size: 16px; line-height: 1; filter: grayscale(1); opacity: .3; }
-.want button.on { filter: none; opacity: 1; }
-.want.readonly button { cursor: default; }
 .note { font-size: 14px; color: var(--muted); background: var(--bg); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; }
 .item .tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity .15s; }
 .item:hover .tools, .item:focus-within .tools { opacity: 1; }
@@ -145,7 +141,6 @@ h1, h2, .display { font-family: Fraunces, Georgia, serif; font-weight: 800; lett
   main { padding-top: 18px; }
   .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .item .pic img { inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); }
-  .want { margin-left: 0; width: 100%; }
   .item .body { padding: 10px 12px 12px; }
   .item .name { font-size: 14px; }
   .price { font-size: 15px; }
@@ -153,3 +148,26 @@ h1, h2, .display { font-family: Fraunces, Georgia, serif; font-weight: 800; lett
 }
 @media (min-width: 521px) { .top .actions .icon-only { display: none; } }
 .linkish { border: 0; background: none; padding: 0; color: var(--accent); font-weight: 600; text-decoration: underline; font-size: 13px; }
+
+/* ---------- really want ---------- */
+.star { border: 1.5px dashed var(--line); background: none; border-radius: 10px; padding: 7px 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.star:hover { border-color: var(--gold); color: var(--ink); }
+.star.on { border: 1.5px solid var(--gold); background: color-mix(in srgb, var(--gold) 22%, transparent); color: var(--ink); }
+.item:has(.ribbon) { box-shadow: 0 0 0 2.5px var(--gold), var(--shadow); }
+
+/* ---------- picture picker ---------- */
+.modal.wide { max-width: 640px; }
+.starpick { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; margin: 4px 0 14px; cursor: pointer; }
+.starpick input { width: 18px; height: 18px; accent-color: var(--gold); }
+.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.pick { display: flex; flex-direction: column; gap: 6px; text-align: left; border: 1.5px solid var(--line); background: var(--bg); border-radius: 14px; padding: 8px; transition: border-color .15s, transform .1s; }
+.pick:hover { border-color: var(--accent); }
+.pick:active { transform: scale(.97); }
+.pimg { aspect-ratio: 1; background: #fff; border-radius: 10px; position: relative; overflow: hidden; display: grid; place-items: center; font-size: 34px; }
+.pimg img { position: absolute; inset: 6px; width: calc(100% - 12px); height: calc(100% - 12px); object-fit: contain; }
+.ptitle { font-size: 13px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.foot.wrap { flex-wrap: wrap; }
+.photo-btn { display: inline-flex; align-items: center; }
+.editpic { display: flex; align-items: center; gap: 12px; }
+.editpic img, .editpic span { width: 72px; height: 72px; object-fit: contain; background: #fff; border-radius: 12px; display: grid; place-items: center; font-size: 30px; flex-shrink: 0; }
+@media (max-width: 520px) { .picks { grid-template-columns: 1fr 1fr; } .foot.wrap .btn { flex: 1; } }

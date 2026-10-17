@@ -173,12 +173,12 @@ function renderList() {
         ${queueTotal > 1 ? `<span class="progress">${queueTotal - queue.length} of ${queueTotal}</span>` : ''}
         <button class="btn">Add</button>
       </form>
-      <p class="hint">${state.error ? `<span class="err">${esc(state.error)}</span>` : 'Paste a link (on Amazon tap Share → Copy Link), or just type a name like <i>LEGO Technic set</i> and it finds it on Amazon.'}
+      <p class="hint">${state.error ? `<span class="err">${esc(state.error)}</span>` : 'Type what you want (like <i>LEGO Technic set</i>) and pick it from pictures, or paste an Amazon link.'}
         <button class="linkish" data-act="bulk">Add a whole list at once</button></p>`
       : `<p class="hint">🤫 ${esc(list.name === 'My' ? 'They' : list.name)} can't see who's getting what — tap <b>I'll get this</b> so nobody buys the same thing.</p>`}
     <section class="grid" id="grid">
       ${Array.from({ length: state.adding }, () => `<article class="item loading"><div class="pic"></div><div class="body"><div class="bar"></div><div class="bar" style="width:60%"></div></div></article>`).join('')}
-      ${list.items.map((it) => itemCard(it, owner)).join('')}
+      ${[...list.items].sort((a, b) => (b.want === 3) - (a.want === 3)).map((it) => itemCard(it, owner)).join('')}
     </section>
     ${!list.items.length && !state.adding
       ? owner
@@ -192,21 +192,21 @@ function renderList() {
 function itemCard(it, owner) {
   const mine = claims()[it.id];
   const taken = !owner && it.claimedBy && !mine;
-  const hearts = [1, 2, 3].map((n) => `<button data-want="${n}" class="${it.want >= n ? 'on' : ''}" ${owner ? '' : 'tabindex="-1"'} title="${['Would be nice', 'Really want', 'Want SO much'][n - 1]}">❤️</button>`).join('');
+  const star = it.want === 3;
   return `<article class="item ${taken ? 'taken' : ''}" data-id="${it.id}">
     <div class="pic">
       ${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="noimg">🎁</div>`}
-      ${it.want === 3 ? `<span class="ribbon">Top wish</span>` : ''}
+      ${star ? `<span class="ribbon">⭐ Really want</span>` : ''}
     </div>
     ${owner ? `<div class="tools">${it.search || it.store === 'Amazon search' ? `<button data-act="swap" title="Show a different one">🔄</button>` : ''}<button data-act="edit" title="Edit">✏️</button><button data-act="del" title="Remove">🗑️</button></div>` : ''}
     <div class="body">
-      <a class="name" href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a>
+      ${it.url ? `<a class="name" href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a>` : `<span class="name">${esc(it.title)}</span>`}
       ${it.note ? `<div class="note">${esc(it.note)}</div>` : ''}
       <div class="meta">
         ${it.price ? `<span class="price">${esc(it.price)}</span>` : `<span class="price none">No price</span>`}
         <span class="store">${esc(it.store || '')}</span>
-        <span class="want ${owner ? '' : 'readonly'}">${hearts}</span>
       </div>
+      ${owner ? `<button class="star ${star ? 'on' : ''}" data-act="star">${star ? '⭐ Really want' : '☆ Mark as really want'}</button>` : ''}
       ${owner ? '' : `<div class="claim">${
         mine ? `<div class="mine-tag">🎁 You're getting this <button data-act="unclaim">undo</button></div>`
         : taken ? `<div class="taken-tag">✓ ${esc(it.claimedBy)} is getting this</div>`
@@ -225,7 +225,10 @@ function wireList() {
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const url = form.url.value.trim();
-      if (url) addMany(url);
+      if (!url) return;
+      // One name (not a link) → show Amazon results with pictures to pick from.
+      if (!/https?:\/\//i.test(url) && !url.includes('\n')) pickModal(url);
+      else addMany(url);
       form.url.value = '';
     });
     // Pasting a link (or several lines) adds it straight away — no need to press Add.
@@ -243,12 +246,11 @@ function wireList() {
     const card = e.target.closest('.item');
     if (!card || card.classList.contains('loading')) return;
     const it = list.items.find((i) => i.id === card.dataset.id);
-    const want = e.target.closest('[data-want]');
     const act = e.target.closest('[data-act]')?.dataset.act;
     try {
-      if (want && list.owner) {
-        const n = Number(want.dataset.want);
-        await ownerSave('PATCH', `/items/${it.id}`, { want: it.want === n && n > 1 ? n - 1 : n });
+      if (act === 'star') {
+        await ownerSave('PATCH', `/items/${it.id}`, { want: it.want === 3 ? 2 : 3 });
+        if (it.want !== 3) toast('⭐ Marked as really want');
       } else if (act === 'del') {
         if (!confirm(`Remove "${it.title.slice(0, 60)}"?`)) return;
         await ownerSave('DELETE', `/items/${it.id}`);
@@ -358,6 +360,96 @@ async function copy(text) {
   }
 }
 
+// Shrink a photo on the phone before sending it, so uploads are quick.
+function shrinkPhoto(file, max = 900) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k);
+      c.height = Math.round(img.height * k);
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, c.width, c.height);
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(img.src);
+      resolve(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => reject(new Error("Couldn't open that picture"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+async function uploadPhoto(itemId, file) {
+  const data = await shrinkPhoto(file);
+  state.list = await api('POST', `/api/lists/${state.list.id}/items/${itemId}/photo`, { data }, ownerHeaders());
+  renderList();
+}
+
+const photoInput = (attrs = '') => `<label class="btn ghost photo-btn" ${attrs}>📷 Use my own photo<input type="file" accept="image/*" hidden></label>`;
+
+function pickModal(name) {
+  let star = false;
+  modal(`<h2>Pick the one you want</h2>
+    <p class="small">Results for <b>${esc(name)}</b> on Amazon. Tap one to add it.</p>
+    <label class="starpick"><input type="checkbox" name="star"> ⭐ I really want this</label>
+    <div class="picks"><div class="small" style="grid-column:1/-1;padding:30px 0;text-align:center">Searching Amazon…</div></div>
+    <div class="foot wrap">${photoInput()}<button class="btn ghost" data-plain>Just add the name</button><button class="btn ghost" data-close>Cancel</button></div>`, (m, close) => {
+    m.classList.add('wide');
+    m.querySelector('[name="star"]').onchange = (e) => (star = e.target.checked);
+    const picks = m.querySelector('.picks');
+    let results = [];
+    api('GET', `/api/search?q=${encodeURIComponent(name)}`)
+      .then((r) => {
+        results = r.results;
+        picks.innerHTML = results.length
+          ? results.map((x, i) => `<button class="pick" data-i="${i}">
+              <span class="pimg">${x.image ? `<img src="${esc(x.image)}" alt="" referrerpolicy="no-referrer">` : '🎁'}</span>
+              <span class="ptitle">${esc(x.title || 'Amazon item')}</span>
+              <b>${esc(x.price || '')}</b></button>`).join('')
+          : `<div class="small" style="grid-column:1/-1;padding:20px 0;text-align:center">Nothing found. Add it with your own photo, or just the name.</div>`;
+      })
+      .catch((err) => (picks.innerHTML = `<div class="small err" style="grid-column:1/-1;padding:20px 0;text-align:center">${esc(err.message)}</div>`));
+    picks.addEventListener('click', async (e) => {
+      const b = e.target.closest('.pick');
+      if (!b) return;
+      close();
+      await addOne({ pick: results[b.dataset.i], star });
+    });
+    m.querySelector('[data-plain]').onclick = async () => {
+      close();
+      await addOne({ name, plain: true, star });
+    };
+    m.querySelector('.photo-btn input').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      close();
+      const id = await addOne({ name, plain: true, star });
+      if (id) await uploadPhoto(id, file).catch((err) => toast(err.message));
+    };
+  });
+}
+
+// Add one item; returns its id (the newest item) or null.
+async function addOne(job) {
+  state.adding = 1;
+  state.error = '';
+  renderList();
+  try {
+    state.list = await api('POST', `/api/lists/${state.list.id}/items`, job, ownerHeaders());
+    confetti();
+    toast('Added to your list! 🎉');
+    return state.list.items[0].id;
+  } catch (err) {
+    state.error = err.message;
+    return null;
+  } finally {
+    state.adding = 0;
+    renderList();
+  }
+}
+
 function bulkModal() {
   modal(`<h2>Add a whole list</h2>
     <p class="small">Put one thing per line — links or names. From the Maker Gift Checklist, tap <b>Copy my list</b> and paste it here.</p>
@@ -422,10 +514,25 @@ function editModal(it) {
     <form class="stack">
       <div><label class="small">Name</label><textarea class="field" name="title" rows="3" maxlength="200">${esc(it.title)}</textarea></div>
       <div><label class="small">Price</label><input class="field" name="price" value="${esc(it.price || '')}" maxlength="20" placeholder="$0.00"></div>
+      <div class="editpic">${it.image ? `<img src="${esc(it.image)}" alt="" referrerpolicy="no-referrer">` : '<span>🎁</span>'}${photoInput()}</div>
       <div><label class="small">Note (size, color, which one…)</label><textarea class="field" name="note" rows="2" maxlength="300" placeholder="Size medium, the blue one">${esc(it.note || '')}</textarea></div>
       <div class="foot"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn">Save</button></div>
     </form>`, (m, close) => {
     const f = m.querySelector('form');
+    m.querySelector('.photo-btn input').onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const lbl = m.querySelector('.photo-btn');
+      lbl.firstChild.textContent = 'Uploading…';
+      try {
+        await uploadPhoto(it.id, file);
+        m.querySelector('.editpic img, .editpic span').outerHTML = `<img src="${esc(state.list.items.find((x) => x.id === it.id).image)}" alt="">`;
+        lbl.firstChild.textContent = '📷 Change photo';
+      } catch (err) {
+        toast(err.message);
+        lbl.firstChild.textContent = '📷 Use my own photo';
+      }
+    };
     f.addEventListener('submit', async (e) => {
       e.preventDefault();
       try {

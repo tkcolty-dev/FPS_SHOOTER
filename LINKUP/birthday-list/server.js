@@ -4,7 +4,7 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { scrape, findByName } = require('./scrape');
+const { scrape, findByName, searchResults } = require('./scrape');
 
 const PORT = process.env.PORT || 4970;
 
@@ -44,6 +44,17 @@ function fileStore() {
       all[list.id] = structuredClone(list);
       fs.writeFileSync(file, JSON.stringify(all, null, 1));
     },
+    async putPhoto(id, buf) {
+      fs.mkdirSync(path.join(__dirname, 'data', 'photos'), { recursive: true });
+      fs.writeFileSync(path.join(__dirname, 'data', 'photos', id + '.jpg'), buf);
+    },
+    async getPhoto(id) {
+      try {
+        return fs.readFileSync(path.join(__dirname, 'data', 'photos', id + '.jpg'));
+      } catch {
+        return null;
+      }
+    },
   };
 }
 
@@ -53,6 +64,7 @@ function pgStore(cfg) {
   return {
     async init() {
       await pool.query('CREATE TABLE IF NOT EXISTS bl_lists (id TEXT PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ DEFAULT now())');
+      await pool.query('CREATE TABLE IF NOT EXISTS bl_photos (id TEXT PRIMARY KEY, data BYTEA NOT NULL)');
     },
     async get(id) {
       const r = await pool.query('SELECT data FROM bl_lists WHERE id = $1', [id]);
@@ -63,6 +75,13 @@ function pgStore(cfg) {
         'INSERT INTO bl_lists (id, data, updated_at) VALUES ($1, $2, now()) ON CONFLICT (id) DO UPDATE SET data = $2, updated_at = now()',
         [list.id, list]
       );
+    },
+    async putPhoto(id, buf) {
+      await pool.query('INSERT INTO bl_photos (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = $2', [id, buf]);
+    },
+    async getPhoto(id) {
+      const r = await pool.query('SELECT data FROM bl_photos WHERE id = $1', [id]);
+      return r.rows[0]?.data || null;
     },
   };
 }
@@ -83,7 +102,7 @@ function view(list, owner) {
 }
 
 const app = express();
-app.use(express.json({ limit: '50kb' }));
+app.use(express.json({ limit: '3mb' }));
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '5m' : 0 }));
 
 async function load(req, res) {
@@ -160,23 +179,74 @@ app.patch('/api/lists/:id', wrap(async (req, res) => {
   res.json(view(list, true));
 }));
 
+app.get('/api/search', wrap(async (req, res) => {
+  const q = str(req.query.q, 150);
+  if (!q) return res.json({ results: [] });
+  try {
+    res.json({ results: await searchResults(q) });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+}));
+
+// A result picked from /api/search arrives already filled in; only accept Amazon addresses for it.
+function cleanPick(p) {
+  if (!p || typeof p !== 'object') return null;
+  const url = str(p.url, 300), image = str(p.image, 300);
+  if (!/^https:\/\/www\.amazon\.com\/dp\/[A-Z0-9]{10}$/.test(url)) return null;
+  return {
+    url,
+    title: str(p.title, 200) || 'Amazon item',
+    image: /^https:\/\/m\.media-amazon\.com\/images\/I\/[\w.%+-]+\.jpg$/.test(image) ? image : null,
+    price: str(p.price, 20) || null,
+    store: 'Amazon',
+  };
+}
+
 // Add by link, or by name (searches Amazon). A name Amazon can't find still goes on the list, just without a picture.
 app.post('/api/lists/:id/items', wrap(async (req, res) => {
   const list = await loadOwned(req, res);
   if (!list) return;
   if (list.items.length >= 300) return res.status(400).json({ error: 'That list is full (300 items)' });
   const text = str(req.body.url || req.body.name, 2000);
-  let info;
-  try {
+  let info = cleanPick(req.body.pick);
+  if (info) {
+    // already filled in
+  } else if (req.body.plain && text) {
+    info = { url: null, title: text.slice(0, 200), image: null, price: null, store: null };
+  } else try {
     info = /https?:\/\//i.test(text) ? await scrape(text) : await findByName(text);
   } catch (e) {
     if (/https?:\/\//i.test(text) || !text) return res.status(400).json({ error: e.message });
     info = { url: 'https://www.amazon.com/s?k=' + encodeURIComponent(text), title: text, image: null, price: null, store: 'Amazon search' };
   }
-  const item = { id: rid(6), ...info, note: str(req.body.note, 300), want: 2, addedAt: Date.now(), claim: null };
+  const item = { id: rid(6), ...info, note: str(req.body.note, 300), want: req.body.star ? 3 : 2, addedAt: Date.now(), claim: null };
   list.items.unshift(item);
   await store.put(list);
   res.json(view(list, true));
+}));
+
+// Your own picture for an item (sent as a small JPEG the page already shrank).
+app.post('/api/lists/:id/items/:item/photo', wrap(async (req, res) => {
+  const list = await loadOwned(req, res);
+  if (!list) return;
+  const it = list.items.find((i) => i.id === req.params.item);
+  if (!it) return res.status(404).json({ error: 'Item not found' });
+  const m = String(req.body.data || '').match(/^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/);
+  const buf = m && Buffer.from(m[1], 'base64');
+  if (!buf || buf.length < 100 || buf.length > 1_500_000 || buf[0] !== 0xff || buf[1] !== 0xd8) return res.status(400).json({ error: "That picture didn't work — try another" });
+  const pid = rid(9);
+  await store.putPhoto(pid, buf);
+  it.image = `/photo/${pid}.jpg`;
+  it.ownPhoto = true;
+  await store.put(list);
+  res.json(view(list, true));
+}));
+
+app.get('/photo/:pid.jpg', wrap(async (req, res) => {
+  const buf = /^[\w-]{12}$/.test(req.params.pid) && (await store.getPhoto(req.params.pid));
+  if (!buf) return res.status(404).end();
+  res.set('Cache-Control', 'public, max-age=31536000, immutable').type('jpeg').send(buf);
 }));
 
 // "Not that one" — swap a searched item for the next Amazon result, keeping its note and hearts.
