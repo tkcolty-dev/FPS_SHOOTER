@@ -21,6 +21,18 @@ CM.input.pointer           // { x, y (world, 2D) | x,y,z (ground point, 3D), sx,
 Arrows and WASD both work; Space / W / Z jump; X / E / Enter / Shift = action; C / Q = action2. Gamepads map
 automatically (stick + d-pad, A = jump, B/X = action, Y = action2, Start = pause).
 
+## Saving (per game, in the player's browser)
+
+```js
+CM.saveGame({ level: 2, coins: 10, hp: 3 })   // one save slot called 'main'
+CM.loadGame()                                 // → the object, or null
+CM.hasSave(), CM.deleteSave(), CM.saveInfo()  // info gives { at, data }
+CM.saveGame(data, 'slot2'); CM.loadGame('slot2'); CM.listSaves()
+CM.save('best', 120); CM.load('best', 0)      // tiny values like a high score
+```
+Typical: in the first scene's `setup`, `if (CM.hasSave()) show a Continue option`; on a checkpoint or level end,
+`CM.saveGame({...})`; `update` → `if (CM.input.pressed('action') && CM.hasSave()) { const s = CM.loadGame(); CM.go(s.level); }`.
+
 ## Sound (no files needed)
 
 ```js

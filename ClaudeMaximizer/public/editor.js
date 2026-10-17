@@ -21,7 +21,7 @@
     addEventListener('resize', fit); fit(); setTimeout(fit, 50);
     loadNotes(); renderThings(); setHint('Press N or right-click anything to leave a note');
     setInterval(() => { if (E.tab === 'things') renderThings(); if (E.tab === 'inspect') refreshInspectorValues(); updateStatus(); }, 250);
-    try { if (localStorage.getItem('cm.panelHidden') === '1') document.body.classList.add('panel-hidden'); } catch {}
+    try { if (localStorage.getItem('cm.panelHidden') === '1') document.body.classList.add('panel-hidden'); E.screenNotes = localStorage.getItem('cm.screenNotes') !== '0'; } catch {}
   };
 
   // ---------- layout ----------
@@ -31,10 +31,13 @@
     if (A.mode === '3d') { w = Math.max(320, aw); h = Math.max(200, ah); if (CM.resize) CM.resize(Math.round(w), Math.round(h)); }
     else { const s = Math.max(1, Math.floor(Math.min(aw / CM.W, ah / CM.H))); w = CM.W * s; h = CM.H * s; }
     stage.style.width = w + 'px'; stage.style.height = h + 'px';
-    overlay.width = game.width; overlay.height = game.height;
+    // the overlay draws at screen resolution (crisp text) but in the game's logical coordinates
+    const dpr = Math.min(3, window.devicePixelRatio || 1); overlay.width = Math.round(w * dpr); overlay.height = Math.round(h * dpr);
+    E.k = overlay.width / game.width; LW = game.width; LH = game.height;
   }
-  const cssScale = () => stage.clientWidth / overlay.width;
-  const toLogical = ev => { const r = overlay.getBoundingClientRect(); return { x: (ev.clientX - r.left) / r.width * overlay.width, y: (ev.clientY - r.top) / r.height * overlay.height }; };
+  let LW = 320, LH = 180; // logical size of the game view
+  const cssScale = () => stage.clientWidth / LW; // CSS px per logical px
+  const toLogical = ev => { const r = overlay.getBoundingClientRect(); return { x: (ev.clientX - r.left) / r.width * LW, y: (ev.clientY - r.top) / r.height * LH }; };
   function setHint(t) { const h = $('#hint'); h.textContent = t; h.classList.toggle('show', !!t); }
 
   // ---------- toolbar + keys ----------
@@ -53,7 +56,8 @@
     else if (t === 'restart') { A.restart(); toast('Restarted ' + (A.sceneName() || 'the scene')); }
     else if (t === 'mute') { CM.muted = !CM.muted; const b = $('[data-t=mute]'); b.classList.toggle('on', CM.muted); b.innerHTML = ICON(CM.muted ? 'mute' : 'sound'); }
     else if (t === 'reload') window.App && window.App.reload();
-    else if (t === 'noteall') openPopover({ kind: 'global', at: { x: overlay.width / 2 - 160 / cssScale(), y: overlay.height / 3 } });
+    else if (t === 'noteall') openPopover({ kind: 'global', at: { x: LW / 2 - 160 / cssScale(), y: LH / 3 } });
+    else if (t === 'sketch') { if (E.toggleSketch) E.toggleSketch(); }
     else if (t === 'help') { $('#help').hidden = !$('#help').hidden; }
     else if (t === 'panel') { document.body.classList.toggle('panel-hidden'); try { localStorage.setItem('cm.panelHidden', document.body.classList.contains('panel-hidden') ? '1' : '0'); } catch {} setTimeout(fit, 260); }
   }
@@ -61,14 +65,19 @@
   function setNoteMode(on) {
     if (on === E.noteMode) return; if (on && E.mode) E.setMode(null);
     E.noteMode = on; stage.classList.toggle('noting', on); $('[data-t=note]').classList.toggle('on', on);
-    if (on) { E.wasPaused = CM.paused; setPaused(true); CM.input.enabled = false; setHint('Click anything to note it · drag a box for an area · Esc to leave'); }
-    else { CM.input.enabled = true; setPaused(E.wasPaused); E.hover = null; hoverChip.hidden = true; closePopover(); setHint('Press N or right-click anything to leave a note'); }
+    if (on) { E.wasPaused = CM.paused; setPaused(true); setHint('Click anything to note it · drag for an area · scroll or arrows to look around · ⌘ scroll zooms · Esc leaves'); }
+    else { E.quick = false; setPaused(E.wasPaused); E.hover = null; hoverChip.hidden = true; closePopover(); if (A.resetView && A.panned && A.panned()) A.resetView(); showReset(); setHint('Press N or right-click anything to leave a note'); }
   }
+  function showReset() { const b = $('#resetView'); if (b) b.hidden = !(A.panned && A.panned()); }
   function bindKeys() {
+    addEventListener('keyup', e => { if (e.key === ' ') E.spaceHeld = false; });
     addEventListener('keydown', e => {
       if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) { if (e.key === 'Escape') { e.target.blur(); closePopover(); } return; }
       const k = e.key.toLowerCase();
+      if ((E.noteMode || E.mode) && CM.paused && A.pan && ['arrowleft', 'arrowright', 'arrowup', 'arrowdown', 'a', 'd', 'w', 's'].includes(k)) { const step = (e.shiftKey ? 64 : 16); const dx = k === 'arrowleft' || k === 'a' ? -step : k === 'arrowright' || k === 'd' ? step : 0, dy = k === 'arrowup' || k === 'w' ? -step : k === 'arrowdown' || k === 's' ? step : 0; A.pan(dx, dy); showReset(); e.preventDefault(); return; }
+      if (k === ' ' && (E.noteMode || E.mode)) { E.spaceHeld = true; e.preventDefault(); return; }
       if (k === 'n') { setNoteMode(!E.noteMode); e.preventDefault(); }
+      else if (k === 'k') { if (E.toggleSketch) E.toggleSketch(); e.preventDefault(); }
       else if (k === 'escape') { if (!$('#help').hidden) $('#help').hidden = true; else if (!popover.hidden) closePopover(); else if (E.noteMode) setNoteMode(false); else if (E.mode) E.setMode(null); }
       else if (k === '?') action('help');
       else if (k === '\\') action('panel');
@@ -82,7 +91,7 @@
   // other tools (tools.js) can take over the stage pointer: E.setMode('level', handlers) / E.setMode(null)
   E.mode = null; E.modeHandlers = null;
   E.setMode = function (mode, handlers) { if (E.noteMode) setNoteMode(false); E.mode = mode; E.modeHandlers = handlers || null; stage.classList.toggle('painting', !!mode); if (mode) { E.wasPaused = CM.paused; setPaused(true); CM.input.enabled = false; } else { CM.input.enabled = true; setPaused(E.wasPaused); } };
-  E.get = () => ({ A, CM, overlay, stage, octx, toLogical, cssScale, select, setPaused, api, popover });
+  E.get = () => ({ A, CM, overlay, stage, octx, toLogical, cssScale, select, setPaused, api, popover, LW, LH, px });
 
   // ---------- pointer ----------
   function bindPointer() {
@@ -106,7 +115,19 @@
     });
     overlay.addEventListener('dblclick', ev => { if (E.noteMode) return; const p = toLogical(ev); const it = A.pick(p.x, p.y); if (it) { select(it); showTab('inspect'); } });
     // right-click anything while playing: straight to a note, no mode switch needed
-    stage.addEventListener('contextmenu', ev => { ev.preventDefault(); if (E.mode) return; if (!E.noteMode) setNoteMode(true); noteAtPoint(toLogical(ev)); });
+    stage.addEventListener('contextmenu', ev => { ev.preventDefault(); if (E.mode) return; if (!E.noteMode) { setNoteMode(true); E.quick = true; } noteAtPoint(toLogical(ev)); });
+    // looking around while paused: scroll pans, ⌘/ctrl+scroll (or pinch) zooms, middle button or space+drag pans
+    stage.addEventListener('wheel', ev => {
+      if (!(E.noteMode || E.mode) || !A.pan) return; ev.preventDefault();
+      if (ev.ctrlKey || ev.metaKey) A.zoom(ev.deltaY > 0 ? 1.1 : 0.9); else A.pan(ev.deltaX / cssScale(), ev.deltaY / cssScale());
+      showReset();
+    }, { passive: false });
+    let panDrag = null;
+    overlay.addEventListener('pointerdown', ev => { if (!(E.noteMode || E.mode) || !A.pan) return; if (ev.button === 1 || (ev.button === 0 && E.spaceHeld)) { ev.preventDefault(); panDrag = { x: ev.clientX, y: ev.clientY }; overlay.setPointerCapture(ev.pointerId); } }, true);
+    overlay.addEventListener('pointermove', ev => { if (!panDrag) return; A.pan(-(ev.clientX - panDrag.x) / cssScale(), -(ev.clientY - panDrag.y) / cssScale()); panDrag = { x: ev.clientX, y: ev.clientY }; showReset(); ev.stopImmediatePropagation(); }, true);
+    overlay.addEventListener('pointerup', ev => { if (panDrag) { panDrag = null; ev.stopImmediatePropagation(); } }, true);
+    overlay.addEventListener('auxclick', ev => ev.preventDefault());
+    $('#resetView').onclick = () => { A.resetView(); showReset(); };
     game.addEventListener('dblclick', ev => { const p = toLogical(ev); const it = A.pick(p.x, p.y); if (it) { select(it); showTab('inspect'); } });
   }
   function noteAtPoint(p) { const it = A.pick(p.x, p.y); if (it) { select(it); openPopover({ kind: 'entity', item: it, at: p }); } else openPopover({ kind: 'spot', at: p, spot: A.spot(p.x, p.y) }); }
@@ -116,27 +137,38 @@
 
   // ---------- overlay drawing (every frame) ----------
   function drawOverlay() {
-    const c = octx; c.clearRect(0, 0, overlay.width, overlay.height); c.lineWidth = 1; pinRects = [];
+    const c = octx; c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, overlay.width, overlay.height); c.setTransform(E.k || 1, 0, 0, E.k || 1, 0, 0); c.lineWidth = 1 / (E.k || 1); pinRects = [];
+    if (E.drawSketches) E.drawSketches(c);
     if (E.mode && E.modeHandlers && E.modeHandlers.draw) { E.modeHandlers.draw(c); return; }
     for (const n of E.notes) {
       if (n.status !== 'open') continue; let pos = null;
       if (n.target && n.target.id) { const it = A.byId(n.target.id); if (it) { const b = A.bounds(it); pos = { x: b.x + b.w, y: b.y }; } }
       else if (n.spot) pos = A.spotToScreen(n.spot);
       else if (n.rect) { const p = n.rect.space === 'screen' ? { x: n.rect.x, y: n.rect.y } : A.spotToScreen({ x: n.rect.x, y: n.rect.y, z: n.rect.z, space: 'world' }); pos = { x: p.x + n.rect.w, y: p.y }; }
-      if (!pos || pos.x < -20 || pos.y < -20 || pos.x > overlay.width + 20 || pos.y > overlay.height + 20) continue;
+      if (!pos || pos.x < -20 || pos.y < -20 || pos.x > LW + 20 || pos.y > LH + 20) continue;
       drawPin(c, pos.x, pos.y, n);
+      if (E.screenNotes !== false && n.text) drawSticky(c, pos.x, pos.y, n);
     }
     if (E.typeHighlight) { c.strokeStyle = 'rgba(255,216,77,.9)'; for (const it of A.list()) if (it.type === E.typeHighlight) { const b = A.bounds(it); c.strokeRect(b.x - 1.5, b.y - 1.5, b.w + 3, b.h + 3); } }
-    if (E.selected && E.selected.alive !== false && A.byId(E.selected.id) === E.selected) { const b = A.bounds(E.selected); c.strokeStyle = '#5ea2ff'; c.lineWidth = 2; c.strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4); c.lineWidth = 1; }
+    if (E.selected && E.selected.alive !== false && A.byId(E.selected.id) === E.selected) { const b = A.bounds(E.selected); c.strokeStyle = '#5ea2ff'; c.lineWidth = 2 / (E.k || 1); c.strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4); c.lineWidth = 1 / (E.k || 1); }
     if (E.noteMode) {
-      if (E.hover) { const b = A.bounds(E.hover); c.strokeStyle = '#ffd84d'; c.setLineDash([3, 2]); c.strokeRect(b.x - 1.5, b.y - 1.5, b.w + 3, b.h + 3); c.setLineDash([]); }
+      if (E.hover) { const b = A.bounds(E.hover); c.strokeStyle = '#ffd84d'; c.lineWidth = px(2); c.setLineDash([px(4), px(3)]); c.strokeRect(b.x - 1.5, b.y - 1.5, b.w + 3, b.h + 3); c.setLineDash([]); c.lineWidth = 1 / (E.k || 1); }
       if (E.drag) { const d = E.drag; c.fillStyle = 'rgba(255,216,77,.16)'; c.strokeStyle = '#ffd84d'; const x = Math.min(d.x0, d.x1), y = Math.min(d.y0, d.y1); c.fillRect(x, y, Math.abs(d.x1 - d.x0), Math.abs(d.y1 - d.y0)); c.strokeRect(x + 0.5, y + 0.5, Math.abs(d.x1 - d.x0), Math.abs(d.y1 - d.y0)); }
     }
   }
+  // sizes below are in screen pixels; px() turns them into logical units so text stays the same size on screen
+  const px = v => v / (cssScale() || 1);
+  function drawSticky(c, x, y, n) {
+    const f = px(12), pad = px(5), max = 40;
+    let t = n.text.replace(/\s+/g, ' '); if (t.length > max) t = t.slice(0, max - 1) + '…';
+    c.save(); c.font = `500 ${f}px Inter, -apple-system, sans-serif`; c.textBaseline = 'top'; c.textAlign = 'left';
+    const w = c.measureText(t).width + pad * 2, h = f + pad * 2; let sx = x + px(4), sy = y - h - px(3); if (sx + w > LW) sx = LW - w - px(2); if (sy < 0) sy = y + px(20);
+    c.globalAlpha = 0.94; c.fillStyle = '#ffe97a'; c.beginPath(); c.roundRect(sx, sy, w, h, px(6)); c.fill(); c.fillStyle = '#2b2300'; c.fillText(t, sx + pad, sy + pad); c.restore();
+  }
   function drawPin(c, x, y, n) {
-    const big = overlay.width > 600, w = big ? 20 : 10, h = big ? 16 : 8, hot = n.id === E.flashNote; x = Math.round(x) - w + 2; y = Math.round(y) - 3;
-    c.fillStyle = hot ? '#fff1a8' : '#ffd84d'; c.beginPath(); c.roundRect(x, y, w, h, big ? 5 : 2); c.fill();
-    c.fillStyle = '#2b2300'; c.font = `700 ${big ? 11 : 6}px ${big ? 'Inter, sans-serif' : 'monospace'}`; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText(String(n.id), x + w / 2, y + h / 2 + (big ? 0.5 : 0.5));
+    const w = px(22), h = px(18), hot = n.id === E.flashNote; x = x - w + px(2); y = y - px(3);
+    c.fillStyle = hot ? '#fff1a8' : '#ffd84d'; c.beginPath(); c.roundRect(x, y, w, h, px(6)); c.fill();
+    c.fillStyle = '#2b2300'; c.font = `700 ${px(12)}px Inter, -apple-system, sans-serif`; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText(String(n.id), x + w / 2, y + h / 2 + px(0.5));
     pinRects.push({ x, y, w, h, id: n.id });
   }
 
@@ -151,10 +183,12 @@
     else if (d.kind === 'global') about = `The whole game · scene <b>${esc(A.sceneName() || '')}</b>`;
     else if (d.kind === 'tweak') about = `Tweaks on <b>${esc(label(d.item))}</b>`;
     else if (d.kind === 'bug') about = `Crash: <b>${esc(d.error.text)}</b>`;
+    else if (d.kind === 'sketch') about = `Your sketch · <b>${d.shapes.length} shape${d.shapes.length === 1 ? '' : 's'}</b>${d.shapes.filter(s => s.label).length ? ': ' + esc(d.shapes.filter(s => s.label).map(s => s.label).join(', ')) : ''}`;
     popover.innerHTML = `<div class="pop-about">${about}</div>
       <textarea id="noteText" rows="3" placeholder="${d.kind === 'tweak' ? 'Anything else about this change?' : 'What should change?'}">${esc(d.text || '')}</textarea>
       <div class="chips">${CHIPS.map(c => `<button type="button" class="chip" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
       ${d.kind === 'entity' ? `<label class="check"><input type="checkbox" id="noteAll"> Applies to every <b>${esc(d.item.type)}</b></label>` : ''}
+      ${d.kind === 'spot' ? `<label class="check"><input type="checkbox" id="noteHud"> About the screen here (HUD / menu), not the level</label>` : ''}
       <div class="pop-actions"><span class="muted">Enter saves · Esc cancels</span><button type="button" class="btn ghost" id="noteCancel">Cancel</button><button type="button" class="btn primary" id="noteSave">Save note</button></div>`;
     popover.style.left = x + 'px'; popover.style.top = y + 'px'; popover.hidden = false;
     const ta = $('#noteText', popover); setTimeout(() => ta.focus(), 30);
@@ -162,19 +196,21 @@
     ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveDraft(); } };
     $('#noteSave', popover).onclick = saveDraft; $('#noteCancel', popover).onclick = closePopover;
   }
-  function closePopover() { popover.hidden = true; draft = null; }
+  E.openPopover = openPopover;
+  function closePopover() { popover.hidden = true; draft = null; if (E.quick) { E.quick = false; setTimeout(() => { if (popover.hidden) setNoteMode(false); }, 0); } }
   async function saveDraft() {
     if (!draft) return; const text = $('#noteText', popover).value.trim(); if (!text && draft.kind !== 'tweak') return toast('Write what should change first', 'err');
     const d = draft; const note = { kind: d.kind, text, scene: A.sceneName(), time: Math.round((CM.current ? CM.current.time : 0) * 10) / 10, context: A.snapshot() };
     try {
       if (d.kind === 'entity' || d.kind === 'tweak') { note.target = A.summary(d.item); note.allOfType = d.kind === 'entity' ? !!$('#noteAll', popover).checked : true; note.image = A.crop(d.item); }
-      if (d.kind === 'spot') { note.spot = d.spot; note.image = A.cropRect(d.at.x - 30, d.at.y - 30, 60, 60); }
+      if (d.kind === 'spot') { note.spot = $('#noteHud', popover) && $('#noteHud', popover).checked ? { x: Math.round(d.at.x), y: Math.round(d.at.y), space: 'screen', screen: { w: LW, h: LH } } : d.spot; note.image = A.cropRect(d.at.x - 30, d.at.y - 30, 60, 60); }
       if (d.kind === 'area') { const r = d.rect; const sp = A.spot(r.x, r.y); note.rect = { x: sp.x, y: sp.y, z: sp.z, w: Math.round(r.w), h: Math.round(r.h), space: sp.space || 'world' }; note.items = d.items.map(A.summary); note.image = A.cropRect(r.x, r.y, r.w, r.h); }
       if (d.kind === 'tweak') note.tweaks = d.tweaks;
       if (d.kind === 'bug') note.error = d.error;
-      if (d.kind === 'global') note.image = A.cropRect(0, 0, overlay.width, overlay.height);
+      if (d.kind === 'global') note.image = A.cropRect(0, 0, LW, LH);
+      if (d.kind === 'sketch') { note.shapes = d.shapes; note.screen = { w: LW, h: LH }; note.image = d.image; }
     } catch (e) { console.warn('capture', e); }
-    closePopover();
+    const wasQuick = E.quick; E.quick = false; closePopover(); if (wasQuick) setNoteMode(false);
     const r = await api('POST', '/api/notes', { project: E.project.id, note });
     if (r.error) return toast(r.error, 'err');
     E.notes.push(r.note); renderNotes(); flash(r.note.id);
@@ -200,16 +236,17 @@
       ${n.tweaks && n.tweaks.length ? `<div class="note-tweaks">${n.tweaks.map(t => `<code>${esc(t.key)} ${esc(fmtVal(t.from))} → ${esc(fmtVal(t.to))}${t.all ? ' · all' : ''}</code>`).join('')}</div>` : ''}
       ${n.reply ? `<div class="note-reply"><b>Claude</b> · ${esc(n.reply)}</div>` : ''}
       <div class="note-actions">${(n.target && n.target.id) || n.spot || n.rect ? `<button type="button" data-go="${n.id}">${ICON('eye')}Show</button>` : ''}${n.status === 'open' ? `<button type="button" data-done="${n.id}">${ICON('check')}Done</button>` : `<button type="button" data-reopen="${n.id}">Reopen</button>`}<button type="button" data-del="${n.id}" class="danger">${ICON('trash')}</button></div></div>`;
-    $('#tab-notes').innerHTML = `<div class="tab-head"><span>${open.length ? `${open.length} open` : 'Nothing open'}</span><span class="grow"></span><button type="button" class="mini" id="copyNotes" title="Copy every open note as text">${ICON('copy')} Copy for Claude</button></div>
+    $('#tab-notes').innerHTML = `<div class="tab-head"><span>${open.length ? `${open.length} open` : 'Nothing open'}</span><span class="grow"></span><label class="check" style="margin:0" title="Show note text on the game"><input type="checkbox" id="screenNotes" ${E.screenNotes !== false ? 'checked' : ''}> On screen</label><button type="button" class="mini" id="copyNotes" title="Copy every open note as text">${ICON('copy')} Copy for Claude</button></div>
       ${open.length ? open.slice().reverse().map(row).join('') : `<div class="empty"><b>No notes yet</b>Press <kbd>N</kbd> and click anything in the game, or right-click it while playing. Claude reads notes from <code>projects/${esc(E.project.id)}/NOTES.md</code>.</div>`}
       ${done.length ? `<details class="done-list"><summary>${done.length} done</summary>${done.slice().reverse().map(row).join('')}</details>` : ''}`;
     $$('[data-go]', $('#tab-notes')).forEach(b => b.onclick = () => showNote(+b.dataset.go));
     $$('[data-done]', $('#tab-notes')).forEach(b => b.onclick = () => patchNote(+b.dataset.done, { status: 'done' }));
     $$('[data-reopen]', $('#tab-notes')).forEach(b => b.onclick = () => patchNote(+b.dataset.reopen, { status: 'open' }));
     $$('[data-del]', $('#tab-notes')).forEach(b => b.onclick = async () => { await api('DELETE', `/api/notes/${b.dataset.del}?project=${encodeURIComponent(E.project.id)}`); E.notes = E.notes.filter(n => n.id !== +b.dataset.del); renderNotes(); toast('Note deleted'); });
+    $('#screenNotes').onchange = e => { E.screenNotes = e.target.checked; try { localStorage.setItem('cm.screenNotes', E.screenNotes ? '1' : '0'); } catch {} };
     $('#copyNotes').onclick = async () => { try { const md = await (await fetch(`/p/${E.project.id}/NOTES.md?t=${Date.now()}`)).text(); await navigator.clipboard.writeText(md); toast('Copied the notes as text', 'good'); } catch { toast('Could not copy', 'err'); } };
   }
-  function noteAbout(n) { if (n.kind === 'global') return 'Whole game'; if (n.kind === 'bug') return 'Crash'; if (n.target) return (n.target.name ? n.target.name + ' · ' : '') + n.target.id + (n.allOfType ? ' · every ' + n.target.type : ''); if (n.rect) return `Area · ${(n.items || []).length} things`; if (n.spot) return `Spot ${n.spot.x}, ${n.spot.y}${n.spot.z != null ? ', ' + n.spot.z : ''}`; return n.kind; }
+  function noteAbout(n) { if (n.kind === 'sketch') return `Sketch · ${(n.shapes || []).length} shapes`; if (n.spot && n.spot.space === 'screen') return `Screen ${n.spot.x}, ${n.spot.y}`; if (n.kind === 'global') return 'Whole game'; if (n.kind === 'bug') return 'Crash'; if (n.target) return (n.target.name ? n.target.name + ' · ' : '') + n.target.id + (n.allOfType ? ' · every ' + n.target.type : ''); if (n.rect) return `Area · ${(n.items || []).length} things`; if (n.spot) return `Spot ${n.spot.x}, ${n.spot.y}${n.spot.z != null ? ', ' + n.spot.z : ''}`; return n.kind; }
   async function patchNote(id, changes) { const r = await api('PATCH', `/api/notes/${id}`, { project: E.project.id, ...changes }); if (r.note) { E.notes = E.notes.map(n => n.id === id ? r.note : n); renderNotes(); } }
   function showNote(id) {
     const n = E.notes.find(x => x.id === id); if (!n) return; flash(id);
@@ -278,7 +315,7 @@
     const box = $('#tab-log'); const logs = CM.logs.slice(-100).reverse();
     box.innerHTML = `<div class="tab-head"><span>Scripts write here with CM.log(…)</span><span class="grow"></span><button type="button" class="mini" id="logClear">Clear</button></div>` + (logs.length ? logs.map((l, i) => `<div class="logline ${l.level}"><span class="t">${l.t.toFixed(1)}</span><span class="txt">${esc(l.text)}</span>${l.level === 'error' ? `<button type="button" class="mini" data-bug="${i}">Note this crash</button>` : ''}</div>`).join('') : '<div class="empty"><b>Nothing logged yet</b></div>');
     $('#logClear', box).onclick = () => { CM.logs.length = 0; E.errorCount = 0; $('#logCount').textContent = ''; renderLog(); };
-    $$('[data-bug]', box).forEach(b => b.onclick = () => { const l = logs[+b.dataset.bug]; openPopover({ kind: 'bug', at: { x: overlay.width / 2 - 160 / cssScale(), y: 30 }, error: { text: l.text, stack: l.stack, entity: l.entity, where: l.where }, text: 'This crashed: ' + l.text }); });
+    $$('[data-bug]', box).forEach(b => b.onclick = () => { const l = logs[+b.dataset.bug]; openPopover({ kind: 'bug', at: { x: LW / 2 - 160 / cssScale(), y: 30 }, error: { text: l.text, stack: l.stack, entity: l.entity, where: l.where }, text: 'This crashed: ' + l.text }); });
   }
 
   // ---------- status + toast + api ----------

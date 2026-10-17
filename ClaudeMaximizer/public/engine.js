@@ -345,6 +345,11 @@
     sceneName() { return CM.current ? CM.current.name : null; },
     restart() { if (CM.current) CM.go(CM.current.name); },
     follow(e) { if (CM.current) CM.current.camera.follow(e); },
+    // looking around while paused: pan in screen pixels, zoom around the middle, snap back to the target
+    pan(dx, dy) { const c = CM.current.camera; c.x += dx / c.zoom; c.y += dy / c.zoom; c.panned = true; },
+    zoom(f) { const c = CM.current.camera; const z0 = c.zoom, z1 = Math.max(0.5, Math.min(6, z0 * f)); const cx = c.x + CM.W / 2 / z0, cy = c.y + CM.H / 2 / z0; c.zoom = z1; c.x = cx - CM.W / 2 / z1; c.y = cy - CM.H / 2 / z1; c.panned = true; },
+    resetView() { const c = CM.current.camera; c.zoom = 1; c.panned = false; if (c.target && c.target.alive) { c.x = c.target.cx - CM.W / 2; c.y = c.target.cy - CM.H / 2; } },
+    panned() { return !!CM.current.camera.panned; },
     typeSrc(type) { return entityDefs[type] ? entityDefs[type].src : null; },
     defs() { return Object.keys(entityDefs).map(t => ({ type: t, src: entityDefs[t].src, tags: entityDefs[t].tags, props: entityDefs[t].props })); }
   };

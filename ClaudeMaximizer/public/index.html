@@ -53,10 +53,13 @@
   <section id="stage-wrap">
     <div id="stage"><canvas id="game"></canvas><canvas id="overlay"></canvas><div id="dom-overlay"></div></div>
     <div id="hint" class="hint"></div>
+    <button type="button" id="resetView" class="reset-view" hidden>Reset view</button>
+    <div id="sketchBar" class="sketch-bar" hidden></div>
     <div class="toolbar" id="toolbar">
       <button type="button" data-t="play" title="Play / pause (F8)"><svg><use href="#i-pause"/></svg><span>Pause</span></button>
       <button type="button" data-t="note" class="note-btn" title="Note mode (N). Or right-click anything while playing."><svg><use href="#i-pen"/></svg><span>Note</span></button>
       <button type="button" data-t="noteall" title="A note about the whole game"><svg><use href="#i-flag"/></svg></button>
+      <button type="button" data-t="sketch" class="sketch-btn" title="Sketch what you want on top of the game (K)"><svg><use href="#i-brush"/></svg><span>Sketch</span></button>
       <span class="sep"></span>
       <label class="speed" title="Game speed"><input type="range" id="speed" min="0.1" max="2" step="0.1" value="1" aria-label="Game speed"><span id="speedLabel">1.0×</span></label>
       <button type="button" data-t="step" title="One frame (.)"><svg><use href="#i-step"/></svg></button>
@@ -95,6 +98,7 @@
       <dt><kbd>N</kbd></dt><dd>Note mode on / off. Click anything to note it, drag to note an area.</dd>
       <dt>Right-click</dt><dd>Note the thing under the cursor, any time, without leaving the game.</dd>
       <dt>Double-click</dt><dd>Open a thing in the Inspector while playing.</dd>
+      <dt><kbd>K</kbd></dt><dd>Sketch mode: draw boxes, arrows and labels over the game to show Claude what you want where.</dd>
       <dt><kbd>F8</kbd></dt><dd>Pause / play.</dd>
       <dt><kbd>.</kbd></dt><dd>Step one frame while paused.</dd>
       <dt><kbd>B</kbd> <kbd>R</kbd> <kbd>M</kbd></dt><dd>Hitboxes · restart · sound. Hold <kbd>Alt</kbd> if the game uses those keys.</dd>

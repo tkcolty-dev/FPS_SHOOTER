@@ -108,6 +108,15 @@
     B: '#3a7bff', C: '#4fd4e6', P: '#9b5de5', M: '#ff5fa8', N: '#8a5a2b', S: '#f3c79b', T: '#1f8a7a', E: '#ffb3c6',
     g: '#2e7d32', b: '#1f3f8a', r: '#8a1f1f', y: '#b8961f', d: '#2a2a33', w: '#e4e4ea', n: '#5a3a1a', s: '#c98d62'
   };
+  // ---------- saving (per game, in this browser) ----------
+  // CM.saveGame({ level: 2, coins: 10 }) / CM.loadGame() / CM.hasSave() / CM.deleteSave(); slots: CM.saveGame(data, 'slot2')
+  const saveKey = slot => 'cm.game.' + (CM.projectId || 'game') + '.' + (slot || 'main');
+  CM.saveGame = (data, slot) => { try { localStorage.setItem(saveKey(slot), JSON.stringify({ at: Date.now(), data })); CM.log('saved ' + (slot || 'main')); return true; } catch { return false; } };
+  CM.loadGame = (slot, def) => { try { const v = JSON.parse(localStorage.getItem(saveKey(slot)) || 'null'); return v ? v.data : (def === undefined ? null : def); } catch { return def === undefined ? null : def; } };
+  CM.hasSave = slot => { try { return !!localStorage.getItem(saveKey(slot)); } catch { return false; } };
+  CM.saveInfo = slot => { try { const v = JSON.parse(localStorage.getItem(saveKey(slot)) || 'null'); return v ? { at: v.at, data: v.data } : null; } catch { return null; } };
+  CM.deleteSave = slot => { try { localStorage.removeItem(saveKey(slot)); } catch {} };
+  CM.listSaves = () => { const out = []; try { const pre = 'cm.game.' + (CM.projectId || 'game') + '.'; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith(pre)) out.push(k.slice(pre.length)); } } catch {} return out; };
   CM.rand = (a, b) => b == null ? Math.random() * a : a + Math.random() * (b - a);
   CM.pick = arr => arr[Math.floor(Math.random() * arr.length)];
   CM.clamp = (v, a, b) => Math.max(a, Math.min(b, v));

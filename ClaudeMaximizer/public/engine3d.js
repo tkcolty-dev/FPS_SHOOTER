@@ -117,7 +117,7 @@
       const sun = new THREE.DirectionalLight(0xffffff, 1.3); sun.position.set(12, 20, 8); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
       const sc = sun.shadow.camera; sc.left = -30; sc.right = 30; sc.top = 30; sc.bottom = -30; sc.near = 1; sc.far = 80; this.three.add(sun); this.three.add(sun.target); this.sun = sun;
       this.camera = { x: 0, y: 8, z: 10, target: null, offset: { x: 0, y: 7, z: 9 }, lerp: 0.1, behind: false, lookUp: 0.8, shakeT: 0, shakeA: 0, sx: 0, sy: 0,
-        follow: (e, opts) => { this.camera.target = e; Object.assign(this.camera, opts || {}); },
+        follow: (e, opts) => { this.camera.target = e; Object.assign(this.camera, opts || {}); this.camera.baseOffset = { ...this.camera.offset }; },
         look: (x, y, z) => { this.camera.target = null; this.camera.x = x; this.camera.y = y; this.camera.z = z; },
         shake: (amount, secs) => { this.camera.shakeA = amount || 0.3; this.camera.shakeT = secs || 0.2; } };
     }
@@ -275,6 +275,10 @@
     sceneName() { return CM.current ? CM.current.name : null; },
     restart() { if (CM.current) CM.go(CM.current.name); },
     follow(e) { if (CM.current) CM.current.camera.follow(e); },
+    pan(dx, dy) { const c = CM.current.camera; const k = 0.02 * Math.hypot(c.offset.x, c.offset.y, c.offset.z) / 15; const fx = (c.lookX || 0) - c.x, fz = (c.lookZ || 0) - c.z, fl = Math.hypot(fx, fz) || 1; const rx = fz / fl, rz = -fx / fl; const mx = (rx * dx - fx / fl * dy) * k, mz = (rz * dx - fz / fl * dy) * k; c.x += mx; c.z += mz; c.lookX = (c.lookX || 0) + mx; c.lookZ = (c.lookZ || 0) + mz; c.panned = true; },
+    zoom(f) { const c = CM.current.camera; const lx = c.lookX || 0, ly = c.lookY || 0, lz = c.lookZ || 0; c.x = lx + (c.x - lx) * f; c.y = ly + (c.y - ly) * f; c.z = lz + (c.z - lz) * f; c.offset = { x: c.offset.x * f, y: c.offset.y * f, z: c.offset.z * f }; c.panned = true; },
+    resetView() { const c = CM.current.camera; c.panned = false; const d = CM.current.def; const base = (d.cameraOffset) || c.baseOffset || { x: 0, y: 7, z: 9 }; c.offset = { ...base }; if (c.target && c.target.alive) { const t = c.target; c.x = t.x + c.offset.x; c.y = t.y + c.offset.y; c.z = t.z + c.offset.z; c.lookX = t.x; c.lookY = t.y + c.lookUp; c.lookZ = t.z; } },
+    panned() { return !!CM.current.camera.panned; },
     typeSrc(type) { return entityDefs[type] ? entityDefs[type].src : null; },
     defs() { return Object.keys(entityDefs).filter(t => t !== 'block').map(t => ({ type: t, src: entityDefs[t].src, tags: entityDefs[t].tags, props: entityDefs[t].props })); }
   };

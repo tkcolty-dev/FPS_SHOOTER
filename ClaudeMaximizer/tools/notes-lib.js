@@ -11,7 +11,7 @@ function gameName(pid) { try { return JSON.parse(fs.readFileSync(path.join(PROJE
 function add(pid, note) {
   const data = load(pid); const id = data.notes.reduce((m, n) => Math.max(m, n.id), 0) + 1;
   const n = { id, created: Date.now(), status: 'open', kind: note.kind || 'entity', text: String(note.text || '').slice(0, 2000), scene: note.scene || null, time: note.time || 0,
-    target: note.target || null, allOfType: !!note.allOfType, spot: note.spot || null, rect: note.rect || null, items: note.items || null, tweaks: note.tweaks || null, error: note.error || null, context: note.context || null, reply: null, doneAt: null };
+    target: note.target || null, allOfType: !!note.allOfType, spot: note.spot || null, rect: note.rect || null, items: note.items || null, tweaks: note.tweaks || null, error: note.error || null, shapes: Array.isArray(note.shapes) ? note.shapes.slice(0, 200) : null, screen: note.screen || null, context: note.context || null, reply: null, doneAt: null };
   if (note.image && /^data:image\/png;base64,/.test(note.image)) {
     const dir = path.join(PROJECTS, pid, 'notes'); fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, id + '.png'), Buffer.from(note.image.split(',')[1], 'base64')); n.image = `notes/${id}.png`;
@@ -33,14 +33,25 @@ function thingLine(t) { if (!t) return ''; return `${t.id}${t.name ? ' "' + t.na
 
 function noteMd(n) {
   const lines = [];
-  const head = n.kind === 'global' ? 'The whole game' : n.kind === 'bug' ? 'A crash' : n.target ? `${n.target.id}${n.target.name ? ' "' + n.target.name + '"' : ''}${n.allOfType ? ` — applies to EVERY ${n.target.type}` : ` (one ${n.target.type})`}` : n.rect ? `An area with ${(n.items || []).length} thing${(n.items || []).length === 1 ? '' : 's'} in it` : n.spot ? `A spot` : n.kind;
+  const head = n.kind === 'sketch' ? `A sketch of how it should look (${(n.shapes || []).length} shapes drawn over the game)` : n.kind === 'global' ? 'The whole game' : n.kind === 'bug' ? 'A crash' : n.target ? `${n.target.id}${n.target.name ? ' "' + n.target.name + '"' : ''}${n.allOfType ? ` — applies to EVERY ${n.target.type}` : ` (one ${n.target.type})`}` : n.rect ? `An area with ${(n.items || []).length} thing${(n.items || []).length === 1 ? '' : 's'} in it` : n.spot ? `A spot` : n.kind;
   lines.push(`## Note ${n.id} — ${head}${n.status === 'done' ? ' — DONE' : ''}`);
   if (n.text) lines.push(`> ${n.text.replace(/\n/g, '\n> ')}`);
   if (n.tweaks && n.tweaks.length) { lines.push(`- Tweaked live in the game (make these permanent in the code): ${n.tweaks.map(t => `**${t.key}** ${fmt(t.from)} → ${fmt(t.to)}${t.all ? ' for every ' + (t.type || n.target.type) : ''}`).join('; ')}`); }
   if (n.target) { lines.push(`- Code: ${n.target.src || '(unknown file)'} — type \`${n.target.type}\`${n.target.sprite ? `, sprite \`${n.target.sprite}\`` : ''}${n.target.model ? `, model \`${n.target.model}\`` : ''}${n.target.tags && n.target.tags.length ? `, tags ${n.target.tags.join(', ')}` : ''}`); lines.push(`- That thing when noted: ${thingLine(n.target)}`); }
-  if (n.spot) lines.push(`- Spot: ${n.spot.space === 'screen' ? 'screen' : 'world'} ${fmt(n.spot.x)}, ${fmt(n.spot.y)}${n.spot.z != null ? ', ' + fmt(n.spot.z) : ''}${n.spot.tile ? ` · tile column ${n.spot.tile.tx}, row ${n.spot.tile.ty}${n.spot.tile.ch ? ` is "${n.spot.tile.ch}"` : ' (empty)'}${n.spot.tile.src ? ' in ' + n.spot.tile.src : ''}` : ''}`);
+  if (n.spot) lines.push(`- Spot: ${n.spot.space === 'screen' ? `on the SCREEN (HUD/overlay, not the level) at ${fmt(n.spot.x)}, ${fmt(n.spot.y)} of ${n.spot.screen ? n.spot.screen.w + '×' + n.spot.screen.h : 'the screen'}` : 'world ' + fmt(n.spot.x) + ', ' + fmt(n.spot.y)}${n.spot.z != null ? ', ' + fmt(n.spot.z) : ''}${n.spot.tile ? ` · tile column ${n.spot.tile.tx}, row ${n.spot.tile.ty}${n.spot.tile.ch ? ` is "${n.spot.tile.ch}"` : ' (empty)'}${n.spot.tile.src ? ' in ' + n.spot.tile.src : ''}` : ''}`);
   if (n.rect) lines.push(`- Area: top-left corner at ${n.rect.z != null ? 'ground point ' : ''}${fmt(n.rect.x)}, ${fmt(n.rect.y)}${n.rect.z != null ? ', ' + fmt(n.rect.z) : ''}, ${fmt(n.rect.w)}×${fmt(n.rect.h)} ${n.rect.z != null ? 'screen pixels' : 'px'}${n.items && n.items.length ? ` · inside: ${n.items.map(t => t.id).join(', ')}` : ' · nothing inside'}`);
   if (n.items && n.items.length) for (const t of n.items.slice(0, 8)) lines.push(`  - ${thingLine(t)} (${t.src || ''})`);
+  if (n.kind === 'sketch') {
+    lines.push(`- Screen is ${n.screen ? n.screen.w + '×' + n.screen.h : '?'} px. "screen" = HUD/overlay position; "world" = a place in the level. Build real things from these, they are only a sketch:`);
+    for (const s of n.shapes || []) {
+      const w = s.world ? ` · world ${fmt(s.world.x)}, ${fmt(s.world.y)}${s.world.z != null ? ', ' + fmt(s.world.z) : ''}` : '';
+      if (s.type === 'box') lines.push(`  - box "${s.label || 'unlabeled'}": screen x ${fmt(s.x)}, y ${fmt(s.y)}, ${fmt(s.w)}×${fmt(s.h)}${w}`);
+      else if (s.type === 'text') lines.push(`  - label "${s.label}" at screen ${fmt(s.x)}, ${fmt(s.y)}${w}`);
+      else if (s.type === 'arrow') lines.push(`  - arrow "${s.label || ''}" from screen ${fmt(s.x)}, ${fmt(s.y)} to ${fmt(s.x2)}, ${fmt(s.y2)}${w}`);
+      else if (s.type === 'pen') { const xs = s.pts.map(p => p[0]), ys = s.pts.map(p => p[1]); lines.push(`  - drawing "${s.label || ''}" around screen x ${fmt(Math.min(...xs))}–${fmt(Math.max(...xs))}, y ${fmt(Math.min(...ys))}–${fmt(Math.max(...ys))}${w}`); }
+    }
+    lines.push(`- Look at the picture: it is the game with the sketch on top.`);
+  }
   if (n.error) { lines.push(`- Error: ${n.error.text}${n.error.entity ? ` (entity ${n.error.entity})` : ''}`); if (n.error.stack) lines.push('  ```\n  ' + String(n.error.stack).split('\n').slice(0, 6).join('\n  ') + '\n  ```'); }
   const c = n.context || {};
   lines.push(`- When: scene \`${n.scene || c.scene || '?'}\`${c.sceneSrc ? ' (' + c.sceneSrc + ')' : ''} at ${fmt(n.time)} s${c.paused ? ', paused' : ''}${c.speed && c.speed !== 1 ? ', slow motion' : ''}${c.fps ? `, ${c.fps} fps` : ''}${c.counts ? ` · on screen: ${Object.entries(c.counts).map(([k, v]) => `${v} ${k}`).join(', ')}` : ''}`);

@@ -53,6 +53,8 @@ Note kinds you will see:
 - 2D sprites and levels are text art; 3D models are voxel text or simple parts. No image files needed.
 - Top-down games: no gravity, `axis()` + `axisY()`, `e.moveToward`, `e.shoot`, `e.damage`, `s.lineClear`. See
   projects/dungeon-dash for a full example (enemies, projectiles, keys/doors, spawner, fades, save).
+- Saving: `CM.saveGame(obj)` / `CM.loadGame()` / `CM.hasSave()` for progress, `CM.save/load` for small values.
+  Add a Continue option on the title/first scene when a save exists.
 - Keep gameplay numbers in `props`. Use `CM.log()` for anything worth seeing in the Log tab.
 - After changes, check the Log tab / console for errors: the page shows red toasts for script errors, and
   `CM.logs` holds them. Script errors never stop the loop; a broken entity shows a red dot.

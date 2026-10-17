@@ -1,6 +1,6 @@
 // Every kind of thing in the game. Numbers that might need tuning live in props so they show up
 // in the Inspector and can be tweaked while playing.
-const G = window.G || (window.G = { score: 0, best: 0 });
+const G = window.G || (window.G = { score: 0, best: CM.load('best', 0) }); // best score is saved in this browser
 
 function hurt(e, s, why) {
   if (e.props.invuln > 0) return;
@@ -32,7 +32,7 @@ CM.entity('player', {
       else hurt(e, s, o.type);
     },
     hazard(e, o, s) { hurt(e, s, 'spikes'); },
-    goal(e, o, s) { if (!s.data.over) { s.data.over = 'win'; s.data.overT = 0; CM.sfx('win'); e.say('Made it!', 3); G.best = Math.max(G.best, G.score); } }
+    goal(e, o, s) { if (!s.data.over) { s.data.over = 'win'; s.data.overT = 0; CM.sfx('win'); e.say('Made it!', 3); G.best = Math.max(G.best, G.score); CM.save('best', G.best); } }
   }
 });
 

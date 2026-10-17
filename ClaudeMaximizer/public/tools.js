@@ -199,7 +199,7 @@
     L.dirty = true; const b = $('#lvSave'); if (b) b.disabled = false;
   }
   function lvDraw(c) {
-    const { CM, overlay } = E.get(); const tm = L.tm; if (!tm) return; const cam = CM.current.camera; const z = cam.zoom;
+    const { CM, LW, LH } = E.get(); const tm = L.tm; if (!tm) return; const cam = CM.current.camera; const z = cam.zoom; const overlay = { width: LW, height: LH };
     c.strokeStyle = 'rgba(255,255,255,.07)'; const x0 = Math.floor(cam.x / tm.size), y0 = Math.floor(cam.y / tm.size);
     for (let tx = x0; tx * tm.size < cam.x + overlay.width / z; tx++) { const sx = Math.round((tx * tm.size - cam.x) * z) + .5; c.beginPath(); c.moveTo(sx, 0); c.lineTo(sx, overlay.height); c.stroke(); }
     for (let ty = y0; ty * tm.size < cam.y + overlay.height / z; ty++) { const sy = Math.round((ty * tm.size - cam.y) * z) + .5; c.beginPath(); c.moveTo(0, sy); c.lineTo(overlay.width, sy); c.stroke(); }
@@ -256,4 +256,95 @@
     };
   }
   async function saveSounds() { const { CM } = E.get(); const r = await api('PUT', '/api/sounds', { project: pid(), sounds: S.sounds }); if (r.error) return E.toast(r.error, 'err'); CM.loadSounds(S.sounds); E.toast('Sounds saved', 'good'); renderSounds(); if (S.editing) CM.sfx(S.editing); }
+})();
+
+// =====================================================================================================
+// Sketch: draw what you want over the game (boxes, arrows, labels, freehand) and send it to Claude as one note
+// =====================================================================================================
+(function () {
+  const E = window.Editor;
+  const $ = (s, r) => (r || document).querySelector(s), $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const COLORS = ['#ffd84d', '#5ea2ff', '#4ade80', '#f87171', '#ffffff', '#c084fc'];
+  const K = { on: false, tool: 'box', color: COLORS[0], shapes: [], cur: null, space: 'screen', hover: null };
+  const px = v => E.get().px(v); // screen pixels → logical units, so sketch text is the same size on any game
+  const lw = () => px(2.5), fs = () => px(13);
+
+  E.toggleSketch = function () {
+    K.on = !K.on; const { stage, A } = E.get();
+    if (K.on) { E.setMode('sketch', { move: onMove, down: onDown, up: onUp, draw: draw }); stage.classList.add('sketching'); renderBar(); $('#hint').textContent = 'Drag a box or arrow, type what it is, press Enter. Send when done · Esc stops'; $('#hint').classList.add('show'); }
+    else { if (E.mode === 'sketch') E.setMode(null); stage.classList.remove('sketching'); $('#sketchBar').hidden = true; hideLabel(); $('#hint').classList.remove('show'); }
+    $('[data-t=sketch]').classList.toggle('on', K.on);
+  };
+  const origSetMode = E.setMode; E.setMode = function (mode, h) { if (K.on && mode !== 'sketch') { K.on = false; E.get().stage.classList.remove('sketching'); $('#sketchBar').hidden = true; hideLabel(); $('[data-t=sketch]').classList.remove('on'); } return origSetMode(mode, h); };
+
+  function renderBar() {
+    const bar = $('#sketchBar'); bar.hidden = false; const { A } = E.get();
+    bar.innerHTML = [['box', 'Box'], ['arrow', 'Arrow'], ['text', 'Label'], ['pen', 'Pen'], ['erase', 'Erase']].map(([t, l]) => `<button type="button" data-sk="${t}" class="${K.tool === t ? 'on' : ''}">${l}</button>`).join('') +
+      `<span class="sep"></span>` + COLORS.map(c => `<button type="button" class="col ${K.color === c ? 'on' : ''}" data-col="${c}" style="background:${c}" title="${c}"></button>`).join('') +
+      `<span class="sep"></span><button type="button" id="skUndo" title="Undo (⌘Z)">Undo</button><button type="button" id="skClear">Clear</button><span class="sep"></span><button type="button" class="send" id="skSend" ${K.shapes.length ? '' : 'disabled'}>Send to Claude</button>`;
+    $$('[data-sk]', bar).forEach(b => b.onclick = () => { K.tool = b.dataset.sk; renderBar(); });
+    $$('[data-col]', bar).forEach(b => b.onclick = () => { K.color = b.dataset.col; renderBar(); });
+    $('#skUndo').onclick = undo; $('#skClear').onclick = () => { K.shapes = []; renderBar(); };
+    $('#skSend').onclick = send;
+  }
+  addEventListener('keydown', e => { if (!K.on || /INPUT|TEXTAREA/.test(e.target.tagName)) return; if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { undo(); e.preventDefault(); } const t = { b: 'box', a: 'arrow', t: 'text', p: 'pen', e: 'erase' }[e.key.toLowerCase()]; if (t && !e.metaKey) { K.tool = t; renderBar(); } });
+  function undo() { K.shapes.pop(); renderBar(); }
+  function worldOf(p) { const { A } = E.get(); try { const s = A.spot(p.x, p.y); return s && s.space !== 'screen' ? { x: s.x, y: s.y, z: s.z } : null; } catch { return null; } }
+
+  function onDown(p, ev) {
+    if (ev.button !== 0) return;
+    if (K.tool === 'erase') { const i = hitShape(p); if (i >= 0) { K.shapes.splice(i, 1); renderBar(); } return; }
+    if (K.tool === 'text') { const s = { type: 'text', x: p.x, y: p.y, color: K.color, label: '' }; K.shapes.push(s); askLabel(s, 'What goes here?'); return; }
+    if (K.tool === 'pen') { K.cur = { type: 'pen', pts: [[p.x, p.y]], color: K.color, label: '' }; return; }
+    K.cur = { type: K.tool, x: p.x, y: p.y, x2: p.x, y2: p.y, w: 0, h: 0, color: K.color, label: '' };
+  }
+  function onMove(p) { K.hover = p; if (!K.cur) return; if (K.cur.type === 'pen') { const l = K.cur.pts[K.cur.pts.length - 1]; if (Math.hypot(p.x - l[0], p.y - l[1]) > 1.5) K.cur.pts.push([p.x, p.y]); } else { K.cur.x2 = p.x; K.cur.y2 = p.y; K.cur.w = p.x - K.cur.x; K.cur.h = p.y - K.cur.y; } }
+  function onUp(p) {
+    const s = K.cur; K.cur = null; if (!s) return;
+    if (s.type === 'box') { if (Math.abs(s.w) < 3 || Math.abs(s.h) < 3) return; if (s.w < 0) { s.x += s.w; s.w = -s.w; } if (s.h < 0) { s.y += s.h; s.h = -s.h; } delete s.x2; delete s.y2; }
+    if (s.type === 'arrow' && Math.hypot(s.x2 - s.x, s.y2 - s.y) < 4) return;
+    if (s.type === 'pen' && s.pts.length < 2) return;
+    K.shapes.push(s); renderBar(); askLabel(s, s.type === 'box' ? 'What is this box?' : s.type === 'arrow' ? 'What should move or go there?' : 'What did you draw?');
+  }
+  function finish(s) { s.space = 'screen'; s.world = worldOf(center(s)); }
+  function center(s) { if (s.type === 'box') return { x: s.x + s.w / 2, y: s.y + s.h / 2 }; if (s.type === 'arrow') return { x: s.x2, y: s.y2 }; if (s.type === 'pen') return { x: s.pts.reduce((a, p) => a + p[0], 0) / s.pts.length, y: s.pts.reduce((a, p) => a + p[1], 0) / s.pts.length }; return { x: s.x, y: s.y }; }
+  function hitShape(p) { for (let i = K.shapes.length - 1; i >= 0; i--) { const s = K.shapes[i]; const m = px(10); if (s.type === 'box' && p.x >= s.x - m && p.x <= s.x + s.w + m && p.y >= s.y - m && p.y <= s.y + s.h + m) return i; if (s.type === 'text' && Math.hypot(p.x - s.x, p.y - s.y) < m * 3) return i; if (s.type === 'arrow' && (Math.hypot(p.x - s.x, p.y - s.y) < m * 2 || Math.hypot(p.x - s.x2, p.y - s.y2) < m * 2)) return i; if (s.type === 'pen' && s.pts.some(q => Math.hypot(p.x - q[0], p.y - q[1]) < m)) return i; } return -1; }
+
+  let labelEl = null;
+  function askLabel(s, placeholder) {
+    hideLabel(); const { stage, cssScale } = E.get(); const c = center(s); const sc = cssScale();
+    labelEl = document.createElement('input'); labelEl.className = 'sk-label'; labelEl.placeholder = placeholder; labelEl.value = s.label || '';
+    labelEl.style.left = Math.min(stage.clientWidth - 160, Math.max(0, c.x * sc - 75)) + 'px'; labelEl.style.top = Math.min(stage.clientHeight - 30, Math.max(0, (s.type === 'box' ? s.y * sc - 30 : c.y * sc + 10))) + 'px';
+    $('#dom-overlay').appendChild(labelEl); labelEl.style.pointerEvents = 'auto'; setTimeout(() => labelEl && labelEl.focus(), 20);
+    const done = () => { if (!labelEl) return; s.label = labelEl.value.trim(); finish(s); hideLabel(); if (s.type === 'text' && !s.label) { K.shapes = K.shapes.filter(x => x !== s); } renderBar(); };
+    labelEl.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); done(); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(); } e.stopPropagation(); };
+    labelEl.onblur = done;
+  }
+  function hideLabel() { if (labelEl) { const el = labelEl; labelEl = null; el.remove(); } }
+
+  // drawing: live sketch while in sketch mode, and faded sketches from open notes any time
+  function drawShape(c, s, alpha, live) {
+    const { A } = E.get(); let dx = 0, dy = 0;
+    if (s.space === 'world' && s.world && A.spotToScreen) { const sc = A.spotToScreen({ ...s.world, space: 'world' }); const cc = s.type === 'box' ? { x: s.x + s.w / 2, y: s.y + s.h / 2 } : s.type === 'pen' ? center(s) : s.type === 'arrow' ? { x: s.x2, y: s.y2 } : { x: s.x, y: s.y }; dx = sc.x - cc.x; dy = sc.y - cc.y; }
+    c.save(); c.globalAlpha = alpha; c.strokeStyle = s.color; c.fillStyle = s.color; c.lineWidth = lw(); c.lineJoin = 'round'; c.lineCap = 'round'; c.font = `700 ${fs()}px Inter, sans-serif`; c.textBaseline = 'top';
+    if (s.type === 'box') { c.setLineDash(live ? [] : [px(4), px(3)]); c.strokeRect(s.x + dx, s.y + dy, s.w, s.h); c.setLineDash([]); c.globalAlpha = alpha * 0.12; c.fillRect(s.x + dx, s.y + dy, s.w, s.h); c.globalAlpha = alpha; if (s.label) tag(c, s.label, s.x + dx + 2, s.y + dy + 2, s.color); }
+    else if (s.type === 'arrow') { const a = Math.atan2(s.y2 - s.y, s.x2 - s.x), hl = px(12); c.beginPath(); c.moveTo(s.x + dx, s.y + dy); c.lineTo(s.x2 + dx, s.y2 + dy); c.stroke(); c.beginPath(); c.moveTo(s.x2 + dx, s.y2 + dy); c.lineTo(s.x2 + dx - hl * Math.cos(a - 0.5), s.y2 + dy - hl * Math.sin(a - 0.5)); c.lineTo(s.x2 + dx - hl * Math.cos(a + 0.5), s.y2 + dy - hl * Math.sin(a + 0.5)); c.closePath(); c.fill(); if (s.label) tag(c, s.label, (s.x + s.x2) / 2 + dx, (s.y + s.y2) / 2 + dy - fs(), s.color); }
+    else if (s.type === 'pen') { c.beginPath(); s.pts.forEach((p, i) => i ? c.lineTo(p[0] + dx, p[1] + dy) : c.moveTo(p[0] + dx, p[1] + dy)); c.stroke(); if (s.label) { const ce = center(s); tag(c, s.label, ce.x + dx, ce.y + dy, s.color); } }
+    else if (s.type === 'text') { tag(c, s.label || '…', s.x + dx, s.y + dy, s.color); }
+    c.restore();
+  }
+  function tag(c, text, x, y, color) { const pad = px(4); const w = c.measureText(text).width + pad * 2, h = fs() + pad * 2; c.fillStyle = color; c.beginPath(); c.roundRect(x, y, w, h, px(4)); c.fill(); c.fillStyle = '#111'; c.fillText(text, x + pad, y + pad); }
+  function draw(c) { for (const s of K.shapes) drawShape(c, s, 1, true); if (K.cur) drawShape(c, K.cur, 0.8, true); if (K.hover && K.tool !== 'erase') { c.fillStyle = K.color; c.fillRect(K.hover.x - px(1.5), K.hover.y - px(1.5), px(3), px(3)); } }
+  E.drawSketches = function (c) { if (K.on) return; for (const n of E.notes) if (n.status === 'open' && n.kind === 'sketch' && n.shapes) for (const s of n.shapes) drawShape(c, s, 0.45, false); };
+
+  async function send() {
+    if (!K.shapes.length) return; const { A, popover, LW, LH } = E.get();
+    // the picture is the game frame with the sketch drawn on top, at a readable size
+    let image = null; try { const game = $('#game'); const scale = LW < 640 ? Math.ceil(640 / LW) : 1; const c = document.createElement('canvas'); c.width = LW * scale; c.height = LH * scale; const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(game, 0, 0, c.width, c.height); const hud = $('#hud'); if (hud) x.drawImage(hud, 0, 0, c.width, c.height); x.setTransform(scale, 0, 0, scale, 0, 0); for (const s of K.shapes) drawShape(x, s, 1, true); image = c.toDataURL('image/png'); } catch (e) { console.warn('sketch picture', e); }
+    const shapes = K.shapes.map(s => ({ ...s, x: r1(s.x), y: r1(s.y), x2: s.x2 != null ? r1(s.x2) : undefined, y2: s.y2 != null ? r1(s.y2) : undefined, w: s.w != null ? r1(s.w) : undefined, h: s.h != null ? r1(s.h) : undefined, pts: s.pts ? s.pts.filter((p, i) => i % 3 === 0 || i === s.pts.length - 1).map(p => [r1(p[0]), r1(p[1])]) : undefined }));
+    E.openPopover({ kind: 'sketch', at: { x: LW / 2 - 160 / E.get().cssScale(), y: 20 }, shapes, image, text: '' });
+    const done = () => { if (popover.hidden) { K.shapes = []; if (K.on) E.toggleSketch(); } else setTimeout(done, 300); }; setTimeout(done, 400);
+  }
+  const r1 = v => Math.round(v * 10) / 10;
 })();
