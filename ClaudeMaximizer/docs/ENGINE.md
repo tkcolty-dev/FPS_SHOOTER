@@ -1,11 +1,9 @@
 # Engine reference
 
-Both engines share one shape: **sprites/models** (how things look) → **entity types** (what things are and do) →
-**scenes** (where they live). Scripts in `game.json` run in order, each in its own function scope; share values
-between files with `window.X`. Everything is on the `CM` global. Every `CM.sprite / CM.model / CM.entity /
-CM.scene` call remembers the file and line that made it, and playtest notes quote it.
+One shape: **sprites** (how things look) → **entity types** (what things are and do) → **scenes** (where they live). Scripts in `game.json` run in order, each in its own function scope; share values
+between files with `window.X`. Everything is on the `CM` global. Every `CM.sprite / CM.entity / CM.scene` call remembers the file and line that made it, and playtest notes quote it.
 
-Common to both: `CM.input`, `CM.sfx`, `CM.log`, `CM.rand(a,b)`, `CM.pick(arr)`, `CM.clamp(v,a,b)`, `CM.PALETTE`,
+Always available: `CM.input`, `CM.sfx`, `CM.log`, `CM.rand(a,b)`, `CM.pick(arr)`, `CM.clamp(v,a,b)`, `CM.PALETTE`,
 `CM.go(scene)`, `CM.time`, `CM.dt`, `CM.paused`, `CM.speed`.
 
 ## Input
@@ -45,7 +43,7 @@ or an uploaded/recorded file: `{ "shoot": { "synth": { "freq": 900, ... } }, "hi
 
 ---
 
-# 2D engine (`"mode": "2d"`)
+# The engine
 
 Logical size comes from `game.json` (`width`, `height`, default 320×180) and is scaled up pixel-perfect.
 Units are pixels, y goes down, gravity in px/s².
@@ -136,71 +134,7 @@ Particles: `CM.burst(x, y, { count: 10, color: ['#ffd93d', '#fff'], speed: 80, u
 
 ---
 
-# 3D engine (`"mode": "3d"`)
-
-Three.js under the hood (`window.THREE` is available, `s.three` is the THREE.Scene). Units: a hero is about 1.6
-tall. `x` right, `y` up, `z` toward the camera. An entity's `x, z` is the center of its feet and `y` the floor it
-stands on. Gravity in units/s² (default 24).
-
-## Models
-
-```js
-CM.model('crate', { box: [1, 1, 1], color: 'N' })                 // one primitive: box [w,h,d], sphere r,
-                                                                   // cylinder [r, h] or [rTop, rBottom, h], cone [r, h], capsule [r, len]
-CM.model('tree', { parts: [                                        // several, positioned by their centers
-  { cylinder: [0.2, 1], color: 'n', y: 0.5 },
-  { cone: [0.9, 1.6], color: 'g', y: 1.8, rx: 0, ry: 0, rz: 0, scale: 1 }
-]});
-CM.model('hero', { size: 0.2, voxels: [                            // text voxels: layers bottom → top,
-  ['.B.B.', '.B.B.'],                                              // rows back → front, letters left → right
-  ['BBBBB', 'BBBBB'],
-  ['.YYY.', '.YKY.']
-], palette: { B: '#3a7bff' } });
-CM.model('custom', { build(THREE) { return new THREE.Mesh(...); } }) // anything Three.js can make
-```
-Colors: palette letters or any CSS color. Models stand on their origin (bottom center).
-
-## Entity types
-
-Same shape as 2D with `model` instead of `sprite`:
-```js
-CM.entity('crab', { model: 'crab', tags: ['enemy'], gravity: true, solid: false, static: false,
-  keepInBounds: true, collides: true, bounce: 0, props: { speed: 2.5 },
-  init(e, s) {}, update(e, dt, s) {}, hit: { player(e, o, s) {} } });
-```
-`static: true` = never moves (trees, walls). `solid: true` = others bump into it. Instance fields: `x y z`,
-`vx vy vz`, `ry` (facing, radians), `w h d`, `scale`, `color` (tints the model), `visible`, `grounded`, `obj`
-(the THREE.Group), plus `id type name props tags age alive`.
-Methods: `e.face(dx, dz)`, `e.lookAt(other)`, `e.forward()` → `{x, z}`, `e.moveToward(target, speed)`,
-`e.dist(o)`, `e.overlaps(o)`, `e.jump(v)`, `e.say(text, secs)`, `e.flash()`, `e.every()`, `e.after()`,
-`e.destroy()`, `e.has(tag)`.
-
-## Scenes
-
-```js
-CM.scene('island', { sky: '#8fd3ff', fog: 90, gravity: 24,
-  setup(s) {
-    s.floor({ size: 40, color: '#efe0a8', color2: '#e6d494', y: 0 });  // checkered ground; sets s.bounds
-    const hero = s.spawn('hero', 0, 2);            // spawn(type, x, z) on the ground
-    s.spawn('gem', 8, 3.1, 12);                    // spawn(type, x, y, z) at a height
-    s.spawn('crab', 4, -3, { name: 'Pinchy', props: { speed: 3 } });
-    s.block(4, 0, 8, 2, 1, 2, 'D');                // solid box at x,y,z with size w,h,d (a 'block' entity)
-    s.camera.follow(hero, { offset: { x: 0, y: 10, z: 12 }, lerp: 0.08, behind: false, lookUp: 0.8 });
-  },
-  update(s, dt) {}, draw(s) {}, ui(s, ctx) {}      // ui draws on a 2D canvas over the 3D view (CM.W × CM.H)
-});
-```
-`behind: true` makes a chase camera that turns with the target. `s.camera.look(x, y, z)` for a fixed camera
-(then set `s.camera.lookX/lookY/lookZ`). `s.camera.shake(units, secs)`. Everything else (`find`, `all`,
-`each`, `count`, `byId`, `data`, `go`, `restart`) is the same as 2D.
-
-HUD: `CM.draw.text(ctx, 'Gems 3', x, y, { size: 22, color, align })`, `CM.draw.bar(...)`,
-`CM.draw.hearts(ctx, x, y, n, max, { size: 20 })`. Particles: `CM.burst(x, y, z, { count, color, speed, up })`.
-Picking: `CM.entityAt(sx, sy)`, `CM.groundAt(sx, sy)`, `CM.project(x, y, z)` → screen point.
-
----
-
-# Good habits (both)
+# Good habits
 
 - Everything visible is an entity so it can be clicked and noted; HUD goes in `ui()`.
 - Tunable numbers live in `props`. Names like `speed`, `jump`, `hp` read well in notes.

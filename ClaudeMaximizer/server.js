@@ -34,7 +34,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/projects' && req.method === 'POST') {
       const b = await readBody(req); const id = safeId(b.name); if (!id) return json(res, 400, { error: 'Give the game a name.' });
       const dir = path.join(PROJECTS, id); if (fs.existsSync(dir)) return json(res, 409, { error: 'A game with that name already exists.' });
-      const tpl = path.join(ROOT, 'templates', b.mode === '3d' ? 'blank-3d' : 'blank-2d');
+      const tpl = path.join(ROOT, 'templates', 'blank-2d');
       fs.cpSync(tpl, dir, { recursive: true });
       const g = JSON.parse(fs.readFileSync(path.join(dir, 'game.json'), 'utf8')); g.name = String(b.name).trim().slice(0, 60); fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(g, null, 2));
       watchProject(id); return json(res, 200, { id });

@@ -29,7 +29,7 @@ Note kinds you will see:
   definition, not just one spawn.
 - **tweaks** — he changed numbers live in the Inspector (e.g. `speed 60 → 30 for every bat`). Make exactly those
   values permanent in the code.
-- **spot / area** — a place in the level (2D: world px + tile column/row + the tilemap's file; 3D: ground point) and
+- **spot / area** — a place in the level (world px + tile column/row + the tilemap's file) and
   which things were inside.
 - **whole game** / **crash** — general feedback, or an error with its stack.
 
@@ -37,22 +37,22 @@ Note kinds you will see:
 
 - **Claude tab**: runs you (the claude CLI, `tools/claude-runner.js`) on the game with "Fix my notes" or a typed
   request. You then follow the loop above. Keep every save valid: the page reloads on each one.
-- **Tools → Sprites/Models**: pixel editor that rewrites `CM.sprite(...)` / `CM.model(...)` in place
+- **Tools → Sprites**: pixel editor that rewrites `CM.sprite(...)` in place
   (`tools/art-lib.js`). **Level**: paints tiles and spawn letters into the scene's text rows. **Sounds**: swaps a
   `CM.sfx` name for a synth setting or a file in `projects/<id>/sounds.json`. Don't fight these edits; they are his.
 - Right-click anything while playing = note. Inspector tweaks arrive as notes with exact numbers.
 
 ## Making a game
 
-- `node tools/notes.js new "Name"` (2D pixel art) or `node tools/notes.js new "Name" --3d`. Or he clicks New game.
-- A game is `projects/<id>/game.json` (name, mode `2d`|`3d`, start scene, ordered `scripts` list) plus the scripts.
+- `node tools/notes.js new "Name"`, or he clicks New game. It starts from `templates/blank-2d`.
+- A game is `projects/<id>/game.json` (name, start scene, ordered `scripts` list) plus the scripts.
 - Scripts are plain browser JS run in order, each in its own function scope (share across files via `window.X`).
-  They use the `CM` global. **Read `docs/ENGINE.md` before writing one** — it is the full API for both engines.
-- Everything the player can see should be an entity (`CM.entity` + `spawn`), not raw canvas/Three drawing, so it
+  They use the `CM` global. **Read `docs/ENGINE.md` before writing one** — it is the full engine API.
+- Everything the player can see should be an entity (`CM.entity` + `spawn`), not raw canvas drawing, so it
   can be clicked and noted. HUD text goes in the scene's `ui()`.
-- 2D sprites and levels are text art; 3D models are voxel text or simple parts. No image files needed.
+- Sprites and levels are text art. No image files needed.
 - Top-down games: no gravity, `axis()` + `axisY()`, `e.moveToward`, `e.shoot`, `e.damage`, `s.lineClear`. See
-  projects/dungeon-dash for a full example (enemies, projectiles, keys/doors, spawner, fades, save).
+  examples/dungeon-dash for a full example (enemies, projectiles, keys/doors, spawner, fades, save).
 - Saving: `CM.saveGame(obj)` / `CM.loadGame()` / `CM.hasSave()` for progress, `CM.save/load` for small values.
   Add a Continue option on the title/first scene when a save exists.
 - Keep gameplay numbers in `props`. Use `CM.log()` for anything worth seeing in the Log tab.
@@ -61,9 +61,10 @@ Note kinds you will see:
 
 ## Layout
 
-- `public/` — the editor: `common.js` (input, sound, log), `engine.js` (2D), `engine3d.js` (3D, Three.js in
-  `vendor/`), `editor.js` (notes, inspector, things, log), `app.js` (boot + hot reload), `index.html`, `style.css`.
+- `public/` — the editor: `common.js` (input, sound, log, saving), `engine.js`, `editor.js` (notes, inspector,
+  things, log), `tools.js` (Claude tab, art, level, sounds, sketch), `app.js` (boot + hot reload), `index.html`, `style.css`.
 - `server.js` — static files, notes API, SSE file watcher. `tools/notes-lib.js` — notes storage + NOTES.md writer.
 - `projects/<id>/` — one game: `game.json`, `scripts/`, `notes.json` (truth), `NOTES.md` (for you), `notes/*.png`.
-- `templates/blank-2d`, `templates/blank-3d` — what New game copies.
+- `templates/blank-2d` — what New game copies.
+- `examples/` — two finished games to copy patterns from: cave-runner (platformer), dungeon-dash (top-down). Not shown in the app; copy ideas, don't edit them.
 - `test/smoke.js` — `npm test`.

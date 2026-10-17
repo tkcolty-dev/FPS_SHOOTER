@@ -32,9 +32,9 @@ const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✓', msg); } el
     const base = `http://localhost:${port}`;
     const call = async (p, body, method) => { const r = await fetch(base + p, { method: method || (body ? 'POST' : 'GET'), headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined }); return { status: r.status, j: await r.json().catch(() => ({})), text: null }; };
     try {
-      const ps = (await call('/api/projects')).j.projects; ok(ps.some(p => p.id === pid) && ps.some(p => p.id === 'cave-runner'), 'lists games', JSON.stringify(ps));
+      const ps = (await call('/api/projects')).j.projects; ok(ps.some(p => p.id === pid), 'lists games', JSON.stringify(ps));
       const r = await fetch(base + '/'); ok(r.status === 200 && (await r.text()).includes('editor.js'), 'serves the editor page');
-      for (const f of ['/common.js', '/engine.js', '/engine3d.js', '/editor.js', '/app.js', '/style.css', '/vendor/three.module.js', `/p/${pid}/game.json`, `/p/${pid}/scripts/game.js`]) { const x = await fetch(base + f); ok(x.status === 200, 'serves ' + f); }
+      for (const f of ['/common.js', '/engine.js', '/editor.js', '/tools.js', '/app.js', '/style.css', `/p/${pid}/game.json`, `/p/${pid}/scripts/game.js`]) { const x = await fetch(base + f); ok(x.status === 200, 'serves ' + f); }
       ok((await fetch(base + '/p/../server.js')).status !== 200 && (await fetch(base + `/p/${pid}/../../server.js`)).status !== 200, 'no path escape');
       const add = await call('/api/notes', { project: pid, note: { kind: 'spot', text: 'Hole here', spot: { x: 10, y: 20, space: 'world', tile: { tx: 1, ty: 2, ch: '#', src: 'scripts/game.js:20' } } } });
       ok(add.status === 200 && add.j.note.id > 1 && add.j.note.kind === 'spot', 'POST a note', JSON.stringify(add.j));
@@ -43,9 +43,9 @@ const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✓', msg); } el
       const upd = await call('/api/notes/' + nid, { project: pid, status: 'done', reply: 'Filled it' }, 'PATCH'); ok(upd.j.note.status === 'done' && upd.j.note.reply === 'Filled it', 'PATCH a note');
       const del = await call(`/api/notes/${nid}?project=${pid}`, null, 'DELETE'); ok(del.status === 200 && (await call(`/api/notes?project=${pid}`)).j.notes.length === 1, 'DELETE a note');
       ok(fs.readFileSync(path.join(dir, 'NOTES.md'), 'utf8').includes('tile column 1, row 2') === false, 'deleted note is gone from NOTES.md');
-      const mk = await call('/api/projects', { name: 'Smoke 3D ' + Date.now(), mode: '3d' }); ok(mk.status === 200 && fs.existsSync(path.join(lib.PROJECTS, mk.j.id, 'scripts/game.js')) && JSON.parse(fs.readFileSync(path.join(lib.PROJECTS, mk.j.id, 'game.json'))).mode === '3d', 'New game from the 3D template', JSON.stringify(mk.j));
+      const mk = await call('/api/projects', { name: 'Smoke New ' + Date.now() }); ok(mk.status === 200 && fs.existsSync(path.join(lib.PROJECTS, mk.j.id, 'scripts/game.js')), 'New game from the template', JSON.stringify(mk.j));
       fs.rmSync(path.join(lib.PROJECTS, mk.j.id), { recursive: true, force: true });
-      ok((await call('/api/projects', { name: 'cave-runner' })).status === 409, 'duplicate game name is refused');
+      ok((await call('/api/projects', { name: pid })).status === 409, 'duplicate game name is refused');
       // SSE: a script save pushes a files event
       const ctrl = new AbortController(); const es = await fetch(base + `/api/events?project=${pid}`, { signal: ctrl.signal }); const reader = es.body.getReader();
       setTimeout(() => fs.appendFileSync(path.join(dir, 'scripts/game.js'), '\n// touched\n'), 300);
@@ -54,7 +54,7 @@ const ok = (c, msg, extra) => { if (c) { pass++; console.log('  ✓', msg); } el
     } finally { srv.kill(); }
 
     // engines parse and the CLI runs
-    for (const f of ['public/common.js', 'public/engine.js', 'public/engine3d.js', 'public/editor.js', 'public/app.js']) { try { new Function(fs.readFileSync(path.join(ROOT, f), 'utf8')); ok(true, f + ' parses'); } catch (e) { ok(false, f + ' parses', e.message); } }
+    for (const f of ['public/common.js', 'public/engine.js', 'public/editor.js', 'public/tools.js', 'public/app.js']) { try { new Function(fs.readFileSync(path.join(ROOT, f), 'utf8')); ok(true, f + ' parses'); } catch (e) { ok(false, f + ' parses', e.message); } }
     const { execSync } = require('child_process');
     const out = execSync(`node tools/notes.js --project ${pid}`, { cwd: ROOT }).toString(); ok(out.includes('No open notes') || out.includes('## Note'), 'CLI lists notes', out.slice(0, 100));
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }

@@ -6,16 +6,16 @@
   const App = (window.App = {});
   const params = new URLSearchParams(location.search);
   const projects = (await (await fetch('/api/projects')).json()).projects || [];
-  const sel = $('#project'); sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.name || p.id} (${p.mode || '2d'})</option>`).join('');
+  const sel = $('#project'); sel.innerHTML = projects.map(p => `<option value="${p.id}">${p.name || p.id}</option>`).join('');
   if (!projects.length) { $('#stage-wrap').innerHTML = '<div class="empty big">No games yet. Click “New game” to make one.</div>'; return; }
   let pid = params.get('p') || projects[0].id; if (!projects.some(p => p.id === pid)) pid = projects[0].id; sel.value = pid;
+  if (projects.length === 1) { sel.parentElement.hidden = true; const n = $('#projName'); n.hidden = false; n.textContent = projects[0].name || pid; }
   const project = await (await fetch(`/p/${pid}/game.json?t=${Date.now()}`)).json(); project.id = pid; App.project = project;
   document.title = `${project.name || pid} · Claude Maximizer`;
 
-  const mode = project.mode === '3d' ? '3d' : '2d';
-  if (mode === '3d') { window.THREE = await import('/vendor/three.module.js'); await loadScript('/common.js'); await loadScript('/engine3d.js'); } else { await loadScript('/common.js'); await loadScript('/engine.js'); }
+  await loadScript('/common.js'); await loadScript('/engine.js');
   const CM = window.CM; App.CM = CM;
-  CM.setup($('#game'), { width: project.width || (mode === '3d' ? 960 : 320), height: project.height || (mode === '3d' ? 540 : 180) });
+  CM.setup($('#game'), { width: project.width || 320, height: project.height || 180 });
   CM.startScene = project.start || null; CM.projectId = pid;
   async function loadSounds() { try { const r = await fetch(`/p/${pid}/sounds.json?t=${Date.now()}`); CM.loadSounds(r.ok ? await r.json() : {}); } catch { CM.loadSounds({}); } }
   await loadSounds(); App.loadSounds = loadSounds;

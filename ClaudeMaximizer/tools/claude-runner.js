@@ -11,7 +11,7 @@ const saveSessions = () => { try { fs.mkdirSync(path.dirname(SESSIONS_FILE), { r
 const ALLOWED = ['Edit', 'Write', 'Read', 'Glob', 'Grep', 'MultiEdit', 'Bash(node tools/notes.js*)', 'Bash(node tools/*)', 'Bash(npm test*)', 'Bash(ls*)', 'Bash(cat*)', 'Bash(mkdir*)'];
 
 function promptFor(pid, game, kind, text) {
-  const head = `You are working inside Claude Maximizer on the game "${game.name || pid}" (projects/${pid}, ${game.mode === '3d' ? '3D' : '2D'}). Read CLAUDE.md and docs/ENGINE.md first if you have not in this session. Edit only projects/${pid}/ unless asked otherwise. The page hot-reloads on save, so keep scripts valid at every save. Keep tunable numbers in props.`;
+  const head = `You are working inside Claude Maximizer on the game "${game.name || pid}" (projects/${pid}). Read CLAUDE.md and docs/ENGINE.md first if you have not in this session (examples/ has three finished games to copy patterns from). Edit only projects/${pid}/ unless asked otherwise. The page hot-reloads on save, so keep scripts valid at every save. Keep tunable numbers in props.`;
   if (kind === 'notes') return `${head}\n\nColton left playtest notes. Run \`node tools/notes.js --project ${pid}\` to read them (pictures are at projects/${pid}/notes/<n>.png, Read one if the words aren't enough). Fix every open note in the scripts. After each fix run \`node tools/notes.js done <n> "one short sentence saying what changed" --project ${pid}\`. If a note is unclear, use \`reply\` with a question instead of guessing. Finish with a two-sentence summary for Colton.`;
   return `${head}\n\nColton says: ${text}\n\nDo it in the game's scripts. When done, give Colton a two-sentence summary of what changed and how to try it.`;
 }

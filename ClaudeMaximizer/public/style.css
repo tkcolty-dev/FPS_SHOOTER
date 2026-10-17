@@ -23,6 +23,7 @@ code { font: 12px var(--mono); background: rgba(255,255,255,.07); padding: 1px 5
 .logo { width: 16px; height: 16px; border-radius: 5px; background: linear-gradient(135deg, #ffe58a, #ffc52e); box-shadow: 0 0 0 3px rgba(255,216,77,.18); display: inline-block; }
 .brand .mode { font: 600 11px var(--mono); color: var(--muted); background: var(--raised); padding: 2px 7px; border-radius: 6px; }
 .proj { display: flex; align-items: center; gap: 8px; }
+#projName { font-weight: 600; font-size: 14px; padding: 0 4px; }
 .select-wrap { position: relative; }
 .select-wrap::after { content: ''; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
 select { font: 500 13px var(--font); color: var(--text); background: var(--raised); border: 1px solid var(--line); border-radius: 10px; padding: 7px 30px 7px 12px; appearance: none; -webkit-appearance: none; transition: border-color .15s, background .15s; }

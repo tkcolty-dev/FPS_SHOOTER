@@ -3,12 +3,12 @@
 //                               node tools/notes.js done 3 "made bats slower"   → close note 3 with a reply the player sees
 //                               node tools/notes.js reply 3 "which bat?"        → reply without closing
 //                               node tools/notes.js all | json                  → everything, or raw JSON
-//                               node tools/notes.js new "Space Dogs" [--3d]     → make a new game from a template
+//                               node tools/notes.js new "Space Dogs"            → make a new game from the template
 // Add --project <id> when more than one game exists.
 const fs = require('fs'), path = require('path');
 const lib = require('./notes-lib');
 const args = process.argv.slice(2); const flag = (n, d) => { const i = args.indexOf('--' + n); if (i < 0) return d; const v = args[i + 1]; args.splice(i, 2); return v === undefined ? true : v; };
-const want3d = !!flag('3d', false); let pidFlag = flag('project', null);
+let pidFlag = flag('project', null);
 const projects = fs.existsSync(lib.PROJECTS) ? fs.readdirSync(lib.PROJECTS).filter(d => fs.existsSync(path.join(lib.PROJECTS, d, 'game.json'))) : [];
 const cmd = args[0] || 'open';
 
@@ -16,9 +16,9 @@ if (cmd === 'new') {
   const name = args[1]; if (!name) die('Give the game a name: node tools/notes.js new "Space Dogs"');
   const id = name.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
   const dir = path.join(lib.PROJECTS, id); if (fs.existsSync(dir)) die(`projects/${id} already exists`);
-  fs.cpSync(path.join(__dirname, '..', 'templates', want3d ? 'blank-3d' : 'blank-2d'), dir, { recursive: true });
+  fs.cpSync(path.join(__dirname, '..', 'templates', 'blank-2d'), dir, { recursive: true });
   const g = JSON.parse(fs.readFileSync(path.join(dir, 'game.json'), 'utf8')); g.name = name; fs.writeFileSync(path.join(dir, 'game.json'), JSON.stringify(g, null, 2));
-  console.log(`Made projects/${id} (${want3d ? '3D' : '2D'}). Open http://localhost:4990/?p=${id}`); process.exit(0);
+  console.log(`Made projects/${id}. Open http://localhost:4990/?p=${id}`); process.exit(0);
 }
 function pickProject() {
   if (pidFlag) { if (!projects.includes(pidFlag)) die(`No game "${pidFlag}". Games: ${projects.join(', ')}`); return [pidFlag]; }

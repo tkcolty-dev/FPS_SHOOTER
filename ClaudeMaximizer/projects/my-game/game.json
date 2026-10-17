@@ -1,0 +1,10 @@
+{
+  "name": "My Game",
+  "mode": "2d",
+  "width": 320,
+  "height": 180,
+  "start": "main",
+  "scripts": [
+    "scripts/game.js"
+  ]
+}

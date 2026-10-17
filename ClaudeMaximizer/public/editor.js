@@ -14,7 +14,6 @@
     CM = cm; A = cm.adapter; E.project = project;
     stage = $('#stage'); game = $('#game'); overlay = $('#overlay'); octx = overlay.getContext('2d'); domOverlay = $('#dom-overlay'); popover = $('#popover'); toastEl = $('#toast');
     hoverChip = document.createElement('div'); hoverChip.className = 'chip hover'; hoverChip.hidden = true; domOverlay.appendChild(hoverChip);
-    $('#brandMode').textContent = A.mode === '3d' ? '3D' : '2D';
     bindToolbar(); bindPointer(); bindKeys(); bindTabs();
     CM.on('frame', drawOverlay); CM.on('log', onLog); CM.on('error', onError);
     CM.on('scene', () => { E.selected = null; E.tweaks.clear(); if (E.tab === 'inspect') renderInspector(); if (E.tab === 'things') renderThings(); });
@@ -27,9 +26,7 @@
   // ---------- layout ----------
   function fit() {
     const wrap = $('#stage-wrap'); const aw = wrap.clientWidth - 40, ah = wrap.clientHeight - 112;
-    let w, h;
-    if (A.mode === '3d') { w = Math.max(320, aw); h = Math.max(200, ah); if (CM.resize) CM.resize(Math.round(w), Math.round(h)); }
-    else { const s = Math.max(1, Math.floor(Math.min(aw / CM.W, ah / CM.H))); w = CM.W * s; h = CM.H * s; }
+    const s = Math.max(1, Math.floor(Math.min(aw / CM.W, ah / CM.H))); const w = CM.W * s, h = CM.H * s;
     stage.style.width = w + 'px'; stage.style.height = h + 'px';
     // the overlay draws at screen resolution (crisp text) but in the game's logical coordinates
     const dpr = Math.min(3, window.devicePixelRatio || 1); overlay.width = Math.round(w * dpr); overlay.height = Math.round(h * dpr);
@@ -44,7 +41,7 @@
   function bindToolbar() {
     $$('[data-t]').forEach(b => b.onclick = () => action(b.dataset.t));
     $('#project').onchange = e => { location.search = '?p=' + encodeURIComponent(e.target.value); };
-    $('#newproj').onclick = async () => { const name = prompt('Name for the new game:'); if (!name) return; const mode = confirm('Make it 3D?\n\nOK = 3D, Cancel = 2D pixel art') ? '3d' : '2d'; const r = await api('POST', '/api/projects', { name, mode }); if (r.error) return toast(r.error, 'err'); location.search = '?p=' + encodeURIComponent(r.id); };
+    $('#newproj').onclick = async () => { const name = prompt('Name for the new game:'); if (!name) return; const r = await api('POST', '/api/projects', { name }); if (r.error) return toast(r.error, 'err'); location.search = '?p=' + encodeURIComponent(r.id); };
     const sp = $('#speed'); sp.oninput = () => { CM.speed = +sp.value; $('#speedLabel').textContent = CM.speed.toFixed(1) + '×'; };
     $('#helpClose').onclick = () => { $('#help').hidden = true; }; $('#help').onclick = e => { if (e.target === $('#help')) $('#help').hidden = true; };
   }

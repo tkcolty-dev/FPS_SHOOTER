@@ -1,6 +1,0 @@
-{
-  "name": "New 3D Game",
-  "mode": "3d",
-  "start": "main",
-  "scripts": ["scripts/game.js"]
-}

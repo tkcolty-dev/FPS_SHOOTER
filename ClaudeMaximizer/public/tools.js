@@ -67,7 +67,7 @@
   E.onTab.tools = renderTools;
   function renderTools() {
     const { A } = E.get(); const box = $('#tab-tools');
-    const subs = [['art', A.mode === '3d' ? 'Models' : 'Sprites'], ...(A.mode === '2d' ? [['level', 'Level']] : []), ['sounds', 'Sounds']];
+    const subs = [['art', 'Sprites'], ['level', 'Level'], ['sounds', 'Sounds']];
     box.innerHTML = `<div class="seg">${subs.map(([k, l]) => `<button type="button" data-sub="${k}" class="${T.sub === k ? 'on' : ''}">${l}</button>`).join('')}</div><div id="toolBody"></div>`;
     $$('[data-sub]', box).forEach(b => b.onclick = () => { T.sub = b.dataset.sub; renderTools(); });
     if (!subs.some(s => s[0] === T.sub)) T.sub = 'art';
@@ -77,18 +77,17 @@
   // ---------------- Art editor (pixels for 2D sprites, voxel layers for 3D models) ----------------
   const ART = { name: null, kind: 'sprite', frames: [], palette: {}, fps: 8, size: 0.2, cur: 0, tool: 'pen', ch: 'Y', dirty: false, drawing: false };
   const FREE_CHARS = '0123456789acefhijklmopqtuvxzACEFHIJQUVXZ'.split('');
-  function artList() { const { CM, A } = E.get(); if (A.mode === '3d') return Object.values(CM.defs.models).filter(m => m.voxels).map(m => ({ name: m.name, src: m.src })); return Object.values(CM.defs.sprites).map(s => ({ name: s.name, src: s.src, frames: s.frames.length })); }
+  function artList() { const { CM } = E.get(); return Object.values(CM.defs.sprites).map(s => ({ name: s.name, src: s.src, frames: s.frames.length })); }
   function loadArt(name) {
-    const { CM, A } = E.get(); ART.name = name; ART.dirty = false; ART.cur = 0;
-    if (A.mode === '3d') { const m = CM.defs.models[name]; ART.kind = 'model'; ART.frames = m.voxels.map(l => (typeof l === 'string' ? l.split('\n') : l).map(r => r)); ART.size = m.size || 0.2; ART.palette = { ...(m.palette || {}) }; }
-    else { const s = CM.defs.sprites[name]; ART.kind = 'sprite'; ART.frames = s.frames.map(f => f.map(r => r)); ART.fps = s.fps; ART.palette = {}; for (const [k, v] of Object.entries(s.palette)) if (CM.PALETTE[k] !== v) ART.palette[k] = v; }
+    const { CM } = E.get(); ART.name = name; ART.dirty = false; ART.cur = 0;
+    const s = CM.defs.sprites[name]; ART.kind = 'sprite'; ART.frames = s.frames.map(f => f.map(r => r)); ART.fps = s.fps; ART.palette = {}; for (const [k, v] of Object.entries(s.palette)) if (CM.PALETTE[k] !== v) ART.palette[k] = v;
     normalize();
   }
   function normalize() { const w = Math.max(1, ...ART.frames.flat().map(r => r.length)); ART.frames = ART.frames.map(f => f.map(r => r.padEnd(w, '.'))); const h = Math.max(...ART.frames.map(f => f.length)); ART.frames = ART.frames.map(f => { while (f.length < h) f.push('.'.repeat(w)); return f; }); }
   const artW = () => ART.frames[0] ? ART.frames[0][0].length : 0, artH = () => ART.frames[0] ? ART.frames[0].length : 0;
   const colorOf = ch => { const { CM } = E.get(); return ART.palette[ch] || CM.PALETTE[ch] || null; };
   function renderArt() {
-    const { CM, A } = E.get(); const body = $('#toolBody'); const list = artList(); const is3d = A.mode === '3d';
+    const { CM } = E.get(); const body = $('#toolBody'); const list = artList(); const is3d = false;
     if (ART.name && !list.some(x => x.name === ART.name)) ART.name = null;
     if (!ART.name && list.length) loadArt(list[0].name);
     body.innerHTML = `<div class="art-list"><select id="artPick" aria-label="Which one">${list.map(x => `<option value="${esc(x.name)}" ${x.name === ART.name ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select><button type="button" class="btn" id="artNew">${ICON('plus')}New</button></div>
@@ -153,9 +152,8 @@
   }
   // show the drawing in the running game immediately (the file is only written on Save)
   function applyArtLive() {
-    const { CM, A } = E.get();
-    if (ART.kind === 'sprite') { if (CM.defs.sprites[ART.name]) { const src = CM.defs.sprites[ART.name].src; CM.sprite(ART.name, { fps: ART.fps, frames: ART.frames.map(f => f.slice()), palette: ART.palette }); CM.defs.sprites[ART.name].src = src; } }
-    else if (CM.defs.models[ART.name]) { const src = CM.defs.models[ART.name].src; CM.model(ART.name, { size: ART.size, voxels: ART.frames.map(f => f.slice()), palette: ART.palette }); CM.defs.models[ART.name].src = src; for (const e of A.list()) if (e.model === ART.name) e.build(); }
+    const { CM } = E.get();
+    if (CM.defs.sprites[ART.name]) { const src = CM.defs.sprites[ART.name].src; CM.sprite(ART.name, { fps: ART.fps, frames: ART.frames.map(f => f.slice()), palette: ART.palette }); CM.defs.sprites[ART.name].src = src; }
   }
   async function saveArt() {
     const body = { project: pid(), name: ART.name, kind: ART.kind, palette: ART.palette, fps: ART.fps, size: ART.size }; if (ART.kind === 'model') body.voxels = ART.frames; else body.frames = ART.frames;
