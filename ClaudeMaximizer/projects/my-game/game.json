@@ -1,10 +1,12 @@
 {
-  "name": "My Game",
+  "name": "Slime Siege",
   "mode": "2d",
   "width": 320,
   "height": 180,
-  "start": "main",
+  "start": "title",
   "scripts": [
-    "scripts/game.js"
+    "scripts/sprites.js",
+    "scripts/entities.js",
+    "scripts/scenes.js"
   ]
 }

@@ -140,8 +140,20 @@
   }
 
   // ---------- drawing helpers (screen or world space depending on where you call them) ----------
+  // built-in 5×7 pixel font: crisp at any zoom, no font files. Each glyph is 7 rows, one hex byte per row.
+  const FONT = {'A':'0e11111f111111','B':'1e11111e11111e','C':'0e11101010110e','D':'1e11111111111e','E':'1f10101e10101f','F':'1f10101e101010','G':'0e11101711110f','H':'1111111f111111','I':'0e04040404040e','J':'0702020202120c','K':'11121418141211','L':'1010101010101f','M':'111b1515111111','N':'11111915131111','O':'0e11111111110e','P':'1e11111e101010','Q':'0e11111115120d','R':'1e11111e141211','S':'0f10100e01011e','T':'1f040404040404','U':'1111111111110e','V':'11111111110a04','W':'1111111515150a','X':'11110a040a1111','Y':'11110a04040404','Z':'1f01020408101f','0':'0e11131519110e','1':'040c040404040e','2':'0e11010204081f','3':'1e01010e01011e','4':'02060a121f0202','5':'1f101e0101110e','6':'0608101e11110e','7':'1f010204080808','8':'0e11110e11110e','9':'0e11110f01020c','.':'00000000000c0c',',':'000000000c0408','!':'04040404040004','?':'0e110102040004',':':'000c0c000c0c00','-':'0000001f000000','+':'0004041f040400','/':'01020204080810','%':'191a0204080b13',"'":'04040800000000','(':'02040808080402',')':'08040202020408','·':'00000004000000','×':'00110a040a1100','<':'02040810080402','>':'08040201020408','=':'00001f001f0000','#':'0a0a1f0a1f0a0a','"':'0a0a0000000000','_':'0000000000001f','*':'00150e1f0e1500','→':'0004021f020400','↓':'040404150e0400','↑':'040e1504040400'};
+  const glyph = ch => { const g = FONT[ch] || FONT[ch.toUpperCase()]; return g ? g.match(/../g).map(h => parseInt(h, 16)) : null; };
+  // size ≈ pixel height you ask for; it snaps to whole pixels (7 → 1×, 14 → 2×) so text stays sharp
+  CM.textWidth = (str, size) => { const k = Math.max(1, Math.round((size || 8) / 7)); return String(str).length * 6 * k - k; };
   CM.draw = {
-    text(ctx, str, x, y, o) { o = o || {}; ctx.save(); ctx.font = `${o.bold ? 'bold ' : ''}${o.size || 8}px ${o.font || '"Press Start 2P", monospace'}`; ctx.textAlign = o.align || 'left'; ctx.textBaseline = o.baseline || 'top'; if (o.shadow !== false) { ctx.fillStyle = o.shadow || 'rgba(0,0,0,.6)'; ctx.fillText(str, x + 1, y + 1); } ctx.fillStyle = o.color || '#fff'; ctx.fillText(str, x, y); ctx.restore(); },
+    text(ctx, str, x, y, o) {
+      o = o || {}; str = String(str); if (o.font) { ctx.save(); ctx.font = `${o.size || 8}px ${o.font}`; ctx.textAlign = o.align || 'left'; ctx.textBaseline = o.baseline || 'top'; ctx.fillStyle = o.color || '#fff'; ctx.fillText(str, x, y); ctx.restore(); return; }
+      const k = Math.max(1, Math.round((o.size || 8) / 7)), w = CM.textWidth(str, o.size);
+      let x0 = Math.round(o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x), y0 = Math.round(o.baseline === 'middle' ? y - 3.5 * k : o.baseline === 'bottom' ? y - 7 * k : y);
+      const draw = (dx, dy, color) => { ctx.fillStyle = color; let cx = x0 + dx; for (const ch of str) { const g = glyph(ch); if (g) for (let r = 0; r < 7; r++) { const row = g[r]; if (!row) continue; for (let c = 0; c < 5; c++) if (row & (16 >> c)) ctx.fillRect(cx + c * k, y0 + dy + r * k, k, k); } cx += 6 * k; } };
+      if (o.shadow !== false) draw(k, k, o.shadow || 'rgba(0,0,0,.55)');
+      draw(0, 0, o.color || '#fff');
+    },
     bar(ctx, x, y, w, h, pct, o) { o = o || {}; ctx.fillStyle = o.bg || 'rgba(0,0,0,.5)'; ctx.fillRect(x, y, w, h); ctx.fillStyle = o.color || '#49c94c'; ctx.fillRect(x + 1, y + 1, Math.max(0, Math.min(1, pct)) * (w - 2), h - 2); },
     rect(ctx, x, y, w, h, color) { ctx.fillStyle = color; ctx.fillRect(x, y, w, h); },
     sprite(ctx, name, x, y, o) { const sp = sprites[name]; if (!sp) return; o = o || {}; const c = sp.canvases[(o.frame || 0) % sp.canvases.length], s = o.scale || 1; ctx.save(); if (o.flip) { ctx.translate(x + sp.w * s, y); ctx.scale(-1, 1); ctx.drawImage(c, 0, 0, sp.w * s, sp.h * s); } else ctx.drawImage(c, x, y, sp.w * s, sp.h * s); ctx.restore(); },
@@ -306,8 +318,8 @@
     ctx.globalAlpha = 1;
   }
   function drawBubble(e, ctx) {
-    const t = e.bubble.text; ctx.save(); ctx.font = '7px "Press Start 2P", monospace'; const w = ctx.measureText(t).width + 8, h = 13; let bx = Math.round(e.cx - w / 2), by = Math.round(e.y - h - 5);
-    ctx.fillStyle = '#fff'; ctx.fillRect(bx, by, w, h); ctx.fillRect(Math.round(e.cx) - 2, by + h, 4, 2); ctx.fillStyle = '#222'; ctx.textBaseline = 'top'; ctx.fillText(t, bx + 4, by + 3); ctx.restore();
+    const t = e.bubble.text.toUpperCase(); const w = CM.textWidth(t, 7) + 6, h = 11; const bx = Math.round(e.cx - w / 2), by = Math.round(e.y - h - 4);
+    ctx.fillStyle = '#fff'; ctx.fillRect(bx, by, w, h); ctx.fillRect(Math.round(e.cx) - 1, by + h, 3, 2); CM.draw.text(ctx, t, bx + 3, by + 2, { size: 7, color: '#222', shadow: false });
   }
 
   // ---------- helpers for notes/editor ----------
