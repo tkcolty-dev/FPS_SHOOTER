@@ -90,12 +90,16 @@ const cfg = pgConfig();
 const store = cfg ? pgStore(cfg) : fileStore();
 
 const rid = (n) => crypto.randomBytes(n).toString('base64url');
+// 0–3 stars for how much it's wanted. Older items used `want` (3 meant starred).
+const starCount = (v) => Math.min(3, Math.max(0, Math.round(Number(v) || 0)));
+const starsOf = (it) => it.stars ?? (it.want === 3 ? 3 : 0);
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 // Owners never see who's buying what — that would spoil the surprise.
 function view(list, owner) {
   const items = list.items.map((it) => {
-    const { claim, ...rest } = it;
+    const { claim, want, ...rest } = it;
+    rest.stars = starsOf(it);
     return owner ? rest : { ...rest, claimedBy: claim ? claim.by : null };
   });
   return { id: list.id, name: list.name, birthday: list.birthday, emoji: list.emoji, owner, items };
@@ -220,7 +224,7 @@ app.post('/api/lists/:id/items', wrap(async (req, res) => {
     if (/https?:\/\//i.test(text) || !text) return res.status(400).json({ error: e.message });
     info = { url: 'https://www.amazon.com/s?k=' + encodeURIComponent(text), title: text, image: null, price: null, store: 'Amazon search' };
   }
-  const item = { id: rid(6), ...info, note: str(req.body.note, 300), want: req.body.star ? 3 : 2, addedAt: Date.now(), claim: null };
+  const item = { id: rid(6), ...info, note: str(req.body.note, 300), stars: starCount(req.body.stars), addedAt: Date.now(), claim: null };
   list.items.unshift(item);
   await store.put(list);
   res.json(view(list, true));
@@ -275,7 +279,10 @@ app.patch('/api/lists/:id/items/:item', wrap(async (req, res) => {
   if ('title' in req.body) it.title = str(req.body.title, 200) || it.title;
   if ('price' in req.body) it.price = str(req.body.price, 20) || null;
   if ('note' in req.body) it.note = str(req.body.note, 300);
-  if ('want' in req.body) it.want = Math.min(3, Math.max(1, Number(req.body.want) || 2));
+  if ('stars' in req.body) {
+    it.stars = starCount(req.body.stars);
+    delete it.want;
+  }
   await store.put(list);
   res.json(view(list, true));
 }));

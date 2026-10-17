@@ -88,6 +88,13 @@ function wireEmojiPicker(root, onPick) {
   );
 }
 
+const STAR_WORDS = ['', 'Would like', 'Really want', 'Want SO much'];
+function starPicker(n) {
+  return `<div class="stars" role="group" aria-label="How much I want it">${[1, 2, 3]
+    .map((i) => `<button type="button" data-stars="${i}" class="${i <= n ? 'on' : ''}" title="${STAR_WORDS[i]}">${i <= n ? '★' : '☆'}</button>`)
+    .join('')}<span>${n ? STAR_WORDS[n] : 'Tap to rate'}</span></div>`;
+}
+
 // ---------------- home ----------------
 function renderHome() {
   document.title = 'Birthday List';
@@ -178,7 +185,7 @@ function renderList() {
       : `<p class="hint">🤫 ${esc(list.name === 'My' ? 'They' : list.name)} can't see who's getting what — tap <b>I'll get this</b> so nobody buys the same thing.</p>`}
     <section class="grid" id="grid">
       ${Array.from({ length: state.adding }, () => `<article class="item loading"><div class="pic"></div><div class="body"><div class="bar"></div><div class="bar" style="width:60%"></div></div></article>`).join('')}
-      ${[...list.items].sort((a, b) => (b.want === 3) - (a.want === 3)).map((it) => itemCard(it, owner)).join('')}
+      ${[...list.items].sort((a, b) => b.stars - a.stars).map((it) => itemCard(it, owner)).join('')}
     </section>
     ${!list.items.length && !state.adding
       ? owner
@@ -192,11 +199,10 @@ function renderList() {
 function itemCard(it, owner) {
   const mine = claims()[it.id];
   const taken = !owner && it.claimedBy && !mine;
-  const star = it.want === 3;
-  return `<article class="item ${taken ? 'taken' : ''}" data-id="${it.id}">
+  return `<article class="item ${taken ? 'taken' : ''}" data-id="${it.id}" data-level="${it.stars}">
     <div class="pic">
       ${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="noimg">🎁</div>`}
-      ${star ? `<span class="ribbon">⭐ Really want</span>` : ''}
+      ${it.stars ? `<span class="ribbon">${'⭐'.repeat(it.stars)} ${STAR_WORDS[it.stars]}</span>` : ''}
     </div>
     ${owner ? `<div class="tools">${it.search || it.store === 'Amazon search' ? `<button data-act="swap" title="Show a different one">🔄</button>` : ''}<button data-act="edit" title="Edit">✏️</button><button data-act="del" title="Remove">🗑️</button></div>` : ''}
     <div class="body">
@@ -206,7 +212,7 @@ function itemCard(it, owner) {
         ${it.price ? `<span class="price">${esc(it.price)}</span>` : `<span class="price none">No price</span>`}
         <span class="store">${esc(it.store || '')}</span>
       </div>
-      ${owner ? `<button class="star ${star ? 'on' : ''}" data-act="star">${star ? '⭐ Really want' : '☆ Mark as really want'}</button>` : ''}
+      ${owner ? starPicker(it.stars) : ''}
       ${owner ? '' : `<div class="claim">${
         mine ? `<div class="mine-tag">🎁 You're getting this <button data-act="unclaim">undo</button></div>`
         : taken ? `<div class="taken-tag">✓ ${esc(it.claimedBy)} is getting this</div>`
@@ -248,9 +254,12 @@ function wireList() {
     const it = list.items.find((i) => i.id === card.dataset.id);
     const act = e.target.closest('[data-act]')?.dataset.act;
     try {
-      if (act === 'star') {
-        await ownerSave('PATCH', `/items/${it.id}`, { want: it.want === 3 ? 2 : 3 });
-        if (it.want !== 3) toast('⭐ Marked as really want');
+      const st = e.target.closest('[data-stars]');
+      if (st) {
+        // Tapping the star you're already on clears it.
+        const n = Number(st.dataset.stars) === it.stars ? 0 : Number(st.dataset.stars);
+        await ownerSave('PATCH', `/items/${it.id}`, { stars: n });
+        toast(n ? `${'⭐'.repeat(n)} ${STAR_WORDS[n]}` : 'Stars cleared');
       } else if (act === 'del') {
         if (!confirm(`Remove "${it.title.slice(0, 60)}"?`)) return;
         await ownerSave('DELETE', `/items/${it.id}`);
@@ -390,14 +399,20 @@ async function uploadPhoto(itemId, file) {
 const photoInput = (attrs = '') => `<label class="btn ghost photo-btn" ${attrs}>📷 Use my own photo<input type="file" accept="image/*" hidden></label>`;
 
 function pickModal(name) {
-  let star = false;
+  let stars = 0;
   modal(`<h2>Pick the one you want</h2>
     <p class="small">Results for <b>${esc(name)}</b> on Amazon. Tap one to add it.</p>
-    <label class="starpick"><input type="checkbox" name="star"> ⭐ I really want this</label>
+    <div class="starpick"><span>How much do you want it?</span>${starPicker(0)}</div>
     <div class="picks"><div class="small" style="grid-column:1/-1;padding:30px 0;text-align:center">Searching Amazon…</div></div>
     <div class="foot wrap">${photoInput()}<button class="btn ghost" data-plain>Just add the name</button><button class="btn ghost" data-close>Cancel</button></div>`, (m, close) => {
     m.classList.add('wide');
-    m.querySelector('[name="star"]').onchange = (e) => (star = e.target.checked);
+    const sp = m.querySelector('.starpick');
+    sp.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-stars]');
+      if (!b) return;
+      stars = Number(b.dataset.stars) === stars ? 0 : Number(b.dataset.stars);
+      sp.querySelector('.stars').outerHTML = starPicker(stars);
+    });
     const picks = m.querySelector('.picks');
     let results = [];
     api('GET', `/api/search?q=${encodeURIComponent(name)}`)
@@ -415,17 +430,17 @@ function pickModal(name) {
       const b = e.target.closest('.pick');
       if (!b) return;
       close();
-      await addOne({ pick: results[b.dataset.i], star });
+      await addOne({ pick: results[b.dataset.i], stars });
     });
     m.querySelector('[data-plain]').onclick = async () => {
       close();
-      await addOne({ name, plain: true, star });
+      await addOne({ name, plain: true, stars });
     };
     m.querySelector('.photo-btn input').onchange = async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       close();
-      const id = await addOne({ name, plain: true, star });
+      const id = await addOne({ name, plain: true, stars });
       if (id) await uploadPhoto(id, file).catch((err) => toast(err.message));
     };
   });
