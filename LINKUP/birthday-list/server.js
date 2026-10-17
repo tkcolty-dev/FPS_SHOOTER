@@ -95,12 +95,11 @@ const starCount = (v) => Math.min(3, Math.max(0, Math.round(Number(v) || 0)));
 const starsOf = (it) => it.stars ?? (it.want === 3 ? 3 : 0);
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
-// Owners never see who's buying what — that would spoil the surprise.
 function view(list, owner) {
   const items = list.items.map((it) => {
     const { claim, want, ...rest } = it;
     rest.stars = starsOf(it);
-    return owner ? rest : { ...rest, claimedBy: claim ? claim.by : null };
+    return rest;
   });
   return { id: list.id, name: list.name, birthday: list.birthday, emoji: list.emoji, owner, items };
 }
@@ -227,7 +226,7 @@ app.post('/api/lists/:id/items', wrap(async (req, res) => {
     if (/https?:\/\//i.test(text) || !text) return res.status(400).json({ error: e.message });
     info = { url: 'https://www.amazon.com/s?k=' + encodeURIComponent(text), title: text, image: null, price: null, store: 'Amazon search' };
   }
-  const item = { id: rid(6), ...info, note: str(req.body.note, 300), stars: starCount(req.body.stars), addedAt: Date.now(), claim: null };
+  const item = { id: rid(6), ...info, note: str(req.body.note, 300), stars: starCount(req.body.stars), addedAt: Date.now() };
   list.items.unshift(item);
   await store.put(list);
   res.json(view(list, true));
@@ -296,31 +295,6 @@ app.delete('/api/lists/:id/items/:item', wrap(async (req, res) => {
   list.items = list.items.filter((i) => i.id !== req.params.item);
   await store.put(list);
   res.json(view(list, true));
-}));
-
-// Family/friends: "I'm getting this". The token lets the same person undo it later.
-app.post('/api/lists/:id/items/:item/claim', wrap(async (req, res) => {
-  const list = await load(req, res);
-  if (!list) return;
-  const it = list.items.find((i) => i.id === req.params.item);
-  if (!it) return res.status(404).json({ error: 'Item not found' });
-  if (it.claim) return res.status(409).json({ error: `${it.claim.by} is already getting this` });
-  const by = str(req.body.by, 40);
-  if (!by) return res.status(400).json({ error: 'Add your name first' });
-  it.claim = { by, token: rid(12), at: Date.now() };
-  await store.put(list);
-  res.json({ ...view(list, false), token: it.claim.token });
-}));
-
-app.delete('/api/lists/:id/items/:item/claim', wrap(async (req, res) => {
-  const list = await load(req, res);
-  if (!list) return;
-  const it = list.items.find((i) => i.id === req.params.item);
-  if (!it || !it.claim) return res.json(view(list, false));
-  if (it.claim.token !== req.get('x-claim')) return res.status(403).json({ error: `Only ${it.claim.by} can undo that` });
-  it.claim = null;
-  await store.put(list);
-  res.json(view(list, false));
 }));
 
 app.get('/l/:id', sendPage);

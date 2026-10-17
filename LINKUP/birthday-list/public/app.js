@@ -20,7 +20,6 @@ function saveMine(list, key) {
   all[list.id] = { key: key || all[list.id]?.key, name: list.name, emoji: list.emoji };
   ls('bl:lists', all);
 }
-const claims = () => ls('bl:claims') || {};
 
 async function api(method, url, body, headers = {}) {
   const r = await fetch(url, {
@@ -182,7 +181,7 @@ function renderList() {
       </form>
       <p class="hint">${state.error ? `<span class="err">${esc(state.error)}</span>` : 'Type what you want (like <i>LEGO Technic set</i>) and pick it from pictures, or paste an Amazon link.'}
         <button class="linkish" data-act="bulk">Add a whole list at once</button></p>`
-      : `<p class="hint">🤫 ${esc(list.name === 'My' ? 'They' : list.name)} can't see who's getting what — tap <b>I'll get this</b> so nobody buys the same thing.</p>`}
+      : `<p class="hint">Tap any item to see it on Amazon.</p>`}
     <section class="grid" id="grid">
       ${Array.from({ length: state.adding }, () => `<article class="item loading"><div class="pic"></div><div class="body"><div class="bar"></div><div class="bar" style="width:60%"></div></div></article>`).join('')}
       ${[...list.items].sort((a, b) => b.stars - a.stars).map((it) => itemCard(it, owner)).join('')}
@@ -197,9 +196,7 @@ function renderList() {
 }
 
 function itemCard(it, owner) {
-  const mine = claims()[it.id];
-  const taken = !owner && it.claimedBy && !mine;
-  return `<article class="item ${taken ? 'taken' : ''}" data-id="${it.id}" data-level="${it.stars}">
+  return `<article class="item" data-id="${it.id}" data-level="${it.stars}">
     <div class="pic">
       ${it.image ? `<img src="${esc(it.image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="noimg">🎁</div>`}
       ${it.stars ? `<span class="ribbon">${'⭐'.repeat(it.stars)} ${STAR_WORDS[it.stars]}</span>` : ''}
@@ -213,10 +210,6 @@ function itemCard(it, owner) {
         <span class="store">${esc(it.store || '')}</span>
       </div>
       ${owner ? starPicker(it.stars) : ''}
-      ${owner ? '' : `<div class="claim">${
-        mine ? `<div class="mine-tag">🎁 You're getting this <button data-act="unclaim">undo</button></div>`
-        : taken ? `<div class="taken-tag">✓ ${esc(it.claimedBy)} is getting this</div>`
-        : `<button class="btn ghost" data-act="claim">I'll get this 🎁</button>`}</div>`}
     </div>
   </article>`;
 }
@@ -270,15 +263,6 @@ function wireList() {
         toast('Found a different one');
       } else if (act === 'edit') {
         editModal(it);
-      } else if (act === 'claim') {
-        claimModal(it);
-      } else if (act === 'unclaim') {
-        const token = claims()[it.id];
-        state.list = await api('DELETE', `/api/lists/${list.id}/items/${it.id}/claim`, null, { 'x-claim': token });
-        const c = claims();
-        delete c[it.id];
-        ls('bl:claims', c);
-        renderList();
       }
     } catch (err) {
       toast(err.message);
@@ -484,7 +468,7 @@ function bulkModal() {
 function shareModal() {
   const url = `${location.origin}/l/${state.list.id}`;
   modal(`<h2>Share your list 📤</h2>
-    <p class="small">Send this link to family and friends. They can see your wishes and mark what they're buying — you won't see who's getting what.</p>
+    <p class="small">Send this link to family and friends. They can see your wishes and stars, but they can't change anything.</p>
     <div class="copyrow"><input class="field" readonly value="${esc(url)}"><button class="btn" data-copy>Copy</button></div>
     ${navigator.share ? `<button class="btn ghost wide" style="margin-top:10px" data-native>Send with Messages, email…</button>` : ''}
     <div class="foot"><button class="btn ghost" data-close>Done</button></div>`, (m) => {
@@ -555,34 +539,6 @@ function editModal(it) {
         close();
       } catch (err) {
         toast(err.message);
-      }
-    });
-  });
-}
-
-function claimModal(it) {
-  modal(`<h2>You're getting this? 🎁</h2>
-    <p class="small">${esc(it.title.slice(0, 120))}</p>
-    <form class="stack">
-      <div><label class="small">Your name (so others know it's taken)</label><input class="field" name="by" maxlength="40" value="${esc(ls('bl:me') || '')}" placeholder="Grandma" required></div>
-      <div class="foot"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn">Yes, I'll get it</button></div>
-    </form>`, (m, close) => {
-    const f = m.querySelector('form');
-    f.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      try {
-        const by = f.by.value.trim();
-        ls('bl:me', by);
-        const res = await api('POST', `/api/lists/${state.list.id}/items/${it.id}/claim`, { by });
-        ls('bl:claims', { ...claims(), [it.id]: res.token });
-        state.list = res;
-        close();
-        renderList();
-        confetti();
-      } catch (err) {
-        toast(err.message);
-        close();
-        renderListPage(state.list.id);
       }
     });
   });

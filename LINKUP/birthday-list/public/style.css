@@ -108,12 +108,6 @@ h1, h2, .display { font-family: Fraunces, Georgia, serif; font-weight: 800; lett
 .tools button { width: 34px; height: 34px; border-radius: 10px; border: 0; background: rgba(255, 255, 255, .92); box-shadow: 0 1px 4px rgba(0, 0, 0, .15); font-size: 15px; color: #2a1b14; }
 .ribbon { position: absolute; top: 10px; left: 10px; background: var(--gold); color: #2a1b14; font-size: 12px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
 
-.claim { margin-top: 4px; }
-.claim .btn { width: 100%; padding: 10px; }
-.item.taken .pic, .item.taken .name { opacity: .45; }
-.taken-tag { text-align: center; font-size: 14px; font-weight: 700; color: var(--muted); padding: 10px; border-radius: 12px; background: var(--bg); }
-.mine-tag { text-align: center; font-size: 14px; font-weight: 700; color: var(--green); padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--green) 12%, transparent); }
-.mine-tag button { border: 0; background: none; color: var(--muted); text-decoration: underline; font-weight: 500; font-size: 13px; }
 
 .loading .pic { background: linear-gradient(90deg, var(--line), var(--soft), var(--line)); background-size: 200% 100%; animation: shimmer 1.2s linear infinite; }
 .loading .bar { height: 12px; border-radius: 6px; background: var(--line); }
