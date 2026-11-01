@@ -190,9 +190,11 @@ function giftsPage() {
 
 function personCard(g) {
   return `<section class="card glass fx">
-    <div class="card-head"><h2>${esc(g.name)}</h2>${g.items.length ? `<span class="badge">${g.items.length}</span>` : ''}</div>
-    ${g.items.length ? `<ul class="rows">${g.items.map(giftRow).join('')}</ul>` : ''}
-    <button class="card-add" data-add-for="${esc(g.name)}" aria-label="Add a gift for ${esc(g.name)}">+ Add gift</button>
+    <div class="card-head">
+      <h2>${esc(g.name)}</h2>
+      <button class="card-add" data-add-for="${esc(g.name)}" aria-label="Add a gift for ${esc(g.name)}">+ Add gift</button>
+    </div>
+    ${g.items.length ? `<ul class="rows">${g.items.map(giftRow).join('')}</ul>` : `<p class="none">No gifts yet</p>`}
   </section>`;
 }
 

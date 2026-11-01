@@ -99,21 +99,20 @@ label.lbl { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 60
 .summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 8px 10px; font-size: 14px; text-shadow: 0 1px 8px rgba(4, 8, 40, .9); }
 .summary .textbtn { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
 
-/* One card per person: their gifts, then a clear way to add another. */
-.cards { columns: 3 270px; column-gap: 14px; }
-.card, .new-person { break-inside: avoid; margin-bottom: 14px; }
-.card { display: block; padding: 14px; border-radius: 20px; }
-.card-head { display: flex; align-items: center; gap: 8px; margin: 0 4px 8px; }
-.card-head h2 { font-size: 18px; font-weight: 800; letter-spacing: -.025em; overflow-wrap: anywhere; }
-.badge { min-width: 22px; padding: 2px 7px; border-radius: 999px; background: #fff; color: var(--night); font-size: 12px; font-weight: 800; text-align: center; }
-.card .rows { margin-bottom: 8px; }
-.card .gift { min-height: 48px; gap: 10px; padding: 6px 4px; border-radius: 12px; }
+/* One card per person in a straight grid, reading left to right. */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.card { padding: 14px 16px; border-radius: 20px; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; }
+.card-head h2 { min-width: 0; font-size: 18px; font-weight: 800; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.card-add { flex-shrink: 0; min-height: 38px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--fill-strong); font-size: 14px; font-weight: 700; transition: background-color .15s ease, color .15s ease; }
+.card-add:hover { background: #fff; color: var(--night); }
+.card .none { padding: 6px 0 2px; font-size: 14px; }
+.card .rows { margin-top: 6px; }
+.card .gift { min-height: 46px; gap: 10px; padding: 6px 4px; margin: 0 -4px; width: calc(100% + 8px); border-radius: 12px; }
 .card .gift .num { flex: 0 0 44px; font-size: 18px; letter-spacing: -.02em; }
 .card .gift .what { font-size: 14px; }
 .card .gift img { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 9px; }
-.card-add { display: block; width: 100%; min-height: 42px; border: 0; border-radius: 12px; background: var(--fill); font-size: 14px; font-weight: 700; transition: background-color .15s ease, color .15s ease; }
-.card-add:hover { background: #fff; color: var(--night); }
-.new-person { display: block; width: 100%; min-height: 58px; border: 1px dashed rgba(255, 255, 255, .5); border-radius: 20px; background: rgba(8, 15, 58, .45); font-weight: 700; transition: background-color .15s ease; }
+.new-person { min-height: 70px; border: 1px dashed rgba(255, 255, 255, .5); border-radius: 20px; background: rgba(8, 15, 58, .45); font-weight: 700; transition: background-color .15s ease; }
 .new-person:hover { background: rgba(8, 15, 58, .7); }
 
 .list { padding: 8px; }
