@@ -4,6 +4,29 @@ const app = $('#app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+const LOCK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>`;
+const CHECK = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>`;
+
+// Fade the current panels out, swap the screen, fade the new ones in.
+function view(fn) {
+  if (calm || !app.firstElementChild) {
+    fn();
+    return Promise.resolve();
+  }
+  app.classList.remove('entering');
+  app.classList.add('leaving');
+  return new Promise((done) => {
+    setTimeout(() => {
+      app.classList.remove('leaving');
+      fn();
+      app.classList.add('entering');
+      clearTimeout(view.t);
+      view.t = setTimeout(() => app.classList.remove('entering'), 420);
+      done();
+    }, 150);
+  });
+}
+
 let S = null;
 let filter = null;
 let inReveal = false;
@@ -32,14 +55,14 @@ function toast(msg) {
 function renderGate() {
   document.querySelector('.overlay')?.remove();
   inReveal = false;
-  app.innerHTML = `<div class="gate"><div class="tag-wrap" style="width:min(100%,380px)"><form class="tag" id="gate">
+  app.innerHTML = `<div class="gate"><form class="glass gate-card fx" id="gate">
       <h1>Christmas Numbers</h1>
-      <p>Enter your code to open the list.</p>
+      <p class="sub">Enter your code to open the list.</p>
       <label class="lbl" for="code">Your code</label>
       <input class="field" id="code" autocomplete="current-password" autocapitalize="none" spellcheck="false" required>
       <p class="err" id="gate-err" role="alert"></p>
       <button class="btn">Open the list</button>
-    </form></div></div>`;
+    </form></div>`;
   const f = $('#gate');
   $('#code').focus();
   f.addEventListener('submit', async (e) => {
@@ -62,8 +85,8 @@ async function start() {
     if (S.reveal) return renderReveal();
     revealLocked(false);
   }
+  await view(renderList);
   if (!S.users[S.me].name) nameModal();
-  renderList();
 }
 
 // While the reveal is running this device stays on it, even after a reload.
@@ -86,21 +109,22 @@ function renderList() {
   const opened = S.items.filter((i) => i.opened).length;
   const noPic = S.items.filter((i) => !i.photo).length;
   app.innerHTML = `<div class="page">
-    <header class="top">
+    <header class="top glass fx">
       <h1>Christmas Numbers</h1>
       <div class="actions">
-        ${S.items.length ? `<button class="btn plain" data-a="labels">Print labels</button>` : ''}<button class="btn pine" data-a="reveal">Reveal gifts</button>
+        <button class="btn pine" data-a="reveal">Reveal gifts</button>
         <button class="btn" data-a="add">Add a gift</button>
       </div>
     </header>
-    ${S.items.length ? `<div class="bar">
+    ${S.items.length ? `<div class="bar fx">
       <span class="count">${S.items.length} ${S.items.length === 1 ? 'gift' : 'gifts'}${opened ? `, ${opened} opened` : ''}${noPic ? `, ${noPic} without a picture` : ''}</span>
-      ${people.length > 1 ? `<button class="chip" aria-pressed="${!filter}" data-f="">Everyone</button>${people.map((p) => `<button class="chip" aria-pressed="${p === filter}" data-f="${esc(p)}">${esc(p)}</button>`).join('')}` : ''}
+      ${people.length > 1 ? `<div class="chips"><button class="chip" aria-pressed="${!filter}" data-f="">Everyone</button>${people.map((p) => `<button class="chip" aria-pressed="${p === filter}" data-f="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}
     </div>` : ''}
     ${S.items.length
       ? `<section class="tags">${items.map(giftTag).join('')}</section>`
-      : `<div class="empty"><div class="tag-wrap"><div class="tag"><b>No gifts yet</b><p>Add the first gift and write its number on the present.</p><button class="btn" data-a="add">Add a gift</button></div></div></div>`}
-    <div class="links">
+      : `<div class="empty glass fx"><h2>No gifts yet</h2><p>Add the first gift, then write its number on the present.</p><button class="btn" data-a="add">Add a gift</button></div>`}
+    <div class="links glass fx">
+      ${S.items.length ? `<button class="textbtn" data-a="labels">Print labels</button>` : ''}
       <button class="textbtn" data-a="name">Change my name</button>
       ${opened ? `<button class="textbtn" data-a="reset">Close all gifts again</button>` : ''}
       <button class="textbtn" data-a="out">Sign out</button>
@@ -116,15 +140,14 @@ function otherName() {
 }
 
 function giftTag(it) {
-  return `<div class="tag-wrap"><button class="tag gift" data-id="${esc(it.id)}" aria-label="Edit gift ${it.number}">
-    <span class="num">${it.number}</span>
-    <span class="what">${esc(it.name)}</span>
+  const hidden = it.hidden && !it.opened;
+  return `<button class="glass gift fx" data-id="${esc(it.id)}" aria-label="Edit gift ${it.number}, ${esc(it.name)}">
+    <span class="row"><span class="num">${it.number}</span>
+      ${it.opened ? `<span class="state done">${CHECK}Opened</span>` : hidden ? `<span class="state" title="Hidden from ${esc(otherName())}">${LOCK}Hidden</span>` : ''}</span>
     ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="" loading="lazy">` : `<span class="nopic">Add a picture</span>`}
-    ${it.price ? `<span class="price">${esc(it.price)}</span>` : ''}
-    <span class="for">For <b>${esc(it.person)}</b></span>
-    ${it.hidden && !it.opened ? `<span class="secret">Hidden from ${esc(otherName())}</span>` : ''}
-    ${it.opened ? `<span class="opened">Opened</span>` : ''}
-  </button></div>`;
+    <span class="what">${esc(it.name)}</span>
+    <span class="row"><span class="for">For <b>${esc(it.person)}</b></span>${it.price ? `<span class="price">${esc(it.price)}</span>` : ''}</span>
+  </button>`;
 }
 
 const actions = {
@@ -133,7 +156,7 @@ const actions = {
   labels: () => printLabels(),
   reveal: () => {
     modal(`<h2>Start the reveal?</h2>
-      <p style="margin:0 0 12px">Do this together when you're ready. Hidden gifts can be opened from now on, and this device stays on the reveal screen. Leaving it takes one of your codes.</p>
+      <p class="plain-text">Do this together when you're ready. Hidden gifts can be opened from now on, and this device stays on the reveal screen. Leaving it takes one of your codes.</p>
       <form><label class="lbl" for="oc">${esc(otherName())}'s code</label>
       <input class="field" id="oc" autocomplete="off" autocapitalize="none" spellcheck="false" required>
       <p class="err" role="alert"></p>
@@ -154,7 +177,7 @@ const actions = {
   async out() {
     await api('POST', '/api/logout');
     S = null;
-    renderGate();
+    view(renderGate);
   },
   async reset() {
     if (!confirm('Close all gifts so they can be revealed again?')) return;
@@ -168,10 +191,12 @@ const actions = {
 function modal(html, ready) {
   const ov = document.createElement('div');
   ov.className = 'overlay';
-  ov.innerHTML = `<div class="modal" role="dialog" aria-modal="true">${html}</div>`;
+  ov.innerHTML = `<div class="modal glass" role="dialog" aria-modal="true">${html}</div>`;
   const close = () => {
-    ov.remove();
     document.removeEventListener('keydown', onKey);
+    if (ov.classList.contains('closing')) return;
+    ov.classList.add('closing');
+    setTimeout(() => ov.remove(), calm ? 0 : 170);
   };
   const onKey = (e) => e.key === 'Escape' && close();
   document.addEventListener('keydown', onKey);
@@ -230,7 +255,7 @@ function itemModal(it) {
         ${it?.photo ? `<button type="button" class="textbtn" data-delphoto>Remove picture</button>` : ''}
       </div>
       <p class="amazon-link" ${it?.url ? '' : 'hidden'}>${it?.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">View on Amazon</a>` : ''}</p>
-      ${adder ? `<p style="margin:10px 0 0;font-size:15px;color:var(--muted)">Added by ${esc(adder)}</p>` : ''}
+      ${adder ? `<p class="added-by">Added by ${esc(adder)}</p>` : ''}
       <p class="err" role="alert"></p>
       <div class="foot">
         ${it ? `<button type="button" class="textbtn danger" data-del>Remove gift</button>` : ''}
@@ -420,7 +445,7 @@ function renderReveal() {
 function revealFrame(body) {
   const info = S.reveal || { opened: [], total: 0 };
   app.innerHTML = `<div class="reveal">
-    <div class="rv-top"><span class="progress">${info.opened.length} of ${info.total} opened</span><button class="btn plain" id="rv-exit">Leave</button></div>
+    <div class="rv-top"><span class="progress glass fx">${info.opened.length} of ${info.total} opened</span><button class="btn plain glass fx" id="rv-exit">Leave</button></div>
     <div class="rv-body">${body}</div>
   </div>`;
   $('#rv-exit').onclick = leaveModal;
@@ -439,7 +464,7 @@ function leaveModal() {
         close();
         inReveal = false;
         revealLocked(false);
-        renderList();
+        view(renderList);
       } catch (err) {
         $('.err', m).textContent = err.message;
       }
@@ -469,19 +494,23 @@ function printLabels() {
   window.print();
 }
 
-function showPad(error = '') {
+function showPad() {
   typed = '';
   const opened = S.reveal?.opened || [];
-  revealFrame(`<h2>Which gift is next?</h2>
-    <div class="tag-wrap"><div class="tag display" id="disp" aria-live="polite"><span class="ph">?</span></div></div>
-    <div class="pad">
-      ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-k="${n}">${n}</button>`).join('')}
-      <button class="clear" data-k="back" aria-label="Delete last digit">Delete</button><button data-k="0">0</button><button class="go" data-k="go">Open</button>
+  view(() => {
+    revealFrame(`<div class="rv-panel glass fx">
+      <h2>Which gift is next?</h2>
+      <div class="display" id="disp" aria-live="polite"><span class="ph">?</span></div>
+      <div class="pad">
+        ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-k="${n}">${n}</button>`).join('')}
+        <button class="clear" data-k="back" aria-label="Delete last digit">Delete</button><button data-k="0">0</button><button class="go" data-k="go">Open</button>
+      </div>
+      <p class="rv-err" role="alert"></p>
     </div>
-    <p class="rv-err" role="alert">${esc(error)}</p>
-    ${opened.length ? `<div class="opened-row">${opened.map((n) => `<button class="chip" data-again="${n}" aria-label="Show gift ${n} again">${n}</button>`).join('')}</div>` : ''}`);
-  app.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => press(b.dataset.k)));
-  app.querySelectorAll('[data-again]').forEach((b) => (b.onclick = () => open(b.dataset.again, true)));
+    ${opened.length ? `<div class="opened-row fx">${opened.map((n) => `<button class="chip" data-again="${n}" aria-label="Show gift ${n} again">${n}</button>`).join('')}</div>` : ''}`);
+    app.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => press(b.dataset.k)));
+    app.querySelectorAll('[data-again]').forEach((b) => (b.onclick = () => open(b.dataset.again, true)));
+  });
 }
 
 function press(k) {
@@ -493,6 +522,8 @@ function press(k) {
   } else if (typed.length < 4) typed += k;
   const d = $('#disp');
   if (d) d.innerHTML = typed ? esc(typed) : `<span class="ph">?</span>`;
+  const err = $('.rv-err');
+  if (err) err.textContent = '';
 }
 
 async function open(number, again = false) {
@@ -502,16 +533,22 @@ async function open(number, again = false) {
     res = await api('POST', '/api/reveal', { number: Number(number) });
   } catch (err) {
     busy = false;
-    if (inReveal && S) showPad(err.message);
+    if (inReveal && S) {
+      typed = '';
+      const d = $('#disp');
+      const e = $('.rv-err');
+      if (d) d.innerHTML = `<span class="ph">?</span>`;
+      if (e) e.textContent = err.message;
+    }
     return;
   }
   S.reveal = { opened: res.opened, total: res.total };
   if (!again) {
-    revealFrame(`<svg class="box shake" viewBox="0 0 300 300" aria-hidden="true">
-        <rect x="45" y="125" width="210" height="160" rx="10" fill="#a81f3d"/><rect x="132" y="125" width="36" height="160" fill="#ffc857"/>
+    await view(() => revealFrame(`<svg class="box shake fx" viewBox="0 0 300 300" aria-hidden="true">
+        <rect x="45" y="125" width="210" height="160" rx="10" fill="#b3213f"/><rect x="132" y="125" width="36" height="160" fill="#ffc857"/>
         <g class="lid"><rect x="30" y="85" width="240" height="50" rx="10" fill="#7a122b"/><rect x="132" y="85" width="36" height="50" fill="#ffc857"/>
         <path d="M150 85C110 30 70 45 88 72 98 86 130 86 150 85ZM150 85C190 30 230 45 212 72 202 86 170 86 150 85Z" fill="#ffc857"/></g>
-      </svg><p class="suspense">Gift ${res.item.number}…</p>`);
+      </svg><p class="suspense glass fx">Gift ${res.item.number}…</p>`));
     tick();
     await wait(calm ? 300 : 1700);
     const box = $('.box');
@@ -524,16 +561,18 @@ async function open(number, again = false) {
     confetti();
   }
   const it = res.item;
-  revealFrame(`<div class="shown"><div class="tag-wrap"><div class="tag">
+  await view(() => {
+    revealFrame(`<div class="shown glass fx">
       <div class="gnum">Gift ${it.number}</div>
       <div class="gname">${esc(it.name)}</div>
       ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="">` : ''}
       <div class="gfor">For <b>${esc(it.person)}</b></div>
       ${it.note ? `<div class="gnote">${esc(it.note)}</div>` : ''}
-    </div></div></div>
-    <button class="btn pine rv-next" id="rv-next">Next gift</button>`);
-  $('#rv-next').onclick = () => showPad();
-  $('#rv-next').focus();
+    </div>
+    <button class="btn pine rv-next fx" id="rv-next">Next gift</button>`);
+    $('#rv-next').onclick = () => showPad();
+    $('#rv-next').focus();
+  });
   busy = false;
 }
 
@@ -575,7 +614,7 @@ function confetti() {
   c.width = innerWidth * dpr;
   c.height = innerHeight * dpr;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const colors = ['#a81f3d', '#ffc857', '#1c5a43', '#fff6e3', '#d6244d'];
+  const colors = ['#c92a4b', '#ffd479', '#237557', '#ffffff'];
   const bits = Array.from({ length: 170 }, () => ({
     x: innerWidth / 2 + (Math.random() - 0.5) * 140, y: innerHeight * 0.45,
     vx: (Math.random() - 0.5) * 18, vy: -Math.random() * 15 - 4,
@@ -584,13 +623,13 @@ function confetti() {
   }));
   let frames = 0;
   (function draw() {
-    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    ctx.clearRect(0, 0, c.width, c.height);
     for (const b of bits) {
       b.vy += 0.32; b.vx *= 0.99; b.x += b.vx; b.y += b.vy; b.r += b.vr;
       ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.r); ctx.fillStyle = b.color; ctx.fillRect(-b.w / 2, -b.h / 2, b.w, b.h); ctx.restore();
     }
     if (++frames < 190) requestAnimationFrame(draw);
-    else ctx.clearRect(0, 0, innerWidth, innerHeight);
+    else c.width = 0; // wipes everything, even if the screen was rotated mid-burst
   })();
 }
 
