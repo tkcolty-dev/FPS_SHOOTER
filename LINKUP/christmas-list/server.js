@@ -1,6 +1,8 @@
 // Christmas List — two people add gifts with numbers, then reveal them by typing the number.
-// Everything except the login screen needs one of the two codes. Codes come from CODE_A / CODE_B;
-// locally they're generated into data/codes.json. In production the app won't start without them.
+// Each person creates their account once with a one-time code, then signs in with name and password.
+// Everything except the sign-in screen needs an account. Codes come from CODE_A / CODE_B; locally
+// they're generated into data/codes.json. In production the app won't start without them.
+// Forgot a password? Set a new CODE_A or CODE_B and restart: the new code can set a new password.
 // Storage: Postgres when VCAP_SERVICES (Cloud Foundry) or DATABASE_URL is present, else data/*.json files.
 const express = require('express');
 const crypto = require('crypto');
@@ -128,28 +130,46 @@ const COOKIE = 'cl_session';
 const SESSION_MS = 90 * 86400000;
 const hmac = (s) => crypto.createHmac('sha256', secrets.secret).update(s).digest('base64url');
 const sha = (s) => crypto.createHash('sha256').update(s).digest();
-const sameCode = (a, b) => crypto.timingSafeEqual(sha(a), sha(b));
+// Spaces, capitals and stray punctuation in a typed code don't matter.
+const cleanCode = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+const sameCode = (a, b) => crypto.timingSafeEqual(sha(cleanCode(a)), sha(cleanCode(b)));
+const codeId = (code) => sha(cleanCode(code)).toString('hex');
+
+const scrypt = (password, salt) =>
+  new Promise((resolve, reject) => crypto.scrypt(password, salt, 64, (e, key) => (e ? reject(e) : resolve(key))));
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  return { salt, hash: (await scrypt(password, salt)).toString('hex') };
+}
+async function passwordMatches(user, password) {
+  // Someone with no account yet still costs the same time, so a guess can't tell if a name exists.
+  const pass = user?.pass || { salt: 'none', hash: '0'.repeat(128) };
+  const key = await scrypt(String(password || '').slice(0, 200), pass.salt);
+  return crypto.timingSafeEqual(key, Buffer.from(pass.hash, 'hex')) && !!user?.pass;
+}
 
 function makeToken(uid) {
-  const body = `${uid}.${Date.now() + SESSION_MS}`;
+  const body = `${uid}.${state.users[uid].gen || 0}.${Date.now() + SESSION_MS}`;
   return `${body}.${hmac(body)}`;
 }
 
 function readToken(req) {
   const m = (req.get('cookie') || '').match(new RegExp(`(?:^|;\\s*)${COOKIE}=([^;]+)`));
   if (!m) return null;
-  const [uid, exp, sig] = m[1].split('.');
-  if (!uid || !exp || !sig) return null;
-  const good = Buffer.from(hmac(`${uid}.${exp}`));
+  const [uid, gen, exp, sig] = m[1].split('.');
+  if (!uid || !gen || !exp || !sig) return null;
+  const good = Buffer.from(hmac(`${uid}.${gen}.${exp}`));
   const got = Buffer.from(sig);
   if (good.length !== got.length || !crypto.timingSafeEqual(good, got)) return null;
   if (Number(exp) < Date.now() || !['a', 'b'].includes(uid)) return null;
+  // A new password signs out every older session.
+  if (!state.users[uid].pass || Number(gen) !== (state.users[uid].gen || 0)) return null;
   return uid;
 }
 
-// Wrong codes lock that address out for a while, so a code can't be guessed by trying lots of them.
+// Wrong codes and passwords lock that address out for a while, so they can't be guessed by trying lots.
 const fails = new Map();
-const FAIL_LIMIT = 10;
+const FAIL_LIMIT = 20;
 const FAIL_WINDOW = 15 * 60000;
 function clientIp(req) {
   return (req.get('x-forwarded-for') || '').split(',').pop().trim() || req.socket.remoteAddress || '?';
@@ -190,7 +210,7 @@ const revealOn = () => (state.revealUntil || 0) > Date.now();
 const revealInfo = () => ({ opened: state.items.filter((i) => i.opened).map((i) => i.number).sort((a, b) => a - b), total: state.items.length });
 const publicState = (uid) => ({
   me: uid,
-  users: state.users,
+  users: { a: { name: state.users.a.name }, b: { name: state.users.b.name } },
   items: state.items.filter((i) => canSee(i, uid)).sort((x, y) => x.number - y.number),
   next: nextNumber(),
   reveal: revealOn() ? revealInfo() : null,
@@ -223,29 +243,60 @@ const sendPage = (req, res) => res.set('Cache-Control', 'no-cache').sendFile(pat
 app.get(['/', '/index.html'], sendPage);
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: PROD ? '5m' : 0 }));
 
-app.post('/api/login', (req, res) => {
+const lockMessage = 'Too many wrong tries. Wait 15 minutes and try again.';
+const setSession = (res, uid) => res.cookie(COOKIE, makeToken(uid), { httpOnly: true, sameSite: 'lax', secure: PROD, maxAge: SESSION_MS, path: '/' });
+const validPassword = (p) => typeof p === 'string' && p.length >= 8 && p.length <= 200;
+
+// First time only: the one-time code creates the account, then stops working.
+app.post('/api/register', wrap(async (req, res) => {
   const ip = clientIp(req);
-  if (lockedOut(ip)) return res.status(429).json({ error: 'Too many wrong codes. Wait 15 minutes and try again.' });
-  const code = str(req.body?.code, 100).toLowerCase();
-  const uid = sameCode(code, secrets.a.toLowerCase()) ? 'a' : sameCode(code, secrets.b.toLowerCase()) ? 'b' : null;
+  if (lockedOut(ip)) return res.status(429).json({ error: lockMessage });
+  const code = str(req.body?.code, 100);
+  const uid = sameCode(code, secrets.a) ? 'a' : sameCode(code, secrets.b) ? 'b' : null;
   if (!uid) {
     noteFail(ip);
-    return res.status(401).json({ error: "That code doesn't match. Check it and try again." });
+    return res.status(403).json({ error: "That code doesn't match. Check it and try again." });
+  }
+  const user = state.users[uid];
+  if (user.codeUsed === codeId(code)) return res.status(403).json({ error: 'That code has already been used. Sign in with your name and password.' });
+  const name = str(req.body.name, 30);
+  if (!name) return res.status(400).json({ error: 'Add your name.' });
+  const other = state.users[uid === 'a' ? 'b' : 'a'];
+  if (other.name && other.name.toLowerCase() === name.toLowerCase()) return res.status(400).json({ error: 'That name is taken. Try a different one.' });
+  if (!validPassword(req.body.password)) return res.status(400).json({ error: 'Use a password of at least 8 characters.' });
+  user.name = name;
+  user.pass = await hashPassword(req.body.password);
+  user.codeUsed = codeId(code);
+  user.gen = (user.gen || 0) + 1;
+  await store.save(state);
+  fails.delete(ip);
+  setSession(res, uid);
+  res.json({ ok: true });
+}));
+
+app.post('/api/login', wrap(async (req, res) => {
+  const ip = clientIp(req);
+  if (lockedOut(ip)) return res.status(429).json({ error: lockMessage });
+  const name = str(req.body?.name, 30).toLowerCase();
+  const uid = ['a', 'b'].find((u) => state.users[u].name && state.users[u].name.toLowerCase() === name);
+  if (!(await passwordMatches(uid && state.users[uid], req.body?.password))) {
+    noteFail(ip);
+    return res.status(401).json({ error: "That name and password don't match. Check them and try again." });
   }
   fails.delete(ip);
-  res.cookie(COOKIE, makeToken(uid), { httpOnly: true, sameSite: 'lax', secure: PROD, maxAge: SESSION_MS, path: '/' });
+  setSession(res, uid);
   res.json({ ok: true });
-});
+}));
 
 app.post('/api/logout', (req, res) => {
   res.clearCookie(COOKIE, { path: '/' });
   res.json({ ok: true });
 });
 
-// Everything below this line needs a code.
+// Everything below this line needs an account.
 const requireCode = (req, res, next) => {
   req.uid = readToken(req);
-  if (!req.uid) return res.status(401).json({ error: 'Enter your code first.' });
+  if (!req.uid) return res.status(401).json({ error: 'Sign in first.' });
   res.set('Cache-Control', 'no-store');
   next();
 };
@@ -303,36 +354,46 @@ const findItem = (req, res) => {
   return it;
 };
 
-function checkCode(req, res, uids) {
+async function checkPassword(req, res, uids) {
   const ip = clientIp(req);
   if (lockedOut(ip)) {
-    res.status(429).json({ error: 'Too many wrong codes. Wait 15 minutes and try again.' });
+    res.status(429).json({ error: lockMessage });
     return false;
   }
-  const code = str(req.body?.code, 100).toLowerCase();
-  if (!uids.some((u) => sameCode(code, secrets[u].toLowerCase()))) {
-    noteFail(ip);
-    res.status(403).json({ error: "That code doesn't match. Check it and try again." });
-    return false;
-  }
-  return true;
+  for (const u of uids) if (await passwordMatches(state.users[u], req.body?.password)) return true;
+  noteFail(ip);
+  res.status(403).json({ error: "That password doesn't match. Check it and try again." });
+  return false;
 }
 
-// Starting the reveal takes the other person's code, so nobody can type numbers to peek at hidden gifts.
+// Starting the reveal takes the other person's password, so nobody can type numbers to peek at hidden gifts.
 const REVEAL_MS = 12 * 3600000;
 app.post('/api/reveal/start', wrap(async (req, res) => {
-  if (!checkCode(req, res, [req.uid === 'a' ? 'b' : 'a'])) return;
+  const other = req.uid === 'a' ? 'b' : 'a';
+  if (!state.users[other].pass) return res.status(400).json({ error: 'The other person needs to create their account first.' });
+  if (!(await checkPassword(req, res, [other]))) return;
   state.revealUntil = Date.now() + REVEAL_MS;
   await store.save(state);
   res.json(publicState(req.uid));
 }));
 
-// Leaving the reveal takes either code, and turns the reveal back off.
+// Leaving the reveal takes either password, and turns the reveal back off.
 app.post('/api/reveal/stop', wrap(async (req, res) => {
-  if (!checkCode(req, res, ['a', 'b'])) return;
+  if (!(await checkPassword(req, res, ['a', 'b']))) return;
   state.revealUntil = 0;
   await store.save(state);
   res.json(publicState(req.uid));
+}));
+
+app.post('/api/me/password', wrap(async (req, res) => {
+  if (!(await checkPassword(req, res, [req.uid]))) return;
+  if (!validPassword(req.body.next)) return res.status(400).json({ error: 'Use a password of at least 8 characters.' });
+  const user = state.users[req.uid];
+  user.pass = await hashPassword(req.body.next);
+  user.gen = (user.gen || 0) + 1;
+  await store.save(state);
+  setSession(res, req.uid);
+  res.json({ ok: true });
 }));
 
 app.get('/api/state', wrap(async (req, res) => res.json(publicState(req.uid))));
@@ -340,6 +401,8 @@ app.get('/api/state', wrap(async (req, res) => res.json(publicState(req.uid))));
 app.patch('/api/me', wrap(async (req, res) => {
   const name = str(req.body.name, 30);
   if (!name) return res.status(400).json({ error: 'Add your name.' });
+  const other = state.users[req.uid === 'a' ? 'b' : 'a'];
+  if (other.name && other.name.toLowerCase() === name.toLowerCase()) return res.status(400).json({ error: 'That name is taken. Try a different one.' });
   state.users[req.uid].name = name;
   await store.save(state);
   res.json(publicState(req.uid));

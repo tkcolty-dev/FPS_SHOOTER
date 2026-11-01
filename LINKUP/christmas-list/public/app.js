@@ -37,7 +37,7 @@ async function api(method, url, body) {
   if (r.status === 401 && url !== '/api/login') {
     S = null;
     renderGate();
-    throw new Error('Enter your code first.');
+    throw new Error('Sign in first.');
   }
   if (!r.ok) throw new Error(data.error || "That didn't work. Try again.");
   return data;
@@ -52,31 +52,64 @@ function toast(msg) {
 }
 
 // ---------- sign in ----------
+const SHOW_PASSWORD = `<label class="check small"><input type="checkbox" data-show> Show password</label>`;
+
 function renderGate() {
   document.querySelector('.overlay')?.remove();
   inReveal = false;
-  app.innerHTML = `<div class="gate"><form class="glass gate-card fx" id="gate">
+  app.innerHTML = `<div class="gate"><div class="glass gate-card fx">
       <h1>Christmas Numbers</h1>
-      <p class="sub">Enter your code to open the list.</p>
-      <label class="lbl" for="code">Your code</label>
-      <input class="field" id="code" autocomplete="current-password" autocapitalize="none" spellcheck="false" required>
-      <p class="err" id="gate-err" role="alert"></p>
-      <button class="btn">Open the list</button>
-    </form></div>`;
-  const f = $('#gate');
-  $('#code').focus();
-  f.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = $('.btn', f);
-    btn.disabled = true;
-    try {
-      await api('POST', '/api/login', { code: $('#code').value });
-      await start();
-    } catch (err) {
-      $('#gate-err').textContent = err.message;
-      btn.disabled = false;
-    }
+      <div class="tabs" role="group" aria-label="Sign in or create account">
+        <button type="button" data-tab="in" aria-pressed="true">Sign in</button>
+        <button type="button" data-tab="new" aria-pressed="false">Create account</button>
+      </div>
+      <form id="f-in" class="stack">
+        <div><label class="lbl" for="in-name">Your name</label><input class="field" id="in-name" name="username" autocomplete="username" autocapitalize="words" required></div>
+        <div><label class="lbl" for="in-pass">Password</label><input class="field" id="in-pass" type="password" autocomplete="current-password" required></div>
+        ${SHOW_PASSWORD}
+        <p class="err" role="alert"></p>
+        <button class="btn wide">Sign in</button>
+      </form>
+      <form id="f-new" class="stack" hidden>
+        <p class="sub">You only do this once. Your code stops working after this.</p>
+        <div><label class="lbl" for="new-code">One-time code</label><input class="field" id="new-code" autocomplete="one-time-code" autocapitalize="none" spellcheck="false" required></div>
+        <div><label class="lbl" for="new-name">Your name</label><input class="field" id="new-name" name="username" maxlength="30" autocomplete="username" autocapitalize="words" required></div>
+        <div><label class="lbl" for="new-pass">Choose a password</label><input class="field" id="new-pass" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required></div>
+        ${SHOW_PASSWORD}
+        <p class="err" role="alert"></p>
+        <button class="btn wide">Create account</button>
+      </form>
+    </div></div>`;
+  const forms = { in: $('#f-in'), new: $('#f-new') };
+  app.querySelectorAll('[data-tab]').forEach((b) => {
+    b.onclick = () => {
+      app.querySelectorAll('[data-tab]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+      forms.in.hidden = b.dataset.tab !== 'in';
+      forms.new.hidden = b.dataset.tab !== 'new';
+      $('input', forms[b.dataset.tab]).focus();
+    };
   });
+  app.querySelectorAll('[data-show]').forEach((c) => {
+    c.onchange = () => (c.closest('form').querySelector('[autocomplete$="password"]').type = c.checked ? 'text' : 'password');
+  });
+  const submit = (form, send) =>
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = $('.btn', form);
+      const err = $('.err', form);
+      btn.disabled = true;
+      err.textContent = '';
+      try {
+        await send();
+        await start();
+      } catch (ex) {
+        err.textContent = ex.message;
+        btn.disabled = false;
+      }
+    });
+  submit(forms.in, () => api('POST', '/api/login', { name: $('#in-name').value, password: $('#in-pass').value }));
+  submit(forms.new, () => api('POST', '/api/register', { code: $('#new-code').value, name: $('#new-name').value, password: $('#new-pass').value }));
+  $('#in-name').focus();
 }
 
 async function start() {
@@ -86,7 +119,6 @@ async function start() {
     revealLocked(false);
   }
   await view(renderList);
-  if (!S.users[S.me].name) nameModal();
 }
 
 // While the reveal is running this device stays on it, even after a reload.
@@ -126,6 +158,7 @@ function renderList() {
     <div class="links glass fx">
       ${S.items.length ? `<button class="textbtn" data-a="labels">Print labels</button>` : ''}
       <button class="textbtn" data-a="name">Change my name</button>
+      <button class="textbtn" data-a="password">Change my password</button>
       ${opened ? `<button class="textbtn" data-a="reset">Close all gifts again</button>` : ''}
       <button class="textbtn" data-a="out">Sign out</button>
     </div>
@@ -153,18 +186,19 @@ function giftTag(it) {
 const actions = {
   add: () => itemModal(null),
   name: () => nameModal(),
+  password: () => passwordModal(),
   labels: () => printLabels(),
   reveal: () => {
     modal(`<h2>Start the reveal?</h2>
-      <p class="plain-text">Do this together when you're ready. Hidden gifts can be opened from now on, and this device stays on the reveal screen. Leaving it takes one of your codes.</p>
-      <form><label class="lbl" for="oc">${esc(otherName())}'s code</label>
-      <input class="field" id="oc" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      <p class="plain-text">Do this together when you're ready. Hidden gifts can be opened from now on, and this device stays on the reveal screen. Leaving it takes one of your passwords.</p>
+      <form><label class="lbl" for="oc">${esc(otherName())}'s password</label>
+      <input class="field" id="oc" type="password" autocomplete="off" required>
       <p class="err" role="alert"></p>
       <div class="foot"><button type="button" class="btn plain" data-close>Cancel</button><button class="btn pine">Start the reveal</button></div></form>`, (m, close) => {
       $('form', m).addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
-          S = await api('POST', '/api/reveal/start', { code: $('#oc', m).value });
+          S = await api('POST', '/api/reveal/start', { password: $('#oc', m).value });
           close();
           revealLocked(true);
           renderReveal();
@@ -219,6 +253,27 @@ function nameModal() {
         S = await api('PATCH', '/api/me', { name: $('#nm', m).value });
         close();
         renderList();
+      } catch (err) {
+        $('.err', m).textContent = err.message;
+      }
+    });
+  });
+}
+
+function passwordModal() {
+  modal(`<h2>Change my password</h2>
+    <form class="stack">
+      <div><label class="lbl" for="pw-now">Current password</label><input class="field" id="pw-now" type="password" autocomplete="current-password" required></div>
+      <div><label class="lbl" for="pw-next">New password</label><input class="field" id="pw-next" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters" required></div>
+      <p class="err" role="alert"></p>
+      <div class="foot"><button type="button" class="btn plain" data-close>Cancel</button><button class="btn">Save password</button></div>
+    </form>`, (m, close) => {
+    $('form', m).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        await api('POST', '/api/me/password', { password: $('#pw-now', m).value, next: $('#pw-next', m).value });
+        close();
+        toast('Password saved');
       } catch (err) {
         $('.err', m).textContent = err.message;
       }
@@ -453,14 +508,14 @@ function revealFrame(body) {
 
 function leaveModal() {
   modal(`<h2>Leave the reveal?</h2>
-    <form><label class="lbl" for="lv">Enter your code to go back to the list.</label>
-    <input class="field" id="lv" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+    <form><label class="lbl" for="lv">Enter a password to go back to the list.</label>
+    <input class="field" id="lv" type="password" autocomplete="off" required>
     <p class="err" role="alert"></p>
     <div class="foot"><button type="button" class="btn plain" data-close>Stay here</button><button class="btn">Leave the reveal</button></div></form>`, (m, close) => {
     $('form', m).addEventListener('submit', async (e) => {
       e.preventDefault();
       try {
-        S = await api('POST', '/api/reveal/stop', { code: $('#lv', m).value });
+        S = await api('POST', '/api/reveal/stop', { password: $('#lv', m).value });
         close();
         inReveal = false;
         revealLocked(false);

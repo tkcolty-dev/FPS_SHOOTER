@@ -84,11 +84,16 @@ label.lbl { display: block; font-size: 14px; font-weight: 500; color: var(--soft
 .err:empty { display: none; }
 
 /* ---------- sign in ---------- */
-.gate { min-height: 100dvh; display: grid; justify-items: center; align-items: start; padding: clamp(20px, 9vh, 90px) 16px 24px; }
+.gate { min-height: 100dvh; display: grid; justify-items: center; align-items: start; padding: clamp(28px, 16vh, 170px) 16px 24px; }
 .gate-card { width: min(100%, 380px); padding: 28px 24px 24px; }
-.gate h1 { font: 400 42px/1.05 var(--serif); margin: 0 0 6px; }
-.gate p.sub { margin: 0 0 20px; color: var(--soft); }
-.gate .btn { width: 100%; margin-top: 14px; }
+.gate h1 { font: 400 40px/1.05 var(--serif); margin: 0 0 16px; }
+.gate p.sub { margin: 0; color: var(--soft); font-size: 15px; }
+.btn.wide { width: 100%; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 16px; border-radius: 12px; background: var(--fill); }
+.tabs button { min-height: 38px; border: 0; border-radius: 9px; background: none; color: var(--soft); font-weight: 600; font-size: 15px; transition: background-color .18s ease, color .18s ease; }
+.tabs button[aria-pressed="true"] { background: #fff; color: var(--night); }
+.check.small { font-size: 14px; color: var(--soft); }
+.check.small input { width: 18px; height: 18px; }
 
 /* ---------- list ---------- */
 .page { max-width: max(1000px, 72vw); margin: 0 auto; padding: 14px 16px 120px; }
