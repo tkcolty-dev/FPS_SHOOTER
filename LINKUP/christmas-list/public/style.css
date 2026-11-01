@@ -65,6 +65,7 @@ main { position: relative; z-index: 2; }
   width: 100%; min-height: 48px; padding: 11px 15px; border: 1px solid transparent; border-radius: 14px; background: var(--fill);
   outline: none; transition: background-color .15s ease, border-color .15s ease;
 }
+.field { font-size: 16px; } /* iPhones zoom the whole page into anything smaller. */
 textarea.field { resize: vertical; line-height: 1.5; }
 .field::placeholder { color: rgba(255, 255, 255, .5); }
 .field:focus { background: var(--fill-strong); border-color: rgba(255, 255, 255, .55); }
@@ -112,7 +113,11 @@ label.lbl { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 60
 .card .gift .num { flex: 0 0 44px; font-size: 18px; letter-spacing: -.02em; }
 .card .gift .what { font-size: 14px; }
 .card .gift img { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 9px; }
-.new-person { min-height: 70px; border: 1px dashed rgba(255, 255, 255, .5); border-radius: 20px; background: rgba(8, 15, 58, .45); font-weight: 700; transition: background-color .15s ease; }
+.share { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 20px; margin-bottom: 12px; }
+.share h2 { font-size: 17px; font-weight: 800; letter-spacing: -.02em; }
+.share p { font-size: 14px; color: var(--soft); }
+.share .btn { flex-shrink: 0; }
+.new-person { align-self: start; min-height: 70px; border: 1px dashed rgba(255, 255, 255, .5); border-radius: 20px; background: rgba(8, 15, 58, .45); font-weight: 700; transition: background-color .15s ease; }
 .new-person:hover { background: rgba(8, 15, 58, .7); }
 
 .list { padding: 8px; }
@@ -176,7 +181,7 @@ label.lbl { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 60
 .pimg { display: block; aspect-ratio: 1; background: #fff; border-radius: 10px; overflow: hidden; }
 .pimg img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .ptitle { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.amazon-link { margin-top: 12px; font-size: 14px; }
+.amazon-link { font-size: 14px; }
 .new-number { text-align: center; padding: 10px 0 4px; }
 .new-number p { color: var(--soft); }
 .new-number .big { font-size: 92px; font-weight: 800; letter-spacing: -.05em; line-height: 1.1; font-variant-numeric: tabular-nums; animation: pop .4s var(--ease) both; }

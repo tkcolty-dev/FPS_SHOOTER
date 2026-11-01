@@ -149,11 +149,13 @@ function renderMain() {
   document.title = 'Christmas Numbers';
   app.innerHTML = `<div class="page">${header()}${{ gifts: giftsPage, find: findPage, people: peoplePage }[tab]()}</div>`;
   app.querySelectorAll('[data-go]').forEach((b) => {
-    b.onclick = () => {
+    b.onclick = async () => {
       if (tab === b.dataset.go) return;
       tab = b.dataset.go;
       history.replaceState(null, '', `#${tab}`);
-      view(renderMain);
+      // Show the latest from the other person, not what was here when this tab was last open.
+      S = await api('GET', '/api/state').catch(() => S);
+      if (S) view(renderMain);
     };
   });
   app.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => actions[b.dataset.a]()));
@@ -210,7 +212,16 @@ function giftRow(it) {
 
 function peoplePage() {
   const opened = S.items.some((i) => i.opened);
-  return `<div class="column"><section class="list glass fx">
+  const other = S.users[S.me === 'a' ? 'b' : 'a'].name;
+  return `<div class="column">
+  <section class="share glass fx">
+    <div>
+      <h2>${other ? `Sharing with ${esc(other)}` : 'Waiting for the other person'}</h2>
+      <p>${other ? 'You both see this list live, except gifts marked hidden.' : 'Send them this site and their one-time code. They tap Create account.'}</p>
+    </div>
+    <button class="btn plain small" data-a="copyLink">Copy link</button>
+  </section>
+  <section class="list glass fx">
     <div class="page-head">
       <div><h2>People</h2><p>You both share this list of names.</p></div>
       <button class="btn small" data-a="addPerson">Add names</button>
@@ -235,6 +246,15 @@ const actions = {
   name: () => nameModal(),
   password: () => passwordModal(),
   labels: () => printLabels(),
+  async copyLink() {
+    const link = location.origin;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast('Link copied');
+    } catch {
+      prompt('Copy this link:', link);
+    }
+  },
   reveal: () => {
     modal(`<h2>Start the reveal?</h2>
       <p class="plain-text">Do this together when you're ready. Typing a number now opens that gift, even hidden ones, and this device stays on this screen. Leaving it takes one of your passwords.</p>
@@ -404,10 +424,10 @@ function itemModal(it, forPerson = '') {
         ${it?.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="">` : ''}
         ${it?.photo ? `<button type="button" class="textbtn" data-delphoto>Remove picture</button>` : ''}
       </div>
-      ${!it || it.addedBy === S.me ? `<label class="check"><input type="checkbox" id="g-hide" ${it?.hidden ? 'checked' : ''}> Hide this from ${esc(otherName())}</label>` : ''}
+      ${!it || it.addedBy === S.me ? `<label class="check"><input type="checkbox" id="g-hide" ${it ? (it.hidden ? 'checked' : '') : person.trim().toLowerCase() === otherName().toLowerCase() ? 'checked' : ''}> Hide this from ${esc(otherName())}</label>` : ''}
       <details class="more" ${it ? '' : 'hidden'} ${it?.note ? 'open' : ''}><summary>Add a note</summary>
         <input class="field" id="g-note" maxlength="200" aria-label="Note" placeholder="Size, color, where it's hidden" value="${esc(it?.note)}"></details>
-      ${it?.url ? `<p class="amazon-link"><a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">View on Amazon</a></p>` : ''}
+      ${it?.url ? `<p class="amazon-link"><a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">View on Amazon</a>${it.price ? ` ${esc(it.price)}` : ''}</p>` : ''}
       ${adder ? `<p class="added-by">Added by ${esc(adder)}</p>` : ''}
       <p class="err" role="alert"></p>
       ${it ? `<div class="foot">
@@ -735,6 +755,7 @@ document.addEventListener('visibilitychange', () => document.visibilityState ===
 
 // Numbers only, so a label can't give the gift away.
 function printLabels() {
+  $('#labels')?.remove();
   const sheet = document.createElement('div');
   sheet.id = 'labels';
   sheet.innerHTML = S.items.map((i) => `<div class="label">${i.number}</div>`).join('');
@@ -825,16 +846,20 @@ function snow() {
 }
 
 // The other person's changes appear on their own.
-setInterval(async () => {
+async function refresh() {
   if (!S || inReveal || tab === 'find' || document.hidden || $('.overlay')) return;
   try {
     const next = await api('GET', '/api/state');
-    if (JSON.stringify(next) !== JSON.stringify(S)) {
-      S = next;
-      renderMain();
-    }
+    if (!S || $('.overlay') || JSON.stringify(next) === JSON.stringify(S)) return;
+    const known = new Set(S.items.map((i) => i.id));
+    const added = next.items.filter((i) => !known.has(i.id) && i.addedBy !== next.me);
+    S = next;
+    renderMain();
+    if (added.length) toast(added.length === 1 ? `${otherName()} added ${added[0].name} for ${added[0].person}` : `${otherName()} added ${added.length} gifts`);
   } catch {}
-}, 5000);
+}
+setInterval(refresh, 5000);
+addEventListener('focus', refresh);
 
 snow();
 start().catch(() => { if (!S) renderGate(); });

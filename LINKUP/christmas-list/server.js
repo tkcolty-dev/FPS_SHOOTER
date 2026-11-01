@@ -228,10 +228,23 @@ const publicState = (uid) => ({
   reveal: revealOn() ? revealInfo() : null,
 });
 
-// One change at a time, so the two of you can't overwrite each other.
+function useSaved(saved) {
+  if (saved) state = { numbersUsed: [], ...saved, people: (saved.people || []).map(({ id, name }) => ({ id, name })) };
+  state.items.forEach((i) => {
+    addPerson(i.person);
+    if (!state.numbersUsed.includes(i.number)) state.numbersUsed.push(i.number);
+  });
+}
+
+// One change at a time, so the two of you can't overwrite each other. Each change starts from the
+// saved list, because during a deploy the old and new copies of the app run side by side.
 let queue = Promise.resolve();
 const locked = (fn) => {
-  const run = queue.then(fn, fn);
+  const step = async () => {
+    useSaved(await store.load());
+    return fn();
+  };
+  const run = queue.then(step, step);
   queue = run.catch(() => {});
   return run;
 };
@@ -526,7 +539,7 @@ app.delete('/api/items/:id/photo', wrap(async (req, res) => {
 // The Find page. Before the reveal a hidden gift only says who it's for, not what it is.
 app.post('/api/find', wrap(async (req, res) => {
   const number = numberOf(req.body.number);
-  if (number === null) return res.status(400).json({ error: 'Gift numbers go from 1 to 9999.' });
+  if (number === null) return res.status(400).json({ error: 'Type the number written on the present.' });
   const it = state.items.find((i) => i.number === number);
   if (!it) return res.status(404).json({ error: `There's no gift number ${number}.` });
   if (revealOn()) {
@@ -568,7 +581,10 @@ app.patch('/api/people/:id', wrap(async (req, res) => {
 }));
 
 app.delete('/api/people/:id', wrap(async (req, res) => {
-  state.people = state.people.filter((x) => x.id !== req.params.id);
+  const p = state.people.find((x) => x.id === req.params.id);
+  // Counts hidden gifts too: removing the name would strand them, and it would only come back anyway.
+  if (p && state.items.some((i) => samePerson(i.person, p.name))) return res.status(400).json({ error: `${p.name} still has gifts. Move or remove them first.` });
+  state.people = state.people.filter((x) => x !== p);
   await store.save(state);
   res.json(publicState(req.uid));
 }));
@@ -590,8 +606,7 @@ store
   .init()
   .then(() => store.load())
   .then((saved) => {
-    if (saved) state = { numbersUsed: [], ...saved, people: (saved.people || []).map(({ id, name }) => ({ id, name })) };
-    state.items.forEach((i) => addPerson(i.person));
+    useSaved(saved);
     app.listen(PORT, () => {
       console.log(`Christmas List on http://localhost:${PORT} (${cfg ? 'postgres' : 'file'} storage)`);
     });
