@@ -1,0 +1,17 @@
+{
+  "name": "christmas-list",
+  "version": "1.0.0",
+  "description": "Private Christmas gift numbers: two people add gifts with numbers, then reveal them by typing the number",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.1.0",
+    "pg": "^8.16.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
