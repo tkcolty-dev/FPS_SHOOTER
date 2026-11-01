@@ -1,4 +1,4 @@
-// Christmas Numbers front end: sign in, gift list, reveal screen.
+// Christmas Numbers front end: sign in, gifts by person, people, the Find page and the reveal.
 const $ = (s, el = document) => el.querySelector(s);
 const app = $('#app');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -28,7 +28,7 @@ function view(fn) {
 }
 
 let S = null;
-let filter = null;
+let tab = ['gifts', 'find', 'people'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'gifts';
 let inReveal = false;
 
 async function api(method, url, body) {
@@ -118,7 +118,7 @@ async function start() {
     if (S.reveal) return renderReveal();
     revealLocked(false);
   }
-  await view(renderList);
+  await view(renderMain);
 }
 
 // While the reveal is running this device stays on it, even after a reload.
@@ -132,65 +132,113 @@ function revealLocked(on) {
   }
 }
 
-// ---------- list ----------
-function renderList() {
-  document.title = 'Christmas Numbers';
-  const people = [...new Set(S.items.map((i) => i.person))].sort((a, b) => a.localeCompare(b));
-  if (filter && !people.includes(filter)) filter = null;
-  const items = filter ? S.items.filter((i) => i.person === filter) : S.items;
-  const opened = S.items.filter((i) => i.opened).length;
-  const noPic = S.items.filter((i) => !i.photo).length;
-  app.innerHTML = `<div class="page">
-    <header class="top glass fx">
-      <h1>Christmas Numbers</h1>
-      <div class="actions">
-        <button class="btn pine" data-a="reveal">Reveal gifts</button>
-        <button class="btn" data-a="add">Add a gift</button>
-      </div>
-    </header>
-    ${S.items.length ? `<div class="bar fx">
-      <span class="count">${S.items.length} ${S.items.length === 1 ? 'gift' : 'gifts'}${opened ? `, ${opened} opened` : ''}${noPic ? `, ${noPic} without a picture` : ''}</span>
-      ${people.length > 1 ? `<div class="chips"><button class="chip" aria-pressed="${!filter}" data-f="">Everyone</button>${people.map((p) => `<button class="chip" aria-pressed="${p === filter}" data-f="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}
-    </div>` : ''}
-    ${S.items.length
-      ? `<section class="tags">${items.map(giftTag).join('')}</section>`
-      : `<div class="empty glass fx"><h2>No gifts yet</h2><p>Add the first gift, then write its number on the present.</p><button class="btn" data-a="add">Add a gift</button></div>`}
-    <div class="links glass fx">
-      ${S.items.length ? `<button class="textbtn" data-a="labels">Print labels</button>` : ''}
-      <button class="textbtn" data-a="name">Change my name</button>
-      <button class="textbtn" data-a="password">Change my password</button>
-      ${opened ? `<button class="textbtn" data-a="reset">Close all gifts again</button>` : ''}
-      <button class="textbtn" data-a="out">Sign out</button>
-    </div>
-  </div>`;
-  app.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => actions[b.dataset.a]()));
-  app.querySelectorAll('[data-f]').forEach((b) => (b.onclick = () => { filter = b.dataset.f || null; renderList(); }));
-  app.querySelectorAll('[data-id]').forEach((b) => (b.onclick = () => itemModal(S.items.find((i) => i.id === b.dataset.id))));
-}
-
+// ---------- main screen ----------
 function otherName() {
   return S.users[S.me === 'a' ? 'b' : 'a'].name || 'the other person';
 }
 
-function giftTag(it) {
+function header() {
+  const tabs = [['gifts', 'Gifts'], ['find', 'Find'], ['people', 'People']];
+  return `<header class="top">
+    <h1>Christmas Numbers</h1>
+    <nav class="tabs" aria-label="Pages">${tabs.map(([id, label]) => `<button data-go="${id}" ${tab === id ? 'aria-current="page"' : ''}>${label}</button>`).join('')}</nav>
+    <button class="btn add-btn" data-a="add">Add gift</button>
+  </header>`;
+}
+
+function renderMain() {
+  document.title = 'Christmas Numbers';
+  app.innerHTML = `<div class="page">${header()}${{ gifts: giftsPage, find: findPage, people: peoplePage }[tab]()}</div>`;
+  app.querySelectorAll('[data-go]').forEach((b) => {
+    b.onclick = () => {
+      if (tab === b.dataset.go) return;
+      tab = b.dataset.go;
+      history.replaceState(null, '', `#${tab}`);
+      view(renderMain);
+    };
+  });
+  app.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => actions[b.dataset.a]()));
+  app.querySelectorAll('[data-id]').forEach((b) => (b.onclick = () => itemModal(S.items.find((i) => i.id === b.dataset.id))));
+  app.querySelectorAll('[data-add-for]').forEach((b) => (b.onclick = () => itemModal(null, b.dataset.addFor)));
+  app.querySelectorAll('[data-person]').forEach((b) => (b.onclick = () => personModal(S.people.find((p) => p.id === b.dataset.person))));
+  if (tab === 'find') wireFind();
+}
+
+// Everyone on the People page, then anyone else who has a gift.
+function giftGroups() {
+  const groups = S.people.map((p) => ({ name: p.name, items: [] }));
+  for (const it of S.items) {
+    let g = groups.find((x) => x.name.toLowerCase() === it.person.toLowerCase());
+    if (!g) groups.push((g = { name: it.person, items: [] }));
+    g.items.push(it);
+  }
+  return groups;
+}
+
+function giftsPage() {
+  const opened = S.items.filter((i) => i.opened).length;
+  const noPic = S.items.filter((i) => !i.photo).length;
+  const groups = giftGroups();
+  const body = groups.length
+    ? `<div class="list glass fx">${groups.map(groupBlock).join('')}</div>`
+    : `<div class="empty glass fx"><h2>Add your people first</h2><p>Type everyone's names once. Each gift then gets its own random number.</p><button class="btn" data-a="addPerson">Add names</button></div>`;
+  return `<div class="column">
+    ${S.items.length ? `<p class="summary fx">${S.items.length} ${S.items.length === 1 ? 'gift' : 'gifts'}${opened ? `, ${opened} opened` : ''}${noPic ? `, ${noPic} without a picture` : ''}</p>` : ''}
+    ${body}
+    <div class="links fx">
+      ${S.items.length ? `<button class="textbtn" data-a="labels">Print labels</button>` : ''}
+      <button class="textbtn" data-a="name">Change name</button>
+      <button class="textbtn" data-a="password">Change password</button>
+      ${opened ? `<button class="textbtn" data-a="reset">Close all gifts</button>` : ''}
+      <button class="textbtn" data-a="out">Sign out</button>
+    </div>
+  </div>`;
+}
+
+function groupBlock(g) {
+  return `<section class="group">
+    <div class="group-head">
+      <h2>${esc(g.name)}</h2>
+      <button class="add-mini" data-add-for="${esc(g.name)}" aria-label="Add a gift for ${esc(g.name)}">Add</button>
+    </div>
+    ${g.items.length ? `<ul class="rows">${g.items.map(giftRow).join('')}</ul>` : ''}
+  </section>`;
+}
+
+function giftRow(it) {
   const hidden = it.hidden && !it.opened;
-  return `<button class="glass gift fx" data-id="${esc(it.id)}" aria-label="Edit gift ${it.number}, ${esc(it.name)}">
-    <span class="row"><span class="num">${it.number}</span>
-      ${it.opened ? `<span class="state done">${CHECK}Opened</span>` : hidden ? `<span class="state" title="Hidden from ${esc(otherName())}">${LOCK}Hidden</span>` : ''}</span>
-    ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="" loading="lazy">` : `<span class="nopic">Add a picture</span>`}
-    <span class="what">${esc(it.name)}</span>
-    <span class="row"><span class="for">For <b>${esc(it.person)}</b></span>${it.price ? `<span class="price">${esc(it.price)}</span>` : ''}</span>
-  </button>`;
+  return `<li><button class="gift" data-id="${esc(it.id)}" aria-label="Edit gift ${it.number}, ${esc(it.name)}">
+    <span class="num">${it.number}</span>
+    <span class="what">${esc(it.name)}${it.price ? `<small>${esc(it.price)}</small>` : ''}</span>
+    ${it.opened ? `<span class="state done" title="Opened">${CHECK}<span>Opened</span></span>` : hidden ? `<span class="state" title="Hidden from ${esc(otherName())}">${LOCK}<span>Hidden</span></span>` : ''}
+    ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="" loading="lazy">` : ''}
+  </button></li>`;
+}
+
+function peoplePage() {
+  return `<div class="column"><section class="list glass fx">
+    <div class="page-head">
+      <div><h2>People</h2><p>You both share this list of names.</p></div>
+      <button class="btn small" data-a="addPerson">Add names</button>
+    </div>
+    ${S.people.length ? `<ul class="rows">${S.people.map((p) => {
+      const count = S.items.filter((i) => i.person.toLowerCase() === p.name.toLowerCase()).length;
+      return `<li><button class="person" data-person="${esc(p.id)}" aria-label="Edit ${esc(p.name)}">
+        <span class="what">${esc(p.name)}</span><span class="count">${count} ${count === 1 ? 'gift' : 'gifts'}</span>
+      </button></li>`;
+    }).join('')}</ul>` : `<p class="none">Nobody yet.</p>`}
+  </section></div>`;
 }
 
 const actions = {
   add: () => itemModal(null),
+  addPerson: () => personModal(null),
   name: () => nameModal(),
   password: () => passwordModal(),
   labels: () => printLabels(),
   reveal: () => {
     modal(`<h2>Start the reveal?</h2>
-      <p class="plain-text">Do this together when you're ready. Hidden gifts can be opened from now on, and this device stays on the reveal screen. Leaving it takes one of your passwords.</p>
+      <p class="plain-text">Do this together when you're ready. Typing a number now opens that gift, even hidden ones, and this device stays on this screen. Leaving it takes one of your passwords.</p>
       <form><label class="lbl" for="oc">${esc(otherName())}'s password</label>
       <input class="field" id="oc" type="password" autocomplete="off" required>
       <p class="err" role="alert"></p>
@@ -216,7 +264,7 @@ const actions = {
   async reset() {
     if (!confirm('Close all gifts so they can be revealed again?')) return;
     S = await api('POST', '/api/reveal/reset');
-    renderList();
+    renderMain();
     toast('All gifts closed');
   },
 };
@@ -241,6 +289,60 @@ function modal(html, ready) {
   ov.querySelector('input:not([type=file]), textarea')?.focus();
 }
 
+function personModal(p) {
+  if (!p) {
+    modal(`<h2>Add names</h2>
+      <form class="stack">
+        <div><label class="lbl" for="p-names">One name per line</label><textarea class="field" id="p-names" rows="6" placeholder="Mom&#10;Dad&#10;Grandma"></textarea></div>
+        <p class="err" role="alert"></p>
+        <div class="foot"><button type="button" class="btn plain" data-close>Cancel</button><button class="btn">Add names</button></div>
+      </form>`, (m, close) => {
+      $('form', m).addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          S = await api('POST', '/api/people', { names: $('#p-names', m).value.split(/[\n,]+/) });
+          close();
+          renderMain();
+        } catch (err) {
+          $('.err', m).textContent = err.message;
+        }
+      });
+    });
+    return;
+  }
+  modal(`<h2>${esc(p.name)}</h2>
+    <form class="stack">
+      <div><label class="lbl" for="p-name">Name</label><input class="field" id="p-name" maxlength="40" autocomplete="off" value="${esc(p.name)}" required></div>
+      <p class="err" role="alert"></p>
+      <div class="foot">
+        <button type="button" class="textbtn danger" data-del>Remove</button>
+        <button type="button" class="btn plain" data-close>Cancel</button>
+        <button class="btn">Save</button>
+      </div>
+    </form>`, (m, close) => {
+    $('[data-del]', m).addEventListener('click', async () => {
+      if (!confirm(`Remove ${p.name}? Their gifts stay on the list.`)) return;
+      try {
+        S = await api('DELETE', `/api/people/${p.id}`);
+        close();
+        renderMain();
+      } catch (err) {
+        $('.err', m).textContent = err.message;
+      }
+    });
+    $('form', m).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      try {
+        S = await api('PATCH', `/api/people/${p.id}`, { name: $('#p-name', m).value });
+        close();
+        renderMain();
+      } catch (err) {
+        $('.err', m).textContent = err.message;
+      }
+    });
+  });
+}
+
 function nameModal() {
   modal(`<h2>What's your name?</h2>
     <form><label class="lbl" for="nm">Your name</label>
@@ -252,7 +354,7 @@ function nameModal() {
       try {
         S = await api('PATCH', '/api/me', { name: $('#nm', m).value });
         close();
-        renderList();
+        renderMain();
       } catch (err) {
         $('.err', m).textContent = err.message;
       }
@@ -281,29 +383,25 @@ function passwordModal() {
   });
 }
 
-function itemModal(it) {
-  const people = [...new Set(S.items.map((i) => i.person))];
+function itemModal(it, forPerson = '') {
+  const people = S.people.map((p) => p.name);
   const adder = it && S.users[it.addedBy]?.name;
   modal(`<h2>${it ? `Gift ${it.number}` : 'Add a gift'}</h2>
     <form class="stack">
+      <div><label class="lbl" for="g-for">Who is it for?</label>
+        ${people.length ? `<div class="who-chips">${people.map((p) => `<button type="button" data-who="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}
+        <input class="field" id="g-for" maxlength="40" autocomplete="off" placeholder="${people.length ? 'Or type a new name' : 'Type a name'}" value="${esc(it ? it.person : forPerson)}" required></div>
       <div class="finder">
         <label class="lbl" for="g-find">Find it on Amazon</label>
-        <div class="find-row"><input class="field" id="g-find" autocomplete="off" enterkeyhint="search" placeholder="Paste a link or type a name"><button type="button" class="btn pine" data-find>Find</button></div>
+        <div class="find-row"><input class="field" id="g-find" autocomplete="off" enterkeyhint="search" placeholder="Paste a link or type a name"><button type="button" class="btn plain" data-find>Find</button></div>
         <p class="find-msg" role="status" hidden></p>
         <div class="picks" hidden></div>
       </div>
       <div><label class="lbl" for="g-name">What is it?</label>
         <input class="field" id="g-name" maxlength="120" value="${esc(it?.name)}" required></div>
-      <div class="two">
-        <div><label class="lbl" for="g-num">Number</label>
-          <input class="field" id="g-num" type="number" inputmode="numeric" min="1" max="9999" value="${it ? it.number : S.next}" required></div>
-        <div><label class="lbl" for="g-for">Who is it for?</label>
-          <input class="field" id="g-for" maxlength="40" list="people" autocomplete="off" value="${esc(it?.person)}" required>
-          <datalist id="people">${people.map((p) => `<option value="${esc(p)}">`).join('')}</datalist></div>
-      </div>
-      <div><label class="lbl" for="g-note">Note for the reveal (optional)</label>
+      <div><label class="lbl" for="g-note">Note (optional)</label>
         <input class="field" id="g-note" maxlength="200" value="${esc(it?.note)}"></div>
-      ${!it || it.addedBy === S.me ? `<label class="check"><input type="checkbox" id="g-hide" ${!it || it.hidden ? 'checked' : ''}> Hide from ${esc(otherName())} until it's revealed</label>` : ''}
+      ${!it || it.addedBy === S.me ? `<label class="check"><input type="checkbox" id="g-hide" ${it?.hidden ? 'checked' : ''}> Hide this from ${esc(otherName())}</label>` : ''}
       <div class="photo-row">
         ${it?.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="">` : ''}
         <label class="btn plain photo-btn"><span>${it?.photo ? 'Change picture' : 'Add a picture'}</span><input type="file" accept="image/*" style="position:absolute;opacity:0;width:1px"></label>
@@ -320,6 +418,16 @@ function itemModal(it) {
     </form>`, (m, close) => {
     let file = null;
     let chosen = null;
+    const whoBox = $('#g-for', m);
+    const markWho = () => m.querySelectorAll('[data-who]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.who.toLowerCase() === whoBox.value.trim().toLowerCase()));
+    m.querySelectorAll('[data-who]').forEach((b) => {
+      b.onclick = () => {
+        whoBox.value = b.dataset.who;
+        markWho();
+      };
+    });
+    whoBox.addEventListener('input', markWho);
+    markWho();
     const showPicture = (src) => {
       let img = $('.photo-row img', m);
       if (!img) {
@@ -345,8 +453,8 @@ function itemModal(it) {
       if (x.image) showPicture(x.image);
       picks.hidden = true;
       findBox.value = '';
-      say(`Filled in from Amazon${x.price ? ` at ${x.price}` : ''}. Check the name, then add who it's for.`);
-      $('#g-for', m).focus();
+      say(`Filled in from Amazon${x.price ? ` at ${x.price}` : ''}. Check the name.`);
+
     };
     const find = async (text) => {
       text = text.trim();
@@ -395,7 +503,7 @@ function itemModal(it) {
       try {
         S = await api('DELETE', `/api/items/${it.id}`);
         close();
-        renderList();
+        renderMain();
         toast(`Removed gift ${it.number}`);
       } catch (err) {
         $('.err', m).textContent = err.message;
@@ -405,7 +513,7 @@ function itemModal(it) {
       try {
         S = await api('DELETE', `/api/items/${it.id}/photo`);
         close();
-        renderList();
+        renderMain();
       } catch (err) {
         $('.err', m).textContent = err.message;
       }
@@ -414,7 +522,7 @@ function itemModal(it) {
       e.preventDefault();
       const save = $('.foot .btn:last-child', m);
       save.disabled = true;
-      const body = { name: $('#g-name', m).value, number: $('#g-num', m).value, person: $('#g-for', m).value, note: $('#g-note', m).value };
+      const body = { name: $('#g-name', m).value, person: whoBox.value, note: $('#g-note', m).value };
       const hide = $('#g-hide', m);
       if (hide) body.hidden = hide.checked;
       if (chosen) {
@@ -434,13 +542,30 @@ function itemModal(it) {
           pictureFailed = true;
         }
         close();
-        renderList();
-        toast(pictureFailed ? `Saved gift ${body.number}, but its picture didn't load. Open the gift to add one.` : it ? `Saved gift ${body.number}` : `Added gift ${body.number}. Write ${body.number} on the present.`);
+        renderMain();
+        if (it) toast(pictureFailed ? "Saved, but the picture didn't load." : 'Saved');
+        else numberModal(S.items.find((i) => i.id === id), pictureFailed);
       } catch (err) {
         $('.err', m).textContent = err.message;
         save.disabled = false;
       }
     });
+  });
+}
+
+// Shows the new gift's number, the one thing to do next.
+function numberModal(it, pictureFailed) {
+  modal(`<div class="new-number">
+      <p>Write this on the present</p>
+      <div class="big">${it.number}</div>
+      <p class="for-line">${esc(it.name)} for ${esc(it.person)}</p>
+      ${pictureFailed ? `<p class="err">The picture didn't load. Open the gift to add one.</p>` : ''}
+    </div>
+    <div class="foot even"><button class="btn plain" data-close>Done</button><button class="btn" data-more>Add another</button></div>`, (m, close) => {
+    $('[data-more]', m).onclick = () => {
+      close();
+      itemModal(null, it.person);
+    };
   });
 }
 
@@ -472,38 +597,105 @@ function shrinkPhoto(file, max = 1000) {
   });
 }
 
-// ---------- reveal screen ----------
-let typed = '';
-let busy = false;
-let revealKeys = null;
+// ---------- find page and reveal ----------
+// The same typing box does both. Before the reveal it just looks gifts up; during it, gifts open.
+function findPanel() {
+  return `<section class="finder-page">
+    <form class="find-card glass fx" id="find-form">
+      <label for="find-num">Type the number on the present</label>
+      <div class="find-box">
+        <input id="find-num" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" enterkeyhint="go" placeholder="000" aria-label="Gift number">
+        <button class="btn">Show</button>
+      </div>
+    </form>
+    <div id="result" aria-live="polite"></div>
+    ${inReveal ? '' : `<div class="reveal-note fx"><p>Hidden gifts only show who they're for until you start the reveal together.</p><button class="btn plain small" data-a="reveal">Start the reveal</button></div>`}
+  </section>`;
+}
+const findPage = findPanel;
 
 function renderReveal() {
   inReveal = true;
   keepAwake();
-  typed = '';
-  busy = false;
-  showPad();
-  if (revealKeys) document.removeEventListener('keydown', revealKeys);
-  revealKeys = (e) => {
-    if (!inReveal || busy || $('.overlay')) return;
-    if ($('.shown')) {
-      if (e.key === 'Enter') showPad();
-      return;
-    }
-    if (/^\d$/.test(e.key)) press(e.key);
-    else if (e.key === 'Backspace') press('back');
-    else if (e.key === 'Enter') press('go');
-  };
-  document.addEventListener('keydown', revealKeys);
+  tab = 'find';
+  view(() => {
+    const info = S.reveal || { opened: [], total: 0 };
+    app.innerHTML = `<div class="page reveal-page">
+      <div class="rv-top"><span class="progress glass fx" id="progress">${info.opened.length} of ${info.total} opened</span><button class="btn plain glass fx" id="rv-exit">Leave</button></div>
+      ${findPanel()}
+    </div>`;
+    $('#rv-exit').onclick = leaveModal;
+    wireFind();
+  });
 }
 
-function revealFrame(body) {
-  const info = S.reveal || { opened: [], total: 0 };
-  app.innerHTML = `<div class="reveal">
-    <div class="rv-top"><span class="progress glass fx">${info.opened.length} of ${info.total} opened</span><button class="btn plain glass fx" id="rv-exit">Leave</button></div>
-    <div class="rv-body">${body}</div>
-  </div>`;
-  $('#rv-exit').onclick = leaveModal;
+let busy = false;
+function wireFind() {
+  const box = $('#find-num');
+  busy = false;
+  box.addEventListener('input', () => (box.value = box.value.replace(/\D/g, '')));
+  $('#find-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (box.value && !busy) lookup(box.value);
+  });
+  if (!matchMedia('(pointer: coarse)').matches) box.focus();
+}
+
+function giftCard(it) {
+  return `<article class="shown glass result-in">
+    <div class="gnum">Gift ${it.number}</div>
+    <div class="gfor">For <b>${esc(it.person)}</b></div>
+    ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="">` : ''}
+    <div class="gname">${esc(it.name)}</div>
+    ${it.note ? `<div class="gnote">${esc(it.note)}</div>` : ''}
+  </article>`;
+}
+
+async function lookup(number) {
+  const result = $('#result');
+  const box = $('#find-num');
+  busy = true;
+  // A phone keyboard would cover the answer; on a computer, be ready for the next number.
+  if (matchMedia('(pointer: coarse)').matches) box.blur();
+  else box.select();
+  try {
+    const res = await api('POST', '/api/find', { number: Number(number) });
+    if (res.reveal) {
+      S.reveal = res.reveal;
+      const p = $('#progress');
+      if (p) p.textContent = `${res.reveal.opened.length} of ${res.reveal.total} opened`;
+    }
+    if (res.hiddenFor) {
+      result.innerHTML = `<article class="shown glass result-in">
+        <div class="gnum">Gift ${res.number}</div>
+        <div class="gfor">For <b>${esc(res.hiddenFor)}</b></div>
+        <div class="gnote">What it is stays hidden until the reveal.</div>
+      </article>`;
+    } else if (res.first) {
+      result.innerHTML = `<div class="opening"><svg class="box shake" viewBox="0 0 300 300" aria-hidden="true">
+          <rect x="45" y="125" width="210" height="160" rx="10" fill="#b3213f"/><rect x="132" y="125" width="36" height="160" fill="#ffc857"/>
+          <g class="lid"><rect x="30" y="85" width="240" height="50" rx="10" fill="#7a122b"/><rect x="132" y="85" width="36" height="50" fill="#ffc857"/>
+          <path d="M150 85C110 30 70 45 88 72 98 86 130 86 150 85ZM150 85C190 30 230 45 212 72 202 86 170 86 150 85Z" fill="#ffc857"/></g>
+        </svg></div>`;
+      tick();
+      await wait(calm ? 300 : 1700);
+      const giftBox = $('.box');
+      if (!giftBox) return;
+      giftBox.classList.remove('shake');
+      giftBox.classList.add('open');
+      chime();
+      await wait(calm ? 100 : 420);
+      if (!$('#result')) return;
+      confetti();
+      result.innerHTML = giftCard(res.item);
+    } else {
+      result.innerHTML = giftCard(res.item);
+    }
+  } catch (err) {
+    result.innerHTML = `<p class="miss glass result-in" role="alert">${esc(err.message)}</p>`;
+  }
+  busy = false;
+  result.scrollIntoView({ behavior: calm ? 'auto' : 'smooth', block: 'nearest' });
 }
 
 function leaveModal() {
@@ -519,7 +711,7 @@ function leaveModal() {
         close();
         inReveal = false;
         revealLocked(false);
-        view(renderList);
+        view(renderMain);
       } catch (err) {
         $('.err', m).textContent = err.message;
       }
@@ -547,88 +739,6 @@ function printLabels() {
   document.body.appendChild(sheet);
   addEventListener('afterprint', () => sheet.remove(), { once: true });
   window.print();
-}
-
-function showPad() {
-  typed = '';
-  const opened = S.reveal?.opened || [];
-  view(() => {
-    revealFrame(`<div class="rv-panel glass fx">
-      <h2>Which gift is next?</h2>
-      <div class="display" id="disp" aria-live="polite"><span class="ph">?</span></div>
-      <div class="pad">
-        ${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button data-k="${n}">${n}</button>`).join('')}
-        <button class="clear" data-k="back" aria-label="Delete last digit">Delete</button><button data-k="0">0</button><button class="go" data-k="go">Open</button>
-      </div>
-      <p class="rv-err" role="alert"></p>
-    </div>
-    ${opened.length ? `<div class="opened-row fx">${opened.map((n) => `<button class="chip" data-again="${n}" aria-label="Show gift ${n} again">${n}</button>`).join('')}</div>` : ''}`);
-    app.querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => press(b.dataset.k)));
-    app.querySelectorAll('[data-again]').forEach((b) => (b.onclick = () => open(b.dataset.again, true)));
-  });
-}
-
-function press(k) {
-  if (busy) return;
-  if (k === 'back') typed = typed.slice(0, -1);
-  else if (k === 'go') {
-    if (typed) open(typed);
-    return;
-  } else if (typed.length < 4) typed += k;
-  const d = $('#disp');
-  if (d) d.innerHTML = typed ? esc(typed) : `<span class="ph">?</span>`;
-  const err = $('.rv-err');
-  if (err) err.textContent = '';
-}
-
-async function open(number, again = false) {
-  busy = true;
-  let res;
-  try {
-    res = await api('POST', '/api/reveal', { number: Number(number) });
-  } catch (err) {
-    busy = false;
-    if (inReveal && S) {
-      typed = '';
-      const d = $('#disp');
-      const e = $('.rv-err');
-      if (d) d.innerHTML = `<span class="ph">?</span>`;
-      if (e) e.textContent = err.message;
-    }
-    return;
-  }
-  S.reveal = { opened: res.opened, total: res.total };
-  if (!again) {
-    await view(() => revealFrame(`<svg class="box shake fx" viewBox="0 0 300 300" aria-hidden="true">
-        <rect x="45" y="125" width="210" height="160" rx="10" fill="#b3213f"/><rect x="132" y="125" width="36" height="160" fill="#ffc857"/>
-        <g class="lid"><rect x="30" y="85" width="240" height="50" rx="10" fill="#7a122b"/><rect x="132" y="85" width="36" height="50" fill="#ffc857"/>
-        <path d="M150 85C110 30 70 45 88 72 98 86 130 86 150 85ZM150 85C190 30 230 45 212 72 202 86 170 86 150 85Z" fill="#ffc857"/></g>
-      </svg><p class="suspense glass fx">Gift ${res.item.number}…</p>`));
-    tick();
-    await wait(calm ? 300 : 1700);
-    const box = $('.box');
-    if (!box) return;
-    box.classList.remove('shake');
-    box.classList.add('open');
-    chime();
-    await wait(calm ? 100 : 420);
-    if (!$('.box')) return;
-    confetti();
-  }
-  const it = res.item;
-  await view(() => {
-    revealFrame(`<div class="shown glass fx">
-      <div class="gnum">Gift ${it.number}</div>
-      <div class="gname">${esc(it.name)}</div>
-      ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="">` : ''}
-      <div class="gfor">For <b>${esc(it.person)}</b></div>
-      ${it.note ? `<div class="gnote">${esc(it.note)}</div>` : ''}
-    </div>
-    <button class="btn pine rv-next fx" id="rv-next">Next gift</button>`);
-    $('#rv-next').onclick = () => showPad();
-    $('#rv-next').focus();
-  });
-  busy = false;
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -714,12 +824,12 @@ function snow() {
 
 // The other person's changes appear on their own.
 setInterval(async () => {
-  if (!S || inReveal || document.hidden || $('.overlay')) return;
+  if (!S || inReveal || tab === 'find' || document.hidden || $('.overlay')) return;
   try {
     const next = await api('GET', '/api/state');
     if (JSON.stringify(next) !== JSON.stringify(S)) {
       S = next;
-      renderList();
+      renderMain();
     }
   } catch {}
 }, 5000);

@@ -197,13 +197,25 @@ const numberOf = (v) => {
   return Number.isInteger(n) && n >= 1 && n <= 9999 ? n : null;
 };
 
-let state = { users: { a: { name: '' }, b: { name: '' } }, items: [] };
-const nextNumber = () => {
-  const used = new Set(state.items.map((i) => i.number));
-  let n = 1;
-  while (used.has(n)) n++;
-  return n;
-};
+let state = { users: { a: { name: '' }, b: { name: '' } }, items: [], people: [], numbersUsed: [] };
+const samePerson = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+const MIN_NUMBER = 100;
+const MAX_NUMBER = 999;
+// A random three-digit number that has never been given out, even to a gift that's since been removed.
+function randomNumber() {
+  const used = new Set([...state.numbersUsed, ...state.items.map((i) => i.number)]);
+  const free = [];
+  for (let n = MIN_NUMBER; n <= MAX_NUMBER; n++) if (!used.has(n)) free.push(n);
+  return free.length ? free[crypto.randomInt(free.length)] : null;
+}
+function addPerson(name) {
+  const found = state.people.find((p) => samePerson(p.name, name));
+  if (found) return found;
+  const person = { id: rid(6), name };
+  state.people.push(person);
+  state.people.sort((x, y) => x.name.localeCompare(y.name));
+  return person;
+}
 // A hidden gift is only sent to the person who added it, until it's been opened in the reveal.
 const canSee = (it, uid) => !it.hidden || it.addedBy === uid || it.opened;
 const revealOn = () => (state.revealUntil || 0) > Date.now();
@@ -212,7 +224,7 @@ const publicState = (uid) => ({
   me: uid,
   users: { a: { name: state.users.a.name }, b: { name: state.users.b.name } },
   items: state.items.filter((i) => canSee(i, uid)).sort((x, y) => x.number - y.number),
-  next: nextNumber(),
+  people: state.people,
   reveal: revealOn() ? revealInfo() : null,
 });
 
@@ -423,11 +435,7 @@ function readItem(body, uid, it) {
   if (!name) return { error: 'Add what the gift is.' };
   const person = str(body.person, 40);
   if (!person) return { error: 'Add who the gift is for.' };
-  const number = numberOf(body.number);
-  if (number === null) return { error: 'Gift numbers go from 1 to 9999.' };
-  const clash = state.items.find((i) => i.number === number && i !== it);
-  if (clash) return { error: canSee(clash, uid) ? `Number ${number} is already on "${clash.name}". Pick another number.` : `Number ${number} is already taken. Pick another number.` };
-  const fields = { name, person, number, note: str(body.note, 200) };
+  const fields = { name, person, note: str(body.note, 200) };
   if ('url' in body) {
     fields.url = amazonUrl(body.url);
     fields.price = fields.url ? str(body.price, 20) || null : null;
@@ -439,7 +447,11 @@ app.post('/api/items', wrap(async (req, res) => {
   if (state.items.length >= 500) return res.status(400).json({ error: 'The list is full at 500 gifts.' });
   const fields = readItem(req.body, req.uid);
   if (fields.error) return res.status(400).json(fields);
-  const item = { id: rid(6), ...fields, hidden: req.body.hidden !== false, photo: null, opened: false, addedBy: req.uid, addedAt: Date.now() };
+  const number = randomNumber();
+  if (number === null) return res.status(400).json({ error: 'Every three-digit number has been used.' });
+  fields.person = addPerson(fields.person).name;
+  state.numbersUsed.push(number);
+  const item = { id: rid(6), ...fields, number, hidden: req.body.hidden === true, photo: null, opened: false, addedBy: req.uid, addedAt: Date.now() };
   state.items.push(item);
   await store.save(state);
   res.json({ ...publicState(req.uid), id: item.id });
@@ -450,6 +462,7 @@ app.patch('/api/items/:id', wrap(async (req, res) => {
   if (!it) return;
   const fields = readItem(req.body, req.uid, it);
   if (fields.error) return res.status(400).json(fields);
+  fields.person = addPerson(fields.person).name;
   Object.assign(it, fields);
   if (it.addedBy === req.uid && 'hidden' in req.body) it.hidden = !!req.body.hidden;
   await store.save(state);
@@ -510,16 +523,54 @@ app.delete('/api/items/:id/photo', wrap(async (req, res) => {
 }));
 
 // Type a number on the reveal screen: returns that one gift and marks it opened.
-app.post('/api/reveal', wrap(async (req, res) => {
-  if (!revealOn()) return res.status(403).json({ error: 'Start the reveal first.' });
+// The Find page. Before the reveal a hidden gift only says who it's for, not what it is.
+app.post('/api/find', wrap(async (req, res) => {
   const number = numberOf(req.body.number);
-  const it = number && state.items.find((i) => i.number === number);
-  if (!it) return res.status(404).json({ error: `There's no gift number ${req.body.number}.` });
-  if (!it.opened) {
-    it.opened = true;
-    await store.save(state);
+  if (number === null) return res.status(400).json({ error: 'Gift numbers go from 1 to 9999.' });
+  const it = state.items.find((i) => i.number === number);
+  if (!it) return res.status(404).json({ error: `There's no gift number ${number}.` });
+  if (revealOn()) {
+    const first = !it.opened;
+    if (first) {
+      it.opened = true;
+      await store.save(state);
+    }
+    return res.json({ item: it, first, reveal: revealInfo() });
   }
-  res.json({ item: it, ...revealInfo() });
+  if (!canSee(it, req.uid)) return res.json({ hiddenFor: it.person, number });
+  res.json({ item: it });
+}));
+
+// The people gifts can be for. Adding several names at once is the normal way to start.
+app.post('/api/people', wrap(async (req, res) => {
+  const names = (Array.isArray(req.body.names) ? req.body.names : []).map((n) => str(n, 40)).filter(Boolean);
+  if (!names.length) return res.status(400).json({ error: 'Add at least one name.' });
+  if (state.people.length + names.length > 200) return res.status(400).json({ error: 'The list is full at 200 people.' });
+  names.forEach(addPerson);
+  await store.save(state);
+  res.json(publicState(req.uid));
+}));
+
+app.patch('/api/people/:id', wrap(async (req, res) => {
+  const p = state.people.find((x) => x.id === req.params.id);
+  if (!p) return res.status(404).json({ error: 'That person is gone. They may have just been removed.' });
+  const name = str(req.body.name, 40);
+  if (!name) return res.status(400).json({ error: 'Add a name.' });
+  if (state.people.some((x) => x !== p && samePerson(x.name, name))) return res.status(400).json({ error: `${name} is already on the list.` });
+  // Gifts follow a new name, including hidden ones.
+  state.items.forEach((i) => {
+    if (samePerson(i.person, p.name)) i.person = name;
+  });
+  p.name = name;
+  state.people.sort((x, y) => x.name.localeCompare(y.name));
+  await store.save(state);
+  res.json(publicState(req.uid));
+}));
+
+app.delete('/api/people/:id', wrap(async (req, res) => {
+  state.people = state.people.filter((x) => x.id !== req.params.id);
+  await store.save(state);
+  res.json(publicState(req.uid));
 }));
 
 app.post('/api/reveal/reset', wrap(async (req, res) => {
@@ -539,7 +590,8 @@ store
   .init()
   .then(() => store.load())
   .then((saved) => {
-    if (saved) state = saved;
+    if (saved) state = { numbersUsed: [], ...saved, people: (saved.people || []).map(({ id, name }) => ({ id, name })) };
+    state.items.forEach((i) => addPerson(i.person));
     app.listen(PORT, () => {
       console.log(`Christmas List on http://localhost:${PORT} (${cfg ? 'postgres' : 'file'} storage)`);
     });
