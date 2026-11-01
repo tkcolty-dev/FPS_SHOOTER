@@ -142,7 +142,6 @@ function header() {
   return `<header class="top">
     <h1>Christmas Numbers</h1>
     <nav class="tabs" aria-label="Pages">${tabs.map(([id, label]) => `<button data-go="${id}" ${tab === id ? 'aria-current="page"' : ''}>${label}</button>`).join('')}</nav>
-    <button class="btn add-btn" data-a="add">Add gift</button>
   </header>`;
 }
 
@@ -176,32 +175,24 @@ function giftGroups() {
 }
 
 function giftsPage() {
-  const opened = S.items.filter((i) => i.opened).length;
-  const noPic = S.items.filter((i) => !i.photo).length;
   const groups = giftGroups();
-  const body = groups.length
-    ? `<div class="list glass fx">${groups.map(groupBlock).join('')}</div>`
-    : `<div class="empty glass fx"><h2>Add your people first</h2><p>Type everyone's names once. Each gift then gets its own random number.</p><button class="btn" data-a="addPerson">Add names</button></div>`;
-  return `<div class="column">
-    ${S.items.length ? `<p class="summary fx">${S.items.length} ${S.items.length === 1 ? 'gift' : 'gifts'}${opened ? `, ${opened} opened` : ''}${noPic ? `, ${noPic} without a picture` : ''}</p>` : ''}
-    ${body}
-    <div class="links fx">
+  if (!groups.length) {
+    return `<div class="column"><div class="empty glass fx"><h2>Add your people first</h2><p>Type everyone's names once. Then add gifts under each person.</p><button class="btn" data-a="addPerson">Add names</button></div></div>`;
+  }
+  return `<div class="summary fx">
+      <span>${S.items.length} ${S.items.length === 1 ? 'gift' : 'gifts'} for ${groups.length} ${groups.length === 1 ? 'person' : 'people'}</span>
       ${S.items.length ? `<button class="textbtn" data-a="labels">Print labels</button>` : ''}
-      <button class="textbtn" data-a="name">Change name</button>
-      <button class="textbtn" data-a="password">Change password</button>
-      ${opened ? `<button class="textbtn" data-a="reset">Close all gifts</button>` : ''}
-      <button class="textbtn" data-a="out">Sign out</button>
     </div>
-  </div>`;
+    <div class="cards">${groups.map(personCard).join('')}
+      <button class="new-person fx" data-a="addPerson">+ Add a person</button>
+    </div>`;
 }
 
-function groupBlock(g) {
-  return `<section class="group">
-    <div class="group-head">
-      <h2>${esc(g.name)}</h2>
-      <button class="add-mini" data-add-for="${esc(g.name)}" aria-label="Add a gift for ${esc(g.name)}">Add</button>
-    </div>
+function personCard(g) {
+  return `<section class="card glass fx">
+    <div class="card-head"><h2>${esc(g.name)}</h2>${g.items.length ? `<span class="badge">${g.items.length}</span>` : ''}</div>
     ${g.items.length ? `<ul class="rows">${g.items.map(giftRow).join('')}</ul>` : ''}
+    <button class="card-add" data-add-for="${esc(g.name)}" aria-label="Add a gift for ${esc(g.name)}">+ Add gift</button>
   </section>`;
 }
 
@@ -209,13 +200,14 @@ function giftRow(it) {
   const hidden = it.hidden && !it.opened;
   return `<li><button class="gift" data-id="${esc(it.id)}" aria-label="Edit gift ${it.number}, ${esc(it.name)}">
     <span class="num">${it.number}</span>
-    <span class="what">${esc(it.name)}${it.price ? `<small>${esc(it.price)}</small>` : ''}</span>
-    ${it.opened ? `<span class="state done" title="Opened">${CHECK}<span>Opened</span></span>` : hidden ? `<span class="state" title="Hidden from ${esc(otherName())}">${LOCK}<span>Hidden</span></span>` : ''}
+    <span class="what">${esc(it.name)}</span>
+    ${it.opened ? `<span class="state done" title="Opened">${CHECK}</span>` : hidden ? `<span class="state" title="Hidden from ${esc(otherName())}">${LOCK}</span>` : ''}
     ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="" loading="lazy">` : ''}
   </button></li>`;
 }
 
 function peoplePage() {
+  const opened = S.items.some((i) => i.opened);
   return `<div class="column"><section class="list glass fx">
     <div class="page-head">
       <div><h2>People</h2><p>You both share this list of names.</p></div>
@@ -227,11 +219,16 @@ function peoplePage() {
         <span class="what">${esc(p.name)}</span><span class="count">${count} ${count === 1 ? 'gift' : 'gifts'}</span>
       </button></li>`;
     }).join('')}</ul>` : `<p class="none">Nobody yet.</p>`}
-  </section></div>`;
+  </section>
+  <div class="links fx">
+    <button class="textbtn" data-a="name">Change name</button>
+    <button class="textbtn" data-a="password">Change password</button>
+    ${opened ? `<button class="textbtn" data-a="reset">Close all gifts</button>` : ''}
+    <button class="textbtn" data-a="out">Sign out</button>
+  </div></div>`;
 }
 
 const actions = {
-  add: () => itemModal(null),
   addPerson: () => personModal(null),
   name: () => nameModal(),
   password: () => passwordModal(),
@@ -286,7 +283,7 @@ function modal(html, ready) {
   ov.addEventListener('click', (e) => e.target.closest('[data-close]') && close());
   document.body.appendChild(ov);
   ready($('.modal', ov), close);
-  ov.querySelector('input:not([type=file]), textarea')?.focus();
+  (ov.querySelector('[data-autofocus]') || ov.querySelector('input:not([type=file]), textarea'))?.focus();
 }
 
 function personModal(p) {
@@ -386,39 +383,40 @@ function passwordModal() {
 function itemModal(it, forPerson = '') {
   const people = S.people.map((p) => p.name);
   const adder = it && S.users[it.addedBy]?.name;
-  modal(`<h2>${it ? `Gift ${it.number}` : 'Add a gift'}</h2>
+  const person = it ? it.person : forPerson;
+  modal(`<button type="button" class="x" data-close aria-label="Close">×</button>
+    <h2>${it ? `Gift ${it.number}` : `Gift for ${esc(forPerson)}`}</h2>
     <form class="stack">
-      <div><label class="lbl" for="g-for">Who is it for?</label>
+      <div class="who" ${it ? '' : 'hidden'}><label class="lbl" for="g-for">Who is it for?</label>
         ${people.length ? `<div class="who-chips">${people.map((p) => `<button type="button" data-who="${esc(p)}">${esc(p)}</button>`).join('')}</div>` : ''}
-        <input class="field" id="g-for" maxlength="40" autocomplete="off" placeholder="${people.length ? 'Or type a new name' : 'Type a name'}" value="${esc(it ? it.person : forPerson)}" required></div>
-      <div class="finder">
-        <label class="lbl" for="g-find">Find it on Amazon</label>
-        <div class="find-row"><input class="field" id="g-find" autocomplete="off" enterkeyhint="search" placeholder="Paste a link or type a name"><button type="button" class="btn plain" data-find>Find</button></div>
+        <input class="field" id="g-for" maxlength="40" autocomplete="off" placeholder="${people.length ? 'Or type a new name' : 'Type a name'}" value="${esc(person)}" required></div>
+      <div>${it ? `<label class="lbl" for="g-name">What's the gift?</label>` : ''}
+        <input class="field" id="g-name" maxlength="120" ${it ? '' : 'data-autofocus aria-label="What\'s the gift?"'} autocomplete="off" placeholder="What's the gift?" value="${esc(it?.name)}" required>
         <p class="find-msg" role="status" hidden></p>
-        <div class="picks" hidden></div>
+        <div class="picks" hidden></div></div>
+      <div class="gift-tools" ${it ? '' : 'hidden'}>
+        <button type="button" class="btn plain small" data-find>Find on Amazon</button>
+        <label class="btn plain small photo-btn"><span>${it?.photo ? 'Change picture' : 'Add a picture'}</span><input type="file" accept="image/*" style="position:absolute;opacity:0;width:1px"></label>
       </div>
-      <div><label class="lbl" for="g-name">What is it?</label>
-        <input class="field" id="g-name" maxlength="120" value="${esc(it?.name)}" required></div>
-      <div><label class="lbl" for="g-note">Note (optional)</label>
-        <input class="field" id="g-note" maxlength="200" value="${esc(it?.note)}"></div>
-      ${!it || it.addedBy === S.me ? `<label class="check"><input type="checkbox" id="g-hide" ${it?.hidden ? 'checked' : ''}> Hide this from ${esc(otherName())}</label>` : ''}
-      <div class="photo-row">
+      <div class="photo-row" ${it?.photo ? '' : 'hidden'}>
         ${it?.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="">` : ''}
-        <label class="btn plain photo-btn"><span>${it?.photo ? 'Change picture' : 'Add a picture'}</span><input type="file" accept="image/*" style="position:absolute;opacity:0;width:1px"></label>
         ${it?.photo ? `<button type="button" class="textbtn" data-delphoto>Remove picture</button>` : ''}
       </div>
-      <p class="amazon-link" ${it?.url ? '' : 'hidden'}>${it?.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">View on Amazon</a>` : ''}</p>
+      ${!it || it.addedBy === S.me ? `<label class="check"><input type="checkbox" id="g-hide" ${it?.hidden ? 'checked' : ''}> Hide this from ${esc(otherName())}</label>` : ''}
+      <details class="more" ${it ? '' : 'hidden'} ${it?.note ? 'open' : ''}><summary>Add a note</summary>
+        <input class="field" id="g-note" maxlength="200" aria-label="Note" placeholder="Size, color, where it's hidden" value="${esc(it?.note)}"></details>
+      ${it?.url ? `<p class="amazon-link"><a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">View on Amazon</a></p>` : ''}
       ${adder ? `<p class="added-by">Added by ${esc(adder)}</p>` : ''}
       <p class="err" role="alert"></p>
-      <div class="foot">
-        ${it ? `<button type="button" class="textbtn danger" data-del>Remove gift</button>` : ''}
-        <button type="button" class="btn plain" data-close>Cancel</button>
-        <button class="btn">${it ? 'Save gift' : 'Add gift'}</button>
-      </div>
+      ${it ? `<div class="foot">
+        <button type="button" class="textbtn danger" data-del>Remove gift</button>
+        <button class="btn">Save</button>
+      </div>` : `<button class="btn wide">Add gift</button>`}
     </form>`, (m, close) => {
     let file = null;
     let chosen = null;
     const whoBox = $('#g-for', m);
+    const nameBox = $('#g-name', m);
     const markWho = () => m.querySelectorAll('[data-who]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.who.toLowerCase() === whoBox.value.trim().toLowerCase()));
     m.querySelectorAll('[data-who]').forEach((b) => {
       b.onclick = () => {
@@ -428,17 +426,19 @@ function itemModal(it, forPerson = '') {
     });
     whoBox.addEventListener('input', markWho);
     markWho();
+    const fileInput = $('input[type=file]', m);
     const showPicture = (src) => {
-      let img = $('.photo-row img', m);
+      const row = $('.photo-row', m);
+      let img = $('img', row);
       if (!img) {
         img = document.createElement('img');
         img.alt = '';
-        $('.photo-row', m).prepend(img);
+        row.prepend(img);
       }
       img.src = src;
+      row.hidden = false;
       $('.photo-btn span', m).textContent = 'Change picture';
     };
-    const findBox = $('#g-find', m);
     const findMsg = $('.find-msg', m);
     const picks = $('.picks', m);
     const say = (msg) => {
@@ -449,22 +449,24 @@ function itemModal(it, forPerson = '') {
       chosen = x;
       file = null;
       fileInput.value = '';
-      $('#g-name', m).value = shortName(x.title);
+      nameBox.value = shortName(x.title);
       if (x.image) showPicture(x.image);
       picks.hidden = true;
-      findBox.value = '';
-      say(`Filled in from Amazon${x.price ? ` at ${x.price}` : ''}. Check the name.`);
-
+      say(`Filled in from Amazon${x.price ? ` at ${x.price}` : ''}.`);
     };
     const find = async (text) => {
       text = text.trim();
-      if (!text) return;
+      if (!text) {
+        say('Type what you want first, then tap Find on Amazon.');
+        nameBox.focus();
+        return;
+      }
       say('Looking on Amazon…');
       picks.hidden = true;
       try {
         const isLink = /https?:\/\//i.test(text);
         const { results } = isLink ? await api('POST', '/api/amazon/link', { url: text }) : await api('GET', `/api/amazon/search?q=${encodeURIComponent(text)}`);
-        if (!results.length) return say('Nothing came up. Try other words, or fill the gift in below.');
+        if (!results.length) return say('Nothing came up. Try other words.');
         if (isLink) return choose(results[0]);
         say('Tap the one you want.');
         picks.innerHTML = results.map((x, i) => `<button type="button" class="pick" data-i="${i}">
@@ -474,29 +476,21 @@ function itemModal(it, forPerson = '') {
         picks.hidden = false;
         picks.querySelectorAll('.pick').forEach((b) => (b.onclick = () => choose(results[b.dataset.i])));
       } catch (err) {
-        say(`${err.message} You can still fill the gift in below.`);
+        say(`${err.message} You can still type the gift yourself.`);
       }
     };
-    $('[data-find]', m).onclick = () => find(findBox.value);
-    findBox.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        find(findBox.value);
-      }
-    });
-    findBox.addEventListener('paste', (e) => {
+    $('[data-find]', m).onclick = () => find(nameBox.value);
+    nameBox.addEventListener('paste', (e) => {
       const text = e.clipboardData.getData('text');
       if (/https?:\/\//i.test(text)) {
         e.preventDefault();
-        findBox.value = text;
+        nameBox.value = '';
         find(text);
       }
     });
-    const fileInput = $('input[type=file]', m);
     fileInput.onchange = () => {
       file = fileInput.files[0] || null;
-      if (!file) return;
-      showPicture(URL.createObjectURL(file));
+      if (file) showPicture(URL.createObjectURL(file));
     };
     $('[data-del]', m)?.addEventListener('click', async () => {
       if (!confirm(`Remove gift ${it.number}, "${it.name}"?`)) return;
@@ -520,9 +514,15 @@ function itemModal(it, forPerson = '') {
     });
     $('form', m).addEventListener('submit', async (e) => {
       e.preventDefault();
-      const save = $('.foot .btn:last-child', m);
+      // A link typed by hand gets looked up instead of being saved as the gift's name.
+      if (/https?:\/\//i.test(nameBox.value)) {
+        const link = nameBox.value;
+        nameBox.value = '';
+        return find(link);
+      }
+      const save = $('form > .btn, .foot .btn:last-child', m);
       save.disabled = true;
-      const body = { name: $('#g-name', m).value, person: whoBox.value, note: $('#g-note', m).value };
+      const body = { name: nameBox.value, person: whoBox.value, note: $('#g-note', m).value };
       const hide = $('#g-hide', m);
       if (hide) body.hidden = hide.checked;
       if (chosen) {

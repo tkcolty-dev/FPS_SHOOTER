@@ -96,14 +96,27 @@ label.lbl { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 60
 .top .tabs { min-width: 280px; }
 .top .add-btn { justify-self: end; min-height: 42px; }
 .column { max-width: 640px; margin: 0 auto; }
-.summary { margin: 0 8px 12px; font-size: 14px; text-shadow: 0 1px 8px rgba(4, 8, 40, .9); }
+.summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 8px 10px; font-size: 14px; text-shadow: 0 1px 8px rgba(4, 8, 40, .9); }
+.summary .textbtn { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+
+/* One card per person: their gifts, then a clear way to add another. */
+.cards { columns: 3 270px; column-gap: 14px; }
+.card, .new-person { break-inside: avoid; margin-bottom: 14px; }
+.card { display: block; padding: 14px; border-radius: 20px; }
+.card-head { display: flex; align-items: center; gap: 8px; margin: 0 4px 8px; }
+.card-head h2 { font-size: 18px; font-weight: 800; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.badge { min-width: 22px; padding: 2px 7px; border-radius: 999px; background: #fff; color: var(--night); font-size: 12px; font-weight: 800; text-align: center; }
+.card .rows { margin-bottom: 8px; }
+.card .gift { min-height: 48px; gap: 10px; padding: 6px 4px; border-radius: 12px; }
+.card .gift .num { flex: 0 0 44px; font-size: 18px; letter-spacing: -.02em; }
+.card .gift .what { font-size: 14px; }
+.card .gift img { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 9px; }
+.card-add { display: block; width: 100%; min-height: 42px; border: 0; border-radius: 12px; background: var(--fill); font-size: 14px; font-weight: 700; transition: background-color .15s ease, color .15s ease; }
+.card-add:hover { background: #fff; color: var(--night); }
+.new-person { display: block; width: 100%; min-height: 58px; border: 1px dashed rgba(255, 255, 255, .5); border-radius: 20px; background: rgba(8, 15, 58, .45); font-weight: 700; transition: background-color .15s ease; }
+.new-person:hover { background: rgba(8, 15, 58, .7); }
 
 .list { padding: 8px; }
-.group + .group { margin-top: 6px; }
-.group-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 6px; }
-.group-head h2 { font-size: 13px; font-weight: 700; color: var(--soft); }
-.add-mini { min-height: 30px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--fill); font-size: 13px; font-weight: 600; transition: background-color .15s ease; }
-.add-mini:hover { background: var(--fill-strong); }
 .rows { list-style: none; margin: 0; padding: 0; }
 .gift, .person {
   display: flex; align-items: center; gap: 14px; width: 100%; min-height: 60px; padding: 8px 12px; border: 0; border-radius: 16px;
@@ -126,7 +139,7 @@ label.lbl { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 60
 .empty { padding: 30px 26px; text-align: center; }
 .empty h2 { font-size: 24px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 8px; }
 .empty p { margin-bottom: 20px; color: var(--soft); }
-.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 12px; width: fit-content; max-width: 100%; margin: 18px auto 0; padding: 2px 14px; border-radius: 999px; background: rgba(8, 15, 58, .6); font-size: 13px; }
+.links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 12px; width: fit-content; max-width: 100%; margin: 14px auto 0; padding: 2px 14px; border-radius: 999px; background: rgba(8, 15, 58, .6); font-size: 13px; }
 
 /* ---------- windows ---------- */
 .overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; overflow: auto; padding: 16px; background: rgba(4, 8, 40, .45); animation: dim .2s ease both; }
@@ -135,7 +148,10 @@ label.lbl { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 60
 .modal { width: 100%; max-width: 460px; padding: 24px; animation: pop .26s var(--ease) both; }
 @keyframes pop { from { opacity: 0; transform: translateY(14px) scale(.985); } }
 .overlay.closing .modal { opacity: 0; transform: translateY(8px) scale(.985); transition: opacity .17s ease, transform .17s ease; }
-.modal h2 { font-size: 22px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 18px; }
+.modal { position: relative; }
+.x { position: absolute; top: 14px; right: 14px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: var(--fill); font-size: 20px; line-height: 1; transition: background-color .15s ease; }
+.x:hover { background: var(--fill-strong); }
+.modal h2 { padding-right: 40px; font-size: 22px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 18px; }
 .modal p.plain-text { margin-bottom: 16px; color: var(--soft); }
 .modal .err { margin-top: 10px; }
 .foot { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 22px; }
@@ -150,8 +166,10 @@ label.lbl { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 60
 .photo-btn { cursor: pointer; }
 .photo-btn:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
 .added-by { margin-top: 10px; font-size: 13px; color: var(--soft); }
-.find-row { display: flex; gap: 8px; }
-.find-row .field { flex: 1; min-width: 0; }
+.gift-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.more summary { cursor: pointer; width: fit-content; color: var(--soft); font-size: 14px; font-weight: 600; }
+.more summary:hover { color: #fff; }
+.more .field { margin-top: 8px; }
 .find-msg { margin-top: 8px; font-size: 14px; color: var(--ok); }
 .picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-height: 320px; overflow: auto; margin-top: 10px; padding: 2px; animation: rise .28s var(--ease) both; }
 .pick { display: flex; flex-direction: column; gap: 5px; padding: 6px; border: 0; border-radius: 14px; background: var(--fill); text-align: left; font-size: 12.5px; line-height: 1.25; color: #fff; transition: background-color .15s ease; }
