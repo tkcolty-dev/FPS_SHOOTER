@@ -120,6 +120,7 @@ function giftTag(it) {
     <span class="num">${it.number}</span>
     <span class="what">${esc(it.name)}</span>
     ${it.photo ? `<img src="/photo/${esc(it.photo)}.jpg" alt="" loading="lazy">` : `<span class="nopic">Add a picture</span>`}
+    ${it.price ? `<span class="price">${esc(it.price)}</span>` : ''}
     <span class="for">For <b>${esc(it.person)}</b></span>
     ${it.hidden && !it.opened ? `<span class="secret">Hidden from ${esc(otherName())}</span>` : ''}
     ${it.opened ? `<span class="opened">Opened</span>` : ''}
@@ -205,6 +206,12 @@ function itemModal(it) {
   const adder = it && S.users[it.addedBy]?.name;
   modal(`<h2>${it ? `Gift ${it.number}` : 'Add a gift'}</h2>
     <form class="stack">
+      <div class="finder">
+        <label class="lbl" for="g-find">Find it on Amazon</label>
+        <div class="find-row"><input class="field" id="g-find" autocomplete="off" enterkeyhint="search" placeholder="Paste a link or type a name"><button type="button" class="btn pine" data-find>Find</button></div>
+        <p class="find-msg" role="status" hidden></p>
+        <div class="picks" hidden></div>
+      </div>
       <div><label class="lbl" for="g-name">What is it?</label>
         <input class="field" id="g-name" maxlength="120" value="${esc(it?.name)}" required></div>
       <div class="two">
@@ -222,6 +229,7 @@ function itemModal(it) {
         <label class="btn plain photo-btn"><span>${it?.photo ? 'Change picture' : 'Add a picture'}</span><input type="file" accept="image/*" style="position:absolute;opacity:0;width:1px"></label>
         ${it?.photo ? `<button type="button" class="textbtn" data-delphoto>Remove picture</button>` : ''}
       </div>
+      <p class="amazon-link" ${it?.url ? '' : 'hidden'}>${it?.url ? `<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">View on Amazon</a>` : ''}</p>
       ${adder ? `<p style="margin:10px 0 0;font-size:15px;color:var(--muted)">Added by ${esc(adder)}</p>` : ''}
       <p class="err" role="alert"></p>
       <div class="foot">
@@ -231,18 +239,76 @@ function itemModal(it) {
       </div>
     </form>`, (m, close) => {
     let file = null;
-    const fileInput = $('input[type=file]', m);
-    fileInput.onchange = () => {
-      file = fileInput.files[0] || null;
-      if (!file) return;
-      $('.photo-btn span', m).textContent = 'Change picture';
+    let chosen = null;
+    const showPicture = (src) => {
       let img = $('.photo-row img', m);
       if (!img) {
         img = document.createElement('img');
         img.alt = '';
         $('.photo-row', m).prepend(img);
       }
-      img.src = URL.createObjectURL(file);
+      img.src = src;
+      $('.photo-btn span', m).textContent = 'Change picture';
+    };
+    const findBox = $('#g-find', m);
+    const findMsg = $('.find-msg', m);
+    const picks = $('.picks', m);
+    const say = (msg) => {
+      findMsg.textContent = msg;
+      findMsg.hidden = !msg;
+    };
+    const choose = (x) => {
+      chosen = x;
+      file = null;
+      fileInput.value = '';
+      $('#g-name', m).value = shortName(x.title);
+      if (x.image) showPicture(x.image);
+      picks.hidden = true;
+      findBox.value = '';
+      say(`Filled in from Amazon${x.price ? ` at ${x.price}` : ''}. Check the name, then add who it's for.`);
+      $('#g-for', m).focus();
+    };
+    const find = async (text) => {
+      text = text.trim();
+      if (!text) return;
+      say('Looking on Amazon…');
+      picks.hidden = true;
+      try {
+        const isLink = /https?:\/\//i.test(text);
+        const { results } = isLink ? await api('POST', '/api/amazon/link', { url: text }) : await api('GET', `/api/amazon/search?q=${encodeURIComponent(text)}`);
+        if (!results.length) return say('Nothing came up. Try other words, or fill the gift in below.');
+        if (isLink) return choose(results[0]);
+        say('Tap the one you want.');
+        picks.innerHTML = results.map((x, i) => `<button type="button" class="pick" data-i="${i}">
+            <span class="pimg">${x.image ? `<img src="${esc(x.image)}" alt="" loading="lazy">` : ''}</span>
+            <span class="ptitle">${esc(x.title || 'Amazon item')}</span>
+            <b>${esc(x.price || '')}</b></button>`).join('');
+        picks.hidden = false;
+        picks.querySelectorAll('.pick').forEach((b) => (b.onclick = () => choose(results[b.dataset.i])));
+      } catch (err) {
+        say(`${err.message} You can still fill the gift in below.`);
+      }
+    };
+    $('[data-find]', m).onclick = () => find(findBox.value);
+    findBox.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        find(findBox.value);
+      }
+    });
+    findBox.addEventListener('paste', (e) => {
+      const text = e.clipboardData.getData('text');
+      if (/https?:\/\//i.test(text)) {
+        e.preventDefault();
+        findBox.value = text;
+        find(text);
+      }
+    });
+    const fileInput = $('input[type=file]', m);
+    fileInput.onchange = () => {
+      file = fileInput.files[0] || null;
+      if (!file) return;
+      showPicture(URL.createObjectURL(file));
     };
     $('[data-del]', m)?.addEventListener('click', async () => {
       if (!confirm(`Remove gift ${it.number}, "${it.name}"?`)) return;
@@ -271,20 +337,39 @@ function itemModal(it) {
       const body = { name: $('#g-name', m).value, number: $('#g-num', m).value, person: $('#g-for', m).value, note: $('#g-note', m).value };
       const hide = $('#g-hide', m);
       if (hide) body.hidden = hide.checked;
+      if (chosen) {
+        body.url = chosen.url;
+        body.price = chosen.price;
+      }
       try {
         const res = it ? await api('PATCH', `/api/items/${it.id}`, body) : await api('POST', '/api/items', body);
         S = res;
         const id = it ? it.id : res.id;
-        if (file) S = await api('POST', `/api/items/${id}/photo`, { data: await shrinkPhoto(file) });
+        // The gift is saved by now, so a picture problem shouldn't send anyone back to add it twice.
+        let pictureFailed = false;
+        try {
+          if (file) S = await api('POST', `/api/items/${id}/photo`, { data: await shrinkPhoto(file) });
+          else if (chosen?.image) S = await api('POST', `/api/items/${id}/amazon-image`, { image: chosen.image });
+        } catch {
+          pictureFailed = true;
+        }
         close();
         renderList();
-        toast(it ? `Saved gift ${body.number}` : `Added gift ${body.number}. Write ${body.number} on the present.`);
+        toast(pictureFailed ? `Saved gift ${body.number}, but its picture didn't load. Open the gift to add one.` : it ? `Saved gift ${body.number}` : `Added gift ${body.number}. Write ${body.number} on the present.`);
       } catch (err) {
         $('.err', m).textContent = err.message;
         save.disabled = false;
       }
     });
   });
+}
+
+// Amazon titles run long; keep the part before the first sales pitch.
+function shortName(title) {
+  const t = String(title || '').trim();
+  const first = t.split(/\s[-–—|]\s|,\s|:\s/)[0].trim();
+  const pick = first.length >= 12 ? first : t;
+  return pick.length > 80 ? `${pick.slice(0, 80).replace(/\s+\S*$/, '')}…` : pick;
 }
 
 function shrinkPhoto(file, max = 1000) {

@@ -6,6 +6,7 @@ const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { scrape, searchResults } = require('./scrape');
 
 const PORT = process.env.PORT || 4975;
 const PROD = process.env.NODE_ENV === 'production';
@@ -251,6 +252,51 @@ const requireCode = (req, res, next) => {
 app.use('/api', requireCode);
 app.use('/photo', requireCode);
 
+// Amazon lookups can take a few seconds, so they run outside the one-change-at-a-time queue.
+app.get('/api/amazon/search', async (req, res) => {
+  const q = str(req.query.q, 150);
+  if (!q) return res.json({ results: [] });
+  try {
+    res.json({ results: await searchResults(q) });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.post('/api/amazon/link', async (req, res) => {
+  const link = (str(req.body.url, 2000).match(/https?:\/\/\S+/i) || [])[0] || '';
+  let host = '';
+  try {
+    host = new URL(link).hostname;
+  } catch {}
+  if (!AMAZON_HOST.test(host) && !/^(a\.co|amzn\.to|amzn\.com|amzn\.eu)$/i.test(host)) return res.status(400).json({ error: 'That link is not from Amazon. Paste an Amazon link or type a name.' });
+  try {
+    const out = await scrape(link);
+    if (out.store !== 'Amazon') return res.status(400).json({ error: 'That link is not from Amazon. Paste an Amazon link or type a name.' });
+    res.json({ results: [out] });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// Keep our own copy of the Amazon picture, behind the same codes as every other picture.
+async function fetchAmazonImage(v) {
+  const image = str(v, 300);
+  if (!/^https:\/\/m\.media-amazon\.com\/images\/I\/[\w.,%+-]+\.jpg$/.test(image)) return null;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const r = await fetch(image, { signal: ctrl.signal, redirect: 'error' });
+    if (!r.ok) return null;
+    const buf = Buffer.from(await r.arrayBuffer());
+    return buf.length > 100 && buf.length <= 5_000_000 && buf[0] === 0xff && buf[1] === 0xd8 ? buf : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 const findItem = (req, res) => {
   const it = state.items.find((i) => i.id === req.params.id && canSee(i, req.uid));
   if (!it) res.status(404).json({ error: 'That gift is gone. It may have just been removed.' });
@@ -299,6 +345,16 @@ app.patch('/api/me', wrap(async (req, res) => {
   res.json(publicState(req.uid));
 }));
 
+const AMAZON_HOST = /(^|\.)amazon\.[a-z.]+$/i;
+function amazonUrl(v) {
+  try {
+    const u = new URL(str(v, 500));
+    return u.protocol === 'https:' && AMAZON_HOST.test(u.hostname) ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function readItem(body, uid, it) {
   const name = str(body.name, 120);
   if (!name) return { error: 'Add what the gift is.' };
@@ -308,7 +364,12 @@ function readItem(body, uid, it) {
   if (number === null) return { error: 'Gift numbers go from 1 to 9999.' };
   const clash = state.items.find((i) => i.number === number && i !== it);
   if (clash) return { error: canSee(clash, uid) ? `Number ${number} is already on "${clash.name}". Pick another number.` : `Number ${number} is already taken. Pick another number.` };
-  return { name, person, number, note: str(body.note, 200) };
+  const fields = { name, person, number, note: str(body.note, 200) };
+  if ('url' in body) {
+    fields.url = amazonUrl(body.url);
+    fields.price = fields.url ? str(body.price, 20) || null : null;
+  }
+  return fields;
 }
 
 app.post('/api/items', wrap(async (req, res) => {
@@ -354,6 +415,26 @@ app.post('/api/items/:id/photo', wrap(async (req, res) => {
   if (old) await store.delPhoto(old);
   res.json(publicState(req.uid));
 }));
+
+app.post('/api/items/:id/amazon-image', async (req, res) => {
+  try {
+    const buf = await fetchAmazonImage(req.body.image);
+    if (!buf) return res.status(502).json({ error: "Amazon's picture didn't load." });
+    await locked(async () => {
+      const it = findItem(req, res);
+      if (!it) return;
+      const old = it.photo;
+      it.photo = rid(9);
+      await store.putPhoto(it.photo, buf);
+      await store.save(state);
+      if (old) await store.delPhoto(old);
+      res.json(publicState(req.uid));
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "That didn't save. Try again." });
+  }
+});
 
 app.delete('/api/items/:id/photo', wrap(async (req, res) => {
   const it = findItem(req, res);
